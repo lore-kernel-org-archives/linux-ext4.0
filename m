@@ -1,47 +1,74 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=124.71.93.99
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=162.62.57.210
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793089214;
-	b=cFjcyS2ODyWIcdKraF+Fi3/2voa5UFNX/xmukKfpZ8gkehvsMecJBcVQlYJn65aGIYfT
-	 +W+ivJa8bUTDzgo4MLTrSovqgQ11QoJ/bRhwIi83eJOCYqk4Yu9g7qYuvC93IBAuBFhXc
-	 XCPlbpcvBgF11R05pV2geEgTB/2NY9lx9wEYtVpv1Q57sm1DKscP+Ivl33kjfzbE4+qxY
-	 vVi68/2pqrFxyY64AolSOWtqjmWwLRR90nFllGteNRQHrWWmibzKl91CVdi2SkTXoAgVy
-	 YF51FNfnAKoYFPE7Jgdt2c/qo8e4T4E/da1pLFz73D4RfdYywVjC1DJiu5AopuJ+ROg==
+	t=1793098456;
+	b=EE/baklVKbIxS7Bo6eL5B4CpuCao3tGPRZ267En6BQr65jk+DoQqi8vIE7wI8VMZp5xu
+	 UxDwKD5bri/08TQHb0jCyRkIHQTuyKbnVwqwsrgEVj6jw8is7+WSkduFyV6zHggHjPL1r
+	 hLcmTt+jjM2iKHWf5aOAeayZg4eyADGJI5Mimohp4GEr4Unxlqe3KPRXtnVkrjlr1l4ZH
+	 emD3iTDYhYldUhnB1YSRnyMY5lK/MYaMiopAwjfER6EjSAMamt6ddQM5Uc6BPuRgrbkzn
+	 WNHBoAT0sPR7Hmn2i2CWeDYlstRbxISk6W72fLj905f1YxiAGX48yx2t0k0hEbNT2Bg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793089214;
-	h=DMARC-Filter:Received:Received:Received:Message-ID:Date:MIME-Version:
-	 User-Agent:Subject:To:Cc:References:Content-Language:From:In-Reply-To:
-	 Content-Type:Content-Transfer-Encoding:X-CM-TRANSID:
-	 X-Coremail-Antispam:X-CM-SenderInfo;
-	bh=mF5SJD69a3HlW4ReVj2JO8TQdc2ATRCwqzLg4ody7s4=;
-	b=ARccwK2oROsmFXBYf3lbGEEPUEayN112ZLF4RBICAqs26r1V4lXtGU+wE2zt7WRq3jJw
-	 T4pTlenI8oANYjo4pAHHu79pN4el9v7VuD1cBg3hkG8Ty9IQz2GogUvDOODrrKKPqQp68
-	 hw15HwftjVQW71bvNsDNGzdHk8k9qnBm7iJ3KaHQmM/Ryu0gYgcPeRdxgPRqZ3IFjuvIP
-	 UcYi7HKMVW94sxCHWNWvl7HftpeseVybCffgMeSTwfmACkOw5VqEREPgwkjZLZZ88GQON
-	 N4Rc12wGmFdLpWUgUZzvSr9gxVQNs3Z4cfSNjgRkPXehqAH635Z1m/nj1M5CiT6nKJw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793098456;
+	h=DMARC-Filter:DKIM-Signature:Received:X-QQ-mid:Message-ID:
+	 X-QQ-XMAILINFO:X-QQ-XMRINFO:From:To:Cc:Subject:Date:X-OQ-MSGID:
+	 X-Mailer:MIME-Version:Content-Transfer-Encoding;
+	bh=bAmTpX3wb0+OqB6R+EmDcJt0ycNIGRnme1NJPYQAjhk=;
+	b=5ApGgrhsj7k4jWqG7PGmBj3TyhxrTkY0aAGzsh93Bah0dK2Pt+Yn8gxJ+s60kjyFo5ET
+	 ToOpCJ1UBWihRJ4EL6h+oQrBepa+rFC6jgT2AeF5nuEYJodp/a97q50prW+Lymzkt5DJr
+	 ZPlF9tgHxqWgnAk2GBPHgBMS29VTDVHt+Q661P3fWYFcBa7tP0Bfuw76UbKc+2fN1H/44
+	 fyibXt8dn9v6vh8BQ6TcQK8aeH5Sv0/XEmG6rsykjxN+gBXbe2Iffi0H0z1kWPAtxSnJM
+	 Q+sz0p3BNj7Bmtra4kZkh+zYEBU2aO+UYmIOjvEb9dZmlDAcBVRQu1VIFG15aLXzQvA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=none header.from=huaweicloud.com;
-	spf=pass smtp.mailfrom=huaweicloud.com;
-	arc=none smtp.remote-ip=124.71.93.99
-Received: from dggmsgout11.his.huawei.com (dggmsgout11.his.huawei.com [124.71.93.99])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	dmarc=pass header.from=qq.com;
+	spf=pass smtp.mailfrom=qq.com;
+	dkim=pass header.d=qq.com header.i=@qq.com header.a=rsa-sha256 header.s=s201512 header.b=ZLdnVP0l;
+	arc=none smtp.remote-ip=162.62.57.210
+Received: from out162-62-57-210.mail.qq.com (out162-62-57-210.mail.qq.com [162.62.57.210])
+	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 73842606A31A
-	for <linux-ext4@vger.kernel.org>; Tue, 27 Oct 2026 08:20:11 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 73842606A31A
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.170])
-	by dggmsgout11.his.huawei.com (SkyGuard) with ESMTP id 4jDNhW5fmTz1c0Xj
-	for <linux-ext4@vger.kernel.org>; Tue, 27 Oct 2026 16:19:55 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id A63B640561
-	for <linux-ext4@vger.kernel.org>; Tue, 27 Oct 2026 16:20:08 +0800 (CST)
-Received: from [10.174.179.19] (unknown [10.174.179.19])
-	by APP4 (Coremail) with UTF8SMTPSA id gCh0CgAXTu22XuBqTi0MCA--.64198S3;
-	Tue, 27 Oct 2026 16:20:08 +0800 (CST)
-Message-ID: <7e1e7913-223b-4382-95ef-c00e7890729d@huaweicloud.com>
-Date: Tue, 27 Oct 2026 16:20:06 +0800
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7F303606A31D;
+	Tue, 27 Oct 2026 10:54:13 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 7F303606A31D
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=qq.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (1024-bit key, unprotected) header.d=qq.com header.i=@qq.com header.a=rsa-sha256 header.s=s201512 header.b=ZLdnVP0l
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=qq.com; s=s201512;
+	t=1793098450; bh=bAmTpX3wb0+OqB6R+EmDcJt0ycNIGRnme1NJPYQAjhk=;
+	h=From:To:Cc:Subject:Date;
+	b=ZLdnVP0lgWSEA9o5dQFuvNvBrsocR7pWwk5SmBcWEUKYAsxy59r2ghPtP/yrkqWFb
+	 Moa4jLCXTe3pmQmwcoQxJeEoVdQwikuVGfh2dN8F3YftA+c//SNOKEvVP1gJXQ/TO+
+	 LYusmVLdP6EAcddL/R9P6yW52URjh/fazCC9U/J0=
+Received: from ikun.localdomain ([221.176.157.250])
+	by newxmesmtplogicsvrsza53-0.qq.com (NewEsmtp) with SMTP
+	id D839AA33; Tue, 27 Oct 2026 18:54:03 +0800
+X-QQ-mid: xmsmtpt1793098443tezgeoo0p
+Message-ID: <tencent_D60E766CE07D3A1847B81DE9BC37B4466908@qq.com>
+X-QQ-XMAILINFO: MMvmMAuO2obdG2dVatWCbVwriijG97k/sObkScKIEVp7Ug7Jrus8sBwEqpEHJ2
+	 vBcawWGBe3TjkYDAk9Tu8oqcO+GgsDrF7UefI6axQBC3xkhJAIPpnytklQOEW83plqcihjDxNf/L
+	 QgtsWliqP7WYtwFOKGnxN6iNTUhLlJS+8lHtILPcCK8hyJUE4ZBuPr5TzI/nDzynaPG1PbSPyP34
+	 zQlQCGNvDIRPzVhDxkmndRTXKeV9uT09JumGPrWIpkfDbLGYpQp/PDxsXYHZVjh+CtpuzI1fln/T
+	 j06B+F1Y0ImZ2k11cbblJ2w1wJwFQnT6p4VqiVgSor6ejfIyA72PCyovSYj/wdlBwgTVqOalumoo
+	 2brqL/Vb3wSSHsEOKN2HosO7C32bv/LzXWCsDmJH0/6zyn0koD4o6Gho1huHmHAotCyMIrjrLD9p
+	 tIjrssoflMkbTcFGIlKJwAgljvSXmcvkoSj2T3RRueHa5CJ2zPeFnUy4XY/Gc3WekVCVQIJuifhu
+	 9Cp6hzRbl2cWpNhVvArr+7EBV6ZKBmg8JPRu2GceanHeu9bAlVuMY9ZKkSinMWkw+6eD1E0Vm7Z1
+	 UGN3UPdiKwW/ubC0ELwS9OPu0CUOSVnGpTnCFBrtE0F0BLXXjqA0hD/xk/5hlVkWoaD6YnNcGoEI
+	 5gjjKz1YV/0MqfS7X9PdcYV7PC5IIK33xgpEYMLpihNDdf7B96AgU5Zqaci1HGFF0Opus2YmQ4x7
+	 ADIMutTheseTLGTDd6wj5VE8dq9wNAFZknfm8cFKVX8z+aln+m8jmOMZ/pqm7F71ehph6kwaIFcc
+	 omTi5xW0w1QIvbROz5oj7KZJlQrH0Sv2TZkLplj/X/HAiOf5RbiUf+wud3/24CYGuPlxxGngKrcT
+	 xQoPPliqWlC/rM/6attk3vtjmpBZLT2X8d6z9LdD3GKNSmV8SBRNgrInMwxB6JyFTOYLWtrSSAcw
+	 HJYcAow5hxe5S/aVRnpsCaJathZMO206romOlSRnztmNaMCfhVkhTFtaJnrLKA2UFGKQLfW7VK2s
+	 Bb3DvaFiLm66TuAHwghDO8ONVk6K4+GO67E4w6UePDiVyW7K+3qA6IW41WfNBxNKGD96lhFyRCNI
+	 tp87MooiP+fhAj+/CXEVWgf0TCCw==
+X-QQ-XMRINFO: M/715EihBoGS47X28/vv4NpnfpeBLnr4Qg==
+From: Alan <3164729207@qq.com>
+To: Theodore Ts'o <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org,
+	Alan <3164729207@qq.com>,
+	stable@vger.kernel.org
+Subject: [PATCH] ext4: reserve inode write access before unlinking entry
+Date: Tue, 27 Oct 2026 18:53:51 +0800
+X-OQ-MSGID: <20261027105351.410286-1-3164729207@qq.com>
+X-Mailer: git-send-email 2.53.0
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -51,163 +78,86 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH 3/4] ext4: add inode to orphan list before extent
- conversion
-To: sashiko-reviews@lists.linux.dev, linux-ext4@vger.kernel.org
-Cc: tytso@mit.edu
-References: <20261026115131.1735014-1-yi.zhang@huaweicloud.com>
- <20261026115131.1735014-4-yi.zhang@huaweicloud.com>
- <sashiko-outbox-185275@kernel.org>
-Content-Language: en-US
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-In-Reply-To: <sashiko-outbox-185275@kernel.org>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-X-CM-TRANSID:gCh0CgAXTu22XuBqTi0MCA--.64198S3
-X-Coremail-Antispam: 1UD129KBjvJXoWxurWUWw4xtr4DCr4xWrWrGrg_yoWrCr15pr
-	WrAr15Ka1FqasY9rsaq3WDZF1jk347Kr45XryagrWrZasxJF1xK345Ka429as5trW8XF4Y
-	vF40yryUCan8ArDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUgqb4IE77IF4wAFF20E14v26r1j6r4UM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
-	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Jr0_JF4l84ACjcxK6xIIjxv20xvEc7Cj
-	xVAFwI0_Jr0_Gr1l84ACjcxK6I8E87Iv67AKxVWxJr0_GcWl84ACjcxK6I8E87Iv6xkF7I
-	0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40E
-	x7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x
-	0Yz7v_Jr0_Gr1lF7xvr2IY64vIr41l42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_
-	Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1V
-	AY17CE14v26r1Y6r17MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAI
-	cVC0I7IYx2IY6xkF7I0E14v26r1j6r4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42
-	IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r1j6r4UYxBIdaVFxhVj
-	vjDU0xZFpf9x07UE-erUUUUU=
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
+Content-Transfer-Encoding: 8bit
 
-On 10/26/2026 9:10 PM, sashiko-bot@kernel.org wrote:
-> Thank you for your contribution! Sashiko AI review found 1 potential issue(s) to consider:
-> - [High] ext4: silent false success on ENOSPC retry in ext4_alloc_file_blocks()
-> --
-> 
-> commit af54a86e4faf105f27b9869fc053a46b111dbda1
-> Author: Zhang Yi <yi.zhang@huawei.com>
-> 
-> ext4: add inode to orphan list before extent conversion
-> 
-> This commit moves the ext4_orphan_add() call in ext4_alloc_file_blocks()
-> before ext4_convert_unwritten_extents() so that transaction restarts during
-> extent conversion do not leave written extents beyond i_disksize uncovered by
-> the orphan list. It also adjusts the post-conversion progress and cleanup
-> handling when conversion fails before converting any blocks.
-> 
->> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
->> index 7193429a05e1f..677749f0c9c68 100644
->> --- a/fs/ext4/extents.c
->> +++ b/fs/ext4/extents.c
->> @@ -4701,6 +4701,23 @@ static int ext4_alloc_file_blocks(struct file *file, loff_t offset, loff_t len,
->>  				break;
->>  			}
->>  
->> +			/*
->> +			 * Add the inode to the orphan list before the
->> +			 * conversion, as it may restart the transaction and
->> +			 * commit the extents converted so far.  Written
->> +			 * extents must stay covered by the orphan list until
->> +			 * i_disksize catches up.
->> +			 */
->> +			if (new_size) {
->> +				ret2 = ext4_orphan_add(handle, inode);
->> +				orphan = true;
->> +				if (unlikely(ret2)) {
->> +					ret = ret2;
->> +					ext4_journal_stop(handle);
->> +					break;
->> +				}
->> +			}
->> +
->>  			ret = ext4_convert_unwritten_extents(handle,
->>  					inode, (loff_t)map.m_lblk << blkbits,
->>  					(loff_t)map.m_len << blkbits,
->> @@ -4708,23 +4725,19 @@ static int ext4_alloc_file_blocks(struct file *file, loff_t offset, loff_t len,
->>  			if (ret)
->>  				map.m_len = converted;
->>  
->> -			/*
->> -			 * If blocks beyond i_disksize are converted, add
->> -			 * the inode to the orphan list and advance the epos.
->> -			 */
->> -			if (new_size && converted) {
->> -				ret2 = ext4_orphan_add(handle, inode);
->> -				ret = ret ? ret : ret2;
->> -				orphan = true;
->> -			}
->> -
->>  			ret3 = ext4_journal_stop(handle);
->>  			ret = ret ? ret : ret3;
->>  		}
->>  
->> -		map.m_lblk += map.m_len;
->> -		map.m_len = len_lblk = len_lblk - map.m_len;
->> -		epos = EXT4_LBLK_TO_B(inode, map.m_lblk);
->> +		/*
->> +		 * The conversion may have failed without converting
->> +		 * anything.
->> +		 */
->> +		if (map.m_len) {
->> +			map.m_lblk += map.m_len;
->> +			map.m_len = len_lblk = len_lblk - map.m_len;
->> +			epos = EXT4_LBLK_TO_B(inode, map.m_lblk);
->> +		}
->>  		if (ret)
->>  			break;
->>  	}
->> @@ -4732,12 +4745,13 @@ static int ext4_alloc_file_blocks(struct file *file, loff_t offset, loff_t len,
->>  	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
->>  		goto retry;
-> 
-> [Severity: High]
-> What happens on the goto retry path if ext4_convert_unwritten_extents() fails
-> with -ENOSPC and converted == 0?
-> 
-> When ret is non-zero and converted is 0, map.m_len is set to 0:
-> 
-> 	if (ret)
-> 		map.m_len = converted;
-> 
-> Previously, map.m_len = len_lblk = len_lblk - map.m_len ran unconditionally,
-> which restored map.m_len to len_lblk when map.m_len was 0. With that update
-> now guarded by if (map.m_len), map.m_len remains 0 while len_lblk > 0.
-> 
-> If ret == -ENOSPC and ext4_should_retry_alloc() returns true, jumping to
-> retry calls ext4_map_blocks() with map.m_len == 0:
-> 
-> fs/ext4/extents.c:ext4_alloc_file_blocks() {
-> 	...
-> 	while (len_lblk) {
-> 		...
-> 		ret = ext4_map_blocks(handle, inode, &map, flags);
-> 		if (ret <= 0) {
-> 			...
-> 			ext4_mark_inode_dirty(handle, inode);
-> 			ext4_journal_stop(handle);
-> 			break;
-> 		}
-> }
-> 
-> Because map.m_lblk already maps to the unwritten extent allocated before the
-> retry, both the extent status tree lookup in ext4_map_blocks() and
-> ext4_ext_handle_unwritten_extents() clamp the returned block count to
-> map.m_len (0). That causes ext4_map_blocks() to return 0, breaking out of the
-> loop with ret == 0 and silently returning success to the caller without
-> converting the unwritten extent or finishing the remaining allocation.
-> 
-> Should map.m_len be reset to len_lblk when map.m_len is 0 (or before jumping
-> to retry)?
-> 
+__ext4_unlink() removes the directory entry and dirties the parent inode
+before it updates the target inode's link count. If the inode write access
+operation fails after the directory entry has been removed, unlink returns
+without decrementing the target inode's link count. With errors=continue,
+the directory update can still be committed.
 
-Yeah, sashiko is right. We should always update map.m_len as before.
-I will send to fix this.
+Reserve write access to the parent and target inode-table buffers before
+removing the directory entry. This makes inode-location and journal-access
+errors fail before the namespace changes. Keep the existing namespace and
+link-count update order, and release the inode-location references on all
+exits. Fast-commit replay can skip the parent update when the directory
+entry no longer matches the target inode, so reserve only the target inode
+in that case.
 
-Thanks,
-Yi.
+The source-derived fault injector reproduced this window by returning EIO
+from the real journal write-access boundary in ext4_reserve_inode_write().
+Before this change, after a normal unmount, e2fsck reported inode 13 as
+unattached, debugfs showed Links: 1, and the parent directory no longer
+contained the file. With this change, the same error is returned before the
+directory entry is changed; the file remains present with Links: 1 and
+e2fsck -fn passes.
 
+The failure injection and the repaired run were performed on Linux 6.12.1
+with errors=continue and an ordinary sync/unmount; no forced-shutdown ioctl
+was used. The repaired change also builds in the current mainline tree with
+make O=/tmp/linux-mainline-d135ab-build ARCH=x86 W=1 -j8 fs/ext4/namei.o.
 
+Fixes: 4209ae12b122 ("ext4: handle ext4_mark_inode_dirty errors")
+Cc: stable@vger.kernel.org
+Signed-off-by: Alan <3164729207@qq.com>
+---
+ fs/ext4/namei.c | 21 +++++++++++++++++++++
+ 1 file changed, 21 insertions(+)
+
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 354fc2d22df1a..312ff0b682123 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -3233,6 +3233,7 @@ int __ext4_unlink(struct inode *dir, const struct qstr *d_name,
+ 	int retval = -ENOENT;
+ 	struct buffer_head *bh;
+ 	struct ext4_dir_entry_2 *de = NULL;
++	struct ext4_iloc dir_iloc, inode_iloc;
+ 	handle_t *handle;
+ 	int skip_remove_dentry = 0;
+ 
+@@ -3269,6 +3270,22 @@ int __ext4_unlink(struct inode *dir, const struct qstr *d_name,
+ 	if (IS_DIRSYNC(dir))
+ 		ext4_handle_sync(handle);
+ 
++	/*
++	 * Get the inode-table buffers and journal write access before removing
++	 * the directory entry. Otherwise, an error while updating either inode
++	 * can leave the name removed but the link count unchanged.
++	 */
++	dir_iloc.bh = NULL;
++	inode_iloc.bh = NULL;
++	if (!skip_remove_dentry) {
++		retval = ext4_reserve_inode_write(handle, dir, &dir_iloc);
++		if (retval)
++			goto out_handle;
++	}
++	retval = ext4_reserve_inode_write(handle, inode, &inode_iloc);
++	if (retval)
++		goto out_handle;
++
+ 	if (!skip_remove_dentry) {
+ 		retval = ext4_delete_entry(handle, dir, de, bh);
+ 		if (retval)
+@@ -3293,6 +3310,10 @@ int __ext4_unlink(struct inode *dir, const struct qstr *d_name,
+ 	if (dentry && !retval)
+ 		ext4_fc_track_unlink(handle, dentry);
+ out_handle:
++	if (dir_iloc.bh)
++		brelse(dir_iloc.bh);
++	if (inode_iloc.bh)
++		brelse(inode_iloc.bh);
+ 	ext4_journal_stop(handle);
+ out_bh:
+ 	brelse(bh);
 
