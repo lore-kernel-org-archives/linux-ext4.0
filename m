@@ -1,48 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793290059;
-	b=Xm7yKQecN9mi203xA5fneyzPMQSD1NxvmlD3Ro1RV+7s39JwJTOgOGerWuHjA6w84F77
-	 APu3x2W9UeT4/bBfAjfdJM5nV7/1sXbMjYYapzgyR95D2utSnmJcr8aHDTqjSwcvfk7hz
-	 In1xINM8U1SJT5ikdSyWJY8KvJkDgQvUn5ihadg8E0mJtxb3h+PM0mJIw3u7EjCBayfUj
-	 Bl1nxvthIZLVylK5gp5Vky2M67siUic4zWp/zP6TuPswvsL+YCMoD7jZlmodx1Y7bzXhz
-	 s1HwIkH5oS2jqzt3G/ExNaMxEF2lDIDrQmtoqDIIxW7Rsa3cKKSg/4/ohB5ob8z++Yw==
+	t=1793290076;
+	b=1Y6AksAtljwSdYJaqYnWfRdqILXWjjcfSF2bna0X9zTtlD5q8NovMzWo6trhd2uY3BDp
+	 Ww2wb/t9JvIZsB4i+u1k2HKQO6DMllcv2lYiRx3iBC2MipTE5L/TA2eebqGsb79BeFKAe
+	 XlAuWDuDmmeZMAW8wnYDTuVjP7ul8S2fXq6SX3iTDJpoHiKwIXeVV7XjjRFD3SB7427QE
+	 Cq94+DlqhguAo75Ue234QNiBQsp/OEshFYWGwe7zJG5D8HRPU12Eip1cVFsNqqk9Gr41J
+	 M7pCG43nVz6xbQcLBf30PigZsXeJ41FLpdFR2TUHpDZ8c1a1z52ehU1Ml+rgghKqdoA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793290059;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793290076;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=xNgZk8sqL0pi/BgMC10+2IZal4rVk0LbmvrvuXhJ2Dk=;
-	b=dcKWOwdxgXjfAr7r4/03PLelooPvmjfxaRryQLnhDB4aT67DHVPsQBs7dim992ABxsyk
-	 emKIgpbLEuwn1kqtF8M4L4UH7S88J0yIjqnFOQHbFtBf3QGTKDPrzXsWC/4QBn8h7f320
-	 4sjC9auEfq/Al9l5yAmt3VXJJ/QCj6GNxXYjYBldnkywFJehTh3ClwjFz5vtBqWM99NIm
-	 QnuYgaXcVX91RqBs4GETyjJmZo/YjsrnSyaxYbp35fHklfiu4+/kCsVNEJDncBHdeM10R
-	 MprIWmFwrfWE3WES2mN9N5bRh03Ovkc9Oywp5IeMGeddStTT8x+pszvVWIYvMRexUDw==
+	bh=zxzMnAfr+mLITGlXVw2HHwWaLKEq9rk+KQbTmA0gnZc=;
+	b=GWXZOntutR0HNfkYNghhhfsz8ZzGsoTZe0FvSpigjY/fAd6m5h1YGLZWpY9XSDWfZgIf
+	 09SmmJSrIye60kATp0dxulXqgqjTnukpxyXuewg/nTILiMI0ZgfF34BYgi8Pl75Ihc0Cb
+	 JS7jY3M23hixnxsM3deDOxYJCYk8bVCsCLkNhcoouKYVgtcmS7j+tgBY/WTxlMdgzo8M6
+	 IPHqQvdWb59DEIsx3RKoUFDyl8JrFu+4cinYDaVeZXLpTq7/OuG5u9lw916z3kH7VsSLI
+	 Kg9bc1RurDcOinqGR1r2/9Gb9zE1j7lo1ci9hgVHofmdDVGbRfAEWnli5ckF4kxbqdw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=AlRagrjY;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="lZ/NtxuW";
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B0ECE606A31A;
-	Thu, 29 Oct 2026 16:07:38 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4668C60A2600;
+	Thu, 29 Oct 2026 16:07:56 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=AlRagrjY
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 805901F01826;
-	Thu, 29 Oct 2026 16:07:34 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=lZ/NtxuW
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id F3B3F1F01829;
+	Thu, 29 Oct 2026 16:07:51 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793290058;
-	bh=xNgZk8sqL0pi/BgMC10+2IZal4rVk0LbmvrvuXhJ2Dk=;
+	s=k20260515; t=1793290075;
+	bh=zxzMnAfr+mLITGlXVw2HHwWaLKEq9rk+KQbTmA0gnZc=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=AlRagrjY6o1gWRJCJgnfCv2vf7Bcfac+CV9YW1vTP2WwuW9tEuQHBhevP5ePYv6wU
-	 tZm/UfOxlRJO5sw/a2Nplq+A8PWYDB8BkatYa8/unWums0YZOd7jiODkUS1bQuoXDc
-	 2r237CVoc0X/eY5Af46WpEvX1ZVjahYsPaB2Gk6AXIVz2nlCClJI5khPlYaE7iT7p/
-	 XDhxiJCpt5DJKGR+EHHl4F0uT78HBaolBZCT7M33rjZhbbhgAo2PcjBtaKm9eZkw6X
-	 NWXJ/Hi6PIE9ox1qUK/7i9IAhFrGTWMyjol5owtz516sIM6RN//r2rt7z0U4U/YYMu
-	 YskLTlKankV9Q==
+	b=lZ/NtxuW+whuET0o12ey+U43ax2RjET2OlE1sxt2rJYT5lAhZhE7nCGkk3w6L4uwG
+	 Gpv/NOomzhz109Zgzhq4ZopFhZ2MqmhhfkdciraP6cyN0KAKmTutcGeVw8Xkpm47h+
+	 FdROUWFWq9PkGga8qYGhHhY5JrKfsEITLjdQLo1hWaee+eT0E47r3yYiQ+/tVof5F7
+	 y9Fg4mwMp73+2lplQrwS8LKDTmw+4HTlimsHI+cMqnEXzXwpqtu0Hh1YDQkP1I24Jx
+	 KHO1QAvKX55syZQXI09EsjRMmKBALzT1TAqTfLVEWIXBaCchpAjEV6fwXEikbormVj
+	 gommYd3qzRDIw==
 From: Christian Brauner <brauner@kernel.org>
-Date: Thu, 29 Oct 2026 17:06:55 +0100
-Subject: [PATCH v2 04/34] ext2: don't set SB_RDONLY after filesystem errors
+Date: Thu, 29 Oct 2026 17:06:59 +0100
+Subject: [PATCH v2 08/34] exfat: keep the current mount options on remount
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -54,7 +54,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261029-work-fs-sb_rdonly-v2-4-2f44f64f0b66@kernel.org>
+Message-Id: <20261029-work-fs-sb_rdonly-v2-8-2f44f64f0b66@kernel.org>
 References: <20261029-work-fs-sb_rdonly-v2-0-2f44f64f0b66@kernel.org>
 In-Reply-To: <20261029-work-fs-sb_rdonly-v2-0-2f44f64f0b66@kernel.org>
 To: linux-fsdevel@vger.kernel.org, Jan Kara <jack@suse.com>
@@ -65,217 +65,117 @@ Cc: Al Viro <viro@zeniv.linux.org.uk>, ecryptfs@vger.kernel.org,
  linux-btrfs@vger.kernel.org, gfs2@lists.linux.dev, 
  linux-efi@vger.kernel.org, linux-mtd@lists.infradead.org, 
  linux-xfs@vger.kernel.org, 
- "Christian Brauner (Amutable)" <brauner@kernel.org>, 
- Karl Mehltretter <kmehltretter@gmail.com>
+ "Christian Brauner (Amutable)" <brauner@kernel.org>, stable@vger.kernel.org
 X-Mailer: b4 0.17-dev-ce4c1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=7123; i=brauner@kernel.org;
- h=from:subject:message-id; bh=5u6R9zyuZJuhy+aULhR8Qmnz6ME9R6gfqmURw2sS7bQ=;
- b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWQ9ztdTcqkry2sNm/UkdlqstlmLZfOJPyXf/Zv1Gi4ds
- vu446ZZRykLgxgXg6yYIotDu0m43HKeis1GmRowc1iZQIYwcHEKwETmbWBk6NSRkMm8L+79MOZB
- ilh2q/3C3Y21/O3N07TCL2Uniy54yPA/osBzTguz6qL/+QvZjD99OlhX/nB9ZZQO+13e3VnnFGa
- wAQA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3964; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=mZbazIJ3QS8ZQ3YBus7040jsx8ku0rcjHK0u0BKdtWQ=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWQ9ztfvmdgeu79zf5Tfy+ctSyx97ngf2HGVPWRfrAuD/
+ OtDnxz/dJSyMIhxMciKKbI4tJuEyy3nqdhslKkBM4eVCWQIAxenAExkWg3D/4gbJytOb0pfIrqu
+ /PG8B9lxZzaeb1ZeLBr68J/43z6faRYM/1Qf1nipbj/0ZfLEa0cn9U5Ybb4iodhmjjoXt5SzQpP
+ xeyYA
 X-Developer-Key: i=brauner@kernel.org; a=openpgp;
  fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-With errors=remount-ro ext2_error() sets SB_RDONLY from whatever context
-hit the error and without holding s_umount. That races with everyone
-else changing sb->s_flags and it breaks freezing. If it happens while
-the filesystem is frozen thaw_super() sees a read-only superblock and
-leaves the s_writers rwsems locked so every writer hangs. A lookup in a
-corrupted directory is enough. Karl proposed teaching thaw_super() about
-it but Jan preferred fixing the filesystems (cf. [1]) like ext4 and f2fs
-already did.
+exfat_init_fs_context() only inherits uid, gid, fmask and dmask for a
+reconfigure. But exfat_reconfigure() refuses to change iocharset,
+keep_last_dots, sys_tz, time_offset and allow_utime. So every remount
+that doesn't repeat a non-default value for one of them fails with
+EINVAL, including emergency remount (sysrq u) which passes no options at
+all. And an option-less remount silently resets errors=, zero_size_dir
+and discard.
 
-So call sb_set_emergency_ro() instead and let the VFS refuse
-modifications. ext2 still refuses allocations, ext2_write_inode(),
-ext2_sync_fs() and ext2_xattr_set() itself. The superblock isn't written
-after the error is recorded and unlinked inodes are left to e2fsck.
-ext2_handle_dirsync() treats EROFS as success in that state because the
-entry was already changed.
+So start a reconfigure from the current options like gfs2 does. The
+iocharset string stays NULL in the new context because
+->init_fs_context() runs without s_umount for mount(2) and a concurrent
+remount could free it. It's only compared if the remount names one. A
+shutdown turns discard off for good so exfat_reconfigure() keeps it off.
 
-A remount to read-write fails until umount and writes through file
-descriptors opened before the error fail with EROFS.
+The next patch stops exfat from setting SB_RDONLY after errors. An
+errored exfat then stays read-write and emergency remount would run into
+this as well.
 
-[1]: https://lore.kernel.org/r/hyhuckyohsabx2suvq3z7uy3pbgmihva6wgzxr3op7pzcrlu33@p7zzlgp2ehjf
-
-Reported-by: Karl Mehltretter <kmehltretter@gmail.com>
-Link: https://lore.kernel.org/r/20260903060855.4610-1-kmehltretter@gmail.com
+Fixes: e6fd5d3a4317 ("exfat: support modifying mount options via remount")
+Cc: stable@vger.kernel.org
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- fs/ext2/balloc.c |  5 +++++
- fs/ext2/dir.c    |  3 +++
- fs/ext2/ialloc.c |  2 ++
- fs/ext2/inode.c  | 10 ++++++++--
- fs/ext2/super.c  | 24 ++++++++++++++++++------
- fs/ext2/xattr.c  |  2 ++
- 6 files changed, 38 insertions(+), 8 deletions(-)
+ fs/exfat/super.c | 31 ++++++++++++++++++-------------
+ 1 file changed, 18 insertions(+), 13 deletions(-)
 
-diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
-index 80acc1e19387..77f2ed5a76a2 100644
---- a/fs/ext2/balloc.c
-+++ b/fs/ext2/balloc.c
-@@ -1236,6 +1236,11 @@ ext2_fsblk_t ext2_new_blocks(struct inode *inode, ext2_fsblk_t goal,
- 	*errp = -ENOSPC;
- 	sb = inode->i_sb;
+diff --git a/fs/exfat/super.c b/fs/exfat/super.c
+index 4943cef97741..44d2000007df 100644
+--- a/fs/exfat/super.c
++++ b/fs/exfat/super.c
+@@ -797,14 +797,12 @@ static int exfat_reconfigure(struct fs_context *fc)
+ 		mutex_unlock(&sbi->s_lock);
+ 	}
  
-+	if (sb_emergency_ro(sb)) {
-+		*errp = -EROFS;
-+		return 0;
-+	}
-+
+-	if (new_opts->allow_utime == (unsigned short)-1)
+-		new_opts->allow_utime = ~new_opts->fs_dmask & 0022;
+-
  	/*
- 	 * Check quota for allocation of this block.
+ 	 * Since the old settings of these mount options are cached in
+ 	 * inodes or dentries, they cannot be modified dynamically.
  	 */
-diff --git a/fs/ext2/dir.c b/fs/ext2/dir.c
-index e17bbc7598c1..c2c9fc2d0b27 100644
---- a/fs/ext2/dir.c
-+++ b/fs/ext2/dir.c
-@@ -445,6 +445,9 @@ static int ext2_handle_dirsync(struct inode *dir)
- 	err = filemap_write_and_wait(dir->i_mapping);
- 	if (!err)
- 		err = sync_inode_metadata(dir, 1);
-+	/* The change is done, an error made us read-only in the meantime. */
-+	if (err == -EROFS && sb_emergency_ro(dir->i_sb))
-+		err = 0;
- 	return err;
+-	if (strcmp(new_opts->iocharset, cur_opts->iocharset) ||
++	if ((new_opts->iocharset &&
++	     strcmp(new_opts->iocharset, cur_opts->iocharset)) ||
+ 	    new_opts->keep_last_dots != cur_opts->keep_last_dots ||
+ 	    new_opts->sys_tz != cur_opts->sys_tz ||
+ 	    new_opts->time_offset != cur_opts->time_offset ||
+@@ -815,6 +813,10 @@ static int exfat_reconfigure(struct fs_context *fc)
+ 	    new_opts->allow_utime != cur_opts->allow_utime)
+ 		return -EINVAL;
+ 
++	/* A shutdown turned discard off for good. */
++	if (exfat_forced_shutdown(sb))
++		new_opts->discard = 0;
++
+ 	if (new_opts->discard != cur_opts->discard &&
+ 	    new_opts->discard &&
+ 	    !bdev_max_discard_sectors(sb->s_bdev)) {
+@@ -823,6 +825,8 @@ static int exfat_reconfigure(struct fs_context *fc)
+ 	}
+ 
+ 	swap(*cur_opts, *new_opts);
++	/* The iocharset can't change, keep the current string. */
++	swap(cur_opts->iocharset, new_opts->iocharset);
+ 
+ 	return 0;
  }
+@@ -849,23 +853,24 @@ static int exfat_init_fs_context(struct fs_context *fc)
  
-diff --git a/fs/ext2/ialloc.c b/fs/ext2/ialloc.c
-index bf21b57cf98c..2741ecd2b94f 100644
---- a/fs/ext2/ialloc.c
-+++ b/fs/ext2/ialloc.c
-@@ -433,6 +433,8 @@ struct inode *ext2_new_inode(struct inode *dir, umode_t mode,
- 	int err;
+ 	if (fc->purpose == FS_CONTEXT_FOR_RECONFIGURE && fc->root) {
+ 		struct super_block *sb = fc->root->d_sb;
+-		struct exfat_mount_options *cur_opts = &EXFAT_SB(sb)->options;
  
- 	sb = dir->i_sb;
-+	if (sb_emergency_ro(sb))
-+		return ERR_PTR(-EROFS);
- 	inode = new_inode(sb);
- 	if (!inode)
- 		return ERR_PTR(-ENOMEM);
-diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
-index 12ac4cfe1500..5c4831f8f45d 100644
---- a/fs/ext2/inode.c
-+++ b/fs/ext2/inode.c
-@@ -71,7 +71,9 @@ void ext2_evict_inode(struct inode * inode)
- 	struct ext2_block_alloc_info *rsv;
- 	int want_delete = 0;
- 
--	if (!inode->i_nlink && !is_bad_inode(inode)) {
-+	/* After an error made us read-only the inode is left to e2fsck. */
-+	if (!inode->i_nlink && !is_bad_inode(inode) &&
-+	    !sb_emergency_ro(inode->i_sb)) {
- 		want_delete = 1;
- 		dquot_initialize(inode);
+-		sbi->options.fs_uid = cur_opts->fs_uid;
+-		sbi->options.fs_gid = cur_opts->fs_gid;
+-		sbi->options.fs_fmask = cur_opts->fs_fmask;
+-		sbi->options.fs_dmask = cur_opts->fs_dmask;
++		/*
++		 * Start from the current options so a remount only changes
++		 * what it specifies. The iocharset string stays with the
++		 * superblock, see exfat_reconfigure().
++		 */
++		sbi->options = EXFAT_SB(sb)->options;
++		sbi->options.iocharset = NULL;
  	} else {
-@@ -1481,10 +1483,14 @@ int ext2_write_inode(struct inode *inode, struct writeback_control *wbc)
- 	uid_t uid = i_uid_read(inode);
- 	gid_t gid = i_gid_read(inode);
- 	struct buffer_head * bh;
--	struct ext2_inode * raw_inode = ext2_get_inode(sb, ino, &bh);
-+	struct ext2_inode *raw_inode;
- 	int n;
- 	int err = 0;
+ 		sbi->options.fs_uid = current_uid();
+ 		sbi->options.fs_gid = current_gid();
+ 		sbi->options.fs_fmask = current->fs->umask;
+ 		sbi->options.fs_dmask = current->fs->umask;
++		sbi->options.allow_utime = -1;
++		sbi->options.errors = EXFAT_ERRORS_RO;
++		exfat_set_iocharset(&sbi->options, exfat_default_iocharset);
+ 	}
  
-+	if (sb_emergency_ro(sb))
-+		return -EROFS;
-+
-+	raw_inode = ext2_get_inode(sb, ino, &bh);
- 	if (IS_ERR(raw_inode))
-  		return -EIO;
- 
-diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-index fb217ef2d69f..804a7224066d 100644
---- a/fs/ext2/super.c
-+++ b/fs/ext2/super.c
-@@ -53,7 +53,7 @@ void ext2_error(struct super_block *sb, const char *function,
- 	struct ext2_sb_info *sbi = EXT2_SB(sb);
- 	struct ext2_super_block *es = sbi->s_es;
- 
--	if (!sb_rdonly(sb)) {
-+	if (!sb_rdonly(sb) && !sb_emergency_ro(sb)) {
- 		spin_lock(&sbi->s_lock);
- 		sbi->s_mount_state |= EXT2_ERROR_FS;
- 		es->s_state |= cpu_to_le16(EXT2_ERROR_FS);
-@@ -73,11 +73,11 @@ void ext2_error(struct super_block *sb, const char *function,
- 
- 	if (test_opt(sb, ERRORS_PANIC))
- 		panic("EXT2-fs: panic from previous error\n");
--	if (!sb_rdonly(sb) && test_opt(sb, ERRORS_RO)) {
-+	/* SB_RDONLY needs s_umount, see sb_set_emergency_ro(). */
-+	if (!sb_rdonly(sb) && test_opt(sb, ERRORS_RO) &&
-+	    sb_set_emergency_ro(sb))
- 		ext2_msg(sb, KERN_CRIT,
- 			     "error: remounting filesystem read-only");
--		sb->s_flags |= SB_RDONLY;
--	}
- }
- 
- static void ext2_msg_fc(struct fs_context *fc, const char *prefix,
-@@ -179,7 +179,7 @@ static void ext2_put_super (struct super_block * sb)
- 	ext2_xattr_destroy_cache(sbi->s_ea_block_cache);
- 	sbi->s_ea_block_cache = NULL;
- 
--	if (!sb_rdonly(sb)) {
-+	if (!sb_rdonly(sb) && !sb_emergency_ro(sb)) {
- 		struct ext2_super_block *es = sbi->s_es;
- 
- 		spin_lock(&sbi->s_lock);
-@@ -1287,6 +1287,10 @@ static int ext2_sync_fs(struct super_block *sb, int wait)
- 	struct ext2_sb_info *sbi = EXT2_SB(sb);
- 	struct ext2_super_block *es = EXT2_SB(sb)->s_es;
- 
-+	/* Nothing may be written after an error made us read-only. */
-+	if (sb_emergency_ro(sb))
-+		return 0;
-+
- 	/*
- 	 * Write quota structures to quota file, sync_blockdev() will write
- 	 * them to disk later
-@@ -1307,6 +1311,9 @@ static int ext2_freeze(struct super_block *sb)
- {
- 	struct ext2_sb_info *sbi = EXT2_SB(sb);
- 
-+	if (sb_emergency_ro(sb))
-+		return 0;
-+
- 	/*
- 	 * Open but unlinked files present? Keep EXT2_VALID_FS flag cleared
- 	 * because we have unattached inodes and thus filesystem is not fully
-@@ -1349,7 +1356,9 @@ static int ext2_reconfigure(struct fs_context *fc)
- 	int flags = fc->sb_flags;
- 	int err;
- 
--	sync_filesystem(sb);
-+	/* Nothing may be written after an error made us read-only. */
-+	if (!sb_emergency_ro(sb))
-+		sync_filesystem(sb);
- 
- 	new_opts.s_mount_opt = ctx->vals_s_mount_opt;
- 	new_opts.s_resuid = ctx->s_resuid;
-@@ -1360,6 +1369,9 @@ static int ext2_reconfigure(struct fs_context *fc)
- 	if ((bool)(flags & SB_RDONLY) == sb_rdonly(sb))
- 		goto out_set;
- 	if (flags & SB_RDONLY) {
-+		/* After an error nothing may be written, just go read-only. */
-+		if (sb_emergency_ro(sb))
-+			goto out_set;
- 		if (le16_to_cpu(es->s_state) & EXT2_VALID_FS ||
- 		    !(sbi->s_mount_state & EXT2_VALID_FS))
- 			goto out_set;
-diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
-index 8f608930a48c..12dfffff189c 100644
---- a/fs/ext2/xattr.c
-+++ b/fs/ext2/xattr.c
-@@ -429,6 +429,8 @@ ext2_xattr_set(struct inode *inode, int name_index, const char *name,
- 	ea_idebug(inode, "name=%d.%s, value=%p, value_len=%ld",
- 		  name_index, name, value, (long)value_len);
- 
-+	if (sb_emergency_ro(sb))
-+		return -EROFS;
- 	if (value == NULL)
- 		value_len = 0;
- 	if (name == NULL)
+-	sbi->options.allow_utime = -1;
+-	sbi->options.errors = EXFAT_ERRORS_RO;
+-	exfat_set_iocharset(&sbi->options, exfat_default_iocharset);
+-
+ 	fc->s_fs_info = sbi;
+ 	fc->ops = &exfat_context_ops;
+ 	return 0;
 
 -- 
 2.53.0
