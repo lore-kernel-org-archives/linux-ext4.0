@@ -1,57 +1,57 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793278055;
-	b=v7cQkjXn9FIxqjRaJdqtcas42RZY92aqut0ZlNrWsmF52hOCHP4XW1IrhNPSuoba6p6r
-	 w5P2XHZ4ze8Q7vZkEBAP3L5/RV4GWnvbjxfvlYxW+s1vQmvf9m5neAmAgC3npzifoVFsH
-	 /2Mj+JwZjaocRIdtzbwe57lqAhes+rvi2+liVwRnn+hyHDV7p8BQmFbi3eWp45SeN0R78
-	 glLURtg4fKeDRPjKQWdgzSzVD0TmttepZ8GL2iczFa+aqPfye5JSVbXEfUXynzkSOovCz
-	 p2LQq/rua9CJa+pv1fpeloVwHje99x09DudoscWswPEKUa8qeS6fiX33S7RMrEutcKA==
+	t=1793278156;
+	b=UY+tWaJYknfXBdISXhSnTNEzSVo6VusRnHVZhtFz9mQbTg9eQKnXdU80RzZKvln++rB6
+	 GlcxLJ3FPS5efwse3OsmvstAcfz1TBILCUwTB3HVzN1L3WxMMGnngz/nPXPjV7sDNqj5Y
+	 y4vruo6GUEglhLdpe5s04xH6P9/YC5VLe2vmIpMKg4tP/LfN7ilb/6q0VETZ+Hy4EgJk9
+	 AG4ziGlCwAM94kSiCm9+/cnUlhN2LEI5WzsN7yBWkPW6ukaE5NNafrpsOduHPrOJYcFKc
+	 kODv1xDxW+iwyzF9l4I+2G92NFZMr9DfRME8D5vjr4yw0vW+GRu1jLlSHfgB7T4fLew==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793278055;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793278156;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=nK7l3Sbrvt021L4154iD6CpCSFgpiym3zEaRsy7S8Cs=;
-	b=dtiUuyEQBmqVt94WIifZqXeJaLYWWjWuh6/SshjPUNO9OPtlSxyKP/+K0wnpQjIj+3QO
-	 0dFjboSDqd8abMACxWC6kDFduFDt4+r3DJgmqo3gGks1LgliWqz90/gf+ja/XCQnOJV60
-	 wbJs5KjV2u0qVKVzqW1aaeVc37ZovhhDaaFQZB4et69reoH5Ea6GRvHh/O/5a3UYOgzq0
-	 d6eMzF1ngoywUywRpqxo21vWgy+iZY+OPo+WIhphP46wlW2Dg4tT8xoE1N46DrCa6xBPm
-	 +GEj1gYtEPTOg21joHNVOWklNPFVvR1m8E7BmaEe9pV5Af6nEEqZE9xPNyp1mTWgnpg==
+	bh=j3ZJqmhXibZfJbplA76TRzMv4nc5Jt+6a7stGfzuJZo=;
+	b=zp9kQZmk5sz8kMT3VIPG98+bBJI53dYJfXaIvXlhs0LJ4XL6zHxL0PcBl2e/DnndOE+V
+	 E7LCnHo1ENn3G3y7jlMle/i6NfF9JTZ2zwakigV+oRepfpCmD/Drh3IvBTWETT6RDKtch
+	 B5Ed2wBMdEfuhphqSFNbVLAUW2ID3PS8ylKML8zWB7Ff+mnKbxWTjl2ogPn8uJwwekUj2
+	 nP5Z3Gf6kUjs8fsV9f260KFcEpxdd2MG0dwRIq+cIp1ZWOoTQ9Tu1L/WD0uh12m67iJi7
+	 pJ81pNZyU7to+5XRdl3tzk+HjFpdy4KDtDgrpCM+048x5eHAQZvjFHBXxyX/gvpgdhw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Xu2ZkXIn;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=oo2QxnlZ;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 388D6606A31C
-	for <linux-ext4@vger.kernel.org>; Thu, 29 Oct 2026 12:47:35 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6A060606A327
+	for <linux-ext4@vger.kernel.org>; Thu, 29 Oct 2026 12:49:16 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Xu2ZkXIn
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E23831F01825;
-	Thu, 29 Oct 2026 12:47:34 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=oo2QxnlZ
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id CD9CA1F01825;
+	Thu, 29 Oct 2026 12:49:15 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793278055;
-	bh=nK7l3Sbrvt021L4154iD6CpCSFgpiym3zEaRsy7S8Cs=;
+	s=k20260515; t=1793278156;
+	bh=j3ZJqmhXibZfJbplA76TRzMv4nc5Jt+6a7stGfzuJZo=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=Xu2ZkXIn5MAcGE3BSW0+T+WtIjKapYqAMejjcy9SPogopwfpv6tFdm76ikMG7PzFD
-	 OYaadkS2D77l4cDMIx1zPjC7CJYZiaxr5nI/7007E6dkud+nq82gPW8I4XV6mDVDaQ
-	 Z5GdMbgYQSngTFPmX3BHdoBwHOpSyRsjRCMIeVtfuVu36S2yBeI/8nwclZebQUw3C3
-	 q1PCSzAh1Osfmps/zcRJE5LwAizdzSIw+Z8dghIj2qgt4IWjgpcHx3lIS84Q9/mgMk
-	 jf1BPsX+19Au4JIZy4DbPGov+eICQKqGqHamusIaFe0XNmWblfyjOey2GRsmBqGv3B
-	 z5mvE2R76ObDw==
-Message-ID: <sashiko-outbox-189309@kernel.org>
+	b=oo2QxnlZiSI+m82/lN6haLcIvQ8UONZt2MEBfbNjdzxHqEWkEVFKICuE+LmLuwRBD
+	 66TlVn1iU+JRRbeCDZd/RLWXJ2D8P4oLSuLALmTa4OJSpxSrz+Y1nucZW0V7Lix5h4
+	 X7xqZeMbFfJFQvZ4iLMZYhfvs2C5H9rAhWGr4nFIR4TIdaS9/LZWHQ+pFulmrYJdqv
+	 OAw6rBM4om0gZqt+EoAxmjeK9P5jo9oE3ze6lOldrcniL7XI+dAUimUIKK1XqNtXEW
+	 91QSYqzQFlJEfI8lBQ8rqOITu1Osixs8qFpdm+1vwCSm5tYhgEDFXwA3sJ70dqeSAX
+	 0q1OF6YPHAVWw==
+Message-ID: <sashiko-outbox-189313@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH v13 09/11] ext4: add dirdata LUFID support for directory
- entry rename
+Subject: Re: [PATCH v13 05/11] ext4: refactor dx_root to support variable
+ dirent sizes
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Artem Blagodarenko" <artem.blagodarenko@gmail.com>, linux-ext4@vger.kernel.org
 Cc: tytso@mit.edu
-In-Reply-To: <20261029122413.230409-10-ablagodarenko@thelustrecollective.com>
+In-Reply-To: <20261029122413.230409-6-ablagodarenko@thelustrecollective.com>
 References: <20261029122413.230409-1-ablagodarenko@thelustrecollective.com>
- <20261029122413.230409-10-ablagodarenko@thelustrecollective.com>
+ <20261029122413.230409-6-ablagodarenko@thelustrecollective.com>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Thu, 29 Oct 2026 12:47:34 +0000
+Date: Thu, 29 Oct 2026 12:49:15 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -61,257 +61,207 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-Thank you for your contribution! Sashiko AI review found 2 potential issue(=
+Thank you for your contribution! Sashiko AI review found 3 potential issue(=
 s) to consider:
-- [High] ext4: directory corruption in ext4_resetent() after RENAME_WHITEOU=
-T failure
-- [Medium] ext4: double-fetch of ddh_length in ext4_lufid_snapshot()
+- [High] ext4: dx_get_dx_info() steps over dot entry using ext4_dir_entry_l=
+en()
+- [High] ext4: dx_node_limit() change breaks existing encrypted casefold ht=
+ree dirs
+- [High] ext4: make_indexed_dir() corrupts directory state if dx_get_dx_inf=
+o() fails
 --
 
-commit 05f91dc592ccfff134532dbb86b63e7c812e5a35
+commit ac1861c16d9ece959b6431b7c2c9637e888e44a0
 Author: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 
-ext4: add dirdata LUFID support for directory entry rename
+ext4: refactor dx_root to support variable dirent sizes
 
-This commit extends ext4_setent(), ext4_rename(), and ext4_cross_rename() to
-snapshot and preserve dirdata LUFID payloads across directory entry renames.
+This commit replaces the monolithic struct dx_root definition with a separa=
+te
+struct dx_root_info and adds dx_get_dx_info() and ext4_dir_entry_len() so
+that "." and ".." directory entries in the htree root block can have variab=
+le
+lengths when carrying dirdata.
 
 > diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-> index 30bbf6a56bf64..433bee757ea4c 100644
+> index 533340c5dbc0d..59cc01b91c418 100644
 > --- a/fs/ext4/namei.c
 > +++ b/fs/ext4/namei.c
+[ ... ]
+> @@ -539,6 +530,31 @@ ext4_next_entry(struct ext4_dir_entry_2 *p, unsigned=
+ long blocksize)
+>   * Future: use high four bits of block for coalesce-on-delete flags
+>   * Mask them off for now.
+>   */
+> +static struct dx_root_info *dx_get_dx_info(struct inode *dir, void *de_b=
+uf)
+> +{
+> +	unsigned int blocksize =3D dir->i_sb->s_blocksize;
+> +	void *base =3D de_buf;
+> +
+> +	/* '.' and '..' never carry the casefold+fscrypt hash, so pass NULL
+> +	 * for dir regardless of the directory's flags */
+> +	if (ext4_rec_len_from_disk(((struct ext4_dir_entry_2 *)de_buf)->rec_len,
+> +				   blocksize) < EXT4_BASE_DIR_LEN)
+> +		return ERR_PTR(-EFSCORRUPTED);
+> +	de_buf +=3D ext4_dir_entry_len(de_buf, blocksize, NULL);
+
+[Severity: High]
+Should dx_get_dx_info() advance past the "." entry using ext4_next_entry()
+(or dot_de->rec_len) instead of ext4_dir_entry_len()?
+
+Unlike "..", whose rec_len in an indexed root block is set to cover the rest
+of the block, "." always stores the actual offset to ".." in dot_de->rec_le=
+n.
+Other callers locate ".." via dot_de->rec_len, such as make_indexed_dir():
+
+	dot_de =3D (struct ext4_dir_entry_2 *)bh->b_data;
+	...
+	dotdot_de =3D ext4_next_entry(dot_de, blocksize);
+
+and ext4_htree_fill_tree():
+
+	de =3D (struct ext4_dir_entry_2 *) frames[0].bh->b_data;
+	de =3D ext4_next_entry(de, dir->i_sb->s_blocksize);
+
+If "." has slack space so that dot_de->rec_len is larger than
+ext4_dir_entry_len(dot_de, blocksize, NULL) (for example, dot_de->rec_len is
+24 while its minimum entry length is 12), make_indexed_dir() leaves dotdot_=
+de
+at offset 24 and preserves dot_de->rec_len:
+
+	dotdot_de->rec_len =3D
+		ext4_rec_len_to_disk(blocksize - le16_to_cpu(dot_de->rec_len),
+				     blocksize);
+
+	/* initialize hashing info */
+	dx_info =3D dx_get_dx_info(dir, dot_de);
+
+When dx_get_dx_info() then steps over "." by ext4_dir_entry_len() (12 bytes)
+instead of dot_de->rec_len (24 bytes), won't it read the unzeroed slack byt=
+es
+after "." as the ".." entry and return a dx_info pointer that overlaps and
+overwrites dotdot_de when dx_info and entries[] are initialized?
+
+> +
+> +	/* dx root info is after dotdot entry */
+> +	if (de_buf < base || (char *)de_buf - (char *)base +
+> +	    EXT4_BASE_DIR_LEN > blocksize)
+> +		return ERR_PTR(-EFSCORRUPTED);
+> +	de_buf +=3D ext4_dir_entry_len(de_buf, blocksize, NULL);
+> +
+> +	if (de_buf < base || (char *)de_buf - (char *)base +
+> +			      sizeof(struct dx_root_info) +
+> +			      sizeof(struct dx_entry) > blocksize)
+> +		return ERR_PTR(-EFSCORRUPTED);
+> +
+> +	return (struct dx_root_info *)de_buf;
+> +}
+> =20
+>  static inline ext4_lblk_t dx_get_block(struct dx_entry *entry)
+>  {
+> @@ -593,8 +609,10 @@ static inline unsigned dx_root_limit(struct inode *d=
+ir, unsigned infosize)
+> =20
+>  static inline unsigned dx_node_limit(struct inode *dir)
+>  {
+> +	/* dx_node fake_dirent is always 8 bytes =E2=80=94 it never carries a c=
+asefold
+> +	 * hash, so pass NULL to suppress the hash-size term. */
+>  	unsigned int entry_space =3D dir->i_sb->s_blocksize -
+> -			ext4_dir_rec_len(0, dir);
+> +			ext4_dir_rec_len(0, NULL);
+
+[Severity: High]
+Won't changing ext4_dir_rec_len(0, dir) to ext4_dir_rec_len(0, NULL) in
+dx_node_limit() break existing multi-level encrypted and casefolded htree
+directories?
+
+In fs/ext4/ext4.h:
+
+	static inline unsigned int ext4_dir_rec_len(__u8 name_len,
+							const struct inode *dir)
+	{
+		int rec_len =3D (name_len + 8 + EXT4_DIR_ROUND);
+
+		if (dir && ext4_hash_in_dirent(dir))
+			rec_len +=3D sizeof(struct ext4_dir_entry_hash);
+		return (rec_len & ~EXT4_DIR_ROUND);
+	}
+
+For directories where ext4_hash_in_dirent(dir) is true, ext4_dir_rec_len(0,
+dir) returns 16, whereas ext4_dir_rec_len(0, NULL) returns 8. Passing NULL
+increases dx_node_limit(dir) by 1 entry (for example, from 509 to 510 on 4KB
+blocks with metadata_csum enabled).
+
+Existing multi-level encrypted + casefolded directories created since commit
+471fbbea7ff7 ("ext4: handle casefolding with encryption") have the smaller
+limit recorded on disk in each internal dx_node block. When dx_probe() reads
+an internal node, it enforces an exact match:
+
+	entries =3D ((struct dx_node *) frame->bh->b_data)->entries;
+
+	if (dx_get_limit(entries) !=3D dx_node_limit(dir)) {
+		ext4_warning_inode(dir,
+			"dx entry: limit %u !=3D node limit %u",
+			dx_get_limit(entries), dx_node_limit(dir));
+		goto fail;
+	}
+
+Won't dx_probe() reject all existing multi-level encrypted + casefolded
+directories as corrupt with ERR_BAD_DX_DIR, causing __ext4_add_entry() to
+trigger EXT4_ERROR_INODE() when metadata_csum is enabled?
 
 [ ... ]
-
-> @@ -3762,8 +3758,57 @@ static int ext4_setent(handle_t *handle, struct ex=
-t4_renament *ent,
->  	if (retval)
->  		return retval;
->  	ent->de->inode =3D cpu_to_le32(ino);
-> -	if (ext4_has_feature_filetype(ent->dir->i_sb))
-> -		ent->de->file_type =3D file_type;
-> +	if (ext4_has_feature_filetype(ent->dir->i_sb)) {
-> +		/* Copy the source LUFID payload into the destination slot when
-> +		 * both carry a LUFID of the same on-disk size.  LUFID is
-> +		 * inode-specific and must travel with the inode through rename.
-> +		 * CFHASH bytes are left in-place: CFHASH is a function of the
-> +		 * destination filename, and its bytes sit at the correct offset
-> +		 * because LUFID always precedes CFHASH in the extension layout.
-> +		 * When src_fid is NULL, the LUFID flag is synced to the LUFID
-> +		 * bit already present in file_type: callers that clear LUFID
-> +		 * (rename of a non-LUFID inode, whiteout) pass file_type with
-> +		 * LUFID=3D0; ext4_resetent passes the original file_type so the
-> +		 * flag is restored for error recovery without overwriting the
-> +		 * LUFID bytes that are still intact on disk. */
-> +		if (ext4_has_feature_dirdata(ent->dir->i_sb)) {
-> +			if (src_fid && (ent->de->file_type & EXT4_DIRENT_LUFID)) {
-> +				unsigned int rec_len =3D
-> +					ext4_rec_len_from_disk(ent->de->rec_len,
-> +						ent->dir->i_sb->s_blocksize);
-> +				unsigned int ddh_off =3D
-> +					EXT4_BASE_DIR_LEN + ent->de->name_len + 1;
-> +				struct ext4_dirent_data_header *ddh =3D
-> +					(struct ext4_dirent_data_header *)
-> +					((char *)ent->de + ddh_off);
-> +				unsigned int copy_len =3D src_fid->df_header.ddh_length;
+> @@ -2286,24 +2317,32 @@ static int make_indexed_dir(handle_t *handle, str=
+uct ext4_filename *fname,
+>  		ext4_initialize_dirent_tail(bh2, blocksize);
+> =20
+>  	/* Initialize the root; the dot dirents already exist */
+> -	de =3D (struct ext4_dir_entry_2 *) (&root->dotdot);
+> -	de->rec_len =3D ext4_rec_len_to_disk(
+> -			blocksize - ext4_dir_rec_len(2, NULL), blocksize);
+> -	memset (&root->info, 0, sizeof(root->info));
+> -	root->info.info_length =3D sizeof(root->info);
+> +	dotdot_de->rec_len =3D
+> +		ext4_rec_len_to_disk(blocksize - le16_to_cpu(dot_de->rec_len),
+> +				     blocksize);
 > +
-> +				if (ddh_off + sizeof(*ddh) > rec_len ||
-> +				    ddh->ddh_length !=3D copy_len ||
-> +				    ddh_off + copy_len > rec_len) {
-> +					/* Cannot copy: clear the flag so the
-> +					 * slot does not advertise a stale LUFID
-> +					 * from the old inode. */
-> +					ent->de->file_type &=3D ~EXT4_DIRENT_LUFID;
-> +				} else {
-> +					memcpy(ddh, src_fid, copy_len);
-> +				}
-> +			} else if (!src_fid) {
-> +				/* Sync the LUFID flag with what file_type requests.
-> +				 * For normal rename (source has no LUFID) and for
-> +				 * the whiteout setent, file_type carries LUFID=3D0,
-> +				 * so we clear the stale flag.  For ext4_resetent
-> +				 * (error recovery), file_type is the original
-> +				 * file_type with LUFID=3D1, so we restore the flag =E2=80=94
-> +				 * the LUFID bytes are still on disk untouched. */
-> +				ent->de->file_type =3D
-> +					(ent->de->file_type & ~EXT4_DIRENT_LUFID) |
-> +					(file_type & EXT4_DIRENT_LUFID);
-> +			}
-> +		}
-> +		ent->de->file_type =3D (file_type & EXT4_FT_MASK) |
-> +				     (ent->de->file_type & ~EXT4_FT_MASK);
+> +	/* initialize hashing info */
+> +	dx_info =3D dx_get_dx_info(dir, dot_de);
+> +	if (IS_ERR(dx_info)) {
+> +		brelse(bh2);
+> +		brelse(bh);
+> +		return PTR_ERR(dx_info);
 > +	}
 
 [Severity: High]
-Are the LUFID bytes in old.de guaranteed to remain untouched on disk if a
-RENAME_WHITEOUT operation fails and rolls back via ext4_resetent()?
+If dx_get_dx_info() fails here in make_indexed_dir(), is it safe to return
+early after the directory block and inode have already been modified?
 
-In ext4_rename(), when whiteout is non-NULL, ext4_setent() is called on old
-with EXT4_FT_CHRDEV and src_fid =3D NULL before ext4_add_entry() runs:
+By the time dx_get_dx_info() is called, make_indexed_dir() has already
+appended bh2 (extending dir->i_size and marking the inode dirty in the
+running handle), set EXT4_INODE_INDEX on dir, wiped the original entries in
+block 0 (bh) with memset(de, 0, len), and updated dotdot_de->rec_len to span
+the rest of block 0:
 
-	if (whiteout) {
-		retval =3D ext4_setent(handle, &old, whiteout->i_ino,
-				     EXT4_FT_CHRDEV, NULL);
-		if (retval)
-			goto end_rename;
-		retval =3D ext4_mark_inode_dirty(handle, whiteout);
-		if (unlikely(retval))
-			goto end_rename;
+	bh2 =3D ext4_append(handle, dir, &block);
+	if (IS_ERR(bh2)) {
+		brelse(bh);
+		return PTR_ERR(bh2);
 	}
-	if (!new.bh) {
-		new.dentry->d_fsdata =3D edp;
-		retval =3D ext4_add_entry(handle, new.dentry, old.inode);
+	ext4_set_inode_flag(dir, EXT4_INODE_INDEX);
+	data2 =3D bh2->b_data;
 
-Because that first ext4_setent() call clears EXT4_DIRENT_LUFID in
-old.de->file_type, ext4_dir_entry_len() computes the active length of old.de
-without its LUFID payload.
+	memcpy(data2, de, len);
+	memset(de, 0, len); /* wipe old data */
 
-When !new.bh and old.dir =3D=3D new.dir (same-directory rename with
-RENAME_WHITEOUT), ext4_add_entry() can reuse or discard those LUFID bytes:
-
-- ext4_find_dest_de() and ext4_insert_dentry_data() treat old.de's LUFID
-  bytes as unused slack space, shrink old.de->rec_len to the smaller active
-  length (smaller than ddh_off + ddh_length), and overwrite old.de's LUFID
-  bytes with the new directory entry.
-
-- During an htree block split in make_indexed_dir() or do_split(),
-  dx_move_dirents() and dx_pack_dirents() copy only the active length for
-  old.de, discarding its LUFID payload and shrinking old.de->rec_len.
-
-- Additionally, after a later patch in this series adds
-  ext4_setent_compact_exts(), if old.de carried both EXT4_DIRENT_LUFID and
-  EXT4_DIRENT_CFHASH, the whiteout ext4_setent() call slides the CFHASH
-  record over the LUFID slot at ddh_off.
-
-If ext4_add_entry() (for example, returning -ENOSPC when the directory or
-filesystem is full) or a later step in ext4_rename() fails and jumps to
-end_rename, ext4_lufid_snap_release(&old_snap) frees old_snap and
-ext4_resetent() calls ext4_setent(handle, &old, ino, file_type, NULL) with
-old_file_type:
-
-end_rename:
-	kfree(edp);
-	ext4_lufid_snap_release(&old_snap);
-	if (whiteout) {
-		if (retval) {
-			ext4_resetent(handle, &old,
-				      old.inode->i_ino, old_file_type);
-
-Wouldn't the !src_fid branch in ext4_setent() then unconditionally set
-EXT4_DIRENT_LUFID back on old.de->file_type without checking whether
-old.de->rec_len still encompasses the LUFID or restoring old_snap.fid,
-leaving a corrupted directory entry on disk?
-
-[ ... ]
-
-> @@ -3899,6 +3944,67 @@ static struct inode *ext4_whiteout_for_rename(stru=
-ct mnt_idmap *idmap,
->  	return wh;
->  }
-> =20
-> +/*
-> + * Stack buffer sized for 1-byte header + 4 =C3=97 16-byte FIDs, coverin=
-g virtually
-> + * all real-world LUFID payloads without a heap allocation.  ddh_length =
-is u8
-> + * so the absolute maximum is 255 bytes; larger payloads fall back to km=
-alloc.
-> + */
-> +#define EXT4_LUFID_INLINE_SIZE  65
-> +
-> +struct ext4_lufid_snap {
-> +	struct ext4_dirent_fid *fid;	/* NULL or valid; never ERR_PTR */
-> +	bool on_heap;
-> +	u8 buf[EXT4_LUFID_INLINE_SIZE];
-> +};
-> +
-> +/*
-> + * ext4_lufid_snapshot - copy the LUFID record from a directory entry
-> + *
-> + * Fills @snap with a copy of the on-disk LUFID record.  For payloads up=
- to
-> + * EXT4_LUFID_INLINE_SIZE bytes the inline buffer is used; larger payloa=
-ds
-> + * fall back to a heap allocation.  Returns 0 on success (snap->fid is N=
-ULL
-> + * when no LUFID is present), or -ENOMEM when a heap allocation fails.
-> + * Call ext4_lufid_snap_release() when done.
-> + */
-> +static int ext4_lufid_snapshot(struct ext4_dir_entry_2 *de,
-> +			       unsigned int blocksize,
-> +			       struct ext4_lufid_snap *snap)
-> +{
-> +	unsigned int ddh_off =3D EXT4_BASE_DIR_LEN + de->name_len + 1;
-> +	unsigned int rec_len =3D ext4_rec_len_from_disk(de->rec_len, blocksize);
-> +	struct ext4_dirent_fid *disk_fid;
-> +	unsigned int dlen;
-> +
-> +	snap->fid =3D NULL;
-> +	snap->on_heap =3D false;
-> +
-> +	if (!(de->file_type & EXT4_DIRENT_LUFID))
-> +		return 0;
-> +	if (ddh_off + sizeof(disk_fid->df_header) > rec_len)
-> +		return 0;
-> +	disk_fid =3D (struct ext4_dirent_fid *)((char *)de + ddh_off);
-> +	dlen =3D disk_fid->df_header.ddh_length;
-> +	if (dlen < sizeof(disk_fid->df_header) || ddh_off + dlen > rec_len)
-> +		return 0;
-> +
-> +	if (dlen <=3D sizeof(snap->buf)) {
-> +		memcpy(snap->buf, disk_fid, dlen);
-> +		snap->fid =3D (struct ext4_dirent_fid *)snap->buf;
-> +	} else {
-> +		snap->fid =3D kmemdup(disk_fid, dlen, GFP_NOFS);
-> +		if (!snap->fid)
-> +			return -ENOMEM;
-> +		snap->on_heap =3D true;
-> +	}
-> +	return 0;
-> +}
-
-[Severity: Medium]
-Can a concurrent modification to the underlying buffer_head cause a
-double-fetch of ddh_length in ext4_lufid_snapshot() and an out-of-bounds re=
-ad
-from snap->fid?
-
-ext4_lufid_snapshot() reads dlen from disk_fid->df_header.ddh_length in the
-directory buffer, validates dlen against rec_len, and then copies dlen bytes
-from disk_fid into snap->buf or a kmemdup(..., GFP_NOFS) buffer (which may
-sleep in reclaim before copying). During memcpy() or kmemdup(),
-disk_fid->df_header.ddh_length is fetched a second time from the buffer into
-snap->fid->df_header.ddh_length.
-
-If the buffer data is concurrently modified via the underlying block device
-page cache (the same threat model guarded against with
-READ_ONCE(ddh->ddh_length) in the earlier commit "ext4: add dirdata format
-definitions and access helpers"), snap->fid->df_header.ddh_length can become
-larger than dlen (up to 255).
-
-When ext4_rename() or ext4_setent() later reads
-old_snap.fid->df_header.ddh_length or src_fid->df_header.ddh_length:
-
-	if (!new.bh && old_snap.fid) {
-		unsigned fid_size =3D old_snap.fid->df_header.ddh_length;
-
-		edp =3D kmalloc(offsetof(struct ext4_dentry_param,
-				       edp_dfid) + fid_size, GFP_NOFS);
-		...
-		memcpy(&edp->edp_dfid, old_snap.fid, fid_size);
-	}
-
-and in ext4_setent():
-
-	unsigned int copy_len =3D src_fid->df_header.ddh_length;
-	...
-	memcpy(ddh, src_fid, copy_len);
-
-wouldn't memcpy() read past the end of old_snap.buf or the dlen-byte
-kmemdup() allocation? Should ext4_lufid_snapshot() use
-READ_ONCE(disk_fid->df_header.ddh_length) and explicitly set
-snap->fid->df_header.ddh_length =3D dlen after the copy?
+Returning PTR_ERR(dx_info) at this point leaves dir with EXT4_INODE_INDEX s=
+et
+and an extended i_size, while block 0 has its entries wiped and no valid
+dx_root_info initialized. Could dx_get_dx_info(dir, dot_de) be validated
+before ext4_append() and memset() modify the directory?
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261029122413.2304=
-09-1-ablagodarenko@thelustrecollective.com?part=3D9
+09-1-ablagodarenko@thelustrecollective.com?part=3D5
