@@ -1,57 +1,57 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793278156;
-	b=UY+tWaJYknfXBdISXhSnTNEzSVo6VusRnHVZhtFz9mQbTg9eQKnXdU80RzZKvln++rB6
-	 GlcxLJ3FPS5efwse3OsmvstAcfz1TBILCUwTB3HVzN1L3WxMMGnngz/nPXPjV7sDNqj5Y
-	 y4vruo6GUEglhLdpe5s04xH6P9/YC5VLe2vmIpMKg4tP/LfN7ilb/6q0VETZ+Hy4EgJk9
-	 AG4ziGlCwAM94kSiCm9+/cnUlhN2LEI5WzsN7yBWkPW6ukaE5NNafrpsOduHPrOJYcFKc
-	 kODv1xDxW+iwyzF9l4I+2G92NFZMr9DfRME8D5vjr4yw0vW+GRu1jLlSHfgB7T4fLew==
+	t=1793278202;
+	b=vrWY4l9ByovoaV309r2NyBS4fCQoX67XxJLCT7RLhxr7+X/DyConx+LGEjEufsYKERJQ
+	 BjZFccEslFJ7YpOkNHmY0h2gGazvumqf8TVqfeOv7RPRdMRSMAZ5EoBdvU+SyFWac302f
+	 zLrjgvD3VZilh6ooaJ7lTW8PIh1/8aTx9v4EOcSgXI21mll1bEMOY4l8EaqnECFl394ht
+	 qoyWUq8xGfo58WxEtNqPiKm+SiWDA125Is24OB0LH5xnQBrQeyeswrU4Bcn0lj8yPGtKu
+	 Jq8sNqu6H1ZitqnQG9oaE7MbkyQJ5n9t3ps32fOkBpC2df06HS7dSAxC5K0i4C/4avg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793278156;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793278202;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=j3ZJqmhXibZfJbplA76TRzMv4nc5Jt+6a7stGfzuJZo=;
-	b=zp9kQZmk5sz8kMT3VIPG98+bBJI53dYJfXaIvXlhs0LJ4XL6zHxL0PcBl2e/DnndOE+V
-	 E7LCnHo1ENn3G3y7jlMle/i6NfF9JTZ2zwakigV+oRepfpCmD/Drh3IvBTWETT6RDKtch
-	 B5Ed2wBMdEfuhphqSFNbVLAUW2ID3PS8ylKML8zWB7Ff+mnKbxWTjl2ogPn8uJwwekUj2
-	 nP5Z3Gf6kUjs8fsV9f260KFcEpxdd2MG0dwRIq+cIp1ZWOoTQ9Tu1L/WD0uh12m67iJi7
-	 pJ81pNZyU7to+5XRdl3tzk+HjFpdy4KDtDgrpCM+048x5eHAQZvjFHBXxyX/gvpgdhw==
+	bh=K40ha6Nrxq0ukvgmRg3DvXL41ma09XwzWlSq3EHfw+Y=;
+	b=UOjSFK1Uco+iF7vKNPrmSXjV1xI1YhqyaMEThoKiJsnJAqFk6itWVQKEViDeSOhBU7XW
+	 MSPFWE5+pxc2qERoXaDGmYby/u8rsswdJ/dpGM6CX3ZNgg/iXfPQcQm6IQ+9jxuZhVkNl
+	 uy0Nd4OFjvoYbnpbV+S7pwZwhdXPSToKwx7h2fEks8bOOlPOmu8onNMfBWO28p8izzOd8
+	 MBOmyxqX81q6EUQWn5HhGgniCaqfsI8Uw7SyGPX3Sr47cUnSqun/lRnI8Z5J0IizUP9Xe
+	 r5taI7WjRdnNhnCCaET6Z42baIIpGMnBI/bJUs1uChnG+Uny/YLaz2igo3NjWjWoBDg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=oo2QxnlZ;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=byEdUl5o;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6A060606A327
-	for <linux-ext4@vger.kernel.org>; Thu, 29 Oct 2026 12:49:16 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5BE43606A31D
+	for <linux-ext4@vger.kernel.org>; Thu, 29 Oct 2026 12:50:02 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=oo2QxnlZ
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id CD9CA1F01825;
-	Thu, 29 Oct 2026 12:49:15 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=byEdUl5o
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C0AF31F01825;
+	Thu, 29 Oct 2026 12:50:01 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793278156;
-	bh=j3ZJqmhXibZfJbplA76TRzMv4nc5Jt+6a7stGfzuJZo=;
+	s=k20260515; t=1793278202;
+	bh=K40ha6Nrxq0ukvgmRg3DvXL41ma09XwzWlSq3EHfw+Y=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=oo2QxnlZiSI+m82/lN6haLcIvQ8UONZt2MEBfbNjdzxHqEWkEVFKICuE+LmLuwRBD
-	 66TlVn1iU+JRRbeCDZd/RLWXJ2D8P4oLSuLALmTa4OJSpxSrz+Y1nucZW0V7Lix5h4
-	 X7xqZeMbFfJFQvZ4iLMZYhfvs2C5H9rAhWGr4nFIR4TIdaS9/LZWHQ+pFulmrYJdqv
-	 OAw6rBM4om0gZqt+EoAxmjeK9P5jo9oE3ze6lOldrcniL7XI+dAUimUIKK1XqNtXEW
-	 91QSYqzQFlJEfI8lBQ8rqOITu1Osixs8qFpdm+1vwCSm5tYhgEDFXwA3sJ70dqeSAX
-	 0q1OF6YPHAVWw==
-Message-ID: <sashiko-outbox-189313@kernel.org>
+	b=byEdUl5owMqKfsY9CQxnt/EDsS+LaOPZOch2t+YGxQ1+QylP1Sa02/zideYgQGYcT
+	 hIGIbDkYMXWjdLqLWFub7qgm63Xr8Z5lFOIWajFxmZiojG6AmRAzj6+JISIDTOpPUA
+	 vG2oP4yseDI6v7KHiYqEFzwdaQQ4aSNf6cHKUPvWaavDDyTiDmvdiPkEaKT/fQNSwl
+	 RZnEMXj9lPbDoA3i0jX9vDEgphO3TLiluyhyGG78PMEt3w8y4Gcd4+c3vpMdR1bSy9
+	 maChh45mFS+P6ofKDHpugrenuixRcwHCmzm21+Z7tcm7vFUpOc1R7ox3qI7yC1z97G
+	 gZwbjpyQ8nEyw==
+Message-ID: <sashiko-outbox-189315@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH v13 05/11] ext4: refactor dx_root to support variable
- dirent sizes
+Subject: Re: [PATCH v13 07/11] ext4: rename ext4_dir_rec_len() and clarify
+ dirdata usage
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Artem Blagodarenko" <artem.blagodarenko@gmail.com>, linux-ext4@vger.kernel.org
 Cc: tytso@mit.edu
-In-Reply-To: <20261029122413.230409-6-ablagodarenko@thelustrecollective.com>
+In-Reply-To: <20261029122413.230409-8-ablagodarenko@thelustrecollective.com>
 References: <20261029122413.230409-1-ablagodarenko@thelustrecollective.com>
- <20261029122413.230409-6-ablagodarenko@thelustrecollective.com>
+ <20261029122413.230409-8-ablagodarenko@thelustrecollective.com>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Thu, 29 Oct 2026 12:49:15 +0000
+Date: Thu, 29 Oct 2026 12:50:01 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -61,207 +61,221 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-Thank you for your contribution! Sashiko AI review found 3 potential issue(=
+Thank you for your contribution! Sashiko AI review found 1 potential issue(=
 s) to consider:
-- [High] ext4: dx_get_dx_info() steps over dot entry using ext4_dir_entry_l=
-en()
-- [High] ext4: dx_node_limit() change breaks existing encrypted casefold ht=
-ree dirs
-- [High] ext4: make_indexed_dir() corrupts directory state if dx_get_dx_inf=
-o() fails
+- [Critical] ext4: mutable ext4_dir_entry_len() causes OOB write in ext4_in=
+sert_dentry()
 --
 
-commit ac1861c16d9ece959b6431b7c2c9637e888e44a0
+commit da71cae2acaae8de2bca9ec5b4ce285d12415d14
 Author: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 
-ext4: refactor dx_root to support variable dirent sizes
+ext4: rename ext4_dir_rec_len() and clarify dirdata usage
 
-This commit replaces the monolithic struct dx_root definition with a separa=
-te
-struct dx_root_info and adds dx_get_dx_info() and ext4_dir_entry_len() so
-that "." and ".." directory entries in the htree root block can have variab=
-le
-lengths when carrying dirdata.
+This commit renames ext4_dir_rec_len() to ext4_dirent_rec_len(), widens its
+name_len parameter from __u8 to unsigned int, and updates several callers to
+use ext4_dir_entry_len() or pass an explicit dirdata length to
+ext4_find_dest_de().
+
+> diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+> index 8d7b81e6948e7..38911ae2bcfc0 100644
+> --- a/fs/ext4/dir.c
+> +++ b/fs/ext4/dir.c
+> @@ -89,16 +89,15 @@ int __ext4_check_dir_entry(const char *function, unsi=
+gned int line,
+>  	bool fake =3D is_fake_dir_entry(de);
+>  	bool has_csum =3D ext4_has_feature_metadata_csum(dir->i_sb);
+> =20
+> -	if (unlikely(rlen < ext4_dir_rec_len(1, fake ? NULL : dir)))
+> +	if (unlikely(rlen < ext4_dirent_rec_len(1, fake ? NULL : dir)))
+>  		error_msg =3D "rec_len is smaller than minimal";
+>  	else if (unlikely(rlen % 4 !=3D 0))
+>  		error_msg =3D "rec_len % 4 !=3D 0";
+> -	else if (unlikely(rlen < ext4_dir_rec_len(de->name_len,
+> -							fake ? NULL : dir)))
+> -		error_msg =3D "rec_len is too small for name_len";
+>  	else if (unlikely(next_offset > size))
+>  		error_msg =3D "directory entry overrun";
+> -	else if (unlikely(next_offset > size - ext4_dir_rec_len(1,
+> +	else if (unlikely(rlen < ext4_dir_entry_len(de, size, fake ? NULL : dir=
+)))
+> +		error_msg =3D "rec_len is too small for name_len";
+> +	else if (unlikely(next_offset > size - ext4_dirent_rec_len(1,
+>  						  has_csum ? NULL : dir) &&
+>  			  next_offset !=3D size))
+>  		error_msg =3D "directory entry too close to block end";
+
+[ ... ]
+
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 2d6d3be4ef7df..839274c4d7fcd 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -2649,11 +2649,16 @@ struct ext4_dirent_hash {
+>   * casefolded and encrypted need to store the hash as well, so we add ro=
+om for
+>   * ext4_extended_dir_entry_2. For all entries related to '.' or '..' you=
+ should
+>   * pass NULL for dir, as those entries do not use the extra fields.
+> + *
+> + * For directories with the dirdata feature, extra data may follow the f=
+ilename.
+> + * Use ext4_dir_entry_len() to compute the length of a directory entry
+> + * including any dirdata, or ext4_dirent_rec_len() directly when the tot=
+al
+> + * name_len (including dirdata length) is already known.
+>   */
+> -static inline unsigned int ext4_dir_rec_len(__u8 name_len,
+> +static inline unsigned int ext4_dirent_rec_len(unsigned int name_len,
+>  						const struct inode *dir)
+>  {
+> -	int rec_len =3D (name_len + 8 + EXT4_DIR_ROUND);
+> +	unsigned int rec_len =3D (name_len + 8 + EXT4_DIR_ROUND);
+> =20
+>  	/*
+>  	 * Without dirdata, the casefold+fscrypt hash lives at a fixed position
+
+[ ... ]
+
+> @@ -4266,7 +4272,7 @@ static inline unsigned int ext4_dir_entry_len(struc=
+t ext4_dir_entry_2 *de,
+>  	unsigned int rec_len =3D ext4_rec_len_from_disk(de->rec_len, blocksize);
+>  	unsigned int dirdata =3D ext4_dirent_get_data_len(de, rec_len);
+> =20
+> -	return ext4_dir_rec_len(de->name_len + dirdata, dir);
+> +	return ext4_dirent_rec_len(de->name_len + dirdata, dir);
+>  }
+
+[ ... ]
 
 > diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-> index 533340c5dbc0d..59cc01b91c418 100644
+> index b3acab0689c93..e54608950fb34 100644
 > --- a/fs/ext4/namei.c
 > +++ b/fs/ext4/namei.c
-[ ... ]
-> @@ -539,6 +530,31 @@ ext4_next_entry(struct ext4_dir_entry_2 *p, unsigned=
- long blocksize)
->   * Future: use high four bits of block for coalesce-on-delete flags
->   * Mask them off for now.
->   */
-> +static struct dx_root_info *dx_get_dx_info(struct inode *dir, void *de_b=
-uf)
-> +{
-> +	unsigned int blocksize =3D dir->i_sb->s_blocksize;
-> +	void *base =3D de_buf;
-> +
-> +	/* '.' and '..' never carry the casefold+fscrypt hash, so pass NULL
-> +	 * for dir regardless of the directory's flags */
-> +	if (ext4_rec_len_from_disk(((struct ext4_dir_entry_2 *)de_buf)->rec_len,
-> +				   blocksize) < EXT4_BASE_DIR_LEN)
-> +		return ERR_PTR(-EFSCORRUPTED);
-> +	de_buf +=3D ext4_dir_entry_len(de_buf, blocksize, NULL);
-
-[Severity: High]
-Should dx_get_dx_info() advance past the "." entry using ext4_next_entry()
-(or dot_de->rec_len) instead of ext4_dir_entry_len()?
-
-Unlike "..", whose rec_len in an indexed root block is set to cover the rest
-of the block, "." always stores the actual offset to ".." in dot_de->rec_le=
-n.
-Other callers locate ".." via dot_de->rec_len, such as make_indexed_dir():
-
-	dot_de =3D (struct ext4_dir_entry_2 *)bh->b_data;
-	...
-	dotdot_de =3D ext4_next_entry(dot_de, blocksize);
-
-and ext4_htree_fill_tree():
-
-	de =3D (struct ext4_dir_entry_2 *) frames[0].bh->b_data;
-	de =3D ext4_next_entry(de, dir->i_sb->s_blocksize);
-
-If "." has slack space so that dot_de->rec_len is larger than
-ext4_dir_entry_len(dot_de, blocksize, NULL) (for example, dot_de->rec_len is
-24 while its minimum entry length is 12), make_indexed_dir() leaves dotdot_=
-de
-at offset 24 and preserves dot_de->rec_len:
-
-	dotdot_de->rec_len =3D
-		ext4_rec_len_to_disk(blocksize - le16_to_cpu(dot_de->rec_len),
-				     blocksize);
-
-	/* initialize hashing info */
-	dx_info =3D dx_get_dx_info(dir, dot_de);
-
-When dx_get_dx_info() then steps over "." by ext4_dir_entry_len() (12 bytes)
-instead of dot_de->rec_len (24 bytes), won't it read the unzeroed slack byt=
-es
-after "." as the ".." entry and return a dx_info pointer that overlaps and
-overwrites dotdot_de when dx_info and entries[] are initialized?
-
-> +
-> +	/* dx root info is after dotdot entry */
-> +	if (de_buf < base || (char *)de_buf - (char *)base +
-> +	    EXT4_BASE_DIR_LEN > blocksize)
-> +		return ERR_PTR(-EFSCORRUPTED);
-> +	de_buf +=3D ext4_dir_entry_len(de_buf, blocksize, NULL);
-> +
-> +	if (de_buf < base || (char *)de_buf - (char *)base +
-> +			      sizeof(struct dx_root_info) +
-> +			      sizeof(struct dx_entry) > blocksize)
-> +		return ERR_PTR(-EFSCORRUPTED);
-> +
-> +	return (struct dx_root_info *)de_buf;
-> +}
-> =20
->  static inline ext4_lblk_t dx_get_block(struct dx_entry *entry)
->  {
-> @@ -593,8 +609,10 @@ static inline unsigned dx_root_limit(struct inode *d=
-ir, unsigned infosize)
-> =20
->  static inline unsigned dx_node_limit(struct inode *dir)
->  {
-> +	/* dx_node fake_dirent is always 8 bytes =E2=80=94 it never carries a c=
-asefold
-> +	 * hash, so pass NULL to suppress the hash-size term. */
->  	unsigned int entry_space =3D dir->i_sb->s_blocksize -
-> -			ext4_dir_rec_len(0, dir);
-> +			ext4_dir_rec_len(0, NULL);
-
-[Severity: High]
-Won't changing ext4_dir_rec_len(0, dir) to ext4_dir_rec_len(0, NULL) in
-dx_node_limit() break existing multi-level encrypted and casefolded htree
-directories?
-
-In fs/ext4/ext4.h:
-
-	static inline unsigned int ext4_dir_rec_len(__u8 name_len,
-							const struct inode *dir)
-	{
-		int rec_len =3D (name_len + 8 + EXT4_DIR_ROUND);
-
-		if (dir && ext4_hash_in_dirent(dir))
-			rec_len +=3D sizeof(struct ext4_dir_entry_hash);
-		return (rec_len & ~EXT4_DIR_ROUND);
-	}
-
-For directories where ext4_hash_in_dirent(dir) is true, ext4_dir_rec_len(0,
-dir) returns 16, whereas ext4_dir_rec_len(0, NULL) returns 8. Passing NULL
-increases dx_node_limit(dir) by 1 entry (for example, from 509 to 510 on 4KB
-blocks with metadata_csum enabled).
-
-Existing multi-level encrypted + casefolded directories created since commit
-471fbbea7ff7 ("ext4: handle casefolding with encryption") have the smaller
-limit recorded on disk in each internal dx_node block. When dx_probe() reads
-an internal node, it enforces an exact match:
-
-	entries =3D ((struct dx_node *) frame->bh->b_data)->entries;
-
-	if (dx_get_limit(entries) !=3D dx_node_limit(dir)) {
-		ext4_warning_inode(dir,
-			"dx entry: limit %u !=3D node limit %u",
-			dx_get_limit(entries), dx_node_limit(dir));
-		goto fail;
-	}
-
-Won't dx_probe() reject all existing multi-level encrypted + casefolded
-directories as corrupt with ERR_BAD_DX_DIR, causing __ext4_add_entry() to
-trigger EXT4_ERROR_INODE() when metadata_csum is enabled?
 
 [ ... ]
-> @@ -2286,24 +2317,32 @@ static int make_indexed_dir(handle_t *handle, str=
-uct ext4_filename *fname,
->  		ext4_initialize_dirent_tail(bh2, blocksize);
+
+> @@ -1902,7 +1902,7 @@ dx_move_dirents(struct inode *dir, char *from, char=
+ *to,
+>  	while (count--) {
+>  		struct ext4_dir_entry_2 *de =3D (struct ext4_dir_entry_2 *)
+>  						(from + (map->offs<<2));
+> -		rec_len =3D ext4_dir_rec_len(de->name_len, dir);
+> +		rec_len =3D ext4_dir_entry_len(de, blocksize, dir);
 > =20
->  	/* Initialize the root; the dot dirents already exist */
-> -	de =3D (struct ext4_dir_entry_2 *) (&root->dotdot);
-> -	de->rec_len =3D ext4_rec_len_to_disk(
-> -			blocksize - ext4_dir_rec_len(2, NULL), blocksize);
-> -	memset (&root->info, 0, sizeof(root->info));
-> -	root->info.info_length =3D sizeof(root->info);
-> +	dotdot_de->rec_len =3D
-> +		ext4_rec_len_to_disk(blocksize - le16_to_cpu(dot_de->rec_len),
-> +				     blocksize);
-> +
-> +	/* initialize hashing info */
-> +	dx_info =3D dx_get_dx_info(dir, dot_de);
-> +	if (IS_ERR(dx_info)) {
-> +		brelse(bh2);
-> +		brelse(bh);
-> +		return PTR_ERR(dx_info);
-> +	}
+>  		memcpy (to, de, rec_len);
+>  		((struct ext4_dir_entry_2 *) to)->rec_len =3D
+> @@ -1935,7 +1935,7 @@ static struct ext4_dir_entry_2 *dx_pack_dirents(str=
+uct inode *dir, char *base,
+>  	while ((char*)de < base + blocksize) {
+>  		next =3D ext4_next_entry(de, blocksize);
+>  		if (de->inode && de->name_len) {
+> -			rec_len =3D ext4_dir_rec_len(de->name_len, dir);
+> +			rec_len =3D ext4_dir_entry_len(de, blocksize, dir);
+>  			if (de > to)
+>  				memmove(to, de, rec_len);
+>  			to->rec_len =3D ext4_rec_len_to_disk(rec_len, blocksize);
 
-[Severity: High]
-If dx_get_dx_info() fails here in make_indexed_dir(), is it safe to return
-early after the directory block and inode have already been modified?
+[ ... ]
 
-By the time dx_get_dx_info() is called, make_indexed_dir() has already
-appended bh2 (extending dir->i_size and marking the inode dirty in the
-running handle), set EXT4_INODE_INDEX on dir, wiped the original entries in
-block 0 (bh) with memset(de, 0, len), and updated dotdot_de->rec_len to span
-the rest of block 0:
+> @@ -2126,7 +2127,7 @@ void ext4_insert_dentry(struct inode *dir,
+> =20
+>  	int nlen, rlen;
+> =20
+> -	nlen =3D ext4_dir_rec_len(de->name_len, dir);
+> +	nlen =3D ext4_dir_entry_len(de, buf_size, dir);
+>  	rlen =3D ext4_rec_len_from_disk(de->rec_len, buf_size);
+>  	if (de->inode) {
+>  		struct ext4_dir_entry_2 *de1 =3D
 
-	bh2 =3D ext4_append(handle, dir, &block);
-	if (IS_ERR(bh2)) {
-		brelse(bh);
-		return PTR_ERR(bh2);
+[Severity: Critical]
+Can switching to ext4_dir_entry_len() here and widening ext4_dirent_rec_len=
+()
+cause an out-of-bounds write past bh->b_data or trigger the BUG_ON() in
+ext4_rec_len_to_disk() when splitting a directory block via
+do_split() -> add_dirent_to_buf() -> ext4_insert_dentry()?
+
+In fs/ext4/ext4.h, ext4_dir_entry_len() computes the entry length using the
+entry's current de->rec_len via ext4_dirent_get_data_len():
+
+fs/ext4/ext4.h:ext4_dirent_get_data_len() {
+    ...
+			{
+				u8 ddh_len =3D READ_ONCE(ddh->ddh_length);
+
+				if (ddh_len =3D=3D 0 || ddh_len > rec_len - offset)
+					return 0;
+				dlen +=3D ddh_len + (dlen =3D=3D 0);
+    ...
+}
+
+Because ext4_dirent_get_data_len() returns 0 whenever ddh_len exceeds
+rec_len - offset (and does not check ext4_has_feature_dirdata()),
+__ext4_check_dir_entry() in fs/ext4/dir.c will not reject an entry whose
+on-disk rec_len is smaller than its dirdata length.
+
+During a directory leaf split in fs/ext4/namei.c:do_split():
+
+fs/ext4/namei.c:do_split() {
+    ...
+	de2 =3D dx_move_dirents(dir, data1, data2, map + split, count - split,
+			      blocksize);
+	de =3D dx_pack_dirents(dir, data1, blocksize);
+	de->rec_len =3D ext4_rec_len_to_disk(data1 + (blocksize - csum_size) -
+					   (char *) de,
+					   blocksize);
+	de2->rec_len =3D ext4_rec_len_to_disk(data2 + (blocksize - csum_size) -
+					    (char *) de2,
+					    blocksize);
+    ...
+}
+
+If the final entry de in the target split half has a small rec_len (for
+example, rec_len =3D 12, name_len =3D 1, file_type =3D 0x11) with a larger
+ddh_length byte stored at offset 10 (still inside the 12-byte entry),
+ext4_dirent_get_data_len(de, 12) returns 0 during __ext4_check_dir_entry(),
+dx_move_dirents(), and dx_pack_dirents(), copying all 12 bytes.
+
+Then do_split() expands de->rec_len to cover the remainder of the block and
+passes de to add_dirent_to_buf(), which skips ext4_find_dest_de() when de is
+non-NULL and calls ext4_insert_dentry() directly:
+
+fs/ext4/namei.c:ext4_insert_dentry() {
+	int nlen, rlen;
+
+	nlen =3D ext4_dir_entry_len(de, buf_size, dir);
+	rlen =3D ext4_rec_len_from_disk(de->rec_len, buf_size);
+	if (de->inode) {
+		struct ext4_dir_entry_2 *de1 =3D
+			(struct ext4_dir_entry_2 *)((char *)de + nlen);
+		de1->rec_len =3D ext4_rec_len_to_disk(rlen - nlen, buf_size);
+		de->rec_len =3D ext4_rec_len_to_disk(nlen, buf_size);
+		de =3D de1;
 	}
-	ext4_set_inode_flag(dir, EXT4_INODE_INDEX);
-	data2 =3D bh2->b_data;
+    ...
+	memcpy(de->name, fname_name(fname), fname_len(fname));
+}
 
-	memcpy(data2, de, len);
-	memset(de, 0, len); /* wipe old data */
+When ext4_insert_dentry() recomputes nlen =3D ext4_dir_entry_len(de, buf_si=
+ze,
+dir) with the expanded de->rec_len, ddh_len <=3D rec_len - offset can now
+succeed, growing nlen up to rlen (or rlen + 8 if ext4_hash_in_dirent(dir) &&
+!ext4_has_feature_dirdata(dir->i_sb)). In addition, because
+ext4_dirent_rec_len() now takes unsigned int name_len, an entry with multip=
+le
+valid dirdata fields can be up to 1284 bytes, which on 1024-byte or 2048-by=
+te
+block filesystems can also leave rlen - nlen in do_split() smaller than the
+new entry being inserted.
 
-Returning PTR_ERR(dx_info) at this point leaves dir with EXT4_INODE_INDEX s=
-et
-and an extended i_size, while block 0 has its entries wiped and no valid
-dx_root_info initialized. Could dx_get_dx_info(dir, dot_de) be validated
-before ext4_append() and memset() modify the directory?
+Since ext4_insert_dentry() does not check that rlen - nlen is large enough =
+to
+hold the new entry, wouldn't nlen > rlen underflow rlen - nlen and hit BUG_=
+ON
+in ext4_rec_len_to_disk(), or nlen <=3D rlen advance de1 to the end of the
+block buffer so that memcpy(de->name, ...) writes past the end of bh->b_dat=
+a?
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261029122413.2304=
-09-1-ablagodarenko@thelustrecollective.com?part=3D5
+09-1-ablagodarenko@thelustrecollective.com?part=3D7
