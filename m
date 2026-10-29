@@ -1,57 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793281615;
-	b=v6QmCPKo8T+Wu6nFoUV6ma/rk2aw4EzNFCgcZ3g1uxj5JlX84KdtzLwrSAE3qQLBcYEg
-	 R4PTU+avrPHSjm0dow42fSwZia74MPUNSAnOjH8ho0S2Ts/P6lvP3nVE/eMsWQL3t+pCX
-	 DQsOK55oonO/yWJ0tDqTZkMkDHOPy0oMKvNJD0DtqcBhCsr5KJ0DWE+Bp2L7n59GIRIXi
-	 MwyikYZorgVN0AaF4pnJ2fIABL/i4dxi8ubRW5GsR0Bxd6KFL+5/qpp3BfcmnlnzGgEoq
-	 fKopV0K581ZdhL56AJojkMSFWc4zHkpoOulfQgxa26x5pihbmoao6RbseQsY8dNL8QQ==
+	t=1793290045;
+	b=rOiNZHOhAbjQqZa+5VPtITKoCb5bBeBewJYRhmHkNEr9C1T9ZKbQ8w+evfqRk6j8i+2l
+	 eJNkSwNCh8vZtHfHTNMc6VlMXGB0XZrzbybZLjVSIT+YzpWlTtlYZ5kfpdiht5X8nPoDz
+	 LWh2OXwzsv13MSNW9RlK9A11QgIIl3A6POHJNWmeJPQWGHjMz3OU1yppnrdukEzCicbij
+	 q7Kp9/NYQx/eaxGW8us5ltX2WS0RtD0Ch4PG24BLIw6zjSAoCj1C80raGHRPs2XTrYOXk
+	 Xveve5Rp2eX3wiOhUVVoJ3hKcDxAJH9JOk8kth/bh21bGjZeFPC+gvc4Ai19FnldFnA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793281615;
-	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
-	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=yuaf8bzZ6xhx+aXFcUxFA+LQjt6tZ9BhDjMPMrTJ9NY=;
-	b=C5tKKrkFMC2yvuyoC9Jhlja0WlawZkuYDzqxlQQirls0dzzIOC6aaQ8tr14GFQnxn3KT
-	 XQ1W5NwE61J+YpsGrjtNwALkimAiisx7t+BX4cwpIYshf9+DQcN/C8rdrkuo/U4ZmyV2s
-	 SRhxrMNmOHaEiAkTLGIhUeB54Pwk65QyeUvKEWM0GkaVMTYtsLSnwqigdAya2b//HxtpA
-	 oPB05J68c+GV3xSkXjohO9vjaIFq2QI0WcMXPhZaMMTBEFCbg1ZVp9TvNshO1oTtlzjHC
-	 mHzV4Tq0mU70TwrRStU0pkJFTD/+9FdRDuEsbI1WYC/d3Nqb2PbckEbZF3t7BHeTVyw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793290045;
+	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
+	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
+	 X-Mailer:X-Developer-Signature:X-Developer-Key;
+	bh=uBzHd4puvf7PelR0/56wwfcOU7QQK1cg7vOg9biOXQ0=;
+	b=vlWwFhle4psuBeVXlvaUNOWCqyHeNI2uo74us/fRmWlt39ZuFimmJOmVIGv40W9OZ+gw
+	 cYOQcz/4Q27tw+YzF+g/TdP49vQDaovnxPQEm+/G0Od9W6VVyNa5Hrw1exqw/mJ7tBn7d
+	 G35ZsiXuW5pjRZlINDII7qyZ8dofmxdc+60P1ARK1xY/nuaUfF58sx5we4Sbhh5Zaz02u
+	 rGUSW543ZK5hrLNhGtoTH3g+vvPeOBsZuH5AfsfRt+yMJpdCeCtdPDtqnbmX59pJn++T7
+	 wv+OAaBgLPMAGB0rJ6dLlJBLamlBwmJCUsEiUTilkcuN7kmnIxrVZGfafGv+KvKKKYQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=NEEtepWX;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="m9szMX/f";
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9F2E260A3806
-	for <linux-ext4@vger.kernel.org>; Thu, 29 Oct 2026 13:46:55 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9519F606A32C;
+	Thu, 29 Oct 2026 16:07:25 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=NEEtepWX
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1C14D1F031E2;
-	Thu, 29 Oct 2026 13:46:55 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=m9szMX/f
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 22EA01F01816;
+	Thu, 29 Oct 2026 16:07:20 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793281615;
-	bh=yuaf8bzZ6xhx+aXFcUxFA+LQjt6tZ9BhDjMPMrTJ9NY=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=NEEtepWX0ecQY7Hk7XmjxxCxWknaV5a/RwBiMmpNFfCmhkAFP4UxSARpmK+J8yX90
-	 ODFVNmX3h3mVo3ffc23yvP5cOAMhFrgsSLFTAjYS32algF4+551+VQXenwQn7WaQRb
-	 L6U1vhw9A4IzxNGotQMPRbVVSC7PgJQ4mPcYL6pEFNOvo7eAtNWinNyERs7dB0uIfC
-	 UMdxLgPN47EQnFv17x3eQ0yqPFhQe8BoiGv/UAe88vT59q6E3XkVFEEAlXsXr9Guvx
-	 lbS0//FYVkTwc/l6H3T6LYPW4U9HhBHViArBsQXdAIg7BlW+YT9n7jMaJEjh5ZMkig
-	 dlBZT8wB8NOwA==
-Message-ID: <sashiko-outbox-189418@kernel.org>
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH RFC 9/9] fs: don't strand I_METADATA_WRITEBACK inodes
- outside the LRU
-Reply-To: sashiko-reviews@lists.linux.dev
-To: "Christian Brauner" <brauner@kernel.org>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-In-Reply-To: <20261029-work-inode-metadata_writeback-v1-9-7d6c678a585d@kernel.org>
-References: <20261029-work-inode-metadata_writeback-v1-0-7d6c678a585d@kernel.org>
- <20261029-work-inode-metadata_writeback-v1-9-7d6c678a585d@kernel.org>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Thu, 29 Oct 2026 13:46:54 +0000
+	s=k20260515; t=1793290045;
+	bh=uBzHd4puvf7PelR0/56wwfcOU7QQK1cg7vOg9biOXQ0=;
+	h=From:Date:Subject:References:In-Reply-To:To:Cc;
+	b=m9szMX/fEVXD68Fjo3EeIkbSZWBiFCaUdnZ+VIh59ux0qGOuLrE6FOEM4OJ1WZJSQ
+	 f9sjcBIGp3cmwtR0Vr1suMoxuUz16RM22QVCXpsDoj7hgG+YtZpQhzQ+8ERPTwSOx+
+	 FENqtUXhbWb6AJt7guMCyWwmoiN2tg6DAlUgnisQ768405K+ORmRZs5e5Mai6t3IC7
+	 JCG+wlnqB5yg7zzE/v6YXROVwr2DAybfz/I3VBKz/fd7tFcRlVQ9jktvnhDRhYblg5
+	 /ZXlk9pRMGfEiSj5AyGOVRF7ifG92+RvMqsktF5VXStBqOVxXjmAQApSiLmPU3bTZN
+	 rhuPH0MlQETDw==
+From: Christian Brauner <brauner@kernel.org>
+Date: Thu, 29 Oct 2026 17:06:52 +0100
+Subject: [PATCH v2 01/34] ecryptfs: don't leak the inode when a lookup
+ can't open the lower file
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -60,33 +52,70 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261029-work-fs-sb_rdonly-v2-1-2f44f64f0b66@kernel.org>
+References: <20261029-work-fs-sb_rdonly-v2-0-2f44f64f0b66@kernel.org>
+In-Reply-To: <20261029-work-fs-sb_rdonly-v2-0-2f44f64f0b66@kernel.org>
+To: linux-fsdevel@vger.kernel.org, Jan Kara <jack@suse.com>
+Cc: Al Viro <viro@zeniv.linux.org.uk>, ecryptfs@vger.kernel.org, 
+ linux-ext4@vger.kernel.org, jfs-discussion@lists.sourceforge.net, 
+ linux-nilfs@vger.kernel.org, exfat@lists.linux.dev, linux-mm@kvack.org, 
+ ntfs@lists.linux.dev, ocfs2-devel@lists.linux.dev, 
+ linux-btrfs@vger.kernel.org, gfs2@lists.linux.dev, 
+ linux-efi@vger.kernel.org, linux-mtd@lists.infradead.org, 
+ linux-xfs@vger.kernel.org, 
+ "Christian Brauner (Amutable)" <brauner@kernel.org>, stable@vger.kernel.org, 
+ Farhad Alemi <farhad.alemi@berkeley.edu>, Tyler Hicks <code@tyhicks.com>
+X-Mailer: b4 0.17-dev-ce4c1
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1542; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=x7sC/M8PNJXXdVBMQkSwa4kj/sguCVJ7hcSWkzP5Ueg=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWQ9ztfzU+27Xxy89YL9ydKruYr84d16Vtu6Xx3cYmlqd
+ 2qRy3v1jlIWBjEuBlkxRRaHdpNwueU8FZuNMjVg5rAygQxh4OIUgIlI8DIyHLp2+rNUvlLI3k6/
+ 3/ESRv/2vGuTuqrwxpzRw0Za2C/LgZHhgMcuQdFr2SV/T3svv3sy4ytP6qPJq7j+hG79yNS0x2Y
+ vMwA=
+X-Developer-Key: i=brauner@kernel.org; a=openpgp;
+ fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-> Since commit c474bc56b6d1 ("fs: Provide way for filesystem to wait for
-> metadata writeback") ext2, ext4 without a journal, fat, udf and minix
-> set I_METADATA_WRITEBACK on an inode whose metadata was copied into a
-> buffer that might not have reached the disk yet. Only data integrity
-> writeback, i.e. fsync() and friends, clears it again. The flusher and
-> sync(2) leave it alone. So a clean, unused inode keeps the bit around.
->=20
-> inode_lru_isolate() treats every state bit other than I_REFERENCED as a
-> reason not to reclaim the inode right now. It takes the inode off the
-> LRU and relies on iput(), writeback completion or the removal of the
-> last page from the page cache to put it back once the reason is gone.
->=20
-> But I_METADATA_WRITEBACK doesn't go away on its own. Using the inode
-> again puts it back on the LRU with the bit still set and the next scan
-> takes it off again. So neither memory pressure nor drop_caches can free
-> [ ... ]
->=20
-> Fixes: c474bc56b6d1 ("fs: Provide way for filesystem to wait for metadata=
- writeback")
-> Cc: stable@vger.kernel.org # v7.3; see patch description
-> Reported-by: Josef Bacik <josef@toxicpanda.com>
-> Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
+ecryptfs_lookup_interpose() opens the lower file of a regular file to
+read the size from the header. If that fails it marks the inode bad and
+returns, but a new inode is still I_NEW and nobody ever unlocks or puts
+it. So it leaks together with its lower inode, a concurrent lookup
+through another hard link waits for it forever and umount complains
+about busy inodes. The lower open fails e.g. with ETXTBSY while the
+lower file is executed. A cached inode is marked bad for all its other
+users instead.
 
-Sashiko has reviewed this patch and found no issues.
+Use iget_failed() for a new inode and iput() for a cached one.
 
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261029-work-inode=
--metadata_writeback-v1-0-7d6c678a585d@kernel.org?part=3D9
+Fixes: 3b06b3ebf441 ("eCryptfs: Fix new inode race condition")
+Cc: stable@vger.kernel.org
+Reported-by: Farhad Alemi <farhad.alemi@berkeley.edu>
+Closes: https://lore.kernel.org/r/CA+0ovCgYP920GT68hAJK6Trjyv1kGv2dZAuem4LEunycQ=POww@mail.gmail.com
+Acked-by: Tyler Hicks <code@tyhicks.com>
+Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
+---
+ fs/ecryptfs/inode.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/fs/ecryptfs/inode.c b/fs/ecryptfs/inode.c
+index 48e520960d66..3a966348a578 100644
+--- a/fs/ecryptfs/inode.c
++++ b/fs/ecryptfs/inode.c
+@@ -362,7 +362,10 @@ static struct dentry *ecryptfs_lookup_interpose(struct dentry *dentry,
+ 	if (S_ISREG(inode->i_mode)) {
+ 		rc = ecryptfs_i_size_read(dentry, inode);
+ 		if (rc) {
+-			make_bad_inode(inode);
++			if (inode_state_read_once(inode) & I_NEW)
++				iget_failed(inode);
++			else
++				iput(inode);
+ 			return ERR_PTR(rc);
+ 		}
+ 	}
+
+-- 
+2.53.0
 
