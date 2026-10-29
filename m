@@ -1,53 +1,76 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=43.163.128.43
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793293577;
-	b=MtoDQYvAYAfTD2SS++MqUN5Xp62ZSXW//9H4lDuABihJ9JgTCG+OGdpQsuEfojkAqfTR
-	 haqTv9LqKFcZVsOWY2X+YCGmXfUxlc679IZRv4INdAseDMcXaKk8fyWnb0Slw5QRKbrai
-	 shLLGWvFmoQPTxqrP/Z31TaariZN26hy18Jc7O5ydR4Oo8s+NnmV1fsMw0VJ2xCyw1Z5I
-	 /0dVNpQtT5FCFFM30x/XyAqyhGwllSUbNKxL0FGZbrBs3RB/iMYt+/yfrB1KH5ORMrop8
-	 b1kxyZySQtD3qggT+VXUySRJ+H2Gct3sDh9qNn0NyadXy0wpRO7G7hzKxNRwr4+5jZg==
+	t=1793296558;
+	b=z3bDFqR8YB3Ny9PbFJaFiQOMf0iO2V4rPlCWnryEzN+eALco36AOMmQHmljTNu6662Kj
+	 udM2TxC/AHTtmGfufI1KD7/nx6sf9wYHJnyxtXNJm/NPIUEhZiEAxbdY/mxUvgncY2PMH
+	 4Sfeg7dBQiunWpJX2LERHYPZQ7DUFV2MSDclK5omhtkd0j2Aaj4rs0DKT+QxSt2t0JjS3
+	 7eB1/D1SVPE4a00uyk37Nj6krxOmH2LBTwPk7oU6/3iP/a9CZNhADuJyZh2dOzh+h9wD8
+	 U8uxrVIE/l2ndN0UtV0ILwCh/HQM7cifzJZpA6qv2a9YJRCU5wUvDxvhj/XdBYZ9upw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793293577;
-	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
-	 MIME-Version:Content-Type:Content-Disposition;
-	bh=Q/e95YXjZPLi1Alp8MrVdFWbAjpPBFcZYJssjltrBmM=;
-	b=LDYmtL5iocZ9CexuDVo2xPt1hHIbDOLW97sNbSpb8+s8NkBWjnbll/9z4dXkyck2ub+4
-	 ROIkMtHg4a35/w7fEbEbu0WQEgLPQwkTXU8FB4lhbT8BzpSwkWI9l1Dl62laltOTNzCT2
-	 cFlPSuwHmmZ+aOlHOxnGlcif6VQxNOkNxJD/IFDcuKsE6yC0K7FikmGODKosXeDMlPe5T
-	 UFjDlmRLRRS1ir73vw/7OXy2B9r1yZVW3xPtVv+ZG35t7xTwuQJz+F1oMM9kAjHgBP1LZ
-	 OKcqgi2lOvtz+RAIj5mi25XE1PxkPAgqeCaBiy98zofCxsw2gRZiXK5wrkcateqAlZg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793296558;
+	h=DMARC-Filter:DKIM-Signature:Received:X-QQ-mid:Message-ID:
+	 X-QQ-XMAILINFO:X-QQ-XMRINFO:From:To:Cc:Subject:Date:X-OQ-MSGID:
+	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:
+	 MIME-Version;
+	bh=9NRMu8PQ8MICPRBna3Q6ccaLnBShapmY0xbiXLML8iE=;
+	b=YOD92ryVjZn8J7Qe2exl2/BhwpxeMJxXQjK24bFLqMX8wLHA0rabweS/5rh1x3HHVjsw
+	 f8ZojMLrGe6jVmRsfNXmIpgD+5ehxZS6j83BfLcYtDfkUzaVAkTU0TlT0TwywdvS7VMlE
+	 36QTnlybQhC1bRxcnQiVo7aHLoXLcT+V0zaW+zGQkckOSwMq5wF6tZDp1KIeXfn8crFGC
+	 553lX533qu+AVDa2e7l/b/9kCzWuI6vHeesHyqiSD0DUunYbfZ3NmE+rGG5TL3aEWHqbg
+	 IuOe7mNoJY4gVOZPRei94LfBulAH/vl35fs4V7zzWBO9WIMOKpS2Qx5h4YXpBndKOSA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="i+Ea/T2t";
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=pass header.from=qq.com;
+	spf=pass smtp.mailfrom=qq.com;
+	dkim=pass header.d=qq.com header.i=@qq.com header.a=rsa-sha256 header.s=s201512 header.b=Mx7Zll0M;
+	arc=none smtp.remote-ip=43.163.128.43
+Received: from xmbghk7.mail.qq.com (xmbghk7.mail.qq.com [43.163.128.43])
+	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9F709606A335;
-	Thu, 29 Oct 2026 17:06:17 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 077F4606A31D;
+	Thu, 29 Oct 2026 17:55:56 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 077F4606A31D
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=qq.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=i+Ea/T2t
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B47C81F01816;
-	Thu, 29 Oct 2026 17:06:16 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793293577;
-	bh=Q/e95YXjZPLi1Alp8MrVdFWbAjpPBFcZYJssjltrBmM=;
-	h=Date:From:To:Cc:Subject;
-	b=i+Ea/T2t764DpYOvybMnC/jnHT/C6QaI6sdhqkkNTELzVpfloGy6XM3iBkeL4r+8M
-	 oW8q7D0DmBPP9Cy7Gzp5OUH5tv71bbshk7kIzPt+EUDCNRa/Vl6XehD9chVOCfe+Q3
-	 6fgpGZLqsvpzKXgHakR9xF1z71MCvi2nNm0FuiLlQMGMtgFVIw5gtpycvtHLyeSBP0
-	 FSS5c9ZLc5Tlyh+H1/GVX4Gsh7dIHkV+LTTfj5gcXqQQePac6dCwWfNY2fkuFQms/u
-	 /rIZuDVrc0s8Y6eG+h6WrqD84xcFifPgRRPT/RRCSZC7fJAlBeBmrdjA1WXs3VVQ4i
-	 yi0KrT1Xf80Lw==
-Date: Thu, 29 Oct 2026 10:06:15 -0700
-From: Eric Biggers <ebiggers@kernel.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-	Jaegeuk Kim <jaegeuk@kernel.org>, Alberto Garcia <berto@igalia.com>,
-	Baokun Li <libaokun@linux.alibaba.com>
-Subject: [GIT PULL] fscrypt fixes for v7.4-rc1
-Message-ID: <20261029170615.GA1862@quark>
+	dkim=pass (1024-bit key, unprotected) header.d=qq.com header.i=@qq.com header.a=rsa-sha256 header.s=s201512 header.b=Mx7Zll0M
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=qq.com; s=s201512;
+	t=1793296548; bh=9NRMu8PQ8MICPRBna3Q6ccaLnBShapmY0xbiXLML8iE=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References;
+	b=Mx7Zll0MS8Eyqqdc38ha+mInCElvFEnI0y2zfFUCZwANmF3B88kK/MWL/Azv0y2vw
+	 qmH948HVD+iaO5ERAXYLH5ydrQYLRyFuGbR605uEn5sAEsPfedl2KbCu6sejoML6KK
+	 uIu3urlOiTgEnE7UDwrxiYZwQY6WqaOgl6KkWlKE=
+Received: from [172.18.4.77] ([111.31.227.58])
+	by newxmesmtplogicsvrszc56-0.qq.com (NewEsmtp) with SMTP
+	id DEE93E9D; Fri, 30 Oct 2026 01:55:46 +0800
+X-QQ-mid: xmsmtpt1793296546tryicaagv
+Message-ID: <tencent_5CEFAB1126275DD39A28299FC2A8E954F907@qq.com>
+X-QQ-XMAILINFO: OTIbW6R4UQxK5CTEcKtwW9ljNNlgQ1vg9IOAgxZL26yXbGi8eT8fRK0YgCr1U2
+	 4vAQ43LpZtgpbfUWSTdJ2FMHo7d6pTu6nJvdh5yR3kPOgaWzoZkLvYud2/WLt/doHUk6rY4d8ti6
+	 v3zuUTx6W1Gj3yHM+wbv4UcEowNqdW/17hNETFYDaHvi2I5nOAHSFc4XXmKxBrnzjWQHLI4tHHcU
+	 eLxefXRsMBsBe+BN44htlVNA3pbInEmrqWk2F26EV85wxvvRukacOUUlNYwwVkuWYZvqUmnvoJ9X
+	 eoRXAqeWFmmVI2pkhgzW9G+OSTaB7uS+7vNiVr9wcnP4FSZee36wyWaCVd2JiAgOLknYTotYfbqP
+	 wElhCAhrh9CC0GKOhHsdVKyyrq1aDDR1tIeYKoy4yg98/uAlJLUOQvoNznSJaIXzkD4gv9z+LOg+
+	 +7a3FYtcQqtuFeTw0nb+tl7k3AqyZk62UXS1KIYPKmfBiYTAMlsKAlS6KHNRyJZfqmt1OY/4ybF3
+	 O5tJx9ECu6YKZGyAOefpHdfjsVhaySK7VXIHp9ifnlwDnAUxxY3Ab2wti6hn8pmn/3/aS2GjwKbK
+	 83gJJk+sAtFgYg/Z8KvfWPDuI7pwt2/OSD+tWkWVCstbW4P5QIZbUNyWXYKj5W97LeWlUpR2pZGN
+	 rHX1wZlooJodT0W6XhuV/PdSHh9hRX/1p2HMV7Q9F0GUg1gX3PHIGx64E/b9qNFp3pQmKdBgwksa
+	 1eOhuLSvIcHrBW/5v4EpzoiNPVz0ExMEDRvdvt3K0Qywm1BvEW2C3A4a33wiG2HY14m1aaKlv6to
+	 jnG3Qaf7/NNFzgf0FGNfqCJjAMRYyzVVIgwjxylW9gEnDIl7NwR89BEb+gIllLMNEHEWDA0zu6/o
+	 nMsHT92iU1T4HhUhHpVVft2E+pimH7LZiTCt8Mtnmm8Nx+bQ24jH3G/rl456qqL93YnGvFC5hGLA
+	 WmdIiwKT7bbZNZDUsJm3LXvY8voX8a4u+ELJ4/a24rCdkRUnBzTLuzb0j5qKHb6XYOgGo/SMf5/Q
+	 gnaz627XcZdDNJsLZx6mQq5HOw8SAvqiMD7N5AdaYLq2YWFZoq32ZhzhoOZ5k=
+X-QQ-XMRINFO: MPJ6Tf5t3I/ylTmHUqvI8+Wpn+Gzalws3A==
+From: Guikun Yang <yangguikun19@qq.com>
+To: linux-ext4@vger.kernel.org, tytso@mit.edu
+Cc: jack@suse.cz, linux-kernel@vger.kernel.org
+Subject: Re: [BUG] ext4: unvalidated h_refcount on a shared xattr block ->
+ double free, detected too late
+Date: Fri, 30 Oct 2026 01:55:45 +0800
+X-OQ-MSGID: <179329654579.60452.6108742348319878589@qq.com>
+In-Reply-To: <tencent_B025D3B328709FF3A8B5D4B3EFED913C2707@qq.com>
+References: <tencent_B025D3B328709FF3A8B5D4B3EFED913C2707@qq.com>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -57,44 +80,63 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
 
-The following changes since commit 5b0764a53235d3c77e1ed674e836e1b3fe1a4b1f:
+From: Yang Guikun <yangguikun19@qq.com>
+To: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
+Cc: Jan Kara <jack@suse.cz>, linux-kernel@vger.kernel.org
+Subject: Re: [BUG] ext4: unvalidated h_refcount on a shared xattr block -> double free, detected too late
+In-Reply-To: <tencent_B025D3B328709FF3A8B5D4B3EFED913C2707@qq.com>
+References: <tencent_B025D3B328709FF3A8B5D4B3EFED913C2707@qq.com>
 
-  Merge tag 'drm-next-2026-10-21' of https://gitlab.freedesktop.org/drm/kernel (2026-10-23 18:29:02 -1000)
+Hi,
 
-are available in the Git repository at:
+Friendly ping on this one - it has been quiet for a bit over two weeks, and I
+wanted to add data rather than send a bare ping.
 
-  https://git.kernel.org/pub/scm/fs/fscrypt/linux.git tags/fscrypt-for-linus
+Update: the reproducer still fires on 7.3.0-rc7, 11/11 runs with a 64MB image
+and a 5-thread hammer (the churn count raised from 8 to 64; 3 xattr-churn + 2
+donor-churn threads). The earlier numbers stand too: 6/6 on 7.3.0-rc5 with the
+8MB single-thread config. The release-path code in question is unchanged
+between rc5, rc7 and current master, so this is not a regression and has not
+been fixed in the meantime. The one race-dependent panic from the original
+report has not recurred in the rc7 campaign; the deterministic double free is
+the reproducible part.
 
-for you to fetch changes up to a5e894bc87b76fd980075892ba77e6bdeeb5e4d0:
+The suggested direction from the original report stands: a
+"freeing already freed block" error raised from the xattr release path means
+a wrong free has already happened, so containing it (fs abort / remount-ro
+rather than error + continue) looks like the sensible hardening point.
 
-  ext4: reject encrypted inodes when block size > page size (2026-10-24 12:58:37 -0700)
+If it helps, a minimal containment would check the block bitmap bit right
+before the ext4_free_blocks() call in ext4_xattr_release_block(): this call is
+the one that clears the bit, so at that point it must still be set. If it is
+already clear, the on-disk h_refcount was wrong and the block has had a
+double lifetime since mount - the state that merits the ERRORS= policy:
 
-----------------------------------------------------------------
+--- cut ---
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -1320,6 +1320,12 @@ ext4_xattr_release_block(handle_t *handle, struct inode *inode,
+ 		get_bh(bh);
+ 		unlock_buffer(bh);
+ 
++		if (!ext4_test_bit(EXT4_B2C(EXT4_SB(inode->i_sb),
++				   bh->b_blocknr -
++				   ext4_group_first_block_no(inode->i_sb,
++				   ext4_inode_to_group(inode))),
++				   bitmap_bh->b_data))
++			ext4_error(inode->i_sb,
++				   "releasing xattr block %lu which is already free; on-disk h_refcount is wrong",
++				   (unsigned long)bh->b_blocknr);
+ 		if (ext4_has_feature_ea_inode(inode->i_sb))
+ 			ext4_xattr_inode_dec_ref_all(handle, inode, bh,
+--- cut ---
 
-- Add more checks to prevent encryption on "large block size" ext4
-  filesystems (s_blocksize > PAGE_SIZE), which isn't supported yet.
-  There was already a mount-time check, but it wasn't enough.
+(That sketch glosses over fetching the group's bitmap_bh and the cluster
+conversion; I will write it out properly and test it if you think the
+approach is worth pursuing. Any containment shape that makes this state hit
+ERRORS= instead of continuing silently works for me.)
 
-- Add missing memory barrier to fscrypt_find_mode_key()
+Thanks,
+Guikun Yang <yangguikun19@qq.com>
 
-- Add missing zeroization in an error path
-
-----------------------------------------------------------------
-Alberto Garcia (2):
-      ext4: refuse encryption when block size > page size
-      ext4: reject encrypted inodes when block size > page size
-
-Baokun Li (1):
-      fscrypt: Fix missing barrier in fscrypt_find_mode_key()
-
-Eric Biggers (1):
-      fscrypt: Explicitly zeroize sw_secret in error path
-
- fs/crypto/keyring.c  | 4 +++-
- fs/crypto/keysetup.c | 8 +++++++-
- fs/ext4/crypto.c     | 9 +++++++++
- fs/ext4/inode.c      | 6 ++++++
- 4 files changed, 25 insertions(+), 2 deletions(-)
