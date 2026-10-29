@@ -1,82 +1,82 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.221.51
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.221.52
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793276832;
-	b=tv2x4Q7UDQQA7QPDUpcUdIJU8aQRJ9Iesa1jE8CdM3fSVqizRK9FP1/JsWl7ooff2CAm
-	 pj5a8jPjOJXDcQJ2RH9YEyOx3NXsesfaRInDpULnGomAFzhmup1S5Bz8ISBEsjIbZggrN
-	 qrUdjmx+eX0qWh3aJitGhHRELMNQmqJntTaAu8iTo4mbeIMqBulfCAdlYCHZpVFewhbZF
-	 3v70hsDsQz1qRUr9ixE0pFn1A0+mxBnTGQiWrshJft92mX3i9l6Z3BPAIM/gyqmSPGKqJ
-	 peh7w7LKE9c84+rHRO7d2OZRGQkdgDJZEyFt91NcsV9Eod6whdT2mYKTAQgK8lkvlTw==
+	t=1793276833;
+	b=VpZ+XxDFsklpIr7Ik3r2s30U4gskegP6n3MwkYPP+cow6p5wyaMWX0MklNNBl6U/ndBf
+	 +xcXnZmcr3PUfBy1ZtvHoR4cbo2iZ7AofrEmU6k5BVZWn0o8YKPGDXyU/ypz2lh5woI9g
+	 2AcGR1DNd/9OsB3dq9odEEq0hXHIKNNGeKchGdiGewfgrnISpH4o8hXJ6S9LhhzzSqv4j
+	 yczMgOyuuDMEv+mKFf6pHSst8U9k/srdVhdUFQh1qhM/yDg54H/XLsZucbf+fyT0qtdfw
+	 BR/aGVh5P4EfCWSqEXYfcCAoujrVYHumzmUxybEnFNPHuY7Jex41V2j8L371wN2BZKg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793276832;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793276833;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
 	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:From:
 	 X-Google-Original-From:To:Cc:Subject:Date:Message-ID:X-Mailer:
 	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
-	bh=RWwy/GFyvPziHvR3j12blbm6yPrQhNI+aFn/52auoYI=;
-	b=0AOi6mw0xs9FiHo1XqvMdQKPe7LrBcvIrfxiI/HykgDn0gA8ZLWmkoLvBfM3nBrylcHq
-	 3DmdJqCVpdTCcsWPPDCtdmkUsJoPKeQ92AJ6OuCOqGTO3HYFInbmjIkjVZZN1ZBjzM17p
-	 dhoox4JUAzyWzrpI8SuZjsaeaof+sXVpjvVYbGP/A7v+wfNdVsRz/SUM6i2TSmP3utI1s
-	 HEgKQi5rZUe5QHFRJ+p2/ERX/qCAd1O0Lu9iq0pJ0n3wWECS5GIdIYnZaM8TddJkVIHCY
-	 v2LSQnfbiuwyUPAGRFm1hVdW0P+jd1Zd8FTyhcp4f6VVZ5gGItxWwEAySKeMPEvs1dA==
+	bh=a1OhDZ7gav16JfUYX7UTFW4ueHi+JFtPWSB8cHLb34Q=;
+	b=dELn2JwPozyg0MvTFVFCxre+mUcMHF8wGc8K+KTjQPrRqJ027QaANFO/qSIQm8mahuyN
+	 giyKPPEs6TrApaDzlhS46jO2hcW03dUpFQ/ptzbKHKY9r8LnoZewEeJQJzvz+n+qEtF1I
+	 Kfbd4t5UIukQb2OZTrBbdwPKb2IgETvJFKlbnI5Wv0iFLKBEwTbFiSrt3AoSFFZqFt+Ty
+	 /Nsqfekq9zK2jmiL+Wr++jd78BALdRxir3UDNgx72XxrLv5AHhSWT2+/Up/V9Gx/j2iMC
+	 iAIlKmtjVdwICsz6tQue2pAJSvfK4tARXyGrg/R3njt4OawIgB0pYVauWjtfZixhphg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=gmail.com;
 	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=jBu0Gytf;
-	arc=none smtp.remote-ip=209.85.221.51
-Received: from mail-wr1-f51.google.com (mail-wr1-f51.google.com [209.85.221.51])
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=BTUWn4xe;
+	arc=none smtp.remote-ip=209.85.221.52
+Received: from mail-wr1-f52.google.com (mail-wr1-f52.google.com [209.85.221.52])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C7D27606A31D
-	for <linux-ext4@vger.kernel.org>; Thu, 29 Oct 2026 12:27:11 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org C7D27606A31D
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B68E4606A330
+	for <linux-ext4@vger.kernel.org>; Thu, 29 Oct 2026 12:27:12 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org B68E4606A330
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=jBu0Gytf
-Received: by mail-wr1-f51.google.com with SMTP id ffacd0b85a97d-48e47347279so1414715f8f.1
-        for <linux-ext4@vger.kernel.org>; Thu, 29 Oct 2026 05:27:11 -0700 (PDT)
+	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=BTUWn4xe
+Received: by mail-wr1-f52.google.com with SMTP id ffacd0b85a97d-48afcd7ba9bso1542595f8f.3
+        for <linux-ext4@vger.kernel.org>; Thu, 29 Oct 2026 05:27:12 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1793276830; x=1793881630; darn=vger.kernel.org;
+        d=gmail.com; s=20260707; t=1793276831; x=1793881631; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=RWwy/GFyvPziHvR3j12blbm6yPrQhNI+aFn/52auoYI=;
-        b=jBu0GytffS2eW/IKzndcsRbL4yG/73cUossV2ua+z7mfV7jKLRenzk48J3KHsKmHhz
-         b83p7MAfZdqCilq32UrAk7OUgQvZodXzdY6hn9k2QKzJy+Qjr5406KWt0Mk68DS+7D7Y
-         5FHEL6uTGeFyiMCjclwM9uovjMuDDDHYzWOyE2ljtmcUaSQURei2uyDX/ZBuaYdNw+bA
-         uCdYh3POJ3FuuGJ30HaHKCd9iHiv9KBQczQeXnamKSn9lKt9P6Wc3ck7pKtRAuOJN6PG
-         vuXW9Ox6CNa0mC/yur7ZfaYljO770puYhV0Jd0qHFE6SOEmWbtcewIfiK8fgaxBu6VKM
-         S94w==
+        bh=a1OhDZ7gav16JfUYX7UTFW4ueHi+JFtPWSB8cHLb34Q=;
+        b=BTUWn4xeoJKf5DnsI2WKJuiXyldmkKNC5O6v3JzkFZeqGoYWH6kRcJc5eZFJskIfiT
+         GWkc0D1c6a0wGE6qmbiyQL4mOVStHrAhUmVjGmYZRlnwzH+lmgwG8Zy3kux5CGu8fl1e
+         GWrrhFKEqJBdbRkNlhDtPviWKwT9oDnuBHgOaXhy4Zz8hanyjEAFFp9YZnvnLguUCcgt
+         bZ3cSbENPaKWio2OkTwH7fyMss0UfATIVolU9wI2dibi7k3rhFJbvYocJxt8jsca30Dk
+         1Msze81vvIu5iPslGp/33YItXWoMLRb9T9Jta6oG7MdyUYjy30QJllMXndBeW4dw5Stf
+         Gg0g==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1793276830; x=1793881630;
+        d=1e100.net; s=20260707; t=1793276831; x=1793881631;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=RWwy/GFyvPziHvR3j12blbm6yPrQhNI+aFn/52auoYI=;
-        b=tOiCOsaER3MwSQrXfsLLPSShHMfJWCNjxRuBzTq7zeyjC0PKhjZDrQKMwDtvBVOD4U
-         3p8hb4HdxojU6HYS2vOMeWUPti4ROsZzXH3kr3laKSFNi0+Nny0IC95OijJO5rnb3LWF
-         Qza8Qu23O9dPMx6SJ3R9aJBcN7YQGWMzqgr8vb6NtjTS1pU3NpV1SDhOdBPxFaX0fk09
-         0zRwjfNf8pNtBVbSjKMezlI9RNszEDumAiisNyEvh15YnfWfLPeyLN/7EvKtJSZQj9cQ
-         Unc8EnOlkeuvcihYUgN1kB2R5CWrgaFuMbFrUbOwtXW9h/Fx8l3hLwheP1gJKnpHjHJS
-         ZybA==
-X-Gm-Message-State: AFq9FYLnyjPXj1YuDQEf2SRxndMJcmFht1h6Zk4NFCBM/vABkjBiM4Wp
-	anVMd0w+z80pTdS1gqXdW5uI33yjbUwhboRm0Xg2ypY9i2Fh4l+krBu8BvphWnHn
-X-Gm-Gg: AYBFou36vnw6ocTJDkSSIT+145lk2HA08mm7GGghwm4/Yc96fXgR9IcXAf2OcewsSRa
-	MQe6OpaMu0NKdrhBlMBssCti+FSrDQnvLGE0NzPaSRVlx2cOwN3nWTfHp1F1NfOGEW0c0ZPcXwb
-	qGtaKUD3qjtxPWIkhu8Jx45x09CyfIhzeyivjEgYuftCP4/2QfOuowqt3cPiSuRQT/53MHbLPo0
-	bZ94e8PYE6KQ6nYjJmo1iT+nMwqmFMze0FA5n4GzTezZHeKcYd6YfdK+a+391zpVLEb7XdkuBW9
-	w4GU1hqbRO7oRIRRTWWE7ollCsgA+NTPT/GPzsqKI57sfOkBJh2ZMAgQHfXc5m21P0bHjfFIY1g
-	awP6l71Ag9629Aa0M/zp4boSTCugN4jwlH6SVkGLpflOv8BllPWEPZC+GV31DuhRcu18xWGnKdm
-	vFjGCGABeGku/RUSIK5wHSHziSiDjladY/zyuHgwaSv68vdsMhUIUxbEDTdBI3HN733DiYO4mHW
-	iowsWxOXRGYrbU7ZR7Iv9o7eotgOzgzY5ianMjbz2Lp92NsO2fXs2KUqZIU61PZSzeLQYkU74qe
-	V9YbRYT4ZalmtvyI99upsxuwBtnH1MbzjjGZ5+6iMz5ImApKntUHEvsurcMN
-X-Received: by 2002:adf:ec49:0:b0:48e:1f08:4f05 with SMTP id ffacd0b85a97d-48e5d5d0998mr9340994f8f.33.1793276830193;
-        Thu, 29 Oct 2026 05:27:10 -0700 (PDT)
+        bh=a1OhDZ7gav16JfUYX7UTFW4ueHi+JFtPWSB8cHLb34Q=;
+        b=L1bsMhs3xq0wia6/wEtrUW1VOPZPiCPRNRPcFoQJwtJOilulwPpdqB8VpIwAYYN1V0
+         qSwjEiTR/EHYmU063XK7US3lu+fj5t5HGlDoQnGAQV/mS0jyhxSTz6QNNhmHPdxtMk96
+         0FRJc5a41StjoT7LRrr53ucOex2F3qmCvpsGtJjyF5IDr55D9ESAiM4/06OOxd5DsmeD
+         3n26cUPi4hJrwXdNaMwHiyqTXI9fD4vJUp3dUxMuRjODz8jqp41Wemv7APKs9snsrRzA
+         iFjCcsdwrb1J/w4fJH7/YVJOJSWdveZHfdAN08J5uyJdVw6KOfDH4Fvd/FHfN4W+d0cj
+         V6rQ==
+X-Gm-Message-State: AFq9FYKZNiDv4nSGhEhdg/wtFTw8ucxLOBQvf3SjDjIw5Vw61Au4C4yr
+	becFWIcUPKdvHvVeu7uVPGDpHWYiWIsQPEnNd2reEFJ3ouGsMH0+FBwu2YGpGqL3
+X-Gm-Gg: AYBFou1145tkeqL06liWzQX2wqJbYvXRv9r55DJj3kBmzYzfyLGh1d9C6sg4lGAM4P6
+	EdhaSFdmzmqESGVLNzcvirMZPsikRuHU3njaCtGBGhhUYtdXrBKOKqvbX4+FgIDUvpBPJcqvREE
+	z95xqQmKC7ZjvUHXSiqqT1nDohp3xxC9FySzAWIcWDDS2tA65zHQCjtLBF3oeG75MMtUZpr7fjl
+	PkizagmYYH1y33BJ1F21G707FQpgCr+Q/yyh1FRWXlMC+uRmGM7wmUsmag7udcshulZYmS7AQGf
+	v4oSJIKHCWAx3F6PUF4WMC2zyAS4h8oz/KT9PBP+Mv5cc9FNbV7mAm9a3eAzXqNbAsN0UZqH0NE
+	RBDdahpmUINNiC2ACM3W3cOaZs5AGnwd1P+jMAEECVyw4IVfWeXWLv1ZIroOe4xkUQKWzml17uw
+	uU/TJD7RShfTJQJbfRLuzXhReUTnq5qi1u4vnz2i9i7Mq0NKecoe2m3yIP1fbLkEV1mopGt4KnR
+	eyUvY44ZkaOSEgKJEKV1GpcR98ng7lnz6JWPIDDQREtGhHu7jbaUznbH6WIdy7sJW4csqfvkyZd
+	/V1qTwH5WUfFfAk6SWuL8TP1Ms85twc+WQchbg9x3/ernzLpRU/bc4Y6LZIB
+X-Received: by 2002:a05:6000:2308:b0:48e:5e20:1371 with SMTP id ffacd0b85a97d-48e5e20139dmr11862924f8f.4.1793276831015;
+        Thu, 29 Oct 2026 05:27:11 -0700 (PDT)
 Received: from Cluster2.powerhub ([2a0a:ef40:18b5:9e01:225:90ff:fefc:9ffe])
-        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-48e412cc164sm32305679f8f.7.2026.10.29.05.27.09
+        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-48e412cc164sm32305679f8f.7.2026.10.29.05.27.10
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 29 Oct 2026 05:27:09 -0700 (PDT)
+        Thu, 29 Oct 2026 05:27:10 -0700 (PDT)
 From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 X-Google-Original-From: Artem Blagodarenko <ablagodarenko@thelustrecollective.com>
 To: linux-ext4@vger.kernel.org
@@ -84,11 +84,12 @@ Cc: tytso@mit.edu,
 	jack@suse.cz,
 	adilger.kernel@dilger.ca,
 	ablagodarenko@thelustrecollective.com,
+	Pravin Shelar <pravin.shelar@sun.com>,
 	Artem Blagodarenko <artem.blagodarenko@gmail.com>,
 	Andreas Dilger <adilger@dilger.ca>
-Subject: [PATCH v13 03/11] ext4: add ext4_dir_entry_is_tail()
-Date: Thu, 29 Oct 2026 12:24:02 +0000
-Message-ID: <20261029122413.230409-4-ablagodarenko@thelustrecollective.com>
+Subject: [PATCH v13 04/11] ext4: add dirdata format definitions and access helpers
+Date: Thu, 29 Oct 2026 12:24:03 +0000
+Message-ID: <20261029122413.230409-5-ablagodarenko@thelustrecollective.com>
 X-Mailer: git-send-email 2.52.0
 In-Reply-To: <20261029122413.230409-1-ablagodarenko@thelustrecollective.com>
 References: <20261029122413.230409-1-ablagodarenko@thelustrecollective.com>
@@ -103,87 +104,165 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+Define the on-disk format for ext4 directory entry extension data.
 
-Replace open-coded checks for directory tail entries with a call
-to ext4_dir_entry_is_tail(). This helper will also be used by
-upcoming changes.
+The upper four bits of de->file_type indicate the presence of
+optional data stored after the filename NUL terminator.  This patch
+defines flags for LUFID, 64-bit inode numbers, and casefold hash
+data stored in that area.
 
+Add struct ext4_dirent_data_header to describe variable-length
+extension records and struct ext4_dirent_hash for hash storage used
+by casefold and fscrypt.
+
+Provide ext4_dirdata_next() to advance to the next extension record
+and ext4_dirent_get_data_len() to compute the total extension data
+length associated with a directory entry.
+
+No functional changes.
+
+Signed-off-by: Pravin Shelar <pravin.shelar@sun.com>
 Signed-off-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 ---
- fs/ext4/ext4.h  | 16 ++++++++++++++++
- fs/ext4/namei.c | 14 ++++++--------
- 2 files changed, 22 insertions(+), 8 deletions(-)
+ fs/ext4/ext4.h | 117 +++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 117 insertions(+)
 
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 16df13874559..41152914aa6c 100644
+index 41152914aa6c..c79295415c07 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -4101,6 +4101,22 @@ static inline void ext4_clear_io_unwritten_flag(ext4_io_end_t *io_end)
- 		io_end->flag &= ~EXT4_IO_END_UNWRITTEN;
+@@ -2589,6 +2589,49 @@ struct ext4_dir_entry_tail {
+ #define EXT4_FT_SYMLINK		7
+ 
+ #define EXT4_FT_MAX		8
++#define EXT4_FT_MASK		0xf
++
++#if EXT4_FT_MAX > EXT4_FT_MASK
++#error "conflicting EXT4_FT_MAX and EXT4_FT_MASK"
++#endif
++
++/*
++ * d_type has 4 unused bits, so it can hold four types of data. These different
++ * types of data (e.g. fscypt hash, high 32 bits of 64-bit inode number) can be
++ * stored, in flag order, after file-name in ext4 dirent.
++ *
++ * These flags are added to d_type if ext4 dirent has extra data after
++ * filename. This data length is variable and length is stored in first byte
++ * of data. Data starts after filename NUL byte.
++ */
++#define EXT4_DIRENT_LUFID		0x10
++#define EXT4_DIRENT_INO64		0x20
++#define EXT4_DIRENT_CFHASH		0x40
++
++struct ext4_fid {
++	char    fid[16];     /* 128-bit unique file identifier */
++};
++
++struct ext4_dirent_data_header {
++	/* length of this header + the whole data blob */
++	__u8	ddh_length;
++} __packed;
++
++struct ext4_dirent_fid {
++	struct ext4_dirent_data_header df_header;
++	struct ext4_fid                df_fid[];
++};
++
++#define EXT4_LUFID_MAGIC    0xAD200907UL
++struct ext4_dentry_param {
++	__u32	edp_magic;	/* EXT4_LUFID_MAGIC */
++	__u8	edp_dfid[];	/* struct ext4_dirent_fid payload */
++};
++
++struct ext4_dirent_hash {
++	struct ext4_dirent_data_header	dh_header;
++	struct ext4_dir_entry_hash	dh_hash;
++} __packed;
+ 
+ #define EXT4_FT_DIR_CSUM	0xDE
+ 
+@@ -4117,6 +4160,80 @@ static inline bool ext4_dir_entry_is_tail(struct ext4_dir_entry_2 *de)
+ 	       t->det_reserved_ft == EXT4_FT_DIR_CSUM;
  }
  
 +/*
-+ * ext4_dir_entry_is_tail() - Check if a directory entry is a tail entry.
-+ * @de: directory entry to check
++ * Advance to the next dirdata record header starting from @ddh.
 + *
-+ * Returns true if @de is a directory block tail entry (checksum record).
++ * Uses READ_ONCE() on ddh_length to prevent the compiler from re-fetching this
++ * on-disk field and to guard against a concurrent write racing with any bounds
++ * check the caller performs on the returned pointer.
 + */
-+static inline bool ext4_dir_entry_is_tail(struct ext4_dir_entry_2 *de)
++static inline struct ext4_dirent_data_header *
++ext4_dirdata_next(struct ext4_dirent_data_header *ddh)
 +{
-+	struct ext4_dir_entry_tail *t = (struct ext4_dir_entry_tail *)de;
++	return (struct ext4_dirent_data_header *)
++		((char *)ddh + READ_ONCE(ddh->ddh_length));
++}
 +
-+	return !t->det_reserved_zero1 &&
-+	       le16_to_cpu(t->det_rec_len) == sizeof(*t) &&
-+	       !t->det_reserved_zero2 &&
-+	       t->det_reserved_ft == EXT4_FT_DIR_CSUM;
++/*
++ * ext4_dirent_get_data_len() - Compute the total dirdata length for an entry.
++ * @de: directory entry
++ * @rec_len: the record length of the directory entry (decoded)
++ *
++ * Computes the length of optional data stored after the filename (and its
++ * implicit NUL terminator).  Each extension is indicated by a bit in the
++ * high 4 bits of de->file_type; the first byte of each extension is its
++ * length (including that length byte itself).
++ *
++ * Returns 0 for tail entries and for entries with no dirdata.
++ */
++static inline int ext4_dirent_get_data_len(struct ext4_dir_entry_2 *de,
++					   unsigned int rec_len)
++{
++	__u8 extra_data_flags;
++	struct ext4_dirent_data_header *ddh;
++	int dlen = 0;
++	unsigned int offset;
++
++	if (ext4_dir_entry_is_tail(de))
++		return 0;
++
++	extra_data_flags = (de->file_type & ~EXT4_FT_MASK) >> 4;
++	/* offset from start of entry to after filename + NUL */
++	offset = EXT4_BASE_DIR_LEN + de->name_len + 1;
++
++	/* bounds check: ensure we start reading within the entry */
++	if (offset >= rec_len)
++		return 0;
++
++	ddh = (struct ext4_dirent_data_header *)((char *)de + offset);
++
++	while (extra_data_flags) {
++		if (extra_data_flags & 1) {
++			/* bounds check before reading ddh_length */
++			if (offset + sizeof(*ddh) > rec_len)
++				return 0;
++
++			/* Use READ_ONCE to prevent the compiler from re-fetching
++			 * this disk field and to guard against a concurrent
++			 * write racing with our bounds check below (TOCTOU). */
++			{
++				u8 ddh_len = READ_ONCE(ddh->ddh_length);
++
++				if (ddh_len == 0 || ddh_len > rec_len - offset)
++					return 0;
++				dlen += ddh_len + (dlen == 0);
++				offset += ddh_len;
++				/* advance using the already-validated local copy
++				 * to avoid re-fetching ddh->ddh_length */
++				ddh = (struct ext4_dirent_data_header *)
++					((char *)ddh + ddh_len);
++			}
++		}
++		extra_data_flags >>= 1;
++	}
++	return dlen;
 +}
 +
  extern const struct iomap_ops ext4_iomap_ops;
  extern const struct iomap_ops ext4_iomap_report_ops;
  extern const struct iomap_ops ext4_iomap_buffered_write_ops;
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index ec23e72cc422..533340c5dbc0 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -331,14 +331,10 @@ static struct ext4_dir_entry_tail *get_dirent_tail(struct inode *inode,
- 
- 	t = (struct ext4_dir_entry_tail *)d;
- #else
--	t = EXT4_DIRENT_TAIL(bh->b_data, EXT4_BLOCK_SIZE(inode->i_sb));
-+	t = EXT4_DIRENT_TAIL(bh->b_data, blocksize);
- #endif
- 
--	if (t->det_reserved_zero1 ||
--	    (ext4_rec_len_from_disk(t->det_rec_len, blocksize) !=
--	     sizeof(struct ext4_dir_entry_tail)) ||
--	    t->det_reserved_zero2 ||
--	    t->det_reserved_ft != EXT4_FT_DIR_CSUM)
-+	if (!ext4_dir_entry_is_tail((struct ext4_dir_entry_2 *)t))
- 		return NULL;
- 
- 	return t;
-@@ -478,7 +474,8 @@ static int ext4_dx_csum_verify(struct inode *inode,
- 		return 0;
- 	}
- 	if (count > limit) {
--		EXT4_ERROR_INODE(inode, "dir seems corrupt?  Run e2fsck -D.");
-+		EXT4_ERROR_INODE(inode, "dir seems corrupt (%i > %i)? "
-+				 "Run e2fsck -D.", count, limit);
- 		return 0;
- 	}
- 	t = (struct dx_tail *)(((struct dx_entry *)c) + limit);
-@@ -511,7 +508,8 @@ static void ext4_dx_csum_set(struct inode *inode, struct ext4_dir_entry_2 *diren
- 		return;
- 	}
- 	if (count > limit) {
--		EXT4_ERROR_INODE(inode, "dir seems corrupt?  Run e2fsck -D.");
-+		EXT4_ERROR_INODE(inode, "dir seems corrupt (%i > %i)? "
-+				 " Run e2fsck -D.", count, limit);
- 		return;
- 	}
- 	t = (struct dx_tail *)(((struct dx_entry *)c) + limit);
 -- 
 2.52.0
 
