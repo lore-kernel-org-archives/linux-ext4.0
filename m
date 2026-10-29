@@ -1,56 +1,57 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793277085;
-	b=jysmykjmkOqgiCXXzWjKxj2CWCka4L7iok4KJY1kBwJpPG3gnG5fRMW467/RafesIP16
-	 fa+XFMNBAOkaC+5dYNTIUCAHcCVgbo31Dd0tndykwiFsfn5SoTmMeQx1NLAEWPFz8r7lq
-	 vf8VQiO+hxqgIB01s4AKk4oLgyfudDFYLkBmKVZD1srfmttXQth9dj7g07uBIG7a9+ZEG
-	 K7zF9qa4P08UZ6ogJ/NiT+f9E0TLjfruGexa2h+XKrigDb69vRlqyWIV7Ivbaumnrq3gt
-	 9aCXF+PEaX7zUiao6vf8rX9lbU0F7rMi/6yS4v6Cjq3l4MSegjrwZwQ/1FAzIomnuTQ==
+	t=1793277096;
+	b=sDR9B/Yb/taBiXp1/+jIZO81898PUj4VGqyKVin66MAPtY62/ygQRmQ4+fcpOOpetP4V
+	 7Lxpr6QnNPdft3J1kfqcz1y+ptMWwBZUGxV+ySkljx87EQV2ARBzmQT163mOZFzwfBqDm
+	 LW6G5fC6C0nTVbPWPJ6ROi/ZqREjW27kiu8c5HVKaIYBfE8h+UT9T4om1ukIhoiRWl9Ku
+	 pxNn2pSltg5ExVd4Ewk2KPwd+w/46OLtuZ+YeoLYOLzYaLsce/kR0UjoCJaLGF7zxkvB9
+	 fEPrhXNzwDsWiQaCkvSY0H8xDrKhNKTbF4v/oQ5u6LI7HX3pDQn3LyBZmta+4APK34w==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793277085;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793277096;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=31bmaLGaUgvaHMqObay22Yq5K9FmGJ3kdm3DtmPPw1M=;
-	b=EEQ3L1owV/m9/V9Rlqk8iVO69wiDtPpLxoVOegGV+zaKu9fXcdJAmG20Dw1IEeoTiWJD
-	 yGLmlbjQt/hjWg6LAABRdKPFnK5rqMXnTgUMcBHnWKsjomVpbieWY3kxkDeqK0/+SjQG/
-	 +cRmktStyUyOxKM3A223hTVW4Yie1BbolHAlB1/3e4+FMRlSCSPkoXgw2VJv7YxmgCkWX
-	 G/8jiPRvHURIWFyFD26x5HBnjKXEt/jGwcaQNqWEwZ51g3V/PgueYdHvnWX3PplKsp+Es
-	 JlCAdlhFeJ0ex+kAQG+9i9xj9JWAsU1M7nEmXVkwX1RLRA5Dcq/sNkVY2HE5zYig5UA==
+	bh=OgaQ0xRsVTqhbynKaR5A5QiT04cOmawD982kYURwvV0=;
+	b=O6BVmu4c5ZxUubeVQc+4Y/yPqXyQu4PSJRgqs4JCd5/A6IvKCugAmVKwv3rBlEuHLcWH
+	 2rZFBLg17Woz1Uks+wD7H/lAbAe8yMz7SJ+T9aPFT4J0GnyZLdMu0AYsKzOd/sGek/zmm
+	 qx1I4dVl7j6kB5vaGtEde9kF6QTJ7Sr2QJdMY+/hcu4Vex91VPdjnKZl5Y4lVtNDHrDYj
+	 x2c3WPICNRByRDa5gyjahjwjIy8OlmojNwUn9QejixMcYPAOzsxweI6SyGyYU4LRku0PX
+	 EnnKaQGzW2VdUppyYn8yp+6QIHbxtBcf9w/Jb59WLSTcpn0T802CLa03cpIiux0MOYg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Os1lsC50;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=QpsbVxfB;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1D619606A321
-	for <linux-ext4@vger.kernel.org>; Thu, 29 Oct 2026 12:31:24 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BA2E7606A31D
+	for <linux-ext4@vger.kernel.org>; Thu, 29 Oct 2026 12:31:35 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Os1lsC50
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7317D1F01829;
-	Thu, 29 Oct 2026 12:31:24 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=QpsbVxfB
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 248431F01182;
+	Thu, 29 Oct 2026 12:31:35 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793277084;
-	bh=31bmaLGaUgvaHMqObay22Yq5K9FmGJ3kdm3DtmPPw1M=;
+	s=k20260515; t=1793277095;
+	bh=OgaQ0xRsVTqhbynKaR5A5QiT04cOmawD982kYURwvV0=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=Os1lsC50QeCyxSIbdkSBPnSbgREi/dLVqbzTG/mvKHlk4FgsWeR8mBjjA4B9dZBSp
-	 nCZErFvPj2g3TeBfL/ZBWSFHrPyt8PHrEjvWceJ5Gej4ltYXziQOdNy4rG+sWvxOtE
-	 TPpPpLclxZoZlDGUuuvvBJuQWhFwJihNmA7k8Kzkq0S74J/PORLe/Kt0OTwpMOF3gE
-	 cpbg2KMIn/XZasDkljYBq0Ow0dwvqAY9B/qgczD8tef1PEPiGRPY89K/6VeHQlJMiJ
-	 2RNzoH/PonImfuz5W3bJwbQ2BiE9ixga/Hz2KkRWw9A0PfnHSA40xBgXR8HKC1Duhs
-	 6b+p/glATg7TQ==
-Message-ID: <sashiko-outbox-189283@kernel.org>
+	b=QpsbVxfBmvUZihEKt6+QZ4xJlqLbyfITEfe77seRg5wh2D26BqhJNakH/hPnkAYpP
+	 KSwj2wCAauyelMELkRxQLimGwYHy9wOiuefBqzJjzT72N4k87DPPnwrJSWuaQZrUre
+	 OzJsdUDh52fNIE+P5AUJtKY1zU+aDoHLvtcWeKRZ6qQArwnQalIvBOmwoLhLp5YbiF
+	 NbSHwMz9FMLp6DlMHERk973bl+AfoVC5H5ea3I9lgOeqgJsNyoTkOYqMvouSQQBLgw
+	 0TtU3risM8DVrxjD0w/M0sk1333hBvyvyU4LflQEtN2AfQGLdOUvKWfZj+vEDAz+2O
+	 e+eaoifJMFInw==
+Message-ID: <sashiko-outbox-189284@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH v13 03/11] ext4: add ext4_dir_entry_is_tail()
+Subject: Re: [PATCH v13 04/11] ext4: add dirdata format definitions and
+ access helpers
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Artem Blagodarenko" <artem.blagodarenko@gmail.com>, linux-ext4@vger.kernel.org
 Cc: tytso@mit.edu
-In-Reply-To: <20261029122413.230409-4-ablagodarenko@thelustrecollective.com>
+In-Reply-To: <20261029122413.230409-5-ablagodarenko@thelustrecollective.com>
 References: <20261029122413.230409-1-ablagodarenko@thelustrecollective.com>
- <20261029122413.230409-4-ablagodarenko@thelustrecollective.com>
+ <20261029122413.230409-5-ablagodarenko@thelustrecollective.com>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Thu, 29 Oct 2026 12:31:24 +0000
+Date: Thu, 29 Oct 2026 12:31:34 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -60,17 +61,29 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-> From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+> Define the on-disk format for ext4 directory entry extension data.
 >=20
-> Replace open-coded checks for directory tail entries with a call
-> to ext4_dir_entry_is_tail(). This helper will also be used by
-> upcoming changes.
+> The upper four bits of de->file_type indicate the presence of
+> optional data stored after the filename NUL terminator.  This patch
+> defines flags for LUFID, 64-bit inode numbers, and casefold hash
+> data stored in that area.
 >=20
+> Add struct ext4_dirent_data_header to describe variable-length
+> extension records and struct ext4_dirent_hash for hash storage used
+> by casefold and fscrypt.
+>=20
+> Provide ext4_dirdata_next() to advance to the next extension record
+> and ext4_dirent_get_data_len() to compute the total extension data
+> length associated with a directory entry.
+>=20
+> No functional changes.
+>=20
+> Signed-off-by: Pravin Shelar <pravin.shelar@sun.com>
 > Signed-off-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 
 Sashiko has reviewed this patch and found no issues.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261029122413.2304=
-09-1-ablagodarenko@thelustrecollective.com?part=3D3
+09-1-ablagodarenko@thelustrecollective.com?part=3D4
 
