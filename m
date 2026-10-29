@@ -1,76 +1,56 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=43.163.128.43
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793296558;
-	b=z3bDFqR8YB3Ny9PbFJaFiQOMf0iO2V4rPlCWnryEzN+eALco36AOMmQHmljTNu6662Kj
-	 udM2TxC/AHTtmGfufI1KD7/nx6sf9wYHJnyxtXNJm/NPIUEhZiEAxbdY/mxUvgncY2PMH
-	 4Sfeg7dBQiunWpJX2LERHYPZQ7DUFV2MSDclK5omhtkd0j2Aaj4rs0DKT+QxSt2t0JjS3
-	 7eB1/D1SVPE4a00uyk37Nj6krxOmH2LBTwPk7oU6/3iP/a9CZNhADuJyZh2dOzh+h9wD8
-	 U8uxrVIE/l2ndN0UtV0ILwCh/HQM7cifzJZpA6qv2a9YJRCU5wUvDxvhj/XdBYZ9upw==
+	t=1793311113;
+	b=rbyJ33IqSo/5kpAXk2ytuAr1oBHjiIliGWPylTaGD/OJLi2Z3TpCbjQfWBmrxSZy3cBN
+	 5fwmQWhMplBW5U1K5LHJsHBSuiaj5ZrVcbW1gDrVP4QkJPs5tc4bQCa4Cn+eayd/nq62j
+	 0bJu5UCsPKfwMt5RmiXB2fYWOuTxysBs4p0NMyKGT9vhu5rdmO/gRLbc+QUk7VDM7Ixy2
+	 oDeFdn3RdKCiEWopyvuIJGyu0y2/7fSvn+C1xcsmbE0wrFXJVsY1O6wu3olWpgkmkM6NY
+	 PI7ih75Jppsz4C6Q2qheoxUl8OcmQESpp874riGtl57JTTsG2+AkOr8zXUZM9RcznhA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793296558;
-	h=DMARC-Filter:DKIM-Signature:Received:X-QQ-mid:Message-ID:
-	 X-QQ-XMAILINFO:X-QQ-XMRINFO:From:To:Cc:Subject:Date:X-OQ-MSGID:
-	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:
-	 MIME-Version;
-	bh=9NRMu8PQ8MICPRBna3Q6ccaLnBShapmY0xbiXLML8iE=;
-	b=YOD92ryVjZn8J7Qe2exl2/BhwpxeMJxXQjK24bFLqMX8wLHA0rabweS/5rh1x3HHVjsw
-	 f8ZojMLrGe6jVmRsfNXmIpgD+5ehxZS6j83BfLcYtDfkUzaVAkTU0TlT0TwywdvS7VMlE
-	 36QTnlybQhC1bRxcnQiVo7aHLoXLcT+V0zaW+zGQkckOSwMq5wF6tZDp1KIeXfn8crFGC
-	 553lX533qu+AVDa2e7l/b/9kCzWuI6vHeesHyqiSD0DUunYbfZ3NmE+rGG5TL3aEWHqbg
-	 IuOe7mNoJY4gVOZPRei94LfBulAH/vl35fs4V7zzWBO9WIMOKpS2Qx5h4YXpBndKOSA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793311113;
+	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
+	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
+	bh=U0Vdp4AlMQoid5KFTkbCosmjcciIZ2qtRXsvKhAKL9Q=;
+	b=raXGL6X1XMiLtieOgUMXh1G+ke9YPktz1oMzLIrQ2UAPgdruSaZNonaCzpdoN4JjYLMX
+	 T7fNTa18StjhPoGOey7mWpmDhaGJERLvIv0Rsnz4IsERETyoylHmCmob3KQrEtE2AyjwF
+	 +QxkHha431UKCfm+8pCsAyn1lI+k405twEWpG1bptW2YC/KhHGwRweBFcTLXS//A8OmQ9
+	 UuZ6YVM0SOkKyxIUGMkL8rjEUvCZXY50TwMXTUOQkV6lumkheNUE69KkKe+jFdH6q6tfj
+	 kAv9SIq4c+YpWxrUdQ+DA+jPiXIfD/u81+QcTU4o3IqeeJ+yczUbTAqMJfvqcuIMk6A==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=qq.com;
-	spf=pass smtp.mailfrom=qq.com;
-	dkim=pass header.d=qq.com header.i=@qq.com header.a=rsa-sha256 header.s=s201512 header.b=Mx7Zll0M;
-	arc=none smtp.remote-ip=43.163.128.43
-Received: from xmbghk7.mail.qq.com (xmbghk7.mail.qq.com [43.163.128.43])
-	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=FaaSlv2v;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 077F4606A31D;
-	Thu, 29 Oct 2026 17:55:56 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 077F4606A31D
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=qq.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EC550606A31A;
+	Thu, 29 Oct 2026 21:58:32 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=qq.com header.i=@qq.com header.a=rsa-sha256 header.s=s201512 header.b=Mx7Zll0M
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=qq.com; s=s201512;
-	t=1793296548; bh=9NRMu8PQ8MICPRBna3Q6ccaLnBShapmY0xbiXLML8iE=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=Mx7Zll0MS8Eyqqdc38ha+mInCElvFEnI0y2zfFUCZwANmF3B88kK/MWL/Azv0y2vw
-	 qmH948HVD+iaO5ERAXYLH5ydrQYLRyFuGbR605uEn5sAEsPfedl2KbCu6sejoML6KK
-	 uIu3urlOiTgEnE7UDwrxiYZwQY6WqaOgl6KkWlKE=
-Received: from [172.18.4.77] ([111.31.227.58])
-	by newxmesmtplogicsvrszc56-0.qq.com (NewEsmtp) with SMTP
-	id DEE93E9D; Fri, 30 Oct 2026 01:55:46 +0800
-X-QQ-mid: xmsmtpt1793296546tryicaagv
-Message-ID: <tencent_5CEFAB1126275DD39A28299FC2A8E954F907@qq.com>
-X-QQ-XMAILINFO: OTIbW6R4UQxK5CTEcKtwW9ljNNlgQ1vg9IOAgxZL26yXbGi8eT8fRK0YgCr1U2
-	 4vAQ43LpZtgpbfUWSTdJ2FMHo7d6pTu6nJvdh5yR3kPOgaWzoZkLvYud2/WLt/doHUk6rY4d8ti6
-	 v3zuUTx6W1Gj3yHM+wbv4UcEowNqdW/17hNETFYDaHvi2I5nOAHSFc4XXmKxBrnzjWQHLI4tHHcU
-	 eLxefXRsMBsBe+BN44htlVNA3pbInEmrqWk2F26EV85wxvvRukacOUUlNYwwVkuWYZvqUmnvoJ9X
-	 eoRXAqeWFmmVI2pkhgzW9G+OSTaB7uS+7vNiVr9wcnP4FSZee36wyWaCVd2JiAgOLknYTotYfbqP
-	 wElhCAhrh9CC0GKOhHsdVKyyrq1aDDR1tIeYKoy4yg98/uAlJLUOQvoNznSJaIXzkD4gv9z+LOg+
-	 +7a3FYtcQqtuFeTw0nb+tl7k3AqyZk62UXS1KIYPKmfBiYTAMlsKAlS6KHNRyJZfqmt1OY/4ybF3
-	 O5tJx9ECu6YKZGyAOefpHdfjsVhaySK7VXIHp9ifnlwDnAUxxY3Ab2wti6hn8pmn/3/aS2GjwKbK
-	 83gJJk+sAtFgYg/Z8KvfWPDuI7pwt2/OSD+tWkWVCstbW4P5QIZbUNyWXYKj5W97LeWlUpR2pZGN
-	 rHX1wZlooJodT0W6XhuV/PdSHh9hRX/1p2HMV7Q9F0GUg1gX3PHIGx64E/b9qNFp3pQmKdBgwksa
-	 1eOhuLSvIcHrBW/5v4EpzoiNPVz0ExMEDRvdvt3K0Qywm1BvEW2C3A4a33wiG2HY14m1aaKlv6to
-	 jnG3Qaf7/NNFzgf0FGNfqCJjAMRYyzVVIgwjxylW9gEnDIl7NwR89BEb+gIllLMNEHEWDA0zu6/o
-	 nMsHT92iU1T4HhUhHpVVft2E+pimH7LZiTCt8Mtnmm8Nx+bQ24jH3G/rl456qqL93YnGvFC5hGLA
-	 WmdIiwKT7bbZNZDUsJm3LXvY8voX8a4u+ELJ4/a24rCdkRUnBzTLuzb0j5qKHb6XYOgGo/SMf5/Q
-	 gnaz627XcZdDNJsLZx6mQq5HOw8SAvqiMD7N5AdaYLq2YWFZoq32ZhzhoOZ5k=
-X-QQ-XMRINFO: MPJ6Tf5t3I/ylTmHUqvI8+Wpn+Gzalws3A==
-From: Guikun Yang <yangguikun19@qq.com>
-To: linux-ext4@vger.kernel.org, tytso@mit.edu
-Cc: jack@suse.cz, linux-kernel@vger.kernel.org
-Subject: Re: [BUG] ext4: unvalidated h_refcount on a shared xattr block ->
- double free, detected too late
-Date: Fri, 30 Oct 2026 01:55:45 +0800
-X-OQ-MSGID: <179329654579.60452.6108742348319878589@qq.com>
-In-Reply-To: <tencent_B025D3B328709FF3A8B5D4B3EFED913C2707@qq.com>
-References: <tencent_B025D3B328709FF3A8B5D4B3EFED913C2707@qq.com>
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=FaaSlv2v
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id EE1E21F01816;
+	Thu, 29 Oct 2026 21:58:31 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1793311112;
+	bh=U0Vdp4AlMQoid5KFTkbCosmjcciIZ2qtRXsvKhAKL9Q=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=FaaSlv2vOsEuL89kfK7kCINwHmGiDACZOtMoi7biSm5VbKOYs1XBMOuyT3hyBQufd
+	 4pNW2XdOxFommGhHDHqinO9UG/m9q9Iz1fjYG2MbazNrcBi0t9atwYACtHPIwUK1E0
+	 C4Hv/h5OM6Hq7R/kepTxtPZ2l+4QkXCs+kw4YhhZ57tZd5b3Y96fRdGsT4GV4vAD2D
+	 HEMivv6jXGLsXBSevXSDhPIZTZsWD+4hrfTR3Q4CLO+PXn2OSjH7F/lckDN9oaLe8j
+	 UTbwzaHRT9P8CYV/M7iKaL+JW5L1ChNiRcIHc453PYdwL1SSseWUNoQz7Fu6/GdAzR
+	 PchtOWjgYoDsw==
+Date: Thu, 29 Oct 2026 21:58:30 +0000
+From: Eric Biggers <ebiggers@kernel.org>
+To: Sasha Levin <sashal@kernel.org>
+Cc: stable@vger.kernel.org, stable-commits@vger.kernel.org,
+	Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org
+Subject: Re: Patch "ext4: switch to using the crc32c library" has been added
+ to the 6.12-stable tree
+Message-ID: <20261029215830.GA1254086@google.com>
+References: <20261016171849.GA122880@google.com>
+ <2026-10-16-1-daily-reply-0016-ext4-crc32c-drop-6-12-6-6@kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -80,63 +60,38 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <2026-10-16-1-daily-reply-0016-ext4-crc32c-drop-6-12-6-6@kernel.org>
 
-From: Yang Guikun <yangguikun19@qq.com>
-To: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
-Cc: Jan Kara <jack@suse.cz>, linux-kernel@vger.kernel.org
-Subject: Re: [BUG] ext4: unvalidated h_refcount on a shared xattr block -> double free, detected too late
-In-Reply-To: <tencent_B025D3B328709FF3A8B5D4B3EFED913C2707@qq.com>
-References: <tencent_B025D3B328709FF3A8B5D4B3EFED913C2707@qq.com>
+On Fri, Oct 16, 2026 at 11:00:21PM -0400, Sasha Levin wrote:
+> > Nack.  Missing prerequisite commits and didn't Cc the mailing list.
+> 
+> Dropped, thanks.
 
-Hi,
+Thanks.  Note that the commit message itself described the prerequisite,
+and it intentionally did *not* have 'Cc stable'.  Also this was patch 16
+of a 19-patch series
+(https://lore.kernel.org/all/20241202010844.144356-17-ebiggers@kernel.org/),
+which is discoverable from the commit itself via the lore link.
 
-Friendly ping on this one - it has been quiet for a bit over two weeks, and I
-wanted to add data rather than send a bare ping.
+A similar example was
+https://lore.kernel.org/all/20260616145143.326415700@linuxfoundation.org/.
+That had the same characteristics: commit message itself described the
+prerequisite, it intentionally did *not* have 'Cc stable', and it was
+patch 18 of a 30-patch series.  (That one was actually applied to stable
+anyway, despite two people pointing out the missing prerequisites.)
 
-Update: the reproducer still fires on 7.3.0-rc7, 11/11 runs with a 64MB image
-and a 5-thread hammer (the churn count raised from 8 to 64; 3 xattr-churn + 2
-donor-churn threads). The earlier numbers stand too: 6/6 on 7.3.0-rc5 with the
-8MB single-thread config. The release-path code in question is unchanged
-between rc5, rc7 and current master, so this is not a regression and has not
-been fixed in the meantime. The one race-dependent panic from the original
-report has not recurred in the rc7 campaign; the deterministic double free is
-the reproducible part.
+And these don't go to their subsystem mailing list, so there's limited
+opportunity for people to catch these incorrect backports.
 
-The suggested direction from the original report stands: a
-"freeing already freed block" error raised from the xattr release path means
-a wrong free has already happened, so containing it (fs abort / remount-ro
-rather than error + continue) looks like the sensible hardening point.
+Can you help me understand how these incorrect backports get queued up
+in the first place?  At least from the outside, it looks like there's
+some automated process that pulls in commits needed for another to apply
+cleanly, without anyone really looking at them.  (Or if LLMs are making
+that decision now, then they're seemingly not being asked to evaluate
+whether there are other prerequisites.)
 
-If it helps, a minimal containment would check the block bitmap bit right
-before the ext4_free_blocks() call in ext4_xattr_release_block(): this call is
-the one that clears the bit, so at that point it must still be set. If it is
-already clear, the on-disk h_refcount was wrong and the block has had a
-double lifetime since mount - the state that merits the ERRORS= policy:
+Is there a way to opt out of this until the process can be improved?
 
---- cut ---
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -1320,6 +1320,12 @@ ext4_xattr_release_block(handle_t *handle, struct inode *inode,
- 		get_bh(bh);
- 		unlock_buffer(bh);
- 
-+		if (!ext4_test_bit(EXT4_B2C(EXT4_SB(inode->i_sb),
-+				   bh->b_blocknr -
-+				   ext4_group_first_block_no(inode->i_sb,
-+				   ext4_inode_to_group(inode))),
-+				   bitmap_bh->b_data))
-+			ext4_error(inode->i_sb,
-+				   "releasing xattr block %lu which is already free; on-disk h_refcount is wrong",
-+				   (unsigned long)bh->b_blocknr);
- 		if (ext4_has_feature_ea_inode(inode->i_sb))
- 			ext4_xattr_inode_dec_ref_all(handle, inode, bh,
---- cut ---
-
-(That sketch glosses over fetching the group's bitmap_bh and the cluster
-conversion; I will write it out properly and test it if you think the
-approach is worth pursuing. Any containment shape that makes this state hit
-ERRORS= instead of continuing silently works for me.)
-
-Thanks,
-Guikun Yang <yangguikun19@qq.com>
-
+- Eric
