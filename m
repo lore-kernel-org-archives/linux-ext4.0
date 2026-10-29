@@ -1,82 +1,82 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.128.50
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.128.49
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793276881;
-	b=gVUa252q17MBrzW8fIPP6f4Ko1qKUX+Oo66ma9auZTCkEXHdD0J5RxOtc286diCyDC9X
-	 GdJlQLdhF37+4vEM4/F74qe1Tb8V0+sPZ9lRqAs96gke39Jgt6t9+jDFtLeWn6f4iHjOU
-	 HKiVLq4JrvZf4V4FxR9wJIT9DZZTVtzJAJfUgprC5WEUo7RbGBXOCiYL2CualsJ2gBmvi
-	 CM2BrlT/kRKWBpXQaf/hx124WyZO3OSpcyM/Pi83qZ/ds7U8eMeBgAtVXoGKwdwRB+q4l
-	 AQ4sXqmhs5cTVGYZQB8oeKI7ISPYGXHZbxEneH3cTcWTefEnuTtjIWM1MbH1n+5kG0A==
+	t=1793276882;
+	b=qtv3d1SLkk3FxfZoNOq47iLkiIwevyY5lm9fZyRNxFtrsXi+GiCoU/GCr4Cjd/vYm8/Q
+	 2BuNdVAp36rVsnGL1An/mO0nFwRoEMQpYPbS9OBjCEEbUE5bEl+eL0ONBxFXyRBLwL/eO
+	 bMBwgG3ydLhRrv+lQs5+HIiQweLGxb05PKbFOX28KnUxFRuo9ZtUj3xCpQsdpSgx4QMSu
+	 WgFvQPdNe8HPyVBD8eBEnqQtp1UZ/ULPC84YCbKEyVusGIV5AYF7tb3rfHwjpDilL51Dk
+	 flGhTwebE61xeNG6Q7++KXrodOMGvJHA0+uEv20Cdxa3c23PavRRkXMlkWodMm0TA5g==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793276881;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793276882;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
 	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:From:
 	 X-Google-Original-From:To:Cc:Subject:Date:Message-ID:X-Mailer:
 	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
-	bh=3OkI1uzBhr+gaWTPMIeHE8P1H82EumpKMa+06HbPpx8=;
-	b=ZqHICAdsMhCqnMz3wAtwcFEXvh4tcEtth09YDOXw6CKUxUxTbns5+S8M6WYJgFRJQMYR
-	 3hHqaxZyECBeMVuuR59VW7v7bfvFhV7Y09QJkRwRR8pJ4HqE/csONf3KXXzhxP0i6tvzJ
-	 m4tFel01KoG+WM4god2w5/03CJi3ZR/8ZL/Vt9ZwIgUYXni/YBb7PRnNjyih1PZonmIPZ
-	 uXogB4MgnSdrGnqjkWYGIeANad+JvytkwheseDpyExyWifgmwLLDUOj9iNmflgKigUTh+
-	 dWgSMSt51fwJLWGYeuUIiNDP2AyNfafnTSjFR4jTJaFvct6tpLNrqkWRPXiD1TL57VQ==
+	bh=DCqWqP4ddTLRsbl2mP3DoKXY8NPop2A5xNgRv8tJoHg=;
+	b=F0GUD/806P3+5Ao7+V8a5lVtjY+yzpjjJL+4u4zSs4mU360rdbWjZ/hI97B+urbkZKWQ
+	 hA2I9vcU75qsOpsEaWmUbJYDAuzxz/ScWQGIQxUkcWGSAuAANcQHtrdR+3Vt3sj2pxdpk
+	 FjhvwtVNd1HkIWRJkrX6diBMP8udmoWAfdalYwG0tDx4l/UTt0tfWi83F31KUAeK2cYGC
+	 g0JaW6gonF3qulViiyKPTsHzCQ1PY0UNGFSKVzNJD0hmsq15+EzJO/LaKCFfUry5czaCD
+	 te7XtbiQa+XdAlFmNFhM7TdqxDEiaGNmNxWE4fQZ74TF0ZPlfuSy/Jb7VxJw/H70UwA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=gmail.com;
 	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=Uw7lXCEJ;
-	arc=none smtp.remote-ip=209.85.128.50
-Received: from mail-wm1-f50.google.com (mail-wm1-f50.google.com [209.85.128.50])
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=ldqkHSJ4;
+	arc=none smtp.remote-ip=209.85.128.49
+Received: from mail-wm1-f49.google.com (mail-wm1-f49.google.com [209.85.128.49])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D8C5D606A321
-	for <linux-ext4@vger.kernel.org>; Thu, 29 Oct 2026 12:28:00 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org D8C5D606A321
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 94D10606A324
+	for <linux-ext4@vger.kernel.org>; Thu, 29 Oct 2026 12:28:01 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 94D10606A324
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=Uw7lXCEJ
-Received: by mail-wm1-f50.google.com with SMTP id 5b1f17b1804b1-4a214af2076so17234285e9.0
-        for <linux-ext4@vger.kernel.org>; Thu, 29 Oct 2026 05:28:00 -0700 (PDT)
+	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=ldqkHSJ4
+Received: by mail-wm1-f49.google.com with SMTP id 5b1f17b1804b1-4a2d6d01ecbso14468455e9.0
+        for <linux-ext4@vger.kernel.org>; Thu, 29 Oct 2026 05:28:01 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1793276879; x=1793881679; darn=vger.kernel.org;
+        d=gmail.com; s=20260707; t=1793276880; x=1793881680; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=3OkI1uzBhr+gaWTPMIeHE8P1H82EumpKMa+06HbPpx8=;
-        b=Uw7lXCEJqQzdUAHhrzvMzOQ/TPtbv2TfUnZUv9vFKzflf1AAfY4CovQmZ/Zo+lcO+P
-         vEBTmeJVCqgvjJxlM5dJL/oAx0TKnWRWhCVkLJx2fV1tzZtaSkYVhm3J3sQMbrgabQDI
-         Uydn3MLjr62EWs+JViogGeLI0iCpCiwIgqE9fGWW7P7UN/+ewPgtq0g4NVJyEQNMHxaw
-         b3zAu5PaKsAiHKqggDhW4+UKzX8OUuLPKsDQ0ShdUulhvQhes1hJqV703y8nrBmHHG56
-         L9UH2Z7YSUSgBNkPZIg7BSE6rTdQiva0TjIeRj3MU7Aa7F9UAcqTPvXagnWBC+ULNT54
-         AOpg==
+        bh=DCqWqP4ddTLRsbl2mP3DoKXY8NPop2A5xNgRv8tJoHg=;
+        b=ldqkHSJ4i3dpf0kh1QMmw99ti+tWFp7MJ+QPB5d7o/htaYy7I48Z0a/44wORuEnAzl
+         RCA7CGbMdAuXjP6AmuOD2CsjB8Sdh3EytLc7DdAD3q/OS79FITKH2/R/o4xUWFQIwPWf
+         pIJt1H7vF1u1QgjYhNatT9Zi4NDrDBK5/YmqXBHQNnVxQ1GzqOcSVg48qiYOJu2Jjl4I
+         stBC+qMjR3seIFwcTg6KRXucduB0worlQk/WNRHDCdwNf48Qq9UzXIlt2J5Sschlt5wG
+         Kf8bhZQb+fCzg0bRUr1ufU4cz3OfB/7VHfDyp94WL7d3JC5EHCHARq15iSY320VMzZgu
+         /nNQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1793276879; x=1793881679;
+        d=1e100.net; s=20260707; t=1793276880; x=1793881680;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=3OkI1uzBhr+gaWTPMIeHE8P1H82EumpKMa+06HbPpx8=;
-        b=yhvdzQY0Yx2cwrYd7Mx5getJum1FSS19XjBqLt91lUTS4bFgF6FhIMrAEmp5MUHKLA
-         tgWcx9mHzOVNPqFXXA15ScGPG5QZbvSINMLwaQoZB9PLcMbGNZ0oXZ55ek3FGG9RBZGU
-         cBcDvVXGXo2S8ybeDKED9rY5MIupdlXUgcMM4Ov4rPy9ixINacjVyhvbWbMQSIG2cmd1
-         1qtamZ8GZxhQnaH31WrrW8CKLMgVDJ8s8Gnzr4hyu6Cx+oWz111+dAdxid8dRg8R12C8
-         BrKyU4OSPQJcKvFbgJFvFyiZNbDIW2KSOtWG8Lgnk4m9NWbJHPwrDZOQVzuO6qXIVYXU
-         /xFg==
-X-Gm-Message-State: AFq9FYL3FA066bg9/tzC8BNteAiVXheWR3T2Q01CjtCf7ozqWSGZL1+U
-	D1ZGR8BVEWbYwUX2DUeTvMftnUqCT1ozGfG6+m5zGzGv1WoPQl6acIqOtoTYdTyv
-X-Gm-Gg: AYBFou33L7gGWBaLNVZC0P1TBemRX+CnCHVfKAg2ERsXhksC9INesFFLpwfuJn3MQsA
-	rQMYeEHAsIqNJ5S6YEJl0zH7Q442D0NPhbCu+pn49qX/xRE6d0/vEGaLs+DSb4sO4t2nRB66nS0
-	nB0Vk03Zv6uk7w6MlF5ZM2HOFgxK1wj7LnO1qMpRyB5bxQszFB054c7CU/jS7/oisBhAUfxmz5j
-	6e87MKGPuVtFRw42bED0l+bpMOcB0T896BDHz1wm8acbLKw8nVa8jC77zPhnD41B9AMVZjZV6AY
-	fFeMBC8HJhuvxVlHroxSELUPHapYrSQs5ZNGF7l1kEton9b9XaErHUbMwlGtt4cfIkZnE/k5ihM
-	qPk4kZfrpHQYY53PpGDRWzLjOfrU/Aw1x+venrwVEKkgOe4yB5lNpYdzCfnuXxpTciUtbxTfBHf
-	b+J38/lOBfWLg6n+LpiyCFMmiNI4QxQt2QLIq7pzlsK5SI8yIZO5Yk50e8he2wY7+J5tGnD/8nM
-	eqsMnDc6tmK08DB9mAWbkjpCQIsuk8pk9stMkq4DBeWYEF7o7GjYAadwiBdaD3loU8JveCK/fuM
-	M/9ZP5+h787v51HJ/EVBSeAh0NjB3AEhGxPhhPRP/xECfjBP7C2dFAdGnBEY
-X-Received: by 2002:a05:600c:3115:b0:4a2:1a:a128 with SMTP id 5b1f17b1804b1-4a966774f69mr121458405e9.19.1793276879107;
+        bh=DCqWqP4ddTLRsbl2mP3DoKXY8NPop2A5xNgRv8tJoHg=;
+        b=vj3PRbHxLrBzUmGDoNAY83KAiebYteO8j+GO0gIUHWJXqRu5GEfdMmm9NFvLZlr/UT
+         bmORx7ePf3ELJRXD68ybm9lu0qsx4qMYK/gg0O2XzhFWtFNgFNJmgZLs0qrB2jMTUWGo
+         FPQaavQQLtJi/TnsqVnfXaPSLB/YphHNdfwuSQ4uc6jnNABoE8OVhFxzRMqCMxua73Nd
+         5PUzXo4OtfLozNukg+5bcIdUZpeWP2c4kO99leg8PTzzIQL5ppuG2dnR6Q2KvwYs137S
+         YcR/XLquAXf89TODzh6mQrTz95aZx4VsCmPwWqjfmLMeL2i/DRaulIHUqoM7tG5H18dh
+         MpPA==
+X-Gm-Message-State: AFq9FYLODcUJZYdN9XSabbMRIZduA7vgXCx5FZpBdjygwE7OGrECxDpy
+	cWP19q336zX/WnHlxfIMcGtFOrmORrDb1pKrfZJ5eFqD5vWARHMA+8H+ufyXy0o0
+X-Gm-Gg: AYBFou17iNMbbTjbxbKPJP23kOD9z1CVL+eHUxEPMCnOhRrpvOl0IrGbANHSjOVpjOH
+	yNrZhH/qfIDKjoFSDq8IPg/Fvagrb990YlwYvZ6bpL8zEPFn4fAPWaPLfW0XbYvLY+w4Uy5OKEz
+	zGNAoGe2ZgJu3QiCAtYSl28Pp6joNlAFikrB9Y3QdsuBrVngysyNv7ftHWSJCOp84wr+/W2vBVR
+	m7p5rBkGrd6QsyPIrHrhBudF5riluq16ybEG1Qv8iOn+aqj6EP/fwsjUQrL8WUV7EwKu+DAoi3r
+	on3jvOjx8bDBY2RK21XFpsTvpZO2nfw8nybC5XZKCV5IeU+OQUQd3Toi/hTAlMehaO3J0NgMKIe
+	RtMcpU2cIhVRErUL4npUJmFjfR1W8glujPkDbfyklfVUpPzmb3P2qRdn5Yottf3S4xFKy9tr/1k
+	ks5b01O/1H/pjTOEaSp/lLjRRp89VEEqgIDW/jFZzvyvfLDYgBb1HLn/xvOWFCBPc1Tti+0bSzW
+	cD6z3SiDn1dDrvz6VgcySRThee8LhsDfrarRFhMQ64hFY2KnmcfMMuHvOLOIKquOP4OBlRgZ4wQ
+	p45X9jWwMdHUY0NN1TB1Szr54cdCPKUSG4Kd7BQiqyeDstuImzpzTvNww9lq
+X-Received: by 2002:a05:600c:34ca:b0:4a2:133:45e1 with SMTP id 5b1f17b1804b1-4a967202e8emr121227745e9.24.1793276879899;
         Thu, 29 Oct 2026 05:27:59 -0700 (PDT)
 Received: from Cluster2.powerhub ([2a0a:ef40:18b5:9e01:225:90ff:fefc:9ffe])
-        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4aa7f322c46sm59729615e9.2.2026.10.29.05.27.58
+        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4aa7f322c46sm59729615e9.2.2026.10.29.05.27.59
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 29 Oct 2026 05:27:58 -0700 (PDT)
+        Thu, 29 Oct 2026 05:27:59 -0700 (PDT)
 From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 X-Google-Original-From: Artem Blagodarenko <ablagodarenko@thelustrecollective.com>
 To: linux-ext4@vger.kernel.org
@@ -84,10 +84,12 @@ Cc: tytso@mit.edu,
 	adilger.kernel@dilger.ca,
 	ablagodarenko@thelustrecollective.com,
 	Artem Blagodarenko <artem.blagodarenko@gmail.com>,
+	Andreas Dilger <adilger@whamcloud.com>,
+	Pravin Shelar <pravin@clusterfs.com>,
 	Andreas Dilger <adilger@dilger.ca>
-Subject: [PATCH v3 01/13] ext2fs: Consolidate duplicate min/max macros
-Date: Thu, 29 Oct 2026 12:27:32 +0000
-Message-ID: <20261029122744.230678-2-ablagodarenko@thelustrecollective.com>
+Subject: [PATCH v3 02/13] ext2fs: Clean up directory entry handling APIs
+Date: Thu, 29 Oct 2026 12:27:33 +0000
+Message-ID: <20261029122744.230678-3-ablagodarenko@thelustrecollective.com>
 X-Mailer: git-send-email 2.52.0
 In-Reply-To: <20261029122744.230678-1-ablagodarenko@thelustrecollective.com>
 References: <20261029122744.230678-1-ablagodarenko@thelustrecollective.com>
@@ -104,78 +106,315 @@ Content-Transfer-Encoding: 8bit
 
 From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 
-Move duplicate min() and max() macro definitions from individual source
-files (alloc.c, fallocate.c, rehash.c) to the common ext2fs.h header.
+Refactor directory entry manipulation code to use more appropriate macros
+and simplify API usage:
 
-Add include guards to prevent redefinition warnings when files define
-their own versions of these macros before including ext2fs.h.
+- Replace EXT2_DIR_REC_LEN(namelen) with EXT2_DIR_NAME_LEN(namelen)
+  to correctly calculate name length overhead instead of full record length
 
+- Rename EXT2_DIR_REC_LEN to EXT2_DIRENT_REC_LEN to show that it counts dirent.
+  Pass directory entry structs directly to EXT2_DIRENT_REC_LEN() instead of
+  extracting name_len field separately, leveraging helper function in macro
+
+- Use EXT2_FT_MASK constant instead of EXT2FS_LINK_FT_MASK for consistency
+  with standard ext2fs conventions
+
+This improves code clarity and reduces API misuse by matching intent
+(calculating name space vs. total record space) with the appropriate macro.
+
+Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
+Signed-off-by: Pravin Shelar <pravin@clusterfs.com>
 Signed-off-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 ---
- lib/ext2fs/alloc.c     | 2 --
- lib/ext2fs/ext2fs.h    | 9 +++++++++
- lib/ext2fs/fallocate.c | 1 -
- misc/e4defrag.c        | 1 -
- 4 files changed, 9 insertions(+), 4 deletions(-)
+ e2fsck/pass1.c           |  2 +-
+ e2fsck/pass2.c           | 15 +++++++--------
+ lib/ext2fs/dirblock.c    | 33 +++++++++++++++++++++++++++++++++
+ lib/ext2fs/ext2_fs.h     | 17 ++++++++++++++++-
+ lib/ext2fs/inline_data.c | 14 +++++++-------
+ lib/ext2fs/link.c        | 11 +++++------
+ lib/ext2fs/newdir.c      |  4 ++--
+ 7 files changed, 71 insertions(+), 25 deletions(-)
 
-diff --git a/lib/ext2fs/alloc.c b/lib/ext2fs/alloc.c
-index 3fd92167..ff29b888 100644
---- a/lib/ext2fs/alloc.c
-+++ b/lib/ext2fs/alloc.c
-@@ -26,8 +26,6 @@
- #include "ext2_fs.h"
- #include "ext2fs.h"
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index c9711446..0331711a 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -773,7 +773,7 @@ static void check_is_really_dir(e2fsck_t ctx, struct problem_context *pctx,
+ 		 */
+ 		memcpy(&dotdot, inode->i_block, sizeof(dotdot));
+ 		memcpy(&de, ((char *)inode->i_block) + EXT4_INLINE_DATA_DOTDOT_SIZE,
+-		       EXT2_DIR_REC_LEN(0));
++		       EXT2_DIR_NAME_LEN(0));
+ 		dotdot = ext2fs_le32_to_cpu(dotdot);
+ 		de.inode = ext2fs_le32_to_cpu(de.inode);
+ 		de.rec_len = ext2fs_le16_to_cpu(de.rec_len);
+diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
+index 036c0022..319e7e0e 100644
+--- a/e2fsck/pass2.c
++++ b/e2fsck/pass2.c
+@@ -862,11 +862,11 @@ static errcode_t insert_dirent_tail(ext2_filsys fs, void *dirbuf)
+ 	d = dirbuf;
+ 	top = EXT2_DIRENT_TAIL(dirbuf, fs->blocksize);
  
--#define min(a, b) ((a) < (b) ? (a) : (b))
--
- #undef DEBUG
+-	while (d->rec_len && !(d->rec_len & 0x3) && NEXT_DIRENT(d) <= top)
+-		d = NEXT_DIRENT(d);
++	while (d->rec_len && !(d->rec_len & 0x3) && EXT2_NEXT_DIRENT(d) <= top)
++		d = EXT2_NEXT_DIRENT(d);
  
- #ifdef DEBUG
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index c4fcb10b..374b8289 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -134,6 +134,15 @@ typedef struct ext2fs_struct_generic_bitmap_base *ext2fs_block_bitmap;
+ 	if (d != top) {
+-		unsigned int min_size = EXT2_DIR_REC_LEN(
++		unsigned int min_size = EXT2_DIR_NAME_LEN(
+ 				ext2fs_dirent_name_len(dirbuf));
+ 		if (min_size > (char *)top - (char *)d)
+ 			return EXT2_ET_DIR_NO_SPACE_FOR_CSUM;
+@@ -881,7 +881,6 @@ static errcode_t insert_dirent_tail(ext2_filsys fs, void *dirbuf)
  
- #define EXT2_FIRST_INODE(s)	EXT2_FIRST_INO(s)
+ 	return 0;
+ }
+-#undef NEXT_DIRENT
+ 
+ static errcode_t fix_inline_dir_size(e2fsck_t ctx, ext2_ino_t ino,
+ 				     size_t *inline_data_size,
+@@ -900,7 +899,7 @@ static errcode_t fix_inline_dir_size(e2fsck_t ctx, ext2_ino_t ino,
+ 	 */
+ 	if (old_size > EXT4_MIN_INLINE_DATA_SIZE &&
+ 	    old_size < EXT4_MIN_INLINE_DATA_SIZE +
+-		       EXT2_DIR_REC_LEN(1)) {
++		       EXT2_DIR_NAME_LEN(1)) {
+ 		old_size = EXT4_MIN_INLINE_DATA_SIZE;
+ 		new_size = old_size;
+ 	} else
+@@ -1187,7 +1186,7 @@ inline_read_fail:
+ 	if (((inline_data_size & 3) ||
+ 	     (inline_data_size > EXT4_MIN_INLINE_DATA_SIZE &&
+ 	      inline_data_size < EXT4_MIN_INLINE_DATA_SIZE +
+-				 EXT2_DIR_REC_LEN(1))) &&
++				 EXT2_DIR_NAME_LEN(1))) &&
+ 	    fix_problem(ctx, PR_2_BAD_INLINE_DIR_SIZE, &pctx)) {
+ 		errcode_t err = fix_inline_dir_size(ctx, ino,
+ 						    &inline_data_size, &pctx,
+@@ -1409,7 +1408,7 @@ skip_checksum:
+ 				memset(&dot, 0, sizeof(dot));
+ 				dirent = &dot;
+ 				dirent->inode = ino;
+-				dirent->rec_len = EXT2_DIR_REC_LEN(1);
++				dirent->rec_len = EXT2_DIR_NAME_LEN(1);
+ 				dirent->name_len = 1 | filetype;
+ 				dirent->name[0] = '.';
+ 			} else if (dot_state == 1) {
+@@ -1417,7 +1416,7 @@ skip_checksum:
+ 				dirent = &dotdot;
+ 				dirent->inode =
+ 					((struct ext2_dir_entry *)buf)->inode;
+-				dirent->rec_len = EXT2_DIR_REC_LEN(2);
++				dirent->rec_len = EXT2_DIR_NAME_LEN(2);
+ 				dirent->name_len = 2 | filetype;
+ 				dirent->name[0] = '.';
+ 				dirent->name[1] = '.';
+diff --git a/lib/ext2fs/dirblock.c b/lib/ext2fs/dirblock.c
+index 54b27772..d1d5a9e7 100644
+--- a/lib/ext2fs/dirblock.c
++++ b/lib/ext2fs/dirblock.c
+@@ -50,6 +50,39 @@ errcode_t ext2fs_read_dir_block3(ext2_filsys fs, blk64_t block,
+ 	return ext2fs_read_dir_block4(fs, block, buf, flags, 0);
+ }
  
 +/*
-+ * Utility macros
++ * Compute the dirdata length. This includes only optional extensions.
++ * Each extension has a bit set in the high 4 bits of
++ * de->file_type, and the extension length is the first byte in each entry.
 + */
-+#ifndef min
-+#define min(a, b) ((a) < (b) ? (a) : (b))
-+#endif
-+#ifndef max
-+#define max(a, b) ((a) > (b) ? (a) : (b))
++int ext2_get_dirdata_field_size(struct ext2_dir_entry *de,
++				 __u8 dirdata_flags)
++{
++	char *lenp = de->name + (de->name_len & EXT2_NAME_LEN) + 1 /* NUL */;
++	__u8 extra_data_flags = (de->name_len & ~(EXT2_FT_MASK << 8)) >> 12;
++	int dlen = 0;
++
++	dirdata_flags >>= 4;
++	while ((extra_data_flags & dirdata_flags) != 0) {
++		if (extra_data_flags & 1) {
++			if (dirdata_flags & 1)
++				dlen += *lenp;
++
++			lenp += *lenp;
++		}
++		extra_data_flags >>= 1;
++		dirdata_flags >>= 1;
++	}
++
++	/* add NUL terminator byte to dirdata length */
++	return dlen + (dlen != 0);
++}
++
++int ext2_get_dirdata_size(struct ext2_dir_entry *de)
++{
++	return ext2_get_dirdata_field_size(de, ~EXT2_FT_MASK);
++}
++
+ errcode_t ext2fs_read_dir_block2(ext2_filsys fs, blk_t block,
+ 				 void *buf, int flags EXT2FS_ATTR((unused)))
+ {
+diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
+index fcd42055..a4141eb7 100644
+--- a/lib/ext2fs/ext2_fs.h
++++ b/lib/ext2fs/ext2_fs.h
+@@ -1091,6 +1091,10 @@ struct ext2_dir_entry_tail {
+ #define EXT2_FT_SYMLINK		7
+ 
+ #define EXT2_FT_MAX		8
++#define EXT2_FT_MASK		0x0f
++#if EXT4_FT_MAX > EXT4_FT_MASK
++#error "conflicting EXT4_FT_MAX and EXT4_FT_MASK"
 +#endif
  
  /*
-  * Badblocks list definitions
-diff --git a/lib/ext2fs/fallocate.c b/lib/ext2fs/fallocate.c
-index 1ef989cd..82c18ab7 100644
---- a/lib/ext2fs/fallocate.c
-+++ b/lib/ext2fs/fallocate.c
-@@ -17,7 +17,6 @@
+  * Annoyingly, e2fsprogs always swab16s ext2_dir_entry.name_len, so we
+@@ -1100,6 +1104,9 @@ struct ext2_dir_entry_tail {
+  */
+ #define EXT2_DIR_NAME_LEN_CSUM	0xDE00
  
- #include "ext2_fs.h"
- #include "ext2fs.h"
--#define min(a, b) ((a) < (b) ? (a) : (b))
++int ext2_get_dirdata_field_size(struct ext2_dir_entry *de, __u8 dirdata_flags);
++int ext2_get_dirdata_size(struct ext2_dir_entry *de);
++
+ /*
+  * EXT2_DIR_PAD defines the directory entries boundaries
+  *
+@@ -1109,7 +1116,13 @@ struct ext2_dir_entry_tail {
+ #define EXT2_DIR_ENTRY_HASH_LEN		8
+ #define EXT2_DIR_PAD			4
+ #define EXT2_DIR_ROUND			(EXT2_DIR_PAD - 1)
+-#define EXT2_DIR_REC_LEN(name_len) ext2fs_dir_rec_len(name_len, 0)
++#define EXT2_DIR_NAME_LEN(name_len)	(((name_len) + \
++					  EXT2_DIR_ENTRY_HEADER_LEN + \
++					  EXT2_DIR_ROUND) & \
++					 ~EXT2_DIR_ROUND)
++#define EXT2_DIRENT_REC_LEN(de)	(EXT2_DIR_NAME_LEN(((de)->name_len &  \
++						     EXT2_NAME_LEN) +         \
++						    ext2_get_dirdata_size(de)))
  
- #undef DEBUG
+ static inline unsigned int ext2fs_dir_rec_len(__u8 name_len,
+ 						int extended)
+@@ -1202,4 +1215,6 @@ struct mmp_struct {
  
-diff --git a/misc/e4defrag.c b/misc/e4defrag.c
-index 68e937fd..e07f28cf 100644
---- a/misc/e4defrag.c
-+++ b/misc/e4defrag.c
-@@ -59,7 +59,6 @@
- 	fprintf(stderr, "\t%s\n", (msg))
- #define STATISTIC_ERR_MSG_WITH_ERRNO(msg)	\
- 	fprintf(stderr, "\t%s:%s\n", (msg), strerror(errno))
--#define min(x, y) (((x) > (y)) ? (y) : (x))
- #define CALC_SCORE(ratio) \
- 	((ratio) > 10 ? (80 + 20 * (ratio) / 100) : (8 * (ratio)))
- /* Wrap up the free function */
+ #define EXT4_ENC_STRICT_MODE_FL			(1 << 0) /* Reject invalid sequences */
+ 
++#define EXT2_NEXT_DIRENT(d)	((void *)((char *)(d) + (d)->rec_len))
++
+ #endif	/* _LINUX_EXT2_FS_H */
+diff --git a/lib/ext2fs/inline_data.c b/lib/ext2fs/inline_data.c
+index bd52e377..c8d2fa0c 100644
+--- a/lib/ext2fs/inline_data.c
++++ b/lib/ext2fs/inline_data.c
+@@ -149,7 +149,7 @@ int ext2fs_inline_data_dir_iterate(ext2_filsys fs, ext2_ino_t ino,
+ 	/* we first check '.' and '..' dir */
+ 	dirent.inode = ino;
+ 	dirent.name_len = 1;
+-	ext2fs_set_rec_len(fs, EXT2_DIR_REC_LEN(2), &dirent);
++	ext2fs_set_rec_len(fs, EXT2_DIR_NAME_LEN(2), &dirent);
+ 	dirent.name[0] = '.';
+ 	dirent.name[1] = '\0';
+ 	ctx->buf = (char *)&dirent;
+@@ -160,7 +160,7 @@ int ext2fs_inline_data_dir_iterate(ext2_filsys fs, ext2_ino_t ino,
+ 
+ 	dirent.inode = ext2fs_le32_to_cpu(inode.i_block[0]);
+ 	dirent.name_len = 2;
+-	ext2fs_set_rec_len(fs, EXT2_DIR_REC_LEN(3), &dirent);
++	ext2fs_set_rec_len(fs, EXT2_DIR_NAME_LEN(3), &dirent);
+ 	dirent.name[0] = '.';
+ 	dirent.name[1] = '.';
+ 	dirent.name[2] = '\0';
+@@ -296,14 +296,14 @@ static errcode_t ext2fs_inline_data_convert_dir(ext2_filsys fs, ext2_ino_t ino,
+ 	ext2fs_dirent_set_name_len(dir, 1);
+ 	ext2fs_dirent_set_file_type(dir, filetype);
+ 	dir->name[0] = '.';
+-	rec_len = (fs->blocksize - csum_size) - EXT2_DIR_REC_LEN(1);
+-	dir->rec_len = EXT2_DIR_REC_LEN(1);
++	rec_len = (fs->blocksize - csum_size) - EXT2_DIR_NAME_LEN(1);
++	dir->rec_len = EXT2_DIR_NAME_LEN(1);
+ 
+ 	/*
+ 	 * Set up entry for '..'
+ 	 */
+ 	dir = (struct ext2_dir_entry *) (bbuf + dir->rec_len);
+-	dir->rec_len = EXT2_DIR_REC_LEN(2);
++	dir->rec_len = EXT2_DIR_NAME_LEN(2);
+ 	dir->inode = ext2fs_le32_to_cpu(((__u32 *)ibuf)[0]);
+ 	ext2fs_dirent_set_name_len(dir, 2);
+ 	ext2fs_dirent_set_file_type(dir, filetype);
+@@ -313,11 +313,11 @@ static errcode_t ext2fs_inline_data_convert_dir(ext2_filsys fs, ext2_ino_t ino,
+ 	/*
+ 	 * Adjust the last rec_len
+ 	 */
+-	offset = EXT2_DIR_REC_LEN(1) + EXT2_DIR_REC_LEN(2);
++	offset = EXT2_DIR_NAME_LEN(1) + EXT2_DIR_NAME_LEN(2);
+ 	dir = (struct ext2_dir_entry *) (bbuf + offset);
+ 	memcpy(bbuf + offset, ibuf + EXT4_INLINE_DATA_DOTDOT_SIZE,
+ 	       size - EXT4_INLINE_DATA_DOTDOT_SIZE);
+-	size += EXT2_DIR_REC_LEN(1) + EXT2_DIR_REC_LEN(2) -
++	size += EXT2_DIR_NAME_LEN(1) + EXT2_DIR_NAME_LEN(2) -
+ 		EXT4_INLINE_DATA_DOTDOT_SIZE;
+ 
+ 	do {
+diff --git a/lib/ext2fs/link.c b/lib/ext2fs/link.c
+index eccbf0d2..15127466 100644
+--- a/lib/ext2fs/link.c
++++ b/lib/ext2fs/link.c
+@@ -197,7 +197,7 @@ static int link_proc(ext2_ino_t dir EXT2FS_ATTR((unused)),
+ 	if (ls->done)
+ 		return DIRENT_ABORT;
+ 
+-	rec_len = EXT2_DIR_REC_LEN(ls->namelen);
++	rec_len = EXT2_DIR_NAME_LEN(ls->namelen);
+ 
+ 	ls->err = ext2fs_get_rec_len(ls->fs, dirent, &curr_rec_len);
+ 	if (ls->err)
+@@ -226,7 +226,7 @@ static int link_proc(ext2_ino_t dir EXT2FS_ATTR((unused)),
+ 	 * truncate it and return.
+ 	 */
+ 	if (dirent->inode) {
+-		min_rec_len = EXT2_DIR_REC_LEN(ext2fs_dirent_name_len(dirent));
++		min_rec_len = EXT2_DIRENT_REC_LEN(dirent);
+ 		if (curr_rec_len < (min_rec_len + rec_len))
+ 			return ret;
+ 		rec_len = curr_rec_len - min_rec_len;
+@@ -254,8 +254,7 @@ static int link_proc(ext2_ino_t dir EXT2FS_ATTR((unused)),
+ 	ext2fs_dirent_set_name_len(dirent, ls->namelen);
+ 	strncpy(dirent->name, ls->name, ls->namelen);
+ 	if (ext2fs_has_feature_filetype(ls->sb))
+-		ext2fs_dirent_set_file_type(dirent,
+-					    ls->flags & EXT2FS_LINK_FT_MASK);
++		ext2fs_dirent_set_file_type(dirent, ls->flags & EXT2_FT_MASK);
+ 
+ 	ls->done++;
+ 	return DIRENT_ABORT|DIRENT_CHANGED;
+@@ -331,8 +330,8 @@ static errcode_t dx_move_dirents(ext2_filsys fs, struct dx_hash_map *map,
+ 		csum_size = sizeof(struct ext2_dir_entry_tail);
+ 
+ 	for (i = 0; i < count; i++) {
+-		de = (struct ext2_dir_entry *) ((char *)from + map[i].off);
+-		rec_len = EXT2_DIR_REC_LEN(ext2fs_dirent_name_len(de));
++		de = from + map[i].off;
++		rec_len = EXT2_DIRENT_REC_LEN(de);
+ 		memcpy(to, de, rec_len);
+ 		retval = ext2fs_set_rec_len(fs, rec_len, to);
+ 		if (retval)
+diff --git a/lib/ext2fs/newdir.c b/lib/ext2fs/newdir.c
+index 7f472850..f168d668 100644
+--- a/lib/ext2fs/newdir.c
++++ b/lib/ext2fs/newdir.c
+@@ -64,8 +64,8 @@ errcode_t ext2fs_new_dir_block(ext2_filsys fs, ext2_ino_t dir_ino,
+ 		ext2fs_dirent_set_name_len(dir, 1);
+ 		ext2fs_dirent_set_file_type(dir, filetype);
+ 		dir->name[0] = '.';
+-		rec_len = (fs->blocksize - csum_size) - EXT2_DIR_REC_LEN(1);
+-		dir->rec_len = EXT2_DIR_REC_LEN(1);
++		rec_len = (fs->blocksize - csum_size) - EXT2_DIR_NAME_LEN(1);
++		dir->rec_len = EXT2_DIR_NAME_LEN(1);
+ 
+ 		/*
+ 		 * Set up entry for '..'
 -- 
 2.52.0
 
