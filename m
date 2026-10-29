@@ -1,82 +1,82 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.128.53
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.128.48
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793276885;
-	b=bKsYYKVFV6lKpLWKKEvFLoQeQ+b2ialwG72u1sIFHcHmj0y+ra1VJjGtRzgU4ay+JrTh
-	 oUlwsuRz9htDPdS6SDlsMnw74/SiG1NWqH59K+LOS6wUGBwE58HkTfXUKb4qQ+oZDKuQv
-	 /QOMGba+sUh6s43mOrxEsuauFF8IdnyuTqwEdlMQT0CwkqmxzpwlDJdC6yrcqhEZY10BH
-	 yXSGqNwIOImyf1u18Z8fGyJMmPdFIKeq1gImHIJMBS2LLM0knApozP15PHb80Umb/63TE
-	 C29va6dglCqxObZIfQIXG2fp38yNoD0HvFpYtXrSoN8qEylBSDZUwrhVgor68M9HfIA==
+	t=1793276886;
+	b=OcY3wYwlD0UDprum7iM3hjhYuuOYcufcA5TelBxxRnl65HbjS/ouJAeTgPCatFedtHFI
+	 9UIWLDhAeL4/z5TPdtxh30NdORlHGSw741jNFl4UY0qrI95HeGspK0WaL0Bn35GEzmQHU
+	 jfWIXiXMM8/pT8yvfWJlz5EOJ+58F8I2/rNN4ickRdYU8yOZmVNDgTdrVNYhNy+XMeMsX
+	 rBA8CMHU0r1yMMSvvCVg/g6r/cBaP+sJhqBI5MRFo2TLPFgAkVXOfrVo6U7e0E+JD65a2
+	 8TVvR+XwMfWwmc3Nwd/zq0yY5g2fGHaGetlJKpeFRlLLz0wbFSx+DEQXJmLf/oXUMkw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793276885;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793276886;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
 	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:From:
 	 X-Google-Original-From:To:Cc:Subject:Date:Message-ID:X-Mailer:
 	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
-	bh=PUb2oFEqqzWFysX2bI/yg1sdKDDlRwer8w5K9tqUBEE=;
-	b=AR4Oz4WwgyE1PuSEWNAj/lDeV4foVk5Q7vnil54GuLTequMQo5mLPu/AOjoE0aUsbmnM
-	 E8HGt7G9HSv6w2EsM3QJE+PIcbIM7ullGLHSjBUctFeKhwNKu/gRJsECG+ZpwCoKROGTK
-	 j0Ltr3wYrQSDYEdH+YVZ0jdMPY/84eN3jEjZh6x0oJlg51u3AnaFVc4UOGaKAKO1roqab
-	 WkiuYN1PEgmFLGlPUf8Z7iqACWaPTTTl5Nqt+X12bp9eNFt5m3AdrxbM6lI2WcycveGdm
-	 kMfU8TtnmETf1Oud+4C/VFLHpr5puoAUOlBCwMzIU7eeZg8vB5wd+J59cTbP+1iGBEQ==
+	bh=Oh5wadepJCt4QSXjtXcy/CqSnuwNEPwAM0JuVlA645E=;
+	b=QK08/UMB+tM+xrLnFOWz+uFUuJoHOl3TAnoTfg1FSutY9IZ9ep7GTJsHJU+GGzVtPcuQ
+	 yYx5kb3fFnn055jvE8mdZiy8flyXvjP+cc75UnUtrrrdTzmteZpC4ifi1YxSiSFU35b/z
+	 XavqmLJij3QWYHrVVpgY3C+YTB6Iq/8RrNhiSutfEB9TUM0l/vuLVQ2UcGf3QVCdibWRm
+	 d6tt78eY0wOMNjFQmlxg9mQTSk5LRdEwG8xtdSiW92Mx1QDWre2ZDRYk2zk9/7meo7OW+
+	 XSS8cXMUfPOzaBb3bBpLV04wwHP3xQQFZHafxyCcMRNx+xEzgZGyuqeaiSiO0HyMUVQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=gmail.com;
 	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=pqCVkbEp;
-	arc=none smtp.remote-ip=209.85.128.53
-Received: from mail-wm1-f53.google.com (mail-wm1-f53.google.com [209.85.128.53])
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=XBfqwLtw;
+	arc=none smtp.remote-ip=209.85.128.48
+Received: from mail-wm1-f48.google.com (mail-wm1-f48.google.com [209.85.128.48])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1AABC606A324
-	for <linux-ext4@vger.kernel.org>; Thu, 29 Oct 2026 12:28:04 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 1AABC606A324
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E2852606A31F
+	for <linux-ext4@vger.kernel.org>; Thu, 29 Oct 2026 12:28:05 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org E2852606A31F
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=pqCVkbEp
-Received: by mail-wm1-f53.google.com with SMTP id 5b1f17b1804b1-4a218c463d1so13574635e9.0
-        for <linux-ext4@vger.kernel.org>; Thu, 29 Oct 2026 05:28:04 -0700 (PDT)
+	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=XBfqwLtw
+Received: by mail-wm1-f48.google.com with SMTP id 5b1f17b1804b1-4a140e7405dso21382495e9.3
+        for <linux-ext4@vger.kernel.org>; Thu, 29 Oct 2026 05:28:05 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1793276883; x=1793881683; darn=vger.kernel.org;
+        d=gmail.com; s=20260707; t=1793276884; x=1793881684; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=PUb2oFEqqzWFysX2bI/yg1sdKDDlRwer8w5K9tqUBEE=;
-        b=pqCVkbEpr1ljfdyzCD5AQLEFmO9ve+wE2H0fIDe0R/oG5Vi3RTTb0UEtxvBHxgNWFc
-         oSgVbEWW0Q9MCSPLgpXN2pHIKUJmKZTasIUjDJARj2gLsQZZQxxNrpvURCiohW1CvwrP
-         IqKlurm+cSXZR7JvkuK/1N4zs3pySKAorLYSaMQoqjNO+c0IG6wuzJhSz0jhmmUQIgz8
-         XJ0u8Ms8MRsIZMpxkSxES4c6KSLz2ltXnJ++JvLiUNSXN86aDzVJqspMTRC9kjzMI07U
-         Ppbf0aokT4WIo7H+pYhlZwColq58SlEF4mHIMLaizWvQ9i1dVbZQpg/PlsWvPU8xplGB
-         Fw9w==
+        bh=Oh5wadepJCt4QSXjtXcy/CqSnuwNEPwAM0JuVlA645E=;
+        b=XBfqwLtwUqywYW0/I6gKg6BfUHue/Sp1IjUI1ZeA1oB0rWCPs4K4jmHg6xFKvw8gkh
+         JNj3dsTde3z7RCXbCO2wyLieZpd7bdWOAJ47j5RoglGNHT1/WlS0JOrwoNkADGZScBGJ
+         ukYuLwB10yGwDEuAyMnW+j3z/gUCjiyykq+lTbk/9z+UtVMZ6CKskDpCdZkEO3S1eLRD
+         1yik75OnoJJGSt4W1pABJEvAMHJo+jSk2Io5j2Dz3peBW12brPVgIsXXoebkcFPp1rku
+         kB3A/awDvxHX5kwsQC+cBOV++yVEzLY0M4MCZa+dEVHyD4T/S/xzBuddo9+WCZzOrZLl
+         kuRA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1793276883; x=1793881683;
+        d=1e100.net; s=20260707; t=1793276884; x=1793881684;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=PUb2oFEqqzWFysX2bI/yg1sdKDDlRwer8w5K9tqUBEE=;
-        b=wQe30US61S1OiSejtg1hBVHMhQGOwS3GJ4Toq/dClDuFotU71BqJHIdHJ4CI1s4V/b
-         j4BWpyqzdOVaFdjhg+lUfEM7ZXHNa8LuJp+tHD/d9OEfgWnaspbdNZmE+UuOjxJzjktS
-         oXupIAR6Dfdg4jnruGjwPEmEXw/9JwRMP1QphzU/tG8raL36WDSnTAg0OEnXss5Srtvl
-         gdRvkwgloNzBPxmd0HUaJaegCq3+ahkee1d5ZUSuH0uRRgSIHI/D2vCodlJ7e2rdGluw
-         59b9Nn3x8G+L/KKsr/qouPhH3ygExWdabNhCYDsqNY4bTVJuOKrbKY9FPmK11txO3nxR
-         MSNg==
-X-Gm-Message-State: AFq9FYKu37hBiyHbEKUu8WaUfNjJ/Dhu8HRUnTvQE8KVUSfMLV879/sK
-	R91SHoz79y2yy7incdZ/INQgMsy9q4tkiTzXAsapfYxNCu+wNPHEXiJr9VMifx8V
-X-Gm-Gg: AYBFou1ccggbsbeWI+F9MRAor4Qg/OnHQjoNeNhHwXPLt+GMUaOM9wd+lWr9YX0ApTy
-	tQb7cf7n75x6esmI5j9+NC918gx3OdsT+tJ7hwV6WSxSWJCjry4C/ai4gvcfzryTLpgyWeFVh+l
-	/FhLKIXTDJPqfI5YSSUexQ3MYJObc1a5wTm7KffBK3Cy5wgPjy+bqVsNQZLyO2m1YFyLvKtDXST
-	loylrwvKPgiYRrPuoMgaQllHtnXMFoLdYqt1s8FDYzTDaiyGiPiXgleVKHHlCPDpbRCQbSRfiZ8
-	+ew45EiN3Tv25ndRDDZuLm+GaKSAGK8ucsn22jat7nkuBqLupXTimKTrS1ucRH8B0QrSVSGmGwR
-	whbB7Hd0HCTV6zJ0tOD4Z3PRZIZLfmTPbYwGP+s8pkzdFmWB70nkYcrW8KQ0eSFpU99aSYnJHFG
-	0FEY3pqqWeLVk5SaSZhctl1TgyAA4vaMtjbLjLlvxd+AjUoXdC+ifWQyPOFcIexCJhGIk2oMt/0
-	Meg1ZJvZsHjVomtW4vp71JLyjoVgY1EreghAimVUVoPbqm9Xo8bAmEKI5OK1rIIADHOseXjNPPn
-	xxRsnMU6uCBNpp71p03TvLwraT7G+JleAUYfOkyHVxEU8F5ZKW8kAOzil53k
-X-Received: by 2002:a05:600c:1d1a:b0:4a1:f688:a5d5 with SMTP id 5b1f17b1804b1-4a966c41de5mr120076385e9.23.1793276883350;
-        Thu, 29 Oct 2026 05:28:03 -0700 (PDT)
+        bh=Oh5wadepJCt4QSXjtXcy/CqSnuwNEPwAM0JuVlA645E=;
+        b=CO+sbOXnym2c/G4A8hEopX1SYsBygWS6I0gxbvsxJ84+pAdRGkUL7kl7qYxjpjZGgP
+         AXVfzHqAvQuhLcdfGe88CFqZipK6LYYoXus+U0mfHUqBuypYFC2qreRAe5FaKYsJ+Q/p
+         /ZQ8/niTLcPWfb/PVOwsOSNGDcd6cC5dFNJdda4bld0ZiIu1cDUpsjAcVC8tQWvRqdFA
+         p3O3gTCB0ryMrT/9WHTSolzziXpU4DkUgxg/+BpHxEzjqp5tUBhqwedzNBq4++WJWPv2
+         +Hb/ljOYxRvojdYe4fYlQlrh1YWHVyuNPCoDR5lNkxTyBwGodK5Pc1ITnbt6BJ0ZpCYN
+         wFuA==
+X-Gm-Message-State: AFq9FYI82kO668QSu4WC0GBa8HqbrDraG3B1TKAtbHbhAOun9Ipk+95J
+	PLxLRwIcmEuGDSrNeku+wLUKlz3AQ0qeA/AabPRKPGmoZ8RDimgWj9gdSYhgCDbW
+X-Gm-Gg: AYBFou0CnTy1xHtdG/27I3R7zQsFQR1perpn2pRb7rdF7npHw8FPQV/l6SwqBjU7+qG
+	ZEuECImA7tG/ZeXYYg1qO1aYQ4sarogx/IoSg3FkvtzHqR9sA3UzfKpCf61IpNOe2m7Pp348Seo
+	0pW5RYRLtFAxth4sYVpVmXQ0sKqwhmtx7bV5Bxsy2IrL6pzvFtGg4aJK6JiWqJwXAzIU3TBNDxD
+	0542tksZ8WN1J9Hfgkhj1A5sywv6Y965Odv6t1E/wmnAW2chkVFYox7+MSohezu0PWgD+AwPh/A
+	q5dvTQb7C3VOq0FUWARITW9NT6xWtS4XBGcABmimJrezU16hkoGfq5+D/Vn4Dab7oIfnbd7b7HA
+	ssMt/jO3JDTaoRdfgoPEJP7TY4zEaVf3tTytRAXJrpzqO4QzcdbDDzlItFD6Yrx63hKtLaMTrv3
+	xAe5iMut6/xOr/r03qahF7Tpmk/0crsBlEhOIrUEKkQlNCMqbQqQ4uNoTHStdnQINWpRWEELD6v
+	rHKFdOqJd/6sMYwBofZaCv8QGgcglchxQG6NqNSZa4dUze3kWM776Oy610q3LZqKDp1nCSqujT8
+	Ro2Zpis7TZvQAVwY8xN2dQc+kllyGaErvWdaykpLXPO03gpS7W0kTWWFEglk
+X-Received: by 2002:a05:600c:6088:b0:4a1:742e:3 with SMTP id 5b1f17b1804b1-4a9677ca203mr126960645e9.27.1793276884189;
+        Thu, 29 Oct 2026 05:28:04 -0700 (PDT)
 Received: from Cluster2.powerhub ([2a0a:ef40:18b5:9e01:225:90ff:fefc:9ffe])
-        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4aa7f322c46sm59729615e9.2.2026.10.29.05.28.02
+        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4aa7f322c46sm59729615e9.2.2026.10.29.05.28.03
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 29 Oct 2026 05:28:02 -0700 (PDT)
+        Thu, 29 Oct 2026 05:28:03 -0700 (PDT)
 From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 X-Google-Original-From: Artem Blagodarenko <ablagodarenko@thelustrecollective.com>
 To: linux-ext4@vger.kernel.org
@@ -86,11 +86,10 @@ Cc: tytso@mit.edu,
 	Artem Blagodarenko <artem.blagodarenko@gmail.com>,
 	Andreas Dilger <adilger@whamcloud.com>,
 	Pravin Shelar <pravin@clusterfs.com>,
-	Etienne AUJAMES <eaujames@ddn.com>,
 	Andreas Dilger <adilger@dilger.ca>
-Subject: [PATCH v3 07/13] e2fsck: directory rehashing with dirdata support
-Date: Thu, 29 Oct 2026 12:27:38 +0000
-Message-ID: <20261029122744.230678-8-ablagodarenko@thelustrecollective.com>
+Subject: [PATCH v3 08/13] debugfs: add dirdata display support
+Date: Thu, 29 Oct 2026 12:27:39 +0000
+Message-ID: <20261029122744.230678-9-ablagodarenko@thelustrecollective.com>
 X-Mailer: git-send-email 2.52.0
 In-Reply-To: <20261029122744.230678-1-ablagodarenko@thelustrecollective.com>
 References: <20261029122744.230678-1-ablagodarenko@thelustrecollective.com>
@@ -107,404 +106,175 @@ Content-Transfer-Encoding: 8bit
 
 From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 
-Implement complex directory optimization and rehashing with proper dirdata
-handling. This prevents corruption when renaming duplicate entries with name
-expansion.
+Enhance debugfs debug utility with dirdata display capabilities. This allows
+users to inspect Lustre File IDentifier (LUFID) and checksum hash (CFHASH)
+data embedded in directory entries.
 
 Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
 Signed-off-by: Pravin Shelar <pravin@clusterfs.com>
-Signed-off-by: Etienne AUJAMES <eaujames@ddn.com>
 Signed-off-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 ---
- e2fsck/rehash.c | 234 ++++++++++++++++++++++++++++++++----------------
- 1 file changed, 155 insertions(+), 79 deletions(-)
+ debugfs/debugfs.8.in |  7 ++++-
+ debugfs/ls.c         | 63 +++++++++++++++++++++++++++++++++++++++++---
+ debugfs/ncheck.c     |  3 +++
+ 3 files changed, 69 insertions(+), 4 deletions(-)
 
-diff --git a/e2fsck/rehash.c b/e2fsck/rehash.c
-index c9a47ad6..7659ddd5 100644
---- a/e2fsck/rehash.c
-+++ b/e2fsck/rehash.c
-@@ -53,6 +53,9 @@
- #include "problem.h"
- #include "support/sort_r.h"
+diff --git a/debugfs/debugfs.8.in b/debugfs/debugfs.8.in
+index 08f41fdf..5a5dd32b 100644
+--- a/debugfs/debugfs.8.in
++++ b/debugfs/debugfs.8.in
+@@ -575,7 +575,7 @@ Instead, it will stop only when the entire log is printed or after
+ .I num_trans
+ transactions.
+ .TP
+-.BI ls " [\-l] [\-c] [\-d] [\-p] [\-r] filespec"
++.BI ls " [\-l] [\-c] [\-d] [\-p] [\-r] [\-D] filespec"
+ Print a listing of the files in the directory
+ .IR filespec .
+ The
+@@ -595,6 +595,11 @@ non-printing characters at the end of filenames.
+ The
+ .I \-r
+ flag will force the printing of the filename, even if it is encrypted.
++The
++.I \-D
++flag will print the extra data found inside each entry when the
++.I \-l
++flag is used.
+ .TP
+ .BI list_deleted_inodes " [limit]"
+ List deleted inodes, optionally limited to those deleted within
+diff --git a/debugfs/ls.c b/debugfs/ls.c
+index 613ad738..d225982c 100644
+--- a/debugfs/ls.c
++++ b/debugfs/ls.c
+@@ -24,6 +24,7 @@ extern char *optarg;
+ #endif
  
-+#define min(a, b) ((a) < (b) ? (a) : (b))
-+#define max(a, b) ((a) > (b) ? (a) : (b))
-+
- /* Schedule a dir to be rebuilt during pass 3A. */
- void e2fsck_rehash_dir_later(e2fsck_t ctx, ext2_ino_t ino)
- {
-@@ -86,6 +89,8 @@ struct fill_dir_struct {
- 	int compress;
- 	ext2_ino_t parent;
- 	ext2_ino_t dir;
-+	struct ext2_dir_entry *dot_de;
-+	struct ext2_dir_entry *dotdot_de;
- };
+ #include "debugfs.h"
++#include "ext2fs/lfsck.h"
  
- struct hash_entry {
-@@ -188,11 +193,14 @@ static int fill_dir_block(ext2_filsys fs,
- 			return BLOCK_ABORT;
- 		}
- 		if (!fd->compress && (name_len == 1) &&
--		    (dirent->name[0] == '.'))
-+		    (dirent->name[0] == '.')) {
-+			fd->dot_de = dirent;
- 			continue;
-+		}
- 		if (!fd->compress && (name_len == 2) &&
- 		    (dirent->name[0] == '.') && (dirent->name[1] == '.')) {
- 			fd->parent = dirent->inode;
-+			fd->dotdot_de = dirent;
- 			continue;
- 		}
- 		if (fd->num_array >= fd->max_array) {
-@@ -210,7 +218,7 @@ static int fill_dir_block(ext2_filsys fs,
- 		}
- 		ent = fd->harray + fd->num_array++;
- 		ent->dir = dirent;
--		fd->dir_size += ext2fs_dir_rec_len(name_len, extended);
-+		fd->dir_size += ext2fs_dirdata_rec_len(dirent, extended);
- 		ent->ino = dirent->inode;
- 		if (extended) {
- 			ent->hash = EXT2_DIRENT_HASH(dirent);
-@@ -391,66 +399,128 @@ static errcode_t get_next_block(ext2_filsys fs, struct out_dir *outdir,
- 	return 0;
- }
- 
-+static void increment_name(char *str, int len)
-+{
-+	int i;
-+
-+	for (i = len - 1; i >= 0; i--) {
-+		switch(str[i]) {
-+		case '~':
-+			str[i] = '1';
-+			if (i > 0 && len > 2)
-+				str[i-1] = '~';
-+			break;
-+		case '9':
-+			if (i > 1) {
-+				str[i] = '0';
-+				continue;
-+			}
-+			str[i] = 'a';
-+			break;
-+		case 'z':
-+			str[i] = 'A';
-+			break;
-+		case 'Z':
-+			str[i] = '0';
-+			continue;
-+		default:
-+			if (!isalnum(str[i]))
-+				str[i] = '~';
-+			else
-+				str[i]++;
-+		}
-+		break;
-+	}
-+}
-+
  /*
-  * This function is used to make a unique filename.  We do this by
-  * appending ~0, and then incrementing the number.  However, we cannot
-  * expand the length of the filename beyond the padding available in
-  * the directory entry.
-+ * e.g:
-+ * - test (max: 6)	-> test~0
-+ * - test~9 (max: 6)	-> tes~10
-+ * - test (max: 4)	-> te~0
-+ * - te (max: 3)	-> t~0
-+ * - t (max: 2)		-> t~
-+ * - t~ (max: 2)	-> t1
-+ * - t9 (max: 2)	-> ta
-+ * - tZ (max: 2)	-> u0
-+ * - t (max: 1)		-> u
-  */
--static void mutate_name(char *str, unsigned int *len)
-+static void mutate_name(char *str, int *len, int max_len)
- {
- 	int i;
--	unsigned int l = *len;
-+	int l = *len;
+  * list directory
+@@ -32,6 +33,7 @@ extern char *optarg;
+ #define LONG_OPT	0x0001
+ #define PARSE_OPT	0x0002
+ #define RAW_OPT		0x0004
++#define DIRDATA_OPT	0x0008
+ #define ENCRYPT_OPT	0x8000
  
- 	/*
- 	 * First check to see if it looks the name has been mutated
- 	 * already
- 	 */
-+	max_len = max(max_len, l);
- 	for (i = l-1; i > 0; i--) {
--		if (!isdigit(str[i]))
-+		if (!isalnum(str[i]))
- 			break;
- 	}
--	if ((i == (int)l - 1) || (str[i] != '~')) {
--		if (((l-1) & 3) < 2)
--			l += 2;
--		else
--			l = (l+3) & ~3;
--		if (l > 255)
--			l = 255;
+ struct list_dir_struct {
+@@ -44,6 +46,55 @@ struct list_dir_struct {
+ static const char *monstr[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+ 				"Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+ 
++static void list_dirdata(struct list_dir_struct *ls,
++			 struct ext2_dir_entry *dirent)
++{
++	unsigned char	*data;
++	int		dlen;
++	__u8		dirdata_mask;
++	__u8		file_type = dirent->name_len >> 8;
 +
-+	if ((i != l-1 && str[i] == '~') ||
-+	    (max_len <= 2 && max_len == l)) {
-+		increment_name(str, l);
-+		return;
++	data = (unsigned char *)dirent->name +
++		(dirent->name_len & EXT2_NAME_LEN) + 1;
++
++	for (dirdata_mask = EXT2_FT_MASK + 1;
++	     dirdata_mask != 0; dirdata_mask <<= 1) {
++		if ((dirdata_mask & file_type) == 0)
++			continue;
++
++		dlen = data[0];
++
++		if (dirdata_mask == EXT2_DIRENT_LUFID) {
++			struct lu_fid fid;
++			int offset = 0;
++			fprintf(ls->f, " fid=");
++			while (offset < (dlen - 1)) {
++				memcpy(&fid, data + offset + 1, sizeof(fid));
++				fid_be_to_cpu(&fid, &fid);
++				offset += sizeof(fid);
++				fprintf(ls->f, DFID, PFID(&fid));
++				if (offset < (dlen - 1))
++					fprintf(ls->f, ",");
++			}
++		} else if (dirdata_mask == EXT2_DIRENT_CFHASH) {
++			struct ext4_dirent_hash hash;
++
++			memcpy(&hash, data, sizeof(hash));
++			hash_le_to_cpu(&hash, &hash);
++
++			fprintf(ls->f, "hash: 0x%08x, minor_hash: 0x%08x",
++				hash.dh_hash.hash, hash.dh_hash.minor_hash);
++		} else {
++			int i;
++
++			for (i = 1; i < dlen; i++)
++				fprintf(ls->f, "%02x", data[i]);
++		}
++
++		data += dlen;
 +	}
-+
-+	/* Add the first suffix: "~0" */
-+	l += min(2, max_len - l);
-+	if (l > 2) {
- 		str[l-2] = '~';
- 		str[l-1] = '0';
--		*len = l;
--		return;
-+	} else {
-+		str[l-1] = '~';
- 	}
--	for (i = l-1; i >= 0; i--) {
--		if (isdigit(str[i])) {
--			if (str[i] == '9')
--				str[i] = '0';
--			else {
--				str[i]++;
--				return;
--			}
--			continue;
--		}
--		if (i == 1) {
--			if (str[0] == 'z')
--				str[0] = 'A';
--			else if (str[0] == 'Z') {
--				str[0] = '~';
--				str[1] = '0';
--			} else
--				str[0]++;
--		} else if (i > 0) {
--			str[i] = '1';
--			str[i-1] = '~';
--		} else {
--			if (str[0] == '~')
--				str[0] = 'a';
--			else
--				str[0]++;
-+
-+	*len = l;
 +}
 +
-+
-+static errcode_t rename_dentry(struct ext2_dir_entry *de, char *new_name,
-+			       unsigned int new_len)
-+{
-+	int dirdata_size = ext2_get_dirdata_size(de);
-+	int diff = new_len - ext2fs_dirent_name_len(de);
-+	int new_dirdata_off = offsetof(typeof(*de), name) + new_len;
-+	void *mv_src, *mv_dst;
-+
-+	if (diff <= 0 || !dirdata_size) {
-+		memcpy(de->name, new_name, new_len);
-+		ext2fs_dirent_set_name_len(de, new_len);
-+	}
-+
-+	if (!dirdata_size || !diff)
-+		return 0;
-+
-+	/* move dirdata if needed */
-+	if (diff > 0 ) {
-+		int rec_len = EXT2_DIRENT_REC_LEN(de);
-+
-+		/* this should nerver happen (see mutate_name()) */
-+		if (new_dirdata_off + dirdata_size > rec_len) {
-+			com_err("rename_dentry", ERANGE,
-+				_("failed to rename %u"), de->inode);
-+			return ERANGE;
- 		}
--		break;
- 	}
-+
-+	mv_dst = (void *)de + new_dirdata_off;
-+	mv_src = mv_dst - diff;
-+	memmove(mv_dst, mv_src, dirdata_size);
-+
-+	if (diff > 0) {
-+		memcpy(de->name, new_name, new_len);
-+		ext2fs_dirent_set_name_len(de, new_len);
-+	}
-+
-+	return 0;
- }
- 
- static int duplicate_search_and_fix(e2fsck_t ctx, ext2_filsys fs,
-@@ -463,7 +533,7 @@ static int duplicate_search_and_fix(e2fsck_t ctx, ext2_filsys fs,
- 	blk_t			i, j;
- 	int			fixed = 0;
- 	char			new_name[256];
--	unsigned int		new_len;
-+	int			new_len, max_len;
- 	int			hash_alg;
- 	int hash_flags = fd->inode->i_flags & EXT4_CASEFOLD_FL;
- 
-@@ -508,7 +578,9 @@ static int duplicate_search_and_fix(e2fsck_t ctx, ext2_filsys fs,
- 			continue;
- 		}
- 		memcpy(new_name, ent->dir->name, new_len);
--		mutate_name(new_name, &new_len);
-+		max_len = min(EXT2_NAME_LEN,
-+			      new_len + ext2fs_dir_rec_padding(ent->dir));
-+		mutate_name(new_name, &new_len, max_len);
- 		for (j=0; j < fd->num_array; j++) {
- 			if ((i==j) ||
- 			    !same_name(cmp_ctx, new_name, new_len,
-@@ -516,15 +588,14 @@ static int duplicate_search_and_fix(e2fsck_t ctx, ext2_filsys fs,
- 				       ext2fs_dirent_name_len(fd->harray[j].dir))) {
- 				continue;
- 			}
--			mutate_name(new_name, &new_len);
-+			mutate_name(new_name, &new_len, max_len);
- 
- 			j = -1;
- 		}
- 		new_name[new_len] = 0;
- 		pctx.str = new_name;
--		if (fix_problem(ctx, PR_2_NON_UNIQUE_FILE, &pctx)) {
--			memcpy(ent->dir->name, new_name, new_len);
--			ext2fs_dirent_set_name_len(ent->dir, new_len);
-+		if (fix_problem(ctx, PR_2_NON_UNIQUE_FILE, &pctx) &&
-+		    !rename_dentry(ent->dir, new_name, new_len)) {
- 			ext2fs_dirhash2(hash_alg, new_name, new_len,
- 					fs->encoding, hash_flags,
- 					fs->super->s_hash_seed,
-@@ -588,8 +659,7 @@ static errcode_t copy_dir_entries(e2fsck_t ctx,
- 		ent = fd->harray + i;
- 		if (ent->dir->inode == 0)
- 			continue;
--		rec_len = ext2fs_dir_rec_len(ext2fs_dirent_name_len(ent->dir),
--					     hash_in_entry);
-+		rec_len = ext2fs_dirdata_rec_len(ent->dir, hash_in_entry);
- 		if (rec_len > left) {
- 			if (left) {
- 				left += prev_rec_len;
-@@ -624,8 +694,7 @@ static errcode_t copy_dir_entries(e2fsck_t ctx,
- 		if (retval)
- 			return retval;
- 		prev_rec_len = rec_len;
--		memcpy(dirent->name, ent->dir->name,
--		       ext2fs_dirent_name_len(dirent));
-+		memcpy(dirent->name, ent->dir->name, rec_len);
- 		if (hash_in_entry) {
- 			EXT2_DIRENT_HASHES(dirent)->hash = ext2fs_cpu_to_le32(ent->hash);
- 			EXT2_DIRENT_HASHES(dirent)->minor_hash =
-@@ -656,47 +725,52 @@ static errcode_t copy_dir_entries(e2fsck_t ctx,
- 
- static struct ext2_dx_root_info *set_root_node(ext2_filsys fs, char *buf,
- 				    ext2_ino_t ino, ext2_ino_t parent,
-+				    struct ext2_dir_entry *dot_de,
-+				    struct ext2_dir_entry *dotdot_de,
- 				    struct ext2_inode *inode)
+ static int print_filename(FILE *f, struct ext2_dir_entry *dirent, int options)
  {
--	struct ext2_dir_entry 		*dir;
--	struct ext2_dx_root_info  	*root;
-+	struct ext2_dir_entry		*dirent;
-+	struct ext2_dx_root_info	*root;
- 	struct ext2_dx_countlimit	*limits;
--	int				filetype = 0;
- 	int				csum_size = 0;
--
--	if (ext2fs_has_feature_filetype(fs->super))
--		filetype = EXT2_FT_DIR;
-+	int				offset;
-+	int				rec_len;
+ 	unsigned char	ch;
+@@ -146,7 +197,10 @@ static int list_dir_proc(ext2_ino_t dir EXT2FS_ATTR((unused)),
+ 			inode_uid(inode), inode_gid(inode));
+ 			fprintf(ls->f, "%5llu",
+ 				(unsigned long long) EXT2_I_SIZE(&inode));
+-		fprintf(ls->f, " %s ", datestr);
++		fprintf(ls->f, " %s", datestr);
++		if ((ls->options & DIRDATA_OPT) != 0)
++			list_dirdata(ls, dirent);
++		fprintf(ls->f, " ");
+ 		print_filename(ls->f, dirent, options);
+ 		fputc('\n', ls->f);
+ 	} else {
+@@ -195,7 +249,7 @@ void do_list_dir(int argc, ss_argv_t argv, int sci_idx EXT2FS_ATTR((unused)),
+ 		return;
  
- 	memset(buf, 0, fs->blocksize);
--	dir = (struct ext2_dir_entry *) buf;
--	dir->inode = ino;
--	dir->name[0] = '.';
--	ext2fs_dirent_set_name_len(dir, 1);
--	ext2fs_dirent_set_file_type(dir, filetype);
--	dir->rec_len = 12;
--	dir = (struct ext2_dir_entry *) (buf + 12);
--	dir->inode = parent;
--	dir->name[0] = '.';
--	dir->name[1] = '.';
--	ext2fs_dirent_set_name_len(dir, 2);
--	ext2fs_dirent_set_file_type(dir, filetype);
--	dir->rec_len = fs->blocksize - 12;
--
--	root = (struct ext2_dx_root_info *) (buf+24);
-+	dirent = (struct ext2_dir_entry *) buf;
-+	dirent->inode = ino;
-+
-+	dirent->name_len = dot_de->name_len;
-+	offset = rec_len = dirent->rec_len = dot_de->rec_len;
-+	memcpy(dirent->name, dot_de->name, rec_len);
-+
-+	dirent = EXT2_NEXT_DIRENT(dirent);
-+	/* set to jump over the index block */
-+
-+	dirent->inode = parent;
-+
-+	dirent->name_len = dotdot_de->name_len;
-+	dirent->rec_len = fs->blocksize - rec_len;
-+	rec_len = EXT2_DIRENT_REC_LEN(dotdot_de);
-+	memcpy(dirent->name, dotdot_de->name, rec_len);
-+	offset += rec_len;
-+
-+	root = (struct ext2_dx_root_info *)(buf + offset);
- 	root->reserved_zero = 0;
- 	if (ext4_hash_in_dirent(inode))
- 		root->hash_version = EXT2_HASH_SIPHASH;
- 	else
- 		root->hash_version = fs->super->s_def_hash_version;
--	root->info_length = 8;
-+	root->info_length = sizeof(*root);
- 	root->indirect_levels = 0;
- 	root->unused_flags = 0;
-+	offset += root->info_length;
+ 	reset_getopt();
+-	while ((c = getopt (argc, argv, "cdlpr")) != EOF) {
++	while ((c = getopt(argc, argv, "cdDlpr")) != EOF) {
+ 		switch (c) {
+ 		case 'c':
+ 			flags |= DIRENT_FLAG_INCLUDE_CSUM;
+@@ -203,6 +257,9 @@ void do_list_dir(int argc, ss_argv_t argv, int sci_idx EXT2FS_ATTR((unused)),
+ 		case 'l':
+ 			ls.options |= LONG_OPT;
+ 			break;
++		case 'D':
++			ls.options |= DIRDATA_OPT;
++			break;
+ 		case 'd':
+ 			flags |= DIRENT_FLAG_INCLUDE_REMOVED;
+ 			break;
+@@ -219,7 +276,7 @@ void do_list_dir(int argc, ss_argv_t argv, int sci_idx EXT2FS_ATTR((unused)),
  
- 	if (ext2fs_has_feature_metadata_csum(fs->super))
- 		csum_size = sizeof(struct ext2_dx_tail);
- 
--	limits = (struct ext2_dx_countlimit *) (buf+32);
--	limits->limit = (fs->blocksize - (32 + csum_size)) /
-+	limits = (struct ext2_dx_countlimit *) (buf + offset);
-+	limits->limit = (fs->blocksize - (offset + csum_size)) /
- 			sizeof(struct ext2_dx_entry);
- 	limits->count = 0;
- 
-@@ -790,6 +864,8 @@ static errcode_t calculate_tree(ext2_filsys fs,
- 				struct out_dir *outdir,
- 				ext2_ino_t ino,
- 				ext2_ino_t parent,
-+				struct ext2_dir_entry *dot_de,
-+				struct ext2_dir_entry *dotdot_de,
- 				struct ext2_inode *inode)
- {
- 	struct ext2_dx_root_info	*root_info;
-@@ -804,7 +880,8 @@ static errcode_t calculate_tree(ext2_filsys fs,
- 		.done = false
- 	};
- 
--	root_info = set_root_node(fs, outdir->buf, ino, parent, inode);
-+	root_info = set_root_node(fs, outdir->buf, ino, parent, dot_de,
-+				  dotdot_de, inode);
- 	root_limit = (void *)((char *)root_info + root_info->info_length);
- 
- 	/* Write out the pointer blocks */
-@@ -1031,11 +1108,10 @@ resort:
- 	if (retval)
- 		goto errout;
- 
--	free(dir_buf); dir_buf = 0;
--
- 	if (!fd.compress) {
- 		/* Calculate the interior nodes */
--		retval = calculate_tree(fs, &outdir, ino, fd.parent, fd.inode);
-+		retval = calculate_tree(fs, &outdir, ino, fd.parent,
-+					fd.dot_de, fd.dotdot_de, fd.inode);
- 		if (retval)
- 			goto errout;
+ 	if (argc > optind+1) {
+ 	print_usage:
+-		com_err(0, 0, "Usage: ls [-c] [-d] [-l] [-p] [-r] file");
++		com_err(0, 0, "Usage: ls [-c] [-d] [-D] [-l] [-p] [-r] file");
+ 		return;
  	}
+ 
+diff --git a/debugfs/ncheck.c b/debugfs/ncheck.c
+index 1410e7c6..03d1e49c 100644
+--- a/debugfs/ncheck.c
++++ b/debugfs/ncheck.c
+@@ -51,6 +51,9 @@ static int ncheck_proc(struct ext2_dir_entry *dirent,
+ 	iw->position++;
+ 	if (iw->position <= 2)
+ 		return 0;
++	if (current_fs->super->s_feature_incompat &
++	    EXT4_FEATURE_INCOMPAT_DIRDATA)
++		filetype &= EXT2_FT_MASK;
+ 	for (i=0; i < iw->num_inodes; i++) {
+ 		if (iw->iarray[i] == dirent->inode) {
+ 			if (!iw->parent && !iw->get_pathname_failed) {
 -- 
 2.52.0
 
