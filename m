@@ -1,56 +1,56 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793280697;
-	b=3kJPg5fqQwKYBT1qP27bA45glXKodo6cj2/JH+5/lUZSuRMVMq1QfuYJowtb9ZF1CnmG
-	 k7MgsQdEKp/uhPx0ArnakEuXtHEaN1h4wlP9mB4vt6jxWazKl/WW6dQp6PSy6bYgbaDWw
-	 WxaxP99gkvKKutYsuCK4N5uhvZovL2u1wu25TF1vrYJ+pw4HqkDn+1aU0jPbomPmKgvzS
-	 0stuGUtOVYUn2C/lGjUa+rQOSAF2EjUA2r275lRgN9sx+sRUSgTebSSJOMRsbgHMATtbR
-	 tfq47EapjBo3EebwMy1kWQuA9bg323erCArGEIVr8qn4mOqg9cxBe0VIwMzodLEsn+w==
+	t=1793280728;
+	b=1YgI/gM39iuRaik3UGo1EUsfCCnorrza7HIJtYErMWMbrSyEd2PBeb9ffDmaBmIa2hxZ
+	 s/7V2Gls7LOPmLgqpkQsgv/soV6XmR7gVJtj9IvFeoLQyUdngheOSArihYD3eJJvKKzOH
+	 bYS6F4qwOt5SxnMflKGiSHTH4VsTRmhgJvuEXZIycR8t7jSjETTX71PgO99sQw8HAmZ2T
+	 mJlWFIuZUB7GJ56OGTC0uva3cBYscyftl98kKeOSnqpPHZ2CLa3ZIkHsN9Ihs+xbldmRz
+	 JXgBQZa2XlmnkbKoBO1kHN9z7PyWHKi7nUMNTZsza+XYhqT4hOUrNtyhq6qRANFB0iw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793280697;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793280728;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=8kDeXNQdyrzxoC2laqvxpLb7cCvC1cPORHYkDpHP9sw=;
-	b=4Rl5MCGFxcg3DCKxcm0DSinUoHQJc8QUFOnlvFtfomxClLtZ+C4opxRIHCmHU3cYZXE2
-	 CBFYOBEtXuW9MEA4NyZWLCYhCWt0cg8feLfLoDqsmzMZvYjfS5ND5seJPj0gAbttL9wCv
-	 OXYOQ5rLoDj4biBIr/Ek/yahGME/luCx4cFXkUu920czoBhd14cM9oHp8Zsucp/gSib6A
-	 86WixZC4auqFUGvck9UulzSKuoSI4KHoFDu1DkN166YnvG6Cco0xwu9KKoRat/mpnqDMQ
-	 xiHDNJFuLSYnkk6d2VCGzB+XXWwyLn5XLxyJYFRvj0OyM8WngH3aG8zePM1T4aFlJpA==
+	bh=dI43z4AhsdS5aJX4mwzxYWlHw4ZqOByf3RtDtz/xUes=;
+	b=QqyZji9KEJKYJIPcFxmfoIVczf3DtgvART72ozCeiGJ2sOBExmZMLxHkb/20yL87p6eJ
+	 3QtgTvBsTk3B4IK+m/iDvi/bbiFKcs2d4FIwsjRaRVgW62fFu8VN7yeeom+XqgQeAQPZP
+	 Dj9j8OlXEIVvQoyDQXwOot6w52zEJcS+7WVa2JrLGtE3/P8gtIvHFcmxnx8QpjLHkAwwA
+	 aKVdztfZ62e8JDeqYeaoIcqhm30nFtLOajhDpT7eDBO1b7mi0OHawxdea+t1FW/s8T8zH
+	 e6OnSYoFMnx5de86d+yHhrkb0QghkyJjfC8UeptkLUBet01Z8+teyBQiy0WuZr3ovAQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=IPUoNrjc;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Yq1Rkd4n;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 474A2606A31A
-	for <linux-ext4@vger.kernel.org>; Thu, 29 Oct 2026 13:31:37 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0AF7D606A31A
+	for <linux-ext4@vger.kernel.org>; Thu, 29 Oct 2026 13:32:07 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=IPUoNrjc
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A5B191F01828;
-	Thu, 29 Oct 2026 13:31:36 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Yq1Rkd4n
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 67ED11F01825;
+	Thu, 29 Oct 2026 13:32:07 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793280696;
-	bh=8kDeXNQdyrzxoC2laqvxpLb7cCvC1cPORHYkDpHP9sw=;
+	s=k20260515; t=1793280727;
+	bh=dI43z4AhsdS5aJX4mwzxYWlHw4ZqOByf3RtDtz/xUes=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=IPUoNrjcVR1qQAnbHtmdMvlGrLsgJq2msIU9F9UQlB12L38WJSHwlfxsflxneHblx
-	 8pby+no2qoTXuQarAJb+cgOgFqd7eyZm1cQPiCeTQBzxJQVZbw//Bl5isfTp2t0gE6
-	 mFvIUWX3xMZ6eoj7vX15bsLmwYjQZkGlo/gvYpf+QqNg+SwQP1A8GiRd0Ufm6CI8EW
-	 V+W0La+UDNEKYIderGGredkGPK2y/BggrcmlUT5wnMLRe7ihbB2T4d5QaEvZDs29oh
-	 i/TH9y07h61dm0yZiXlCXIfTB4VadsLRIdSPfGodINkhk11vjdMY/QJB6SOGUIBuj+
-	 RlgCA7nHFBKeA==
-Message-ID: <sashiko-outbox-189381@kernel.org>
+	b=Yq1Rkd4n3xUFxmS8axW0dn0x3RzbXNV07FqC0y2LWNC2ElZhpU5PW50kZzrTLRoP/
+	 FM8pOUfz40tlPvA5twBMvRJe6yhhUgvkdj7pECZpxJrDyji3sD4UYOiSb4xqqkAmgp
+	 GQMJbulE6SRSXqfVgs7AwGvK1XC7ypRFYVhqgjkPhcVB9lVv6wkixBRiMh52cMP6Ao
+	 IUj5MD7abs9LsLjRr4HMIZc6V9BoeeHGZ0DSk6RgtDfy8XcMvXE6CBZlIE60oV+OJB
+	 HnFfAIUbh9UOjtl0Ss2sjU091Y80bEPsLY8oaORZFQ1HUcVpPKvKoEoyBVvWkD3z2d
+	 kxWGSCbUMmWjg==
+Message-ID: <sashiko-outbox-189385@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH RFC 1/9] ext2: add ext2_inode_block() helper
+Subject: Re: [PATCH RFC 3/9] ext4: add ext4_inode_loc_block() helper
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Christian Brauner" <brauner@kernel.org>
 Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-In-Reply-To: <20261029-work-inode-metadata_writeback-v1-1-7d6c678a585d@kernel.org>
+In-Reply-To: <20261029-work-inode-metadata_writeback-v1-3-7d6c678a585d@kernel.org>
 References: <20261029-work-inode-metadata_writeback-v1-0-7d6c678a585d@kernel.org>
- <20261029-work-inode-metadata_writeback-v1-1-7d6c678a585d@kernel.org>
+ <20261029-work-inode-metadata_writeback-v1-3-7d6c678a585d@kernel.org>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Thu, 29 Oct 2026 13:31:36 +0000
+Date: Thu, 29 Oct 2026 13:32:07 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -60,9 +60,9 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-> Move the lookup of the inode table block that holds an inode out of
-> ext2_get_inode() into a helper. ext2_sync_inode_metadata() is going to
-> use it to find the block without reading it from disk.
+> Move the lookup of the inode table block out of
+> ext4_get_inode_loc_noio() into a helper. ext4_sync_inode_metadata() is
+> going to use it to find the block without reading it from disk.
 >=20
 > No functional changes.
 >=20
@@ -73,5 +73,5 @@ Sashiko has reviewed this patch and found no issues.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261029-work-inode=
--metadata_writeback-v1-0-7d6c678a585d@kernel.org?part=3D1
+-metadata_writeback-v1-0-7d6c678a585d@kernel.org?part=3D3
 
