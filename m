@@ -1,57 +1,58 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793376590;
-	b=tiGyRtO3F6DRRkma6PpkTdHeSIR2z92SA2J3kd/fD8h7SB5m154CTTbHz312yp2wl5Ph
-	 Dv6tONa5KCN+syupxoIhIkXYbtpRZ7Mk6piTwl2+YA2PiBdj19OeRBbxuhVYfdnp9XbKq
-	 i0JguBRDJsVB63QJ1w81GguFRHOScwdXjGks+FUYxwmAk1EFzrrQ+JdLwfwKd6+oL9A7c
-	 OWmo1w0gtcuytIOJivctPBemBlVWCIRACPcFeBhDVFhUQP4Czo6NaKtr1g7+FxKp1RESo
-	 0I2qcS056yjRe4gK8xENdzzO3iQG8IK2N7PNHet4CMT9oH/REC1vTI6yI0HLW8RNzXA==
+	t=1793376595;
+	b=XzmcfBzjAj/Ykxfrl6UfKjbZKJDi1Gg0bOwNuMIB33Fl3qElYVy72DYZWGp7FX9VkkuF
+	 Aeb9JoovPqN3DDN/hQOag38MYZ8q0bUYgtAmZ7381IMWemZfHvR04w6a43iFGbeLWK3iV
+	 Uw9XrJNvDLWhc+/GEJ5VkpH6kEly+YnSg2YvlqaLW84ehoQ0SGTUUF/EbJm3dqluxR0sC
+	 nXmNbIz6g+pmjTwa17EnZpSMzBF2eX7CsDR+w9oIjmf6o9RUZI/eDmo1eWyRrZiDoKmFp
+	 8Rqw0iV0AzDQs+Rt9ttFlh8zZ+JLKXWfd/BjU4mMxtGCL1HV8IXuvEksuBT8T/qCCuw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793376590;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793376595;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=/Mychch7C97ZshwEL9ueE88CfYbxixMq3ZaDwvqpgks=;
-	b=RWQp+HpUpz9lVgIzQGL9+kdxsp15Zt7Z10BzDdqa/B9m3SKzPv/Zikq52IsJdGwPOVwB
-	 iO4VGOiW6vkXJO1pBLRhsfOIHKEWXsRSyrSupJj8BZngevH/i5wlRsOJrqSRx2LKkHJu8
-	 A0DGa9IT2pZ5Q0MYH9ghUhjzQtFqJKoUzH+waPATk7KQKFoNPjFDXVbJQ7IJO0VS02KjL
-	 dMrqC/dGaDo10LUiG+5FvGBYVDamSidNKPQlAuAxE6Nt16zxMjisfz6RmIXybce644Oho
-	 09HWjw6doUSwQVq8ZVGu1xRWXTyaelgW8JMx74p5TrP986eCxZXZMk6IKHE3b0B4i1A==
+	bh=IV7e/vABTjnKrw+EXTzRRc7d6rr0Obdl3IvZN87KkDw=;
+	b=ytlTWGogMZAujCOqtfTd/T0fETFy/ZAtFqTa1ZgAQvXR+3e4rsIwCm9tyzE4Mns8GAz9
+	 2UXikLzXOy4ae0Lyn98zXniEd5bvhM+rFQGp6HFdU8SbdrhVnmtYLPk9xeCcEeDeGdAqx
+	 ZfxuWz1TBxO17ItbeFenXmXoIrOUkwP0gxif1v/1hWkKR2DUX21WSyeC6bS96P+XBnmbT
+	 JrV7HelX1kz1RuhLIBpNT/kDPHQWICUZeejTmwhtsWyEJl5CoFkUh00Ag1QhCrCWLlPnI
+	 TANXB/KTKQJ5wkoQQDj0mKLHUIgUqcPoYh7VBKP7JMS5kG+RfoUuWPJRzDl6pk9kv+w==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=RMKXxT+B;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=PMLXQEUe;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CF5AC606A321;
-	Fri, 30 Oct 2026 16:09:49 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7D444606A32C
+	for <linux-ext4@vger.kernel.org>; Fri, 30 Oct 2026 16:09:55 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=RMKXxT+B
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E68531F0093A;
-	Fri, 30 Oct 2026 16:09:48 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=PMLXQEUe
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id E08241F00A1A;
+	Fri, 30 Oct 2026 16:09:54 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793376589;
-	bh=/Mychch7C97ZshwEL9ueE88CfYbxixMq3ZaDwvqpgks=;
+	s=k20260515; t=1793376595;
+	bh=IV7e/vABTjnKrw+EXTzRRc7d6rr0Obdl3IvZN87KkDw=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=RMKXxT+B4dNKzdHHvyHv7QRa6GglJeLRWrTxOikxDwc+SHMb9xEBrc8c1E9TrVOgi
-	 mGRCZmfYcTpwdmiI/rDvNEsuRV9zmPLQs9306hQFzPqtnwO1tweYM6fsBJmWTJHCls
-	 M60ZKwJvGWH6hZPdqx5fTZg68tpin62dI971F3w0H7Evh06LXtdzT/FuCJKVvucO4h
-	 9kTAPmXgB97nIAHmjSnQLmOlFmtmqO4k81UX7OuFWTo/Ti9+6gy8rvCksSOeO5HcOA
-	 nP8VIjciRIKaR9iRXnHUu4XmgWL2lJe7XKja19iNq7XFA4nJOjWleVOBosgPGKedBh
-	 ZR6+8hCxaOHHQ==
-Message-ID: <sashiko-outbox-191221@kernel.org>
+	b=PMLXQEUek/dd4MeDYY3X8NyxBaBtFUoLaOQUvxCh6k36w1rQ/RFlMdr5V8ZZKWYiI
+	 De5OZVQhx14M3/f4z/1hlVN9/jdCg1AZsEj+0raZ+hb5bFF6rK9/8q3g2i3LJWK7s9
+	 VShplI10NaS5cp/1BYw4GcDU1YDbuZMckayNjdDyHdVPMbTI+D5lcnmxrex4p30fjA
+	 Hhq0DUcrB9ZRTDBzBk7JNgy/LtoW7wuq48AQT+nE46J4mImGnYIWyyNutek5SUX3kQ
+	 ZwM3N5Zavagmdr+p/LBCaML9OKfc904TeraZ/irh3YWjmP2z8xXc7b46DDhciF9TqP
+	 W+USYN8IYDuxw==
+Message-ID: <sashiko-outbox-191227@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH v2 02/34] ecryptfs: fall back to a read-only lower file
+Subject: Re: [PATCH v2 08/34] exfat: keep the current mount options on
+ remount
 Reply-To: sashiko-reviews@lists.linux.dev
-To: "Christian Brauner" <brauner@kernel.org>, "Jan Kara" <jack@suse.com>
-Cc: "Al Viro" <viro@zeniv.linux.org.uk>, linux-ext4@vger.kernel.org, linux-mm@kvack.org, linux-efi@vger.kernel.org, linux-mtd@lists.infradead.org, dsterba@suse.cz, tytso@mit.edu, "Mark
- Fasheh" <mark@fasheh.com>, "Joel Becker" <jlbec@evilplan.org>, "Joseph Qi" <joseph.qi@linux.alibaba.com>
-In-Reply-To: <20261029-work-fs-sb_rdonly-v2-2-2f44f64f0b66@kernel.org>
+To: "Christian Brauner" <brauner@kernel.org>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, "Mark Fasheh" <mark@fasheh.com>, "Joel
+ Becker" <jlbec@evilplan.org>, "Joseph Qi" <joseph.qi@linux.alibaba.com>
+In-Reply-To: <20261029-work-fs-sb_rdonly-v2-8-2f44f64f0b66@kernel.org>
 References: <20261029-work-fs-sb_rdonly-v2-0-2f44f64f0b66@kernel.org>
- <20261029-work-fs-sb_rdonly-v2-2-2f44f64f0b66@kernel.org>
+ <20261029-work-fs-sb_rdonly-v2-8-2f44f64f0b66@kernel.org>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Fri, 30 Oct 2026 16:09:48 +0000
+Date: Fri, 30 Oct 2026 16:09:54 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -61,86 +62,31 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-Thank you for your contribution! Sashiko AI review found 1 potential issue(=
-s) to consider:
-- [Medium] ecryptfs: ECRYPTFS_KEY_VALID left set after ecryptfs_initialize_=
-file() fails
---
+> exfat_init_fs_context() only inherits uid, gid, fmask and dmask for a
+> reconfigure. But exfat_reconfigure() refuses to change iocharset,
+> keep_last_dots, sys_tz, time_offset and allow_utime. So every remount
+> that doesn't repeat a non-default value for one of them fails with
+> EINVAL, including emergency remount (sysrq u) which passes no options at
+> all. And an option-less remount silently resets errors=3D, zero_size_dir
+> and discard.
+>=20
+> So start a reconfigure from the current options like gfs2 does. The
+> iocharset string stays NULL in the new context because
+> ->init_fs_context() runs without s_umount for mount(2) and a concurrent
+> remount could free it. It's only compared if the remount names one. A
+> shutdown turns discard off for good so exfat_reconfigure() keeps it off.
+>=20
+> The next patch stops exfat from setting SB_RDONLY after errors. An
+> errored exfat then stays read-write and emergency remount would run into
+> this as well.
+>=20
+> Fixes: e6fd5d3a4317 ("exfat: support modifying mount options via remount")
+> Cc: stable@vger.kernel.org
+> Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 
-commit f7dbc785a33f0a188b62f1d0ae6c24e5fc32a62c
-Author: Christian Brauner <brauner@kernel.org>
-
-ecryptfs: fall back to a read-only lower file
-
-This commit falls back to opening the lower file read-only when opening it
-read-write fails with EROFS, and rejects writes to a read-only lower file in
-ecryptfs_write_lower() and __ecryptfs_truncate() with EROFS.
-
-> diff --git a/fs/ecryptfs/read_write.c b/fs/ecryptfs/read_write.c
-> index b3b451c2b9410..b3956ae50ff66 100644
-> --- a/fs/ecryptfs/read_write.c
-> +++ b/fs/ecryptfs/read_write.c
-> @@ -33,6 +33,9 @@ int ecryptfs_write_lower(struct inode *ecryptfs_inode, =
-char *data,
->  	lower_file =3D ecryptfs_inode_to_private(ecryptfs_inode)->lower_file;
->  	if (!lower_file)
->  		return -EIO;
-> +	/* ecryptfs_open_lower() may have fallen back to a read-only file. */
-> +	if (!(lower_file->f_mode & FMODE_WRITE))
-> +		return -EROFS;
-
-[Severity: Medium]
-When opening an existing 0-byte lower file with O_RDONLY on a read-only low=
-er
-mount (or a lower filesystem in an error state) with default mount options,
-ecryptfs_open() sets ECRYPTFS_POLICY_APPLIED | ECRYPTFS_ENCRYPTED on
-crypt_stat->flags and calls read_or_initialize_metadata().
-
-Because the lower file is empty, ecryptfs_read_metadata() fails and
-read_or_initialize_metadata() calls ecryptfs_initialize_file():
-
-fs/ecryptfs/inode.c:ecryptfs_initialize_file() {
-	rc =3D ecryptfs_new_file_context(ecryptfs_inode);
-	if (rc) {
-		...
-		goto out;
-	}
-	rc =3D ecryptfs_get_lower_file(ecryptfs_dentry, ecryptfs_inode);
-	...
-	rc =3D ecryptfs_write_metadata(ecryptfs_dentry, ecryptfs_inode);
-	if (rc)
-		printk(KERN_ERR "Error writing headers; rc =3D [%d]\n", rc);
-	ecryptfs_put_lower_file(ecryptfs_inode);
-out:
-	return rc;
-}
-
-ecryptfs_new_file_context() sets ECRYPTFS_ENCRYPTED | ECRYPTFS_KEY_VALID in
-crypt_stat->flags before ecryptfs_write_metadata() calls
-ecryptfs_write_lower() and fails with -EROFS. Neither
-ecryptfs_initialize_file() nor read_or_initialize_metadata() clears
-ECRYPTFS_KEY_VALID (or ECRYPTFS_POLICY_APPLIED) on failure.
-
-On a second open(O_RDONLY) or ecryptfs_setattr() on the same cached inode,
-read_or_initialize_metadata() checks the flags at the start of the function:
-
-fs/ecryptfs/file.c:read_or_initialize_metadata() {
-	if (crypt_stat->flags & ECRYPTFS_POLICY_APPLIED &&
-	    crypt_stat->flags & ECRYPTFS_KEY_VALID) {
-		rc =3D 0;
-		goto out;
-	}
-	...
-}
-
-Because both flags remain set from the failed initialization, does the seco=
-nd
-open short-circuit metadata validation and succeed on the uninitialized emp=
-ty
-file (and if the lower mount is later remounted read-write, allow writes us=
-ing
-an in-memory key whose header was never written to disk)?
+Sashiko has reviewed this patch and found no issues.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261029-work-fs-sb=
-_rdonly-v2-0-2f44f64f0b66@kernel.org?part=3D2
+_rdonly-v2-0-2f44f64f0b66@kernel.org?part=3D8
+
