@@ -1,58 +1,58 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793376615;
-	b=WGQ4Fni2sz3/Fm/YYYA/KqNU7cqDjrFTcJHD8wMmag1pyr4nB+OVOFl8elDeDg8KZ2lw
-	 nxJK4mpEFt83PQm5xWAJ0oscikbfTydKensI+pYeXzUQNM+TMVgA9qr4kr2wrpIYuJrNe
-	 q7JSseZub+/EH7NVfT3DJfGz2wdVax3rRvpZiQtIILw50oA9jZG9/Bepq+xDR7NVvg3vl
-	 chTFq99iwAPBei0GgFtL8F3hiLuO4QVPIUO6i+woPzq/568SY5HpUSEbwosT7xWF7Jbh+
-	 9NXb5W31ohdyHAKOQqnALf2LH9avhdh6qPR0nCbcaZco2Lpl77+m9yaqYsClPnJWeFw==
+	t=1793376616;
+	b=n9XBI6B6kic5L4RhX/fUOXTkWTatw0LAap5pELqFC2l1imq9ZK3DW+Ny6uovWBQqPKhT
+	 L5GoTUQPnq6NK0w1g/WQO92+620qzH+BoWySW3jwlk+4Gtc1c8VzxBdWaQ/ylKT3xqXMY
+	 7RiSQQgXOLEMuGEvfM1yAtM8FslOQCWSGYMkCcpoqy9OupUFyWgbyA9otTAOHZZqy0f6K
+	 GakFIfNHlZNgzniR4SDYw91i+PkyFQtNa6yKFUxkLwq5FssK0AALtMAT75C/UEYafXltQ
+	 HxLpNrpt21CDv8T4zs6NsrIZBkrtB9W8d69e0TPCf38Ql3tWs8FE/lee6TjtchLMzhg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793376615;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793376616;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=nZ5CjxKYMxp6AvMrB6LJT0c626rwp+hXPRn0vBANzMg=;
-	b=jcCiJgYbh06KlsPW/2NyvPJ7sZOpRfHixEQsAzWTQyA58p2pCnjVtdew//8m2jd5fM69
-	 BUt1LoP1Pt+gRPdRPMJKqgJGbpWAMUDiFmHn9dOCX868HI+0bagLMQk6eP3nqRmuT6h5c
-	 gCcy1KCKUMOs6DVUaLs1quDbqN0bF19M1MtmvGCV+KMA4/hN4ztIOPATf0mXSvZ07dEjf
-	 OnSK2aUeesNoBEZ2dyyzpz1/zRGUaZkqGKYDtK58xB3TcQRiBZMb6AVeQAKa1OXjve0YL
-	 hHidvOG+o+lxkkNWV0bxc0p6Xn9bVTILELtc1Z2g55G4zp1aWoLo25vmxDd59Ioe7kw==
+	bh=YM8HwiFPJwyOwaT2a+Kb7owjI1w+V+1rLdDKqyAW0l8=;
+	b=gYhQgGaK5rhtujlxfnV3lvCyEHES0vKrkt70DZpN1t9rviKcrLh1WUFVlW3RalJ52Ux+
+	 TZD+GB8GhLJyCtGypo6sDk3dR4DydPS1gQvcmMLF3HQB1g4fpjO5LavOq2/LC6nkHumpV
+	 RQvz8toxw6nMREa+wbfAYKZKpaINJFLynRLmrcslsNTmGPaXSEaHbX3jvNsYLFrL5lEuF
+	 mxAbD7VosUhPCKvchO1Cq62nK/64fe6CjabK4gInSrTAUuJXkzBRX84ydU0fbvFmK/bf1
+	 sIomUyGbDw8f1uGJX8MWHcv9yDpXCoQTchAT/zWpCtPwiWqDYWKuwFoEjnmGsS1I1Xg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=D59pI8pH;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="iQYSq/4h";
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6F354606A33C
-	for <linux-ext4@vger.kernel.org>; Fri, 30 Oct 2026 16:10:15 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2EDC860A260B
+	for <linux-ext4@vger.kernel.org>; Fri, 30 Oct 2026 16:10:16 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=D59pI8pH
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id CACA91F0093A;
-	Fri, 30 Oct 2026 16:10:14 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=iQYSq/4h
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9C2E31F000C1;
+	Fri, 30 Oct 2026 16:10:15 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
 	s=k20260515; t=1793376615;
-	bh=nZ5CjxKYMxp6AvMrB6LJT0c626rwp+hXPRn0vBANzMg=;
+	bh=YM8HwiFPJwyOwaT2a+Kb7owjI1w+V+1rLdDKqyAW0l8=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=D59pI8pHsqsekVMFFnVLaaX+I7sbsSkdrfCGH9qsK51zSuCIilljvPSwy8MxHw5Us
-	 KOSeCCejraEQYexnMGBBe+YL8AFKyC++ZD8YvwY4LzJfqAJD1dxlbFqNmBlh5vy1VR
-	 dFQzUZ7iid5IKQESoXQ6NoSH4K3wfETzF+yNbqNlwcfsa0CVeQ/hCSdwGlGoS9VTif
-	 iCSgBO9eoU8WsQgnkfXUxxT/RhQV2l8SiJgHwda2UICMcMFBrkCUq/FGKpcTtgmf9g
-	 DeulN7YqSdfolgytXdEFVGAzNpieDAeJdQMroJkI0uabQZ1Bbni0o2DBi/scT63Fx0
-	 8UUG8niN1uVpA==
-Message-ID: <sashiko-outbox-191250@kernel.org>
+	b=iQYSq/4hjGn1IJYLe3eI/o6I3hss6Tt0dDW0ISogGO55X809Yagp1rxM8+67XXs96
+	 jMXJzYzewpjbjHgCLew0jBBxGUaYFeDg7uJQxMesuYNNswEwEldCKtL21SoQUxvp/g
+	 JTmMoif57UiQXyX++yNtfisJf4QK2IdFcTB4JpUGTI1JB2FGukSsZqhl3HK1z8gaHk
+	 76yBAPjLEzp8F4lyYfJh+MDAR9bnxGSjig+ispuc9STMeFD0JJlwvAYji8Fq8CdwUl
+	 i4mHRdUMH711R71OU+8jBrBjOxh8oGjKZTPBV0Ga0vvL2aGbr5ylM6G0LOnznmdyA2
+	 MxCSha4jlai6w==
+Message-ID: <sashiko-outbox-191251@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH v2 31/34] ext4: use the generic emergency read-only
- state
+Subject: Re: [PATCH v2 32/34] selftests/filesystems: test ext4 remounts in
+ the emergency state
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Christian Brauner" <brauner@kernel.org>
 Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, "Mark Fasheh" <mark@fasheh.com>, "Joel
  Becker" <jlbec@evilplan.org>, "Joseph Qi" <joseph.qi@linux.alibaba.com>
-In-Reply-To: <20261029-work-fs-sb_rdonly-v2-31-2f44f64f0b66@kernel.org>
+In-Reply-To: <20261029-work-fs-sb_rdonly-v2-32-2f44f64f0b66@kernel.org>
 References: <20261029-work-fs-sb_rdonly-v2-0-2f44f64f0b66@kernel.org>
- <20261029-work-fs-sb_rdonly-v2-31-2f44f64f0b66@kernel.org>
+ <20261029-work-fs-sb_rdonly-v2-32-2f44f64f0b66@kernel.org>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Fri, 30 Oct 2026 16:10:14 +0000
+Date: Fri, 30 Oct 2026 16:10:15 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -62,12 +62,15 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-> Set SB_STATE_EMERGENCY_RO next to EXT4_FLAGS_EMERGENCY_RO when an error
-> makes the filesystem read-only. The VFS then refuses modifications
-> before they reach ext4 and reports the superblock as read-only like it
-> did when ext4 still set SB_RDONLY. The shutdown state stays ext4's own
-> and so do all of ext4's checks because they cover both states. ext4
-> keeps showing "emergency_ro" in its mount options.
+> Add tests for remounting ext4 after FS_IOC_SHUTDOWN with the default and
+> the nologflush flags and after an error with and without a journal:
+>=20
+> - option-only remount doesn't make it read-only, the error state alone
+>   reports ST_RDONLY
+> - remount to read-only works and writes nothing
+> - remount to read-write fails with EROFS
+>=20
+> The tests need root, loop devices and mkfs.ext4.
 >=20
 > Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 
@@ -75,5 +78,5 @@ Sashiko has reviewed this patch and found no issues.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261029-work-fs-sb=
-_rdonly-v2-0-2f44f64f0b66@kernel.org?part=3D31
+_rdonly-v2-0-2f44f64f0b66@kernel.org?part=3D32
 
