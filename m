@@ -1,57 +1,57 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793328207;
-	b=uvnEXkOz3p8kkwrlu9n+Cwm8sfYaZMf/1rZ78T0sAlj+YcLr9eekYNdMj6YFrND1PJv+
-	 ecbTFUC8810TmPH3uijNeAs9JyQAsJrg0FDVJ3HCh4mZK0dvyBu3F7tubO3211WSywiX4
-	 wxiUzsy1TN7zQz2P37BtltHT+Ewj1sTMsR5RuS0iZumNB92+v+wc4InypvzjAWtZuOAGQ
-	 fOrSq+TG6TV+4PlwHuX4FqodR3+sMA9y6FuFOvMxZuZgUyofOyk0z5srwI/FF2FOah9xr
-	 ipT8HE5IJgdevGzyK0T5lHmmFeZWdPvI9eafA4xiPRf8S2KEIVG4mtol/gmSq7SG0Dw==
+	t=1793328491;
+	b=PcqR74uq/vZkzGv2OXQ5pVBkRYiDN16JYNT11gjsZn6Mz1hk1v572qgtNMIC8gQyWOrc
+	 AUmS5xjXCicQbKNdI5fAxYcVSL1wknqD5R18cdwCbkgplEyayd4mEt695doYHqFr8GlPJ
+	 LjV5qZ+mieJ4dAKTsNiQgwmeDGuBjKpVy9zT2OhrPUKcW1qD6IP2AHQmWWgOxCYZwkCHk
+	 W9HKyypy39BGrEOxzCuUJhdo6GGImOrD7vGUdYwGPZo2IGg/wu01LKkiXhYxdjfi3j183
+	 kzkzEYS+r9Mh520VKVrZh+uhlxQe19uFIbShRWsoO3eYuT+KnzC5w4y+6tKQt8D4p6w==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793328207;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793328491;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=dfFvLwxGVfuKBMMpIppG5h3zvFaom+3v8wAotvcU2uI=;
-	b=VdYNw6rO2kSNo3ycMuyRsWEtyG4MXfkyeHSFeR//0NXxl7R/bLREsVdI2sWdL07Mwe64
-	 dqnZ/v9O0VCcJu1lGtftWTAIwzQSdYNZ/U8Zkfy732tWezsO3iOhrQjEGpDIU7qoF9UE6
-	 Iw2SwwoWxCSFO3ezwpcqqGR5C9GH54/+aNVjOy0FYOvuwQ35w/D+uV7a3tuGylSa2BFdK
-	 zcb+Fh93d2yKbH99dCcObUvZ8FnkdWjyl9CiwyBPQRWRQtS5pqvV5ZsT+lMXEPU+VYlVZ
-	 isyy7uLmx9rcZ9vmw0EZV2MLhy5c4PzXVFM7omar3cdmkQmn4kQMMvSepl2xtUMKNHw==
+	bh=2CuTclFA7z+YnLFA+vqQxXjw226jz3MlVm0SmblXjEQ=;
+	b=5YJrW5PgybuiXCBsNBYBXXP/TtKWJtQDPcrnxErNdNzRYNpASVyl7q9xDyXBF0/YNLDV
+	 3Xaz2lWljI265U16c6N3hi9d6BBE8d3yCHoD7LDg3q2H05Q94LWlNIUYJPHDiVRiSruX7
+	 vE5nMl1DukMBG916w9RUORDpaGcdkDNGsKpwrzFyB6uN1tcXU3uyKNYqReSy09Jq3cY50
+	 0GRC0HhgJ00hy3Qhdk385s9dq2RC9XIyDS0LI69rQTMuYuQ3xFMubS1KIelpXyT0CCqqZ
+	 kC246I73dI84uHTCTLdKwWJfp083hf4ptXL2oUE1vV4HPrHw1HcqhpB+f76ck3aqbsg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=dyiHjc4E;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=HxmLMTdA;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 94843606A31A
-	for <linux-ext4@vger.kernel.org>; Fri, 30 Oct 2026 02:43:27 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 992BB606A31C
+	for <linux-ext4@vger.kernel.org>; Fri, 30 Oct 2026 02:48:11 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=dyiHjc4E
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E59481F000C1;
-	Fri, 30 Oct 2026 02:43:26 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=HxmLMTdA
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id F1DB61F000C1;
+	Fri, 30 Oct 2026 02:48:10 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793328207;
-	bh=dfFvLwxGVfuKBMMpIppG5h3zvFaom+3v8wAotvcU2uI=;
+	s=k20260515; t=1793328491;
+	bh=2CuTclFA7z+YnLFA+vqQxXjw226jz3MlVm0SmblXjEQ=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=dyiHjc4E7jsu1eiwQlOHZM2yTwoLIiyl3wYEYRxN358aABVY45HGvyG40xczpgaQ+
-	 n7Tg71GhTuj/OQdhy5HNCumG4Iz8vL7Alz41GlhA3DUSX4vCUTe0Sc+deMyNVA4lf2
-	 CEqIPDeLF4ZBRAXDxLdgvKRCH8Ppwlg3cX08OY1EI+f+70FhU7QoF46lPU5KtIeXBN
-	 2GoQB5wXA/McYVh/udoex6T9ZBZi4Rb4O9vegz0Nu3MlS0wiyIVdMhTfUP71QGGCbT
-	 Cl9E4xZUS7tvDpmp6i8R0tV/VzdTZUmKK7GBlt8pGDhzRjYhJHsIameOaE0+qx485d
-	 tdn9AcNuh9WxQ==
-Message-ID: <sashiko-outbox-190180@kernel.org>
+	b=HxmLMTdA7oLrdIGR//fgEGC9XZ3bhu4p6kj29Vq72or6AhYPx/NG9McHVa0rt87Sf
+	 W8Og9S4/cM0B39rpnbcVmUvewzvrSYb7Q8di6KUX4advLf6DiHZ0pyD9YN+E9III2Z
+	 ZxDRs3gj8pohJtfYGELbu3M5swUJlMp9uaB26YRXo0ZlPeZjbGOxO6mLkKX4shE631
+	 GHAAswDTIVnUHlyiXLQOEdLN52kL1ZoihdkpfLDSteJgwiItV8n3Ph0xtLKpspgPbr
+	 +YMLXUxAMnkzizXgzM8WGO8XLQJ79sU3tc3uJPHcdyivV+OGgTgUf4VAQeuc87hkpI
+	 xoFR2XxI0E4bQ==
+Message-ID: <sashiko-outbox-190182@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH v2 3/4] ext4: add inode to orphan list before extent
- conversion
+Subject: Re: [PATCH v2 2/4] ext4: fix extent status cache clearing when
+ truncating inline data
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Zhang Yi" <yi.zhang@huaweicloud.com>, linux-ext4@vger.kernel.org
 Cc: tytso@mit.edu
-In-Reply-To: <20261030021338.1768292-4-yi.zhang@huaweicloud.com>
+In-Reply-To: <20261030021338.1768292-3-yi.zhang@huaweicloud.com>
 References: <20261030021338.1768292-1-yi.zhang@huaweicloud.com>
- <20261030021338.1768292-4-yi.zhang@huaweicloud.com>
+ <20261030021338.1768292-3-yi.zhang@huaweicloud.com>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Fri, 30 Oct 2026 02:43:26 +0000
+Date: Fri, 30 Oct 2026 02:48:10 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -63,40 +63,32 @@ Precedence: list
 
 > From: Zhang Yi <yi.zhang@huawei.com>
 >=20
-> ext4_alloc_file_blocks() zeroes the blocks it has just allocated and
-> converts their unwritten extents in a handle started with
-> ext4_chunk_trans_blocks(), which reserves credits for a single extent.
-> The range is allocated with ext4_map_blocks() first and converted
-> afterwards, and only the unwritten extent conversion which runs on I/O
-> completion can modify the extent tree of that range in between, since
-> this path holds i_rwsem. If such a conversion converts part of the
-> range first, it splits the extent, and converting the whole range then
-> needs more credits than the handle has reserved.
+> ext4_inline_data_truncate() clears the whole extent status tree of the
+> inode when it truncates the inline data, with
 >=20
-> Before commit 10660a0ca7ed ("ext4: rework handle credit accounting for
-> unwritten extent conversion"), this race condition led to insufficient
-> credits, which made the conversion fail with -ENOSPC in the middle of
-> the range. After it, ext4_convert_unwritten_extents() can extend or
-> restart the transaction. Restarting commits everything modified so
-> far, so the extents converted by the first iterations reach the disk
-> before this function adds the inode to the orphan list. A crash in
-> between leaves written extents beyond i_disksize on disk with the
-> inode not on the orphan list, which fsck complains about.
+> 	ext4_es_remove_extent(inode, 0, EXT_MAX_BLOCKS);
 >=20
-> Add the inode to the orphan list before the conversion instead and keep
-> it there until i_disksize has caught up. A restart then commits the
-> orphan entry together with the extents converted so far, and the entry
-> is only removed by the transaction which raises i_disksize and i_size.
+> It does that when the inode still carries inline data while the
+> EXT4_STATE_MAY_INLINE_DATA state bit is already cleared.  This is the
+> case once an inline-to-extent conversion has been initiated, which is
+> triggered by a delalloc buffered write larger than the inline space in
+> ext4_da_convert_inline_data_to_extent().
 >=20
-> Fixes: 10660a0ca7ed ("ext4: rework handle credit accounting for unwritten=
- extent conversion")
-> Fixes: f7237a775c8f ("ext4: protect WRITE_ZEROES written extents with orp=
-han list")
+> The clear is meant to drop stale extent status entries of such an inode
+> to prevent stale extents and stale reserved space after the conversion,
+> [ ... ]
+>=20
+> Reported-by: syzbot ci <syzbot+ci46f64f7b6a2a188e@syzkaller.appspotmail.c=
+om>
+> Closes: https://lore.kernel.org/linux-ext4/6ac92a4c.70ed5d86.2ac85.0072.G=
+AE@google.com/
+> Fixes: 0add491df4e5 ("ext4: remove extent cache entries when truncating i=
+nline data")
 > Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 
 Sashiko has reviewed this patch and found no issues.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261030021338.1768=
-292-1-yi.zhang@huaweicloud.com?part=3D3
+292-1-yi.zhang@huaweicloud.com?part=3D2
 
