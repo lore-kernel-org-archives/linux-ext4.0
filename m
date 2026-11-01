@@ -1,47 +1,150 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=124.71.93.112
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=74.125.224.49
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793434985;
-	b=uy6fw1P8LV9pKPiQzTWVWHZx+mHMzTTIV4WaulxVO9ZS6DWuAMFbb6FOiU7dBqRDst5c
-	 J2Su55jMGspzO++zYM1TiqJNu49kvJk05f4N9foAGnAvSwGuT77E8hcXoZ9AYGoTJY1SV
-	 oosnBdjFpoL/uQmNytOSVR7MRQLvsoMPRBdB827Os1nzq1ziYjAUDVZrcH25UWZZmMy3q
-	 fLQVwx4Kqz304LlBpIIiz98C3kkYYLGj90QAAsY7yw7GcVKYz0q6y5l3wxW8xf3svpqgV
-	 XVyiDvL3sf3RTumbVBi7CfpkNv6t15WFL1rcQbT1/XxKtDQnBxDv+gRg/Ilr95oaM1g==
+	t=1793493222;
+	b=eEwgIRP912eUxTCDleBR1UusBzPwXZ/mb13zUCFAfykLne5Oa/cn70pNvaKyVk+v3wi1
+	 0X+KAtSmijxWWOE6sAvXQC+JVvStFXLbglQB2Ofi+h+yGgYxRfJZgtNIRYc6q1CiKnTKm
+	 pxXdHRpJXTKZOXRbmoiO2Q0VDnxr4h6zWjL3NDgGql1gRg561FaJ20aD5OHldapEmGYY2
+	 Wy+UUYLDsDdxaiLbj2PdjPZd15t0vw4ly/HN7bbFot6d/dZPryEPtbFxZBQJ5OTejGQ4c
+	 wb4rULkMj8qVPXDB6OczDTCgaaPunxnxFqh4PwspPExwi9J4N+y39gq4GQfyd7LYZXg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793434985;
-	h=DMARC-Filter:Received:Received:Received:Message-ID:Date:MIME-Version:
-	 User-Agent:Subject:To:Cc:References:Content-Language:From:In-Reply-To:
-	 Content-Type:Content-Transfer-Encoding:X-CM-TRANSID:
-	 X-Coremail-Antispam:X-CM-SenderInfo;
-	bh=tOj9wR1+oMDTq+geNGWmE+H0ijWQOROYJCn+bfYjsvw=;
-	b=fEe4x9mbV1VPK7rA1smpz7TMuQxwdVJsBgIiW/DmMiv0xWaqCK6c98WcucMUE6FlomH5
-	 QH8GGc43Z1+Jlty/uZr5OEMH8uiBQnFfW+8z+klCXr3SomPp98P2n1eip3KptFdPtFlKI
-	 w8QZsHwc978/P22sJhD8cS4yNKbUyW6CNnRITxXdjlp6oNxNXpiAyChnFsax50cauFko+
-	 WllVFcd/dAYZGUP2vp/mMsmrPet0Dti0ljtkY0WotyScBTMh2DlI1tVIMBvhcxk0K0583
-	 ubtLO+ao3AyneZ1IeQRb3DBwrwfSQFX/AD6nNZgOC7ALu+X2NRmK+sw4xCgCqTaAWag==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793493222;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
+	 Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:Autocrypt:
+	 Content-Type:Content-Transfer-Encoding:User-Agent:MIME-Version;
+	bh=/OyNuE+u9LVqbLjPn4c642Wjld5y0QKeGGJuFQ0QfKY=;
+	b=iZSqOoCfNlvmlY5g1kUNN9PX6LrNXg+OmbcsJp1eug2+oJyfdJ+XWBbWg9JIecLnBRli
+	 wDapHIzuZdSOwVW5ReKkh9z+i1NNCFzYmZM2b3Xy4B76qsgzeLjI2UqWUkD43xQGtQUnq
+	 eFON9FRO1yAfgIOWd15yBCtRW0RigT+EPOODYYYAf0EtIwxDabIMsKx2TT3jc1ttbUw41
+	 +VHTx/p9EjXkz0Ywcwuz9saHFPqqaeSi2hO60LvDD2Ub/IYc9LaY/V927x78NTgdfzyRH
+	 f5Ts88nZKTBnEuLYWzyCkTgna7/AO7TYsAcjU0IR0Smbpivy/E5Qi23tQSh18Hv/kfw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=none header.from=huaweicloud.com;
-	spf=pass smtp.mailfrom=huaweicloud.com;
-	arc=none smtp.remote-ip=124.71.93.112
-Received: from dggmsgout12.his.huawei.com (dggmsgout12.his.huawei.com [124.71.93.112])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	dmarc=none header.from=dubeyko.com;
+	spf=pass smtp.mailfrom=dubeyko.com;
+	dkim=pass header.d=dubeyko-com.20260707.gappssmtp.com header.i=@dubeyko-com.20260707.gappssmtp.com header.a=rsa-sha256 header.s=20260707 header.b=opKOv9+L;
+	arc=none smtp.remote-ip=74.125.224.49
+Received: from mail-yx1-f49.google.com (mail-yx1-f49.google.com [74.125.224.49])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3B58A606A31A;
-	Sat, 31 Oct 2026 08:23:01 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 3B58A606A31A
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.170])
-	by dggmsgout12.his.huawei.com (SkyGuard) with ESMTP id 4jGrYh4CGBz20PM;
-	Sat, 31 Oct 2026 16:22:32 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 33D814056E;
-	Sat, 31 Oct 2026 16:22:51 +0800 (CST)
-Received: from [10.174.179.19] (unknown [10.174.179.19])
-	by APP4 (Coremail) with UTF8SMTPSA id gCh0CgAnZPNZpeVqongWCg--.34205S3;
-	Sat, 31 Oct 2026 16:22:50 +0800 (CST)
-Message-ID: <1828cae6-692e-4fe7-a5da-bdfea4ea90e7@huaweicloud.com>
-Date: Sat, 31 Oct 2026 16:22:48 +0800
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EBD8B606A324
+	for <linux-ext4@vger.kernel.org>; Sun,  1 Nov 2026 00:33:41 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org EBD8B606A324
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dubeyko.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=dubeyko.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key, unprotected) header.d=dubeyko-com.20260707.gappssmtp.com header.i=@dubeyko-com.20260707.gappssmtp.com header.a=rsa-sha256 header.s=20260707 header.b=opKOv9+L
+Received: by mail-yx1-f49.google.com with SMTP id 956f58d0204a3-679334baa1fso1994581d50.2
+        for <linux-ext4@vger.kernel.org>; Sat, 31 Oct 2026 17:33:41 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=dubeyko-com.20260707.gappssmtp.com; s=20260707; t=1793493221; x=1794098021; darn=vger.kernel.org;
+        h=mime-version:user-agent:content-transfer-encoding:content-type
+         :autocrypt:references:in-reply-to:date:cc:to:from:subject:message-id
+         :from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=/OyNuE+u9LVqbLjPn4c642Wjld5y0QKeGGJuFQ0QfKY=;
+        b=opKOv9+LvbvKOcsG7sEdWgW5RTy7kU6wUMYBGioVfgkQyIsS6X9+fly6DW0lh7MWmZ
+         ADiBPMwopgDRliRbwbHjbfCkdevfkCAynrIpVoBW6iiAOr3rGvXAwIGA/DSi56T0vblu
+         Gjg2U4eBG8LdQEXYLZ7qi60tOfNA0+pQ7N6ygLuxQG+lIgm88X+Emoi5nm9Pbaem/j76
+         jkuNsmvU/V6VV1vnXToctK/8CAuMJZn01/QxEtPRFnFcVBKrtW5UUxqJ+1C3DlBlxZeW
+         +ODdnrfH/Kfr0AOh7QbaNuH+k1NTTYkBG/IliHraQ9l1BkSNdeBEsxD3N5gJRd6v8Nrx
+         0egw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1793493221; x=1794098021;
+        h=mime-version:user-agent:content-transfer-encoding:content-type
+         :autocrypt:references:in-reply-to:date:cc:to:from:subject:message-id
+         :x-gm-gg:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to:content-type;
+        bh=/OyNuE+u9LVqbLjPn4c642Wjld5y0QKeGGJuFQ0QfKY=;
+        b=SlWMU8korLdRm17BTG6WK0sJQPbGr+0tPhwM/rh+DjlrDxRyjKSG21DHQiIwRp9wHW
+         9TteE3KlbVRDE/FA6k20I26G1wSGY7mESREp0bHyvyfgx8yw4IYevFR18fz1uLDCDXLO
+         Hy9Ex0i0obMpfOCz0GDtzAB6MD7U32wGR5NNDG7ZLtcFO6heL7nBX1Aku6SAvOe/wh0M
+         J2rpjpLSfx3Xw8nyICZgaKKx8xmfgwE8wLA/Kx0lGEHJ2+k904O/oIle6cddHTd2kwui
+         7n1DZkQoAZOvjAQLYYvcx5dWVeyTSo161MQx71G3IQK6zY32j3jXq+bFUpe7EKmS3ZtW
+         I4wg==
+X-Forwarded-Encrypted: i=1; AKwUvBwO10Hquetl1VXgItj5/EXn3SacHbvY4KkUHRYv2A2fq39+Qo961vPauWt0HZ/3jNPEd22+9ufDKcJz@vger.kernel.org
+X-Gm-Message-State: APuU4Z/B9ki93uFEfj8sWZBW6wdrgchZhdFhUTUoGj6QPpBJ3o9gc0Cb
+	QAQC9TJL1CpfktURVFFOHPVeWbMtCoYKfYjszH7XRJfpKeu0jlX+R+VhBv3EfM2WtXw=
+X-Gm-Gg: AYBFou115asVRsG6EAZDJ2MLb+CEsBhxmTVST5JZ5+liawVFcNxOkdNgjQfAm96NmES
+	S7cjsA3n9k3Fi4JKHRcWFfgWr5SuXXVMHXZ/v2p3fnUWDoI39owgJll6YplsTasg9OFxe4zzUnv
+	uYOxIka1b8GR3b/LEbClXgvxm7R70pLSZIzd5MqYZeTovzDUWWMLmoFj4/2rd0TefZdWKRfLSID
+	LCxErTrKYAw9xzH1Yf49RpLqOiEkZmvt3lbuexFD6zs7L1CfyZ7eWOibM4p+hg2nNr4P4WIDEy8
+	HesinAdyywptgM1n26Ayo5+GnpZ+TXAWRMQx1vYBUuys4jmwE3EkJ1pV7ufzvMuMVl5+CVxi7To
+	OCifx3yyopYxmygo0QLv0HTtqxpBRY0BxvZ5++O99u5FEjtQzqcc2AUcnKGTFSue7Deh4RI2hli
+	G9fGw5Z2rRPr/6C/s/ixpqGteTO9up/DyRfl+ouNeoH/55GElEGHYvC1tIMQgk3OBb1jqRMu3gn
+	v/CaThXEa7sDa9oXdwEs7DssBa8AVTPOJ188KS6Ey6ir8Hv7N7Py3J59jAc/+2GywsfedfbPOlu
+	tpBRZX6usdEd+b5sLXS8rjgF0Ss3qo1mfk+U8uqUpzZLINYEd/Zg++RXPy8H4fw6+DRefWsWNaI
+	ASmDzfV3D04q6uwfBSKoYUotE1bqYvugm4qRi0X68P9ibf94QW53xUZNEEM+e31VzthumRZpxut
+	fnWqEYycFkE1Zzc+JPKoA=
+X-Received: by 2002:a05:690e:140e:b0:675:3d40:3c34 with SMTP id 956f58d0204a3-67bb3041657mr1552875d50.68.1793493220725;
+        Sat, 31 Oct 2026 17:33:40 -0700 (PDT)
+Received: from ?IPv6:2600:1700:6476:1430:6f84:fe3e:51d2:f3cd? ([2600:1700:6476:1430:6f84:fe3e:51d2:f3cd])
+        by smtp.gmail.com with ESMTPSA id 00721157ae682-8b2b7198c65sm28593177b3.36.2026.10.31.17.33.37
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Sat, 31 Oct 2026 17:33:39 -0700 (PDT)
+Message-ID: <39d08fa0b0e45c61dbb4f57ccc911d1235ff9b5f.camel@dubeyko.com>
+Subject: Re: [PATCH v2 13/34] hfsplus: don't set SB_RDONLY when creating the
+ attributes tree
+From: Viacheslav Dubeyko <slava@dubeyko.com>
+To: Christian Brauner <brauner@kernel.org>, linux-fsdevel@vger.kernel.org, 
+ Jan Kara <jack@suse.com>
+Cc: Al Viro <viro@zeniv.linux.org.uk>, ecryptfs@vger.kernel.org, 
+	linux-ext4@vger.kernel.org, jfs-discussion@lists.sourceforge.net, 
+	linux-nilfs@vger.kernel.org, exfat@lists.linux.dev, linux-mm@kvack.org, 
+	ntfs@lists.linux.dev, ocfs2-devel@lists.linux.dev,
+ linux-btrfs@vger.kernel.org, 	gfs2@lists.linux.dev,
+ linux-efi@vger.kernel.org, linux-mtd@lists.infradead.org, 
+	linux-xfs@vger.kernel.org
+Date: Sat, 31 Oct 2026 17:33:37 -0700
+In-Reply-To: <20261029-work-fs-sb_rdonly-v2-13-2f44f64f0b66@kernel.org>
+References: <20261029-work-fs-sb_rdonly-v2-0-2f44f64f0b66@kernel.org>
+	 <20261029-work-fs-sb_rdonly-v2-13-2f44f64f0b66@kernel.org>
+Autocrypt: addr=slava@dubeyko.com; prefer-encrypt=mutual;
+ keydata=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
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+User-Agent: Evolution 3.60.1 (by Flathub.org) 
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -51,213 +154,148 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v3] ext4: do not advance i_size on a buffered write that
- copied nothing
-To: Hengyu Liang <hengyul@cs.unc.edu>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
- libaokun@linux.alibaba.com, jack@suse.cz, ojaswin@linux.ibm.com,
- ritesh.list@gmail.com, yi.zhang@huaweicloud.com, yizhang089@gmail.com,
- dave.hansen@linux.intel.com, akpm@linux-foundation.org,
- linux-kernel@vger.kernel.org, stable@vger.kernel.org
-References: <20261030040520.4138904-1-hengyul@cs.unc.edu>
-Content-Language: en-US
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-In-Reply-To: <20261030040520.4138904-1-hengyul@cs.unc.edu>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-X-CM-TRANSID:gCh0CgAnZPNZpeVqongWCg--.34205S3
-X-Coremail-Antispam: 1UD129KBjvJXoW3AFyrAFy3uF4xtryxArWDurg_yoWxuryUpr
-	WYkw1rArZ2vw1jgrZ3ZF1jqF18K3W8JrW7GFyxKayfZFn8ZFyxKF10qrW5WFWUArZ7XF40
-	qF4kCr95W3WqyaDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUvK14x267AKxVW8JVW5JwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK02
-	1l84ACjcxK6xIIjxv20xvE14v26r1I6r4UM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26r4j
-	6F4UM28EF7xvwVC2z280aVAFwI0_Cr1j6rxdM28EF7xvwVC2z280aVCY1x0267AKxVW0oV
-	Cq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0
-	I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r
-	4UM4x0Y48IcVAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2kI
-	c2xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbV
-	WUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF
-	67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42
-	IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF
-	0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxh
-	VjvjDU0xZFpf9x0JUd-B_UUUUU=
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-On 10/30/2026 12:05 PM, Hengyu Liang wrote:
-> Commit 665575cff098 ("filemap: move prefaulting out of hot write path")
-> made generic_perform_write() call ->write_begin() and ->write_end()
-> before it finds out that the source buffer cannot be read.  In that
-> case ->write_end() is called with copied == 0.
-> 
-> However, ext4_write_end(), ext4_journalled_write_end() and
-> ext4_da_do_write_end() set i_size to pos + copied without checking
-> copied.  As of now, a buffered write() past EOF that fails with EFAULT
-> grows the file to the write offset, and the new size can reach the
-> disk.
-> 
-> The issue can be reproduced on an ext4 mount with:
-> 
->     char *p = mmap(NULL, 4096, PROT_NONE,
->                    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
->     int fd = open("/mnt/ext4/file", O_CREAT | O_TRUNC | O_RDWR, 0600);
->     pwrite(fd, p, 4096, 1024 * 1024);   /* fails with EFAULT */
->     fstat(fd, &st);
-> 
-> Before that commit, the result is st_size = 0.
-> After it, the result is st_size = 1048576.
-> 
-> This patch will leave i_size alone when nothing was copied, as
-> ext4_write_inline_data_end() already does.  Unlike ext4_write_end(),
-> the delalloc path does not trim after a short write, so the folio and
-> the delayed blocks that ->write_begin() set up beyond i_size are left
-> behind, and the blocks stay reserved until the inode is evicted.  When
-> the write ends beyond i_size, drop them as well.
-> 
-> Fixes: 665575cff098 ("filemap: move prefaulting out of hot write path")
-> Cc: stable@vger.kernel.org
-> Signed-off-by: Hengyu Liang <hengyul@cs.unc.edu>
-
-Thank you for the update! This looks good to me.
-
-Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
-
-
-Please note that I went through the three scenarios reported by sashiko.
-I think the first one is a false positive, and I had already sent a
-patch to fix the third one [1].
-
-The second scenario, however, is indeed a real issue. But I think it is
-a pre-existing problem and needs a separate fix, because there is
-another way to end up with a half-converted inline inode passing
-through. That is, a truncate to 0 can catch up in the middle between
-ext4_da_convert_inline_data_to_extent() starting the conversion and
-ext4_do_writepages() completing it. I'm not sure whether this outcome is
-expected, though, since apart from the subsequent ext4_write_begin()
-path, I don't see any other damage.
-
-Perhaps we should, in ext4_write_begin(), after the
-EXT4_STATE_MAY_INLINE_DATA snippet, also check whether there is still
-inline data, and if so call something like ext4_convert_inline_data() to
-let it finish the conversion before copying data.
-
-[1] https://lore.kernel.org/linux-ext4/20261030021338.1768292-3-yi.zhang@huaweicloud.com/
-
-Thanks,
-Yi.
-
+On Thu, 2026-10-29 at 17:07 +0100, Christian Brauner wrote:
+> hfs_btree_open() sets SB_RDONLY when the map record of a b-tree
+> doesn't
+> mark the header node as used. That's fine while mounting. But
+> hfsplus_create_attributes_file() calls it too when the first extended
+> attribute is set on a filesystem that has no attributes file yet.
+> That
+> runs on the live filesystem without s_umount and a filesystem must
+> not
+> change SB_RDONLY behind the VFS' back.
+>=20
+> hfsplus_create_attributes_file() opens a tree it has just created
+> itself
+> with the header node marked as used, so there's nothing to check
+> there.
+> Move the check into hfsplus_fill_super() and do it for every tree it
+> opens. No functional changes.
+>=20
+> Suggested-by: Viacheslav Dubeyko <slava@dubeyko.com>
+> Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 > ---
-> Changes in v3:
-> - Also trim after a short copy: drop the '!copied' check and compare
->   pos + len with i_size after the update, as ext4_write_end() does
->   (Zhang Yi).
-> - Reword the last paragraph of the commit message.
-> - v2: https://lore.kernel.org/r/20261023172532.3271348-1-hengyul@cs.unc.edu
-> 
-> Tested in KVM with KASAN: the reproducer above, failed writes around
-> EOF, and short copies on delalloc, nodelalloc and 1k block filesystems.
-> e2fsck -fn reports no errors.
-> 
->  fs/ext4/inode.c | 39 ++++++++++++++++++++++++++++++++-------
->  1 file changed, 32 insertions(+), 7 deletions(-)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 6ede3644a738..9c20876629bc 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -1578,15 +1578,18 @@ static int ext4_write_end(const struct kiocb *iocb,
->  	 * it's important to update i_size while still holding folio lock:
->  	 * page writeout could otherwise come in and zero beyond i_size.
->  	 *
-> +	 * If nothing was copied (e.g. the source buffer was unreadable), do
-> +	 * not move i_size up to pos.
-> +	 *
->  	 * If FS_IOC_ENABLE_VERITY is running on this inode, then Merkle tree
->  	 * blocks are being written past EOF, so skip the i_size update.
->  	 */
-> -	if (!verity)
-> +	if (copied && !verity)
->  		i_size_changed = ext4_update_inode_size(inode, pos + copied);
->  	folio_unlock(folio);
->  	folio_put(folio);
->  
-> -	if (old_size < pos && !verity)
-> +	if (copied && old_size < pos && !verity)
->  		pagecache_isize_extended(inode, old_size, pos);
->  
->  	/*
-> @@ -1697,13 +1700,13 @@ static int ext4_journalled_write_end(const struct kiocb *iocb,
->  		if (!partial)
->  			folio_mark_uptodate(folio);
->  	}
-> -	if (!verity)
-> +	if (copied && !verity)
->  		size_changed = ext4_update_inode_size(inode, pos + copied);
->  	EXT4_I(inode)->i_datasync_tid = handle->h_transaction->t_tid;
->  	folio_unlock(folio);
->  	folio_put(folio);
->  
-> -	if (old_size < pos && !verity)
-> +	if (copied && old_size < pos && !verity)
->  		pagecache_isize_extended(inode, old_size, pos);
->  
->  	if (size_changed) {
-> @@ -3349,6 +3352,24 @@ static int ext4_da_should_update_i_disksize(struct folio *folio,
->  	return 1;
->  }
->  
+> =C2=A0fs/hfsplus/btree.c=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0 | 42 +++++++++++++=
++++++++++++++++-----------
+> ---
+> =C2=A0fs/hfsplus/hfsplus_fs.h |=C2=A0 1 +
+> =C2=A0fs/hfsplus/super.c=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0 |=C2=A0 5 +++++
+> =C2=A03 files changed, 34 insertions(+), 14 deletions(-)
+>=20
+> diff --git a/fs/hfsplus/btree.c b/fs/hfsplus/btree.c
+> index bd4dbdbc8f98..4a67569050e3 100644
+> --- a/fs/hfsplus/btree.c
+> +++ b/fs/hfsplus/btree.c
+> @@ -270,7 +270,6 @@ struct hfs_btree *hfs_btree_open(struct
+> super_block *sb, u32 id)
+> =C2=A0	struct hfs_btree *tree;
+> =C2=A0	struct hfs_btree_header_rec *head;
+> =C2=A0	struct address_space *mapping;
+> -	struct hfs_bnode *node;
+> =C2=A0	struct inode *inode;
+> =C2=A0	struct page *page;
+> =C2=A0	unsigned int size;
+> @@ -381,19 +380,6 @@ struct hfs_btree *hfs_btree_open(struct
+> super_block *sb, u32 id)
+> =C2=A0	kunmap_local(head);
+> =C2=A0	put_page(page);
+> =C2=A0
+> -	node =3D hfs_bnode_find(tree, HFSPLUS_TREE_HEAD);
+> -	if (IS_ERR(node))
+> -		goto free_inode;
+> -
+> -	if (!hfs_bmap_test_bit(node, 0)) {
+> -		pr_warn("(%s): %s (cnid 0x%x) map record invalid or
+> bitmap corruption detected, forcing read-only.\n",
+> -				sb->s_id, hfs_btree_name(id), id);
+> -		pr_warn("Run fsck.hfsplus to repair.\n");
+> -		sb->s_flags |=3D SB_RDONLY;
+> -	}
+> -
+> -	hfs_bnode_put(node);
+> -
+> =C2=A0	return tree;
+> =C2=A0
+> =C2=A0 fail_page:
+> @@ -407,6 +393,34 @@ struct hfs_btree *hfs_btree_open(struct
+> super_block *sb, u32 id)
+> =C2=A0	return NULL;
+> =C2=A0}
+> =C2=A0
 > +/*
-> + * Delalloc counterpart of ext4_truncate_failed_write(): ->write_begin() only
-> + * reserved delayed blocks, so drop the page cache and the delayed extents
-> + * beyond i_size and leave the blocks that are allocated there alone.
+> + * Check the map record of a b-tree at mount. hfs_btree_open() can't
+> do it
+> + * because hfsplus_create_attributes_file() calls it on the live
+> filesystem
+> + * where SB_RDONLY must not be set.
 > + */
-> +static void ext4_da_truncate_failed_write(struct inode *inode)
+> +int hfsplus_btree_check_map(struct hfs_btree *tree)
 > +{
-> +	struct address_space *mapping = inode->i_mapping;
-> +	ext4_lblk_t lblk = EXT4_B_TO_LBLK(inode, inode->i_size);
+> +	struct super_block *sb =3D tree->sb;
+> +	struct hfs_bnode *node;
 > +
-> +	filemap_invalidate_lock(mapping);
-> +	truncate_inode_pages(mapping, inode->i_size);
-> +	down_write(&EXT4_I(inode)->i_data_sem);
-> +	ext4_es_remove_extent(inode, lblk, EXT_MAX_BLOCKS - lblk);
-> +	up_write(&EXT4_I(inode)->i_data_sem);
-> +	filemap_invalidate_unlock(mapping);
+> +	node =3D hfs_bnode_find(tree, HFSPLUS_TREE_HEAD);
+> +	if (IS_ERR(node)) {
+> +		pr_err("failed to load %s header node\n",
+> +		=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0 hfs_btree_name(tree->cnid));
+> +		return PTR_ERR(node);
+> +	}
+> +
+> +	if (!hfs_bmap_test_bit(node, 0)) {
+> +		pr_warn("(%s): %s (cnid 0x%x) map record invalid or
+> bitmap corruption detected, forcing read-only.\n",
+> +				sb->s_id, hfs_btree_name(tree-
+> >cnid), tree->cnid);
+> +		pr_warn("Run fsck.hfsplus to repair.\n");
+> +		sb->s_flags |=3D SB_RDONLY;
+> +	}
+> +
+> +	hfs_bnode_put(node);
+> +	return 0;
 > +}
 > +
->  static int ext4_da_do_write_end(struct address_space *mapping,
->  			loff_t pos, unsigned len, unsigned copied,
->  			struct folio *folio)
-> @@ -3386,12 +3407,12 @@ static int ext4_da_do_write_end(struct address_space *mapping,
->  	 * checked, we need to update i_disksize here as certain
->  	 * ext4_writepages() paths not allocating blocks and update i_disksize.
->  	 */
-> -	if (new_i_size > inode->i_size) {
-> +	if (copied && new_i_size > inode->i_size) {
->  		unsigned long end;
->  
->  		i_size_write(inode, new_i_size);
->  		end = offset_in_folio(folio, new_i_size - 1);
-> -		if (copied && ext4_da_should_update_i_disksize(folio, end)) {
-> +		if (ext4_da_should_update_i_disksize(folio, end)) {
->  			ext4_update_i_disksize(inode, new_i_size);
->  			disksize_changed = true;
->  		}
-> @@ -3400,9 +3421,13 @@ static int ext4_da_do_write_end(struct address_space *mapping,
->  	folio_unlock(folio);
->  	folio_put(folio);
->  
-> -	if (pos > old_size)
-> +	if (copied && pos > old_size)
->  		pagecache_isize_extended(inode, old_size, pos);
->  
-> +	/* Drop what ->write_begin() prepared beyond the resulting i_size. */
-> +	if (pos + len > inode->i_size)
-> +		ext4_da_truncate_failed_write(inode);
+> =C2=A0/* Release resources used by a btree */
+> =C2=A0void hfs_btree_close(struct hfs_btree *tree)
+> =C2=A0{
+> diff --git a/fs/hfsplus/hfsplus_fs.h b/fs/hfsplus/hfsplus_fs.h
+> index 6f240f87f8ff..58c780b09b6f 100644
+> --- a/fs/hfsplus/hfsplus_fs.h
+> +++ b/fs/hfsplus/hfsplus_fs.h
+> @@ -362,6 +362,7 @@ int hfsplus_block_free(struct super_block *sb,
+> u32 offset, u32 count);
+> =C2=A0u32 hfsplus_calc_btree_clump_size(u32 block_size, u32 node_size, u6=
+4
+> sectors,
+> =C2=A0				=C2=A0 int file_id);
+> =C2=A0struct hfs_btree *hfs_btree_open(struct super_block *sb, u32 id);
+> +int hfsplus_btree_check_map(struct hfs_btree *tree);
+> =C2=A0void hfs_btree_close(struct hfs_btree *tree);
+> =C2=A0int hfs_btree_write(struct hfs_btree *tree);
+> =C2=A0int hfs_bmap_reserve(struct hfs_btree *tree, u32 rsvd_nodes);
+> diff --git a/fs/hfsplus/super.c b/fs/hfsplus/super.c
+> index ff7d6b3336a6..532f23502df3 100644
+> --- a/fs/hfsplus/super.c
+> +++ b/fs/hfsplus/super.c
+> @@ -564,6 +564,11 @@ static int hfsplus_fill_super(struct super_block
+> *sb, struct fs_context *fc)
+> =C2=A0	}
+> =C2=A0	sb->s_xattr =3D hfsplus_xattr_handlers;
+> =C2=A0
+> +	if (hfsplus_btree_check_map(sbi->ext_tree) ||
+> +	=C2=A0=C2=A0=C2=A0 hfsplus_btree_check_map(sbi->cat_tree) ||
+> +	=C2=A0=C2=A0=C2=A0 (sbi->attr_tree && hfsplus_btree_check_map(sbi-
+> >attr_tree)))
+> +		goto out_close_attr_tree;
 > +
->  	if (!disksize_changed)
->  		return copied;
->  
-> 
-> base-commit: 8c4f6e3376348fc3162eed86a05b933921c8f9ed
+> =C2=A0	inode =3D hfsplus_iget(sb, HFSPLUS_ALLOC_CNID);
+> =C2=A0	if (IS_ERR(inode)) {
+> =C2=A0		pr_err("failed to load allocation file\n");
 
+
+Looks good.
+
+Reviewed-by: Viacheslav Dubeyko <slava@dubeyko.com>
+
+Thanks,
+Slava.
