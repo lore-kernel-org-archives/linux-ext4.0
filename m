@@ -1,49 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793630838;
-	b=VFAwIfkApgRiSs6NFKFS8lrdH7jOaHFWekZouMDMCfe/UhNSkg5ml0izoeqh1xbLLZo1
-	 JY1wxfXyiXD8PEvLGBOg0TYjqpCObbW5S9loQqe0i4VlO7e7SF6In+MglsjW19gotElew
-	 Ic7gaPl5KtsXf26+AHswPLOsexMAXXrWJC8SSht2erBDrzBhML03uOyrBEvcoKUxi9PF4
-	 J2cqNobH8dRr1Ae18ws8SD4wcxreFvTPDWAfhMKHYTF23EDXVEysENWusXqrBvRpioUCr
-	 cl5XKzfoaMlw2poQbNk7Depqk6DqsKPe6znS6cIEdMDrIRuEnKvmcZAWbpmIsaDbPAA==
+	t=1793630961;
+	b=gaWWnMty+VK+tGOFcXu7kBLyVRkmxTJLwfuwLwEnj92wmYao8lBrk5xEkFrNSa4eJ6bb
+	 ZvBMUp0Wb5gFs730JhnVhv92NVx02fQSPGwCW4ht+UPmp/vodKs48E2sixeaH0GCCw3/r
+	 iHNnW1g8OtYgQJYjE5tehThd3vxQgwOOq2+hSZ8taWyoOHEnuX+8YaU/1pI6onp6BvTCc
+	 UWb2LiRU4+K0b0QASququK8OTvQw4cEzEAGKUP+Vd2MMKEX9kwgeVxbbTHHhPWZq7zrbR
+	 q8qZBADWvl8CK0/4jS8qya2Z/J/2f/wuBvZ7dpLdvcavYEQDAvzBZcGPrdThQqIpXTQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793630838;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793630961;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer;
-	bh=HVagn+HE6BgGgxgbr+5XC5Y5Qcbb33m4Jb7EnpZPFUg=;
-	b=OOrX+5RutX2ZUn/YCZrMWgNIS0lOl6SM/TyDyGz2Dz0dWKU8sLZpgoHrptH+UlHTnyRr
-	 LZjay4Lt11J6CyFxAOPRBh9Xtc8amh5FTqB99zYy7mZPoPvo4otOt6UXxFI2DXPIYq4cE
-	 vehG4VkxjGdeMi1I1l+ulnYQFgY5/RcUG9pVZ90z7Qqy8YluakNZhTSFfNeu9hyEMO7tI
-	 sZzoDgVGw8UhK1GCHSllPQSBl1LNN0mY7w71Ok0E/FoOUUrQvV71egAiB0ygNXfExrRlB
-	 ni/qgu3/eE+nnBcAjMm/Q/fEj1NVXznLf/IOkgmNt0+xRm894m4eifFskwXz7wapfOA==
+	bh=jrxxeu9FMCeaH9PPG0vvIdaQylBKAxxjB5EHgDoyGNY=;
+	b=PQGZTmiCRS1da8d4qYvuaWD23R52KxSOuA3WK05gRV70ChA9t/qk1Red8R3F8AGe4zTt
+	 irMRMczkIaDKrQ/LYnynBt58Qwo1M43jnyNEJL4M90A8KnsWvXdG99w2/b/RLoMYwINuA
+	 uf2wT7JEBLWa4BnDExKx1Vrmjdx/O/JrxFcyXyxHfuS2x+XF9TB2x724uudWKsZYquBtc
+	 tB/x/PIHIdQtHpOKEBZ8pXDTU5udO64NRnl35HJP1ulyGcTjaiqKJvmsD5Ploq+bmkmus
+	 dxbcmlt9DX5vSFd6LOxUy7uEPA4qp761uoOTeIqf5Hv26CU11z9e6wo3bo5eAWmltsg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="ZfP/Kahw";
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ByuxxP2Y;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F39186070CA8;
-	Mon,  2 Nov 2026 14:47:13 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5EF2F606ABBD;
+	Mon,  2 Nov 2026 14:49:21 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ZfP/Kahw
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 26EE81F00A1A;
-	Mon,  2 Nov 2026 14:46:55 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ByuxxP2Y
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id D423F1F00A16;
+	Mon,  2 Nov 2026 14:49:04 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793630833;
-	bh=HVagn+HE6BgGgxgbr+5XC5Y5Qcbb33m4Jb7EnpZPFUg=;
+	s=k20260515; t=1793630961;
+	bh=jrxxeu9FMCeaH9PPG0vvIdaQylBKAxxjB5EHgDoyGNY=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=ZfP/KahwDm10wm2TSGrtLVkg7xDUNnpz+rBBaInyM45cZNagos2iYqnrDed5HxIBA
-	 K+//mFWxDsWpOWe9Buj12+quSzkpcQzj2ngYZ9ZsEW0oSIiCRi7l1s6PLMfANxGQPz
-	 ES6j9Tp68ZCoex9QLLCdMUr2RP+/gA7nMafoF8zKWkoSoj6HU61hIGfIek8HtzVsMz
-	 WP7zxeoWb2ywthOOE6hEK8rHNlm6c5T599z/Oyvz7z8nNJFpq2Xxjua62S/Ez/3caV
-	 aKvdxGOQzTpkPCeB1AmIzk8MgvSvtRVAT8gs8GThhJQslYhMWBFvphDQuEoGKj/fJB
-	 b5NG8uh8YTrhw==
+	b=ByuxxP2Y0aL4EQ4HwE1D5VE6bk9SBZU78IecQNaoL/QqN2Y6I7ABFAIAs9mVScHNH
+	 SgYUHz+A/rbabkW8D5dGgo432jVpFe7FT/P6H+jA3wauUd5cjNIX0RjXLHQxPeZnwc
+	 ZHYHReIZ20MHWB1oFcj0/0Oig7/cat0HqyX7ecJpsbua1wSW9hsT6O0sgpvSBLGhfY
+	 xPgK550INOHZoI47HH3iTcy4uMo2SA7+Bla5KpVWGtw3gSqFOEGcd2cLWE8Js/8MoA
+	 b91eSZEjTRDcbicVa76y8vSAq+2z0cdK8bBOdtnHVxMyTugmPIsG5XGIzFlkoOVhvM
+	 mmiHRSg+JBAAQ==
 From: Christian Brauner <brauner@kernel.org>
-Date: Mon, 02 Nov 2026 15:43:29 +0100
-Subject: [PATCH RFC 38/38] selftests/proc: check that a faulting readlink()
- doesn't hold up removal
+Date: Mon, 02 Nov 2026 15:48:41 +0100
+Subject: [PATCH RFC 01/16] proc: drop the compat file operations
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -55,9 +54,9 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261102-work-procfs-bugfixes-v1-38-59422ed3e465@kernel.org>
-References: <20261102-work-procfs-bugfixes-v1-0-59422ed3e465@kernel.org>
-In-Reply-To: <20261102-work-procfs-bugfixes-v1-0-59422ed3e465@kernel.org>
+Message-Id: <20261102-work-procfs-core-v1-1-75df35e4f8b8@kernel.org>
+References: <20261102-work-procfs-core-v1-0-75df35e4f8b8@kernel.org>
+In-Reply-To: <20261102-work-procfs-core-v1-0-75df35e4f8b8@kernel.org>
 To: linux-fsdevel@vger.kernel.org
 Cc: Linus Torvalds <torvalds@linux-foundation.org>, 
  Jann Horn <jannh@google.com>, Josef Bacik <josef@toxicpanda.com>, 
@@ -92,259 +91,161 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
  Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.17-dev
 
-Add the symlink case:
+procfs has both sets of file operations twice, with and without
+->compat_ioctl(), and picks the one with it for entries that have
+->proc_compat_ioctl(). That's from commit 778f3dd5a13c ("Fix procfs
+compat_ioctl regression") when a file without ->compat_ioctl() went
+through the translation tables in fs/compat_ioctl.c and one with it
+didn't. Those tables are gone since commit 77b9040195de ("compat_ioctl:
+simplify the implementation"). compat_sys_ioctl() answers -ENOTTY for a
+file without ->compat_ioctl() now, which is what
+proc_reg_compat_ioctl() answers for an entry without
+->proc_compat_ioctl().
 
-- readlink() /proc/asound/<id> of a dummy card into a buffer backed by
-  userfaultfd
+So always set ->compat_ioctl() and drop the second set of file
+operations and the flag that picked it.
 
-- change the card's id through sysfs while the reader faults, which
-  removes the symlink with snd_card_mutex and info_mutex held
-
-- expect that to finish without waiting for the reader
-
-Skipped without snd-dummy.
+No functional changes.
 
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- tools/testing/selftests/proc/.gitignore            |   2 +
- tools/testing/selftests/proc/Makefile              |   2 +
- tools/testing/selftests/proc/config                |   3 +
- .../selftests/proc/proc-remove-slow-readlink.c     | 191 +++++++++++++++++++++
- 4 files changed, 198 insertions(+)
+ fs/proc/generic.c       |  4 ----
+ fs/proc/inode.c         | 45 +++------------------------------------------
+ fs/proc/internal.h      |  9 ---------
+ include/linux/proc_fs.h |  1 -
+ 4 files changed, 3 insertions(+), 56 deletions(-)
 
-diff --git a/tools/testing/selftests/proc/.gitignore b/tools/testing/selftests/proc/.gitignore
-index 7b8133492782..e2566cc0ae07 100644
---- a/tools/testing/selftests/proc/.gitignore
-+++ b/tools/testing/selftests/proc/.gitignore
-@@ -22,6 +22,8 @@
- /proc-uptime-002
- /proc-pidns
- /proc-remove-slow-sysctl
-+/proc-remove-slow-reader
-+/proc-remove-slow-readlink
- /read
- /self
- /setns-dcache
-diff --git a/tools/testing/selftests/proc/Makefile b/tools/testing/selftests/proc/Makefile
-index bce6beca7274..6a9bdc999f54 100644
---- a/tools/testing/selftests/proc/Makefile
-+++ b/tools/testing/selftests/proc/Makefile
-@@ -33,5 +33,7 @@ TEST_GEN_PROGS += proc-fsconfig-hidepid
- TEST_GEN_PROGS += proc-sysctl-readdir-churn
- TEST_GEN_PROGS += proc-pidns
- TEST_GEN_PROGS += proc-remove-slow-sysctl
-+TEST_GEN_PROGS += proc-remove-slow-reader
-+TEST_GEN_PROGS += proc-remove-slow-readlink
+diff --git a/fs/proc/generic.c b/fs/proc/generic.c
+index 23fc026d7bbb..761f9958558f 100644
+--- a/fs/proc/generic.c
++++ b/fs/proc/generic.c
+@@ -445,10 +445,6 @@ static void pde_set_flags(struct proc_dir_entry *pde)
+ 		pde->flags |= PROC_ENTRY_PERMANENT;
+ 	if (proc_ops->proc_read_iter)
+ 		pde->flags |= PROC_ENTRY_proc_read_iter;
+-#ifdef CONFIG_COMPAT
+-	if (proc_ops->proc_compat_ioctl)
+-		pde->flags |= PROC_ENTRY_proc_compat_ioctl;
+-#endif
+ 	if (proc_ops->proc_lseek)
+ 		pde->flags |= PROC_ENTRY_proc_lseek;
+ }
+diff --git a/fs/proc/inode.c b/fs/proc/inode.c
+index 2d65f3c8ec03..18f6490bfe77 100644
+--- a/fs/proc/inode.c
++++ b/fs/proc/inode.c
+@@ -410,6 +410,8 @@ static long proc_reg_compat_ioctl(struct file *file, unsigned int cmd, unsigned
+ 	}
+ 	return rv;
+ }
++#else
++#define proc_reg_compat_ioctl NULL
+ #endif
  
- include ../lib.mk
-diff --git a/tools/testing/selftests/proc/config b/tools/testing/selftests/proc/config
-index 3edd3c437fe4..7b0e1d9be1a2 100644
---- a/tools/testing/selftests/proc/config
-+++ b/tools/testing/selftests/proc/config
-@@ -2,3 +2,6 @@ CONFIG_PROC_FS=y
- CONFIG_IPV6=y
- CONFIG_TUN=y
- CONFIG_USERFAULTFD=y
-+CONFIG_SOUND=y
-+CONFIG_SND=y
-+CONFIG_SND_DUMMY=m
-diff --git a/tools/testing/selftests/proc/proc-remove-slow-readlink.c b/tools/testing/selftests/proc/proc-remove-slow-readlink.c
-new file mode 100644
-index 000000000000..3290225daecd
---- /dev/null
-+++ b/tools/testing/selftests/proc/proc-remove-slow-readlink.c
-@@ -0,0 +1,191 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * A readlink() that faults while copying out the link must not hold up
-+ * removal of the /proc symlink. Changing a sound card's id removes
-+ * /proc/asound/<id> with snd_card_mutex and info_mutex held.
-+ */
-+#define _GNU_SOURCE
-+#include <dirent.h>
-+#include <errno.h>
-+#include <fcntl.h>
-+#include <limits.h>
-+#include <linux/userfaultfd.h>
-+#include <poll.h>
-+#include <pthread.h>
-+#include <stdio.h>
-+#include <stdlib.h>
-+#include <string.h>
-+#include <sys/ioctl.h>
-+#include <sys/mman.h>
-+#include <sys/syscall.h>
-+#include <unistd.h>
-+
-+#include "../kselftest_harness.h"
-+
-+#define CARD_ID		"Dummy"
-+#define NEW_ID		"procslow"
-+#define LINK_PATH	"/proc/asound/" CARD_ID
-+#define TIMEOUT_MS	5000
-+
-+struct reader {
-+	char *buf;
-+	size_t len;
-+	ssize_t ret;
-+};
-+
-+struct renamer {
-+	const char *id_path;
-+	const char *id;
-+	int done;
-+	int ret;
-+};
-+
-+static void *readlink_thread(void *arg)
-+{
-+	struct reader *r = arg;
-+
-+	r->ret = readlink(LINK_PATH, r->buf, r->len);
-+	return NULL;
-+}
-+
-+/* a new id removes the card's old /proc/asound/<id> link */
-+static int set_id(const char *id_path, const char *id)
-+{
-+	int fd, ret;
-+
-+	fd = open(id_path, O_WRONLY | O_CLOEXEC);
-+	if (fd < 0)
-+		return -errno;
-+	ret = write(fd, id, strlen(id)) < 0 ? -errno : 0;
-+	close(fd);
-+	return ret;
-+}
-+
-+static void *rename_thread(void *arg)
-+{
-+	struct renamer *r = arg;
-+	ssize_t ret;
-+
-+	r->ret = set_id(r->id_path, r->id);
-+	ret = write(r->done, "x", 1);
-+	return (void *)ret;
-+}
-+
-+/* the sysfs id file of the card with @id */
-+static int find_card(const char *id, char *id_path, size_t size)
-+{
-+	struct dirent *d;
-+	int ret = -1;
-+	DIR *dir;
-+
-+	dir = opendir("/sys/class/sound");
-+	if (!dir)
-+		return -1;
-+	while (ret && (d = readdir(dir))) {
-+		char cur[32];
-+		FILE *f;
-+
-+		if (strncmp(d->d_name, "card", 4))
-+			continue;
-+		snprintf(id_path, size, "/sys/class/sound/%s/id", d->d_name);
-+		f = fopen(id_path, "r");
-+		if (!f)
-+			continue;
-+		if (fgets(cur, sizeof(cur), f)) {
-+			cur[strcspn(cur, "\n")] = '\0';
-+			if (!strcmp(cur, id))
-+				ret = 0;
-+		}
-+		fclose(f);
-+	}
-+	closedir(dir);
-+	return ret;
-+}
-+
-+FIXTURE(dummy) {
-+	char id_path[PATH_MAX];
-+	bool renamed;
-+};
-+
-+FIXTURE_SETUP(dummy)
-+{
-+	self->renamed = false;
-+	if (access(LINK_PATH, F_OK) && system("modprobe -q snd-dummy"))
-+		SKIP(return, "no snd-dummy");
-+	if (access(LINK_PATH, F_OK))
-+		SKIP(return, LINK_PATH ": %s", strerror(errno));
-+	if (find_card(CARD_ID, self->id_path, sizeof(self->id_path)))
-+		SKIP(return, "no sysfs id file for " CARD_ID);
-+	if (access(self->id_path, W_OK))
-+		SKIP(return, "%s: %s", self->id_path, strerror(errno));
-+}
-+
-+FIXTURE_TEARDOWN(dummy)
-+{
-+	if (self->renamed && set_id(self->id_path, CARD_ID))
-+		TH_LOG("couldn't name the card " CARD_ID " again");
-+}
-+
-+TEST_F(dummy, remove_while_readlink_faults)
-+{
-+	struct uffdio_api api = { .api = UFFD_API };
-+	struct uffdio_register reg = {};
-+	struct uffdio_zeropage zero = {};
-+	long psz = sysconf(_SC_PAGESIZE);
-+	struct renamer rn = {};
-+	struct reader r = {};
-+	struct uffd_msg msg;
-+	struct pollfd pfd;
-+	pthread_t rt, nt;
-+	int uffd, done[2];
-+	char *buf;
-+
-+	uffd = syscall(__NR_userfaultfd, O_CLOEXEC | O_NONBLOCK);
-+	if (uffd < 0)
-+		SKIP(return, "userfaultfd: %s", strerror(errno));
-+	ASSERT_EQ(ioctl(uffd, UFFDIO_API, &api), 0);
-+
-+	buf = mmap(NULL, psz, PROT_READ | PROT_WRITE,
-+		   MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-+	ASSERT_NE(buf, MAP_FAILED);
-+	reg.range.start = (unsigned long)buf;
-+	reg.range.len = psz;
-+	reg.mode = UFFDIO_REGISTER_MODE_MISSING;
-+	ASSERT_EQ(ioctl(uffd, UFFDIO_REGISTER, &reg), 0);
-+
-+	r.buf = buf;
-+	r.len = psz;
-+	ASSERT_EQ(pthread_create(&rt, NULL, readlink_thread, &r), 0);
-+
-+	/* The reader now sleeps in the copy of the link to userspace. */
-+	pfd = (struct pollfd){ .fd = uffd, .events = POLLIN };
-+	ASSERT_EQ(poll(&pfd, 1, TIMEOUT_MS), 1);
-+	ASSERT_EQ(read(uffd, &msg, sizeof(msg)), sizeof(msg));
-+	ASSERT_EQ(msg.event, UFFD_EVENT_PAGEFAULT);
-+
-+	/* Renaming the card removes the link that is being read. */
-+	ASSERT_EQ(pipe2(done, O_CLOEXEC), 0);
-+	rn.id_path = self->id_path;
-+	rn.id = NEW_ID;
-+	rn.done = done[1];
-+	self->renamed = true;
-+	ASSERT_EQ(pthread_create(&nt, NULL, rename_thread, &rn), 0);
-+	pfd = (struct pollfd){ .fd = done[0], .events = POLLIN };
-+	EXPECT_EQ(poll(&pfd, 1, TIMEOUT_MS), 1) {
-+		TH_LOG("removing " LINK_PATH " waited for the reader");
-+	}
-+
-+	zero.range.start = (unsigned long)buf;
-+	zero.range.len = psz;
-+	ASSERT_EQ(ioctl(uffd, UFFDIO_ZEROPAGE, &zero), 0);
-+	ASSERT_EQ(pthread_join(rt, NULL), 0);
-+	ASSERT_EQ(pthread_join(nt, NULL), 0);
-+	EXPECT_EQ(rn.ret, 0);
-+
-+	/* The link was read before it went away. */
-+	EXPECT_GT(r.ret, 0);
-+	EXPECT_EQ(readlink(LINK_PATH, buf, psz), -1);
-+	EXPECT_EQ(errno, ENOENT);
-+}
-+
-+TEST_HARNESS_MAIN
+ static int pde_mmap(struct proc_dir_entry *pde, struct file *file, struct vm_area_struct *vma)
+@@ -569,6 +571,7 @@ static const struct file_operations proc_reg_file_ops = {
+ 	.write		= proc_reg_write,
+ 	.poll		= proc_reg_poll,
+ 	.unlocked_ioctl	= proc_reg_unlocked_ioctl,
++	.compat_ioctl	= proc_reg_compat_ioctl,
+ 	.mmap		= proc_reg_mmap,
+ 	.get_unmapped_area = proc_reg_get_unmapped_area,
+ #ifndef CONFIG_MMU
+@@ -585,39 +588,6 @@ static const struct file_operations proc_iter_file_ops = {
+ 	.splice_read	= copy_splice_read,
+ 	.poll		= proc_reg_poll,
+ 	.unlocked_ioctl	= proc_reg_unlocked_ioctl,
+-	.mmap		= proc_reg_mmap,
+-	.get_unmapped_area = proc_reg_get_unmapped_area,
+-#ifndef CONFIG_MMU
+-	.mmap_capabilities = proc_reg_mmap_capabilities,
+-#endif
+-	.open		= proc_reg_open,
+-	.release	= proc_reg_release,
+-};
+-
+-#ifdef CONFIG_COMPAT
+-static const struct file_operations proc_reg_file_ops_compat = {
+-	.llseek		= proc_reg_llseek,
+-	.read		= proc_reg_read,
+-	.write		= proc_reg_write,
+-	.poll		= proc_reg_poll,
+-	.unlocked_ioctl	= proc_reg_unlocked_ioctl,
+-	.compat_ioctl	= proc_reg_compat_ioctl,
+-	.mmap		= proc_reg_mmap,
+-	.get_unmapped_area = proc_reg_get_unmapped_area,
+-#ifndef CONFIG_MMU
+-	.mmap_capabilities = proc_reg_mmap_capabilities,
+-#endif
+-	.open		= proc_reg_open,
+-	.release	= proc_reg_release,
+-};
+-
+-static const struct file_operations proc_iter_file_ops_compat = {
+-	.llseek		= proc_reg_llseek,
+-	.read_iter	= proc_reg_read_iter,
+-	.splice_read	= copy_splice_read,
+-	.write		= proc_reg_write,
+-	.poll		= proc_reg_poll,
+-	.unlocked_ioctl	= proc_reg_unlocked_ioctl,
+ 	.compat_ioctl	= proc_reg_compat_ioctl,
+ 	.mmap		= proc_reg_mmap,
+ 	.get_unmapped_area = proc_reg_get_unmapped_area,
+@@ -627,7 +597,6 @@ static const struct file_operations proc_iter_file_ops_compat = {
+ 	.open		= proc_reg_open,
+ 	.release	= proc_reg_release,
+ };
+-#endif
+ 
+ static const char *proc_get_link(struct dentry *dentry,
+ 				 struct inode *inode,
+@@ -683,14 +652,6 @@ struct inode *proc_get_inode(struct super_block *sb, struct proc_dir_entry *de)
+ 			inode->i_fop = &proc_iter_file_ops;
+ 		else
+ 			inode->i_fop = &proc_reg_file_ops;
+-#ifdef CONFIG_COMPAT
+-		if (pde_has_proc_compat_ioctl(de)) {
+-			if (pde_has_proc_read_iter(de))
+-				inode->i_fop = &proc_iter_file_ops_compat;
+-			else
+-				inode->i_fop = &proc_reg_file_ops_compat;
+-		}
+-#endif
+ 	} else if (S_ISDIR(inode->i_mode)) {
+ 		inode->i_op = de->proc_iops;
+ 		inode->i_fop = de->proc_dir_ops;
+diff --git a/fs/proc/internal.h b/fs/proc/internal.h
+index 04f7ce2b24ed..268a0523be12 100644
+--- a/fs/proc/internal.h
++++ b/fs/proc/internal.h
+@@ -92,15 +92,6 @@ static inline bool pde_has_proc_read_iter(const struct proc_dir_entry *pde)
+ 	return pde->flags & PROC_ENTRY_proc_read_iter;
+ }
+ 
+-static inline bool pde_has_proc_compat_ioctl(const struct proc_dir_entry *pde)
+-{
+-#ifdef CONFIG_COMPAT
+-	return pde->flags & PROC_ENTRY_proc_compat_ioctl;
+-#else
+-	return false;
+-#endif
+-}
+-
+ static inline bool pde_has_proc_lseek(const struct proc_dir_entry *pde)
+ {
+ 	return pde->flags & PROC_ENTRY_proc_lseek;
+diff --git a/include/linux/proc_fs.h b/include/linux/proc_fs.h
+index 47d7deaeed8f..6ad5150020bf 100644
+--- a/include/linux/proc_fs.h
++++ b/include/linux/proc_fs.h
+@@ -26,7 +26,6 @@ enum {
+ #endif
+ 
+ 	PROC_ENTRY_proc_read_iter	= 1U << 1,
+-	PROC_ENTRY_proc_compat_ioctl	= 1U << 2,
+ 	PROC_ENTRY_proc_lseek		= 1U << 3,
+ 
+ 	PROC_ENTRY_FORCE_LOOKUP		= 1U << 7,
 
 -- 
 2.53.0
