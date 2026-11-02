@@ -1,56 +1,54 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.167.199
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793585924;
-	b=2gavJHOQWtntTOSuiv3b9mHQW9omaxyJdh2SnIK1jwBMzq/C7RuguAbUGS9SSfEsLvxh
-	 MWq97PAv+BbkhcDpaoSev1OMHVOuqjh1rN1NQkAKgobEXecfcdYqfCnJ4ffftX1i8nej1
-	 f4/PGPHUStGw8u+CV/9dMqA5hXdAmD9DhlapoTd7+FdZGwL7nWvjvEHzVflj1YIcEYuUd
-	 DqTsQOxsvCSuUJaPe0T4xP0o5oEKRvX4sJ9e6Q1Ddm8l3qRXCvP5PTSXovC7YWOoL13Q1
-	 T7MbkmEb7wNwRq/xpXH+l7jmeUAQ95l/aZwGKMS2ZrUCkwmj+nbBa5i2a43QzmKC63g==
+	t=1793588103;
+	b=oakZ8x0RkVepsrP0VhcwfE78OOYPg704oJucFzbMmOwwXSvX5kSf/d/Zl4EueRjI8aVx
+	 SVXNovkQrle0Kb7oQNYmg9LhR+OtT7PXbIWodxDNNL50xo8Oduw/0aWg70AfqQgz5Qawd
+	 KtRmaJMNcf7FxOrf+JcNE3DQD9eRq+aI8f23NUqJnq1n8oeV/wzbPNEqVQG0Yp09Wxx+o
+	 fpwdNnQ7Qp1ex8/64aaFBZuRsnEBz+EbNc27Qczx3uRUJST4S0ElCSlYc5DZ7feLGmLXL
+	 upzgD0BVRd8Ja3GSSgUAa6PqhTN0BOZZScNd+3KXzB6IVg0q4qEc4VdH8V1KKcQRFPA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793585924;
-	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
-	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=/CZuYMLFl8Zn03VljoAnwsVDD6gx2/SzqIwbqoTS0YI=;
-	b=5F63g1MlMFBjhmqJOMRq/FbQDoMXCNJ+o5uDcYyDCJqmKoAGkw1laI0T5DrMfr8Da1et
-	 qENrWes8S+nRHR8+BG21XKRF0c/BPYWOei11ebs752jAc8W5HyB1ktPh9mqSpukdPpi7d
-	 kcACLqp4002OC3L9Ze23WqxJy0tPbGe9fV+piPKke5quSZdXq2/D0sUrl8AD9mamYWiTr
-	 xFEwA1Ym4h7T1PpCyR1BEQGNTmWGostTw/ZuAZwNEEnGtU+TqDPNCLBaEvhGcJZ5BSKut
-	 mtyEqBlXiFtHCQwKuqmCs95Lc9JU9F8Ct+SCGh5osZlI6gRULrvqYV2ryPC67nF9s/A==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793588103;
+	h=DMARC-Filter:Received:X-Google-DKIM-Signature:X-Forwarded-Encrypted:
+	 X-Gm-Message-State:MIME-Version:X-Received:Date:In-Reply-To:
+	 X-Google-Appengine-App-Id:X-Google-Appengine-App-Id-Alias:Message-ID:
+	 Subject:From:To:Content-Type;
+	bh=js2+aFipwjc1iEKrWbKe4EukgHY4QeQ/3UuzBqQXiBg=;
+	b=JnL5ivUCxqQdiY0P5QTaOF2R4kdjfSDghJUgBA+r/PqNEY+/fvszqAieaDVlocVKSNkg
+	 xQ5zk+WteERFpyM5JrL1rMx92vBZZ1Ivq5Beg0PhTFenmWcFZGzVgERWI4Vz88zkgcFYU
+	 rZv7mjp+imhng2CZ3If6kTKZdQJmfvEVny/NU0d19s1+JF1bBwMON031LDt6yd9htD+j4
+	 Xa4JoUtfdxiZ5QX16arfMF6q190VjDNK2LKQhZb6ExvLCNr2S0ouv3Ri5dsSDJmlaui2B
+	 SwV+iW26DpgHcytqMAhhfbhuT4VrdxG6OrOyHtxvK7nyA04QyMboJd6DAFAYHpCCSkA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=hGEJ94cN;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=fail header.from=syzkaller.appspotmail.com;
+	spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com;
+	arc=none smtp.remote-ip=209.85.167.199
+Received: from mail-oi1-f199.google.com (mail-oi1-f199.google.com [209.85.167.199])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 63A0F606A329
-	for <linux-ext4@vger.kernel.org>; Mon,  2 Nov 2026 02:18:44 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=hGEJ94cN
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 11F611F00919;
-	Mon,  2 Nov 2026 02:18:44 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793585924;
-	bh=/CZuYMLFl8Zn03VljoAnwsVDD6gx2/SzqIwbqoTS0YI=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=hGEJ94cNFT3NPEkf41rQAMZKkzUk5BWRty1QVXlG8Xx4hYDhIwVnIB1gg9Hwip2d8
-	 suBk3Xrj9z9Nx7zL10U/ySM9rghtHnpl53VFF4CM/SZyp5u9HpPpsWW1KPJLY+FIfy
-	 dgsYdJ9Kzi9sexgy/UKggoDoVc5J1OBh24eSpj56BDG8fT66J4P+aFRjMdmDPpl0sN
-	 NPFNijMplSVYqT72UZ4woHqEK1/meHuPGRG+rTkZGXqnnEakA0cgCfD4z8oNI3tnVB
-	 4qHih8WCZt4+6O+IVlaari4JlXy3Od3FMx4Og1tsp2awszarUPPved/BQbyEJN3tIj
-	 4BxJ4A8+bp95Q==
-Message-ID: <sashiko-outbox-192825@kernel.org>
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH RESEND v5] jbd2: fix shrinker scan budget accounting in
- jbd2_journal_shrink_scan()
-Reply-To: sashiko-reviews@lists.linux.dev
-To: "Qiliang Yuan" <odys.yuan@gmail.com>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-In-Reply-To: <20261101-fix-jbd2-shrink-scan-nr-scanned-v5-1-ebd1ecc59a96@gmail.com>
-References: <20261101-fix-jbd2-shrink-scan-nr-scanned-v5-1-ebd1ecc59a96@gmail.com>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Mon, 02 Nov 2026 02:18:43 +0000
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 60589606A32C
+	for <linux-ext4@vger.kernel.org>; Mon,  2 Nov 2026 02:55:03 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 60589606A32C
+Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
+Received: by mail-oi1-f199.google.com with SMTP id 5614622812f47-4b26d8d2498so3544679b6e.2
+        for <linux-ext4@vger.kernel.org>; Sun, 01 Nov 2026 18:55:03 -0800 (PST)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1793588102; x=1794192902;
+        h=content-type:to:from:subject:message-id:in-reply-to:date
+         :mime-version:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to:content-type;
+        bh=js2+aFipwjc1iEKrWbKe4EukgHY4QeQ/3UuzBqQXiBg=;
+        b=FJojpAkK+NdtzinvcFNisEmW9413D315K+GhDpdl3s9oo5tKe4RoalG26PdlZCm6I3
+         8ATP/d/tO2gTuxR9UrOk37TlzaS0nY+ByDT/pwgAertjlOl1crB/egGpy9jXyuZC0STZ
+         0N7kIvR5kOFqS4ijNwYqjXgy29e6l17FfHsd7Frz6bAO/fnTYhr6E52rhlPF1215O96l
+         vnXV4BC4gj812TyuLPFILO/eUk8aESkQ3Mf9wHvF3rc73EMN0YZ5HTlrrwqGp02VCCRC
+         QNg4l6QkT0Qm9uq1JAc0BPJhZlfQVo7LM8WyLgClluvxgH5b/rP8V/cWMKf2Ay1ppUd4
+         BTcg==
+X-Forwarded-Encrypted: i=1; AKwUvBxETokCb0QxDoju12qtnlGPA5qr2yw/uJYxA142gVY38yMq3gB8zcO9Aq/ObT4QgzCsd7UfKFXozg7L@vger.kernel.org
+X-Gm-Message-State: AFq9FYIHPtoXEvsoMIZggkvbl6ULipoSP5ao7Fj3NsRqUfYh1LcfmkHD
+	tssQ+h1gmy5sgm4n/oKSSnRKbwOcNhS/JwXNdOEafTDjzuI1TssZMWeyw3smF+qlhVMS34z+3Eu
+	DmS0/bHI7cyKHW+adEjRXT7DJAtbYiJKLeT2SWbBmva3e95I+u+cJ3MYQgf0=
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -59,120 +57,38 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
+MIME-Version: 1.0
+X-Received: by 2002:a05:6808:1520:b0:4ec:d521:9124 with SMTP id
+ 5614622812f47-5640de27b0emr6173623b6e.30.1793588102382; Sun, 01 Nov 2026
+ 18:55:02 -0800 (PST)
+Date: Sun, 01 Nov 2026 18:55:02 -0800
+In-Reply-To: <0ba396c9-1881-4ce9-a84e-6b96c2445228@huaweicloud.com>
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <6ae7fb86.c8ffc79a.e3697.0029.GAE@google.com>
+Subject: Re: [syzbot] [ext4?] WARNING in ext4_do_writepages
+From: syzbot <syzbot+97fbc97fdd4e4fa2ed3a@syzkaller.appspotmail.com>
+To: adilger.kernel@dilger.ca, jack@suse.cz, libaokun@linux.alibaba.com, 
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
+	ojaswin@linux.ibm.com, ritesh.list@gmail.com, syzkaller-bugs@googlegroups.com, 
+	tytso@mit.edu, yi.zhang@huaweicloud.com
+Content-Type: text/plain; charset="UTF-8"
 
-Thank you for your contribution! Sashiko AI review found 1 potential issue(=
-s) to consider:
-- [Medium] jbd2: repeated busy buffer rescans in jbd2_journal_shrink_scan()
---
+Hello,
 
-commit e6c15f2237536f947ab070ac978601d8d9849323
-Author: Qiliang Yuan <odys.yuan@gmail.com>
+syzbot has tested the proposed patch and the reproducer did not trigger any issue:
 
-jbd2: fix shrinker scan budget accounting in jbd2_journal_shrink_scan()
+Reported-by: syzbot+97fbc97fdd4e4fa2ed3a@syzkaller.appspotmail.com
+Tested-by: syzbot+97fbc97fdd4e4fa2ed3a@syzkaller.appspotmail.com
 
-This commit updates sc->nr_scanned in jbd2_journal_shrink_scan() based on t=
-he
-remaining nr_to_scan count from jbd2_journal_shrink_checkpoint_list() and
-returns SHRINK_STOP when sc->nr_scanned is zero.
+Tested on:
 
-> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> index 00f5a98f3d4fe..eac5f84a1afc5 100644
-> --- a/fs/jbd2/journal.c
-> +++ b/fs/jbd2/journal.c
-> @@ -1263,10 +1263,22 @@ static unsigned long jbd2_journal_shrink_scan(str=
-uct shrinker *shrink,
->  	trace_jbd2_shrink_scan_enter(journal, sc->nr_to_scan, count);
-> =20
->  	nr_shrunk =3D jbd2_journal_shrink_checkpoint_list(journal, &nr_to_scan);
-> +	sc->nr_scanned =3D sc->nr_to_scan - nr_to_scan;
-> =20
->  	count =3D percpu_counter_read_positive(&journal->j_checkpoint_jh_count);
->  	trace_jbd2_shrink_scan_exit(journal, nr_to_scan, nr_shrunk, count);
-> =20
-> +	/*
-> +	 * Key SHRINK_STOP off sc->nr_scanned (buffers actually examined),
-> +	 * not nr_shrunk (buffers actually freed): a batch can find every
-> +	 * buffer in its transactions busy and free none, while later
-> +	 * transactions may still hold buffers whose writeback has
-> +	 * completed. sc->nr_scanned only comes back 0 when the checkpoint
-> +	 * list had nothing left to walk.
-> +	 */
-> +	if (sc->nr_scanned =3D=3D 0)
-> +		return SHRINK_STOP;
+commit:         6628e7d4 Linux 7.4-rc1
+git tree:       upstream
+console output: https://syzkaller.appspot.com/x/log.txt?x=12bddc8d580000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=2a4f87c7d3edc25f
+dashboard link: https://syzkaller.appspot.com/bug?extid=97fbc97fdd4e4fa2ed3a
+compiler:       Debian clang version 22.1.8 (1~deb13u4), Debian LLD 22.1.8
+patch:          https://syzkaller.appspot.com/x/patch.diff?x=1549028d580000
 
-[Severity: Medium]
-What happens here when the checkpoint list has already been walked to
-last_transaction and only a small number of busy buffers (for example,
-1 <=3D sc->nr_scanned < sc->nr_to_scan) remain on the list?
-
-In fs/jbd2/checkpoint.c, jbd2_journal_shrink_checkpoint_list() loops via
-goto again while *nr_to_scan is non-zero and journal->j_shrink_transaction =
-is
-non-NULL:
-
-	if (transaction !=3D last_transaction) {
-		journal->j_shrink_transaction =3D next_transaction;
-		next_tid =3D next_transaction->t_tid;
-	} else {
-		journal->j_shrink_transaction =3D NULL;
-		next_tid =3D 0;
-	}
-
-	spin_unlock(&journal->j_list_lock);
-	cond_resched();
-
-	if (*nr_to_scan && journal->j_shrink_transaction)
-		goto again;
-
-Because of that loop, jbd2_journal_shrink_checkpoint_list() only returns wi=
-th
-nr_to_scan > 0 (meaning sc->nr_scanned < sc->nr_to_scan) when the end of the
-checkpoint list (last_transaction) has been reached and
-journal->j_shrink_transaction has been reset to NULL.
-
-If earlier batches freed the clean buffers and, say, 1 busy buffer remains =
-on
-the checkpoint list, jbd2_journal_shrink_checkpoint_list() walks that 1 busy
-buffer, reaches last_transaction, resets journal->j_shrink_transaction to
-NULL, and returns with sc->nr_scanned =3D=3D 1.
-
-Since sc->nr_scanned =3D=3D 1 is non-zero, jbd2_journal_shrink_scan() does =
-not
-return SHRINK_STOP. Back in mm/shrinker.c:do_shrink_slab():
-
-		ret =3D shrinker->scan_objects(shrinker, shrinkctl);
-		if (ret =3D=3D SHRINK_STOP)
-			break;
-		freed +=3D ret;
-
-		count_vm_events(SLABS_SCANNED, shrinkctl->nr_scanned);
-		total_scan -=3D shrinkctl->nr_scanned;
-		scanned +=3D shrinkctl->nr_scanned;
-
-total_scan is decremented by only 1 instead of sc->nr_to_scan (128). On the
-next iteration of do_shrink_slab(), jbd2_journal_shrink_checkpoint_list()
-starts over from the head of journal->j_checkpoint_transactions and rescans
-the exact same busy buffer, multiplying the number of scan_objects() calls
-and journal->j_list_lock acquisitions on the remaining scan budget by up to
-SHRINK_BATCH (128x).
-
-In addition, when the checkpoint list is empty (sc->nr_scanned =3D=3D 0) and
-jbd2_journal_shrink_scan() returns SHRINK_STOP before total_scan is drained,
-do_shrink_slab() breaks out with scanned < nr + delta and banks the un-scan=
-ned
-phantom budget from the stale percpu counter into shrinker->nr_deferred:
-
-	next_deferred =3D max_t(long, (nr + delta - scanned), 0);
-	next_deferred =3D min(next_deferred, (2 * freeable));
-	new_nr =3D add_nr_deferred(next_deferred, shrinker, shrinkctl);
-
-Would it make more sense to check nr_to_scan !=3D 0 (indicating
-jbd2_journal_shrink_checkpoint_list() reached the end of the checkpoint list
-before exhausting the batch budget) or to leave sc->nr_scanned untouched so
-the stale budget is consumed without deferring phantom work or rescanning t=
-he
-same busy buffers up to 128 times?
-
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261101-fix-jbd2-s=
-hrink-scan-nr-scanned-v5-1-ebd1ecc59a96@gmail.com?part=3D1
+Note: testing is done by a robot and is best-effort only.
