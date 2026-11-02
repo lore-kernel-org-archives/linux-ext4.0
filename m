@@ -1,54 +1,54 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.167.199
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.161.72
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793588103;
-	b=oakZ8x0RkVepsrP0VhcwfE78OOYPg704oJucFzbMmOwwXSvX5kSf/d/Zl4EueRjI8aVx
-	 SVXNovkQrle0Kb7oQNYmg9LhR+OtT7PXbIWodxDNNL50xo8Oduw/0aWg70AfqQgz5Qawd
-	 KtRmaJMNcf7FxOrf+JcNE3DQD9eRq+aI8f23NUqJnq1n8oeV/wzbPNEqVQG0Yp09Wxx+o
-	 fpwdNnQ7Qp1ex8/64aaFBZuRsnEBz+EbNc27Qczx3uRUJST4S0ElCSlYc5DZ7feLGmLXL
-	 upzgD0BVRd8Ja3GSSgUAa6PqhTN0BOZZScNd+3KXzB6IVg0q4qEc4VdH8V1KKcQRFPA==
+	t=1793591260;
+	b=fshsSfg2YxBNEdjMT50BuTlEQ0GqOnAA4hKxc/j958fpw8ing/Ylax0BSqcoogOxml6X
+	 W32FYtpg+i+WTl9qIemIfzM6MuiVfHYfE8X2pRociZXfISJy7nQJvvfH9esSjbTt7eub1
+	 OTmIkIJRQy0PRXigfcJjZSWHfgrUjPXO97/VZYEt27NN68tSHJowkk4/x8Y1SAcuEFTyi
+	 bIfWsf/FUDyncYFEfvaivijJk3k7TpSqD1cWIup2yeMtlcgMchFXZHWJv8pPg6LiqAXjR
+	 wrnvHyvIFIFW2dfWegy7n1ARKGGC88J9fN6U3SRTHqD8W+AZd/yu7wKDpxFUmyLLN2g==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793588103;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793591260;
 	h=DMARC-Filter:Received:X-Google-DKIM-Signature:X-Forwarded-Encrypted:
-	 X-Gm-Message-State:MIME-Version:X-Received:Date:In-Reply-To:
+	 X-Gm-Message-State:MIME-Version:X-Received:Date:
 	 X-Google-Appengine-App-Id:X-Google-Appengine-App-Id-Alias:Message-ID:
 	 Subject:From:To:Content-Type;
-	bh=js2+aFipwjc1iEKrWbKe4EukgHY4QeQ/3UuzBqQXiBg=;
-	b=JnL5ivUCxqQdiY0P5QTaOF2R4kdjfSDghJUgBA+r/PqNEY+/fvszqAieaDVlocVKSNkg
-	 xQ5zk+WteERFpyM5JrL1rMx92vBZZ1Ivq5Beg0PhTFenmWcFZGzVgERWI4Vz88zkgcFYU
-	 rZv7mjp+imhng2CZ3If6kTKZdQJmfvEVny/NU0d19s1+JF1bBwMON031LDt6yd9htD+j4
-	 Xa4JoUtfdxiZ5QX16arfMF6q190VjDNK2LKQhZb6ExvLCNr2S0ouv3Ri5dsSDJmlaui2B
-	 SwV+iW26DpgHcytqMAhhfbhuT4VrdxG6OrOyHtxvK7nyA04QyMboJd6DAFAYHpCCSkA==
+	bh=w3YWNQ9e9fM+0YHmB+mpWJhWC4zaBYJmDguwktfIzxs=;
+	b=s81FG9lyXGWZaTKcXGBbSEDml/5qh4VC2YetpQAULrCEbuw+3vHOA/c9DwtYII5/pKE9
+	 Q5Wrkhp1Bt1PBrOO7clFkkIPPck+7HY9FShn6pkIb+BfFMlMEN87N+/eKDEZC/2koB/5s
+	 hPNygkkMpEOkX1YL2TwKjZbuum4X3+2z9Q5K+SLee5IKLGkHX7p33kOnn0ifI23Hx2kcV
+	 MMMVaxA4o07xJ1sxQIOsWTUmBs86r4R0KqiO4YXTpBpGEMoTeUlGSAOJfc4fD87M2It6e
+	 PAfgGAnfhRd5C9OgFbqyKtjN2QZjz7HcLR+S2zSA3r+KL7AHKJ3YM1BUl62mNn6fH2g==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=fail header.from=syzkaller.appspotmail.com;
 	spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com;
-	arc=none smtp.remote-ip=209.85.167.199
-Received: from mail-oi1-f199.google.com (mail-oi1-f199.google.com [209.85.167.199])
+	arc=none smtp.remote-ip=209.85.161.72
+Received: from mail-oo1-f72.google.com (mail-oo1-f72.google.com [209.85.161.72])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 60589606A32C
-	for <linux-ext4@vger.kernel.org>; Mon,  2 Nov 2026 02:55:03 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 60589606A32C
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9F89A606A327
+	for <linux-ext4@vger.kernel.org>; Mon,  2 Nov 2026 03:47:39 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 9F89A606A327
 Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
-Received: by mail-oi1-f199.google.com with SMTP id 5614622812f47-4b26d8d2498so3544679b6e.2
-        for <linux-ext4@vger.kernel.org>; Sun, 01 Nov 2026 18:55:03 -0800 (PST)
+Received: by mail-oo1-f72.google.com with SMTP id 006d021491bc7-7044b48537dso2626705eaf.2
+        for <linux-ext4@vger.kernel.org>; Sun, 01 Nov 2026 19:47:39 -0800 (PST)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1793588102; x=1794192902;
-        h=content-type:to:from:subject:message-id:in-reply-to:date
-         :mime-version:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to:content-type;
-        bh=js2+aFipwjc1iEKrWbKe4EukgHY4QeQ/3UuzBqQXiBg=;
-        b=FJojpAkK+NdtzinvcFNisEmW9413D315K+GhDpdl3s9oo5tKe4RoalG26PdlZCm6I3
-         8ATP/d/tO2gTuxR9UrOk37TlzaS0nY+ByDT/pwgAertjlOl1crB/egGpy9jXyuZC0STZ
-         0N7kIvR5kOFqS4ijNwYqjXgy29e6l17FfHsd7Frz6bAO/fnTYhr6E52rhlPF1215O96l
-         vnXV4BC4gj812TyuLPFILO/eUk8aESkQ3Mf9wHvF3rc73EMN0YZ5HTlrrwqGp02VCCRC
-         QNg4l6QkT0Qm9uq1JAc0BPJhZlfQVo7LM8WyLgClluvxgH5b/rP8V/cWMKf2Ay1ppUd4
-         BTcg==
-X-Forwarded-Encrypted: i=1; AKwUvBxETokCb0QxDoju12qtnlGPA5qr2yw/uJYxA142gVY38yMq3gB8zcO9Aq/ObT4QgzCsd7UfKFXozg7L@vger.kernel.org
-X-Gm-Message-State: AFq9FYIHPtoXEvsoMIZggkvbl6ULipoSP5ao7Fj3NsRqUfYh1LcfmkHD
-	tssQ+h1gmy5sgm4n/oKSSnRKbwOcNhS/JwXNdOEafTDjzuI1TssZMWeyw3smF+qlhVMS34z+3Eu
-	DmS0/bHI7cyKHW+adEjRXT7DJAtbYiJKLeT2SWbBmva3e95I+u+cJ3MYQgf0=
+        d=1e100.net; s=20260707; t=1793591259; x=1794196059;
+        h=content-type:to:from:subject:message-id:date:mime-version
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=w3YWNQ9e9fM+0YHmB+mpWJhWC4zaBYJmDguwktfIzxs=;
+        b=kNRljHgLVCAwn4hJ2Xil5O/2MmOxGpd+hOdeHiIJoqepbn4REObdxcPYAmqWuKCZii
+         ohHzvxzkfhtq/j/IYUEWHNnxIUL/eJrkmoT/hoKOL1Eo8e/iBhkvKo3SkZa5akINYKOr
+         rGaqWuNBu00kq/lKmV1ya4HUAeKwYeQaAjWwX85n0z2YHYxZgVjP+1+4+Qx7K50EVZI+
+         rbvykxBzDiEixFT36iMtiG4VZhHnf/9VeAy7iDJSJl7oFwFo+KRkAFj7N50Co4k1w/eP
+         UsxJ6TX3nK0VIAxuHRRLOeqknwC/dL2xYdgGYlt1riXj1Dakr+YvmzQIB9xhAvnCVpRB
+         nd6g==
+X-Forwarded-Encrypted: i=1; AKwUvBwDwWbH4ZxQgHqo9rpmGjf4MPNSKNvpBVy4rGBVw7CI6mijzdFEKJN31if9aMSYLCR2jONZpTwwz/ae@vger.kernel.org
+X-Gm-Message-State: AFq9FYJjld9Q5ovbZ1tKetRV5OnXKPvisIIE56KMrlVveMJGvsujaEtr
+	g+n8exGxf3dv9TNRSBHyU4ruEJESKgaLabaSt1oLtKidKTPR8Ii4qZNdyzNupfS71UDdJuKn3Vc
+	wg4cxB/pAOhJLAkqBO8CzdGgUZjNIyEyZ9BkCL/AmOWaJ9wLS5ZO7frllOjE=
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -58,37 +58,147 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-X-Received: by 2002:a05:6808:1520:b0:4ec:d521:9124 with SMTP id
- 5614622812f47-5640de27b0emr6173623b6e.30.1793588102382; Sun, 01 Nov 2026
- 18:55:02 -0800 (PST)
-Date: Sun, 01 Nov 2026 18:55:02 -0800
-In-Reply-To: <0ba396c9-1881-4ce9-a84e-6b96c2445228@huaweicloud.com>
+X-Received: by 2002:a05:6820:c2d0:10b0:70a:4053:52e7 with SMTP id
+ 006d021491bc7-714f1f8157amr3592158eaf.8.1793591258811; Sun, 01 Nov 2026
+ 19:47:38 -0800 (PST)
+Date: Sun, 01 Nov 2026 19:47:38 -0800
 X-Google-Appengine-App-Id: s~syzkaller
 X-Google-Appengine-App-Id-Alias: syzkaller
-Message-ID: <6ae7fb86.c8ffc79a.e3697.0029.GAE@google.com>
-Subject: Re: [syzbot] [ext4?] WARNING in ext4_do_writepages
-From: syzbot <syzbot+97fbc97fdd4e4fa2ed3a@syzkaller.appspotmail.com>
-To: adilger.kernel@dilger.ca, jack@suse.cz, libaokun@linux.alibaba.com, 
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
-	ojaswin@linux.ibm.com, ritesh.list@gmail.com, syzkaller-bugs@googlegroups.com, 
-	tytso@mit.edu, yi.zhang@huaweicloud.com
+Message-ID: <6ae807da.c8ffc79a.e3697.002c.GAE@google.com>
+Subject: [syzbot] [block?] [ext4?] BUG: unable to handle kernel paging request
+ in blk_mq_exit_hctx
+From: syzbot <syzbot+5307e3bcacec2ce4c2f0@syzkaller.appspotmail.com>
+To: axboe@kernel.dk, linux-block@vger.kernel.org, linux-ext4@vger.kernel.org, 
+	linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com
 Content-Type: text/plain; charset="UTF-8"
 
 Hello,
 
-syzbot has tested the proposed patch and the reproducer did not trigger any issue:
+syzbot found the following issue on:
 
-Reported-by: syzbot+97fbc97fdd4e4fa2ed3a@syzkaller.appspotmail.com
-Tested-by: syzbot+97fbc97fdd4e4fa2ed3a@syzkaller.appspotmail.com
-
-Tested on:
-
-commit:         6628e7d4 Linux 7.4-rc1
-git tree:       upstream
-console output: https://syzkaller.appspot.com/x/log.txt?x=12bddc8d580000
-kernel config:  https://syzkaller.appspot.com/x/.config?x=2a4f87c7d3edc25f
-dashboard link: https://syzkaller.appspot.com/bug?extid=97fbc97fdd4e4fa2ed3a
+HEAD commit:    7a19f0cc94ad Merge branch 'for-next/core' into for-kernelci
+git tree:       git://git.kernel.org/pub/scm/linux/kernel/git/arm64/linux.git for-kernelci
+console output: https://syzkaller.appspot.com/x/log.txt?x=17bddc8d580000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=6602d83d2f34eb80
+dashboard link: https://syzkaller.appspot.com/bug?extid=5307e3bcacec2ce4c2f0
 compiler:       Debian clang version 22.1.8 (1~deb13u4), Debian LLD 22.1.8
-patch:          https://syzkaller.appspot.com/x/patch.diff?x=1549028d580000
+userspace arch: arm64
+syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=169be5a5580000
 
-Note: testing is done by a robot and is best-effort only.
+Downloadable assets:
+disk image: https://storage.googleapis.com/syzbot-assets/26f2e4202da9/disk-7a19f0cc.raw.xz
+vmlinux: https://storage.googleapis.com/syzbot-assets/1e23a9081d19/vmlinux-7a19f0cc.xz
+kernel image: https://storage.googleapis.com/syzbot-assets/b51f551829ee/Image-7a19f0cc.gz.xz
+mounted in repro #1: https://storage.googleapis.com/syzbot-assets/f7427d1d35bc/mount_4.gz
+  fsck result: failed (log: https://syzkaller.appspot.com/x/fsck.log?x=15bddc8d580000)
+mounted in repro #2: https://storage.googleapis.com/syzbot-assets/22e8d60714f9/mount_5.gz
+  fsck result: OK (log: https://syzkaller.appspot.com/x/fsck.log?x=11dc1d29580000)
+mounted in repro #3: https://storage.googleapis.com/syzbot-assets/f50f15fd78d0/mount_20.gz
+  fsck result: failed (log: https://syzkaller.appspot.com/x/fsck.log?x=13ab1795580000)
+mounted in repro #4: https://storage.googleapis.com/syzbot-assets/3cdc94810dc2/mount_21.gz
+  fsck result: OK (log: https://syzkaller.appspot.com/x/fsck.log?x=13bddc8d580000)
+
+AI-generated root cause summary:
+When dm_setup_md_queue() fails after add_disk() (for instance during
+bd_link_disk_holder() or dm_sysfs_init()), the error path invokes del_gendisk(),
+which calls blk_mq_exit_queue() -> blk_mq_exit_hctx(), freeing each hardware
+context flush queue and setting hctx->fq = NULL. However, md->type remains
+DM_TYPE_NONE and the mapped device is not torn down. When userspace retries
+table_load on the device, dm_setup_md_queue() and dm_mq_init_request_queue() run
+again, invoking blk_mq_init_allocated_queue() on the existing queue. During
+__blk_mq_realloc_hw_ctxs(), blk_mq_exit_hctx() is called on the existing
+hardware contexts, unconditionally dereferencing hctx->fq->flush_rq (offset
+0x78) when hctx->fq is NULL, causing a kernel null-pointer dereference crash.
+
+full analysis:  https://syzkaller.appspot.com/x/ai_root_cause?x=5307e3bcacec2ce4c2f0
+
+IMPORTANT: if you fix the issue, please add the following tag to the commit:
+Reported-by: syzbot+5307e3bcacec2ce4c2f0@syzkaller.appspotmail.com
+
+Unable to handle kernel paging request at virtual address dfff80000000000f
+KASAN: null-ptr-deref in range [0x0000000000000078-0x000000000000007f]
+Mem abort info:
+  ESR = 0x0000000096000005
+  EC = 0x25: DABT (current EL), IL = 32 bits
+  SET = 0, FnV = 0
+  EA = 0, S1PTW = 0
+  FSC = 0x05: level 1 translation fault
+Data abort info:
+  ISV = 0, ISS = 0x00000005, ISS2 = 0x00000000
+  CM = 0, WnR = 0, TnD = 0, TagAccess = 0
+  GCS = 0, Overlay = 0, DirtyBit = 0
+[dfff80000000000f] address between user and kernel address ranges
+Internal error: Oops: 0000000096000005 [#1]  SMP
+Modules linked in:
+CPU: 0 UID: 0 PID: 9108 Comm: syz.5.600 Not tainted syzkaller #0 PREEMPT 
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 08/14/2026
+pstate: 83400005 (Nzcv daif +PAN -UAO +TCO +DIT -SSBS BTYPE=--)
+pc : blk_mq_exit_hctx+0x64/0x494 block/blk-mq.c:3957
+lr : blk_mq_exit_hctx+0x40/0x494 block/blk-mq.c:3956
+sp : ffff8000984475d0
+x29: ffff8000984475e0 x28: 0000000000000000 x27: 1fffe0001b03332a
+x26: dfff800000000000 x25: ffff0000d8199950 x24: ffff0000c3aeffc0
+x23: 0000000000000078 x22: 0000000000000000 x21: ffff0000d3857000
+x20: ffff0000d8199800 x19: ffff0000eabc5388 x18: ffff8001237ae000
+x17: ffff0001acf6ce07 x16: ffff0000dad68014 x15: 0000000000000001
+x14: 0000000000000000 x13: 0000000000000001 x12: 0000000000000000
+x11: 0000000000000000 x10: ffff0000eabc53bc x9 : 0000000000000000
+x8 : 000000000000000f x7 : 0000000000000000 x6 : 0000000000000000
+x5 : 0000000000000000 x4 : 0000000000000003 x3 : 0000000000000000
+x2 : ffff0000d8199800 x1 : ffff0000dad68000 x0 : 0000000000000000
+Call trace:
+ blk_mq_exit_hctx+0x64/0x494 block/blk-mq.c:3957 (P)
+ __blk_mq_realloc_hw_ctxs+0x1f0/0x548 block/blk-mq.c:4583
+ blk_mq_realloc_hw_ctxs block/blk-mq.c:4623 [inline]
+ blk_mq_init_allocated_queue+0x2a8/0xc44 block/blk-mq.c:4653
+ dm_mq_init_request_queue+0x2d8/0x474 drivers/md/dm-rq.c:573
+ dm_setup_md_queue+0x134/0x434 drivers/md/dm.c:2611
+ table_load+0x3d4/0x764 drivers/md/dm-ioctl.c:1661
+ ctl_ioctl drivers/md/dm-ioctl.c:2221 [inline]
+ dm_ctl_ioctl+0x884/0xbbc drivers/md/dm-ioctl.c:2243
+ vfs_ioctl fs/ioctl.c:51 [inline]
+ __do_sys_ioctl fs/ioctl.c:597 [inline]
+ __se_sys_ioctl fs/ioctl.c:583 [inline]
+ __arm64_sys_ioctl+0x154/0x1cc fs/ioctl.c:583
+ __invoke_syscall arch/arm64/kernel/syscall.c:35 [inline]
+ invoke_syscall+0x98/0x244 arch/arm64/kernel/syscall.c:49
+ el0_svc_common+0xec/0x23c arch/arm64/kernel/syscall.c:121
+ do_el0_svc+0x4c/0x5c arch/arm64/kernel/syscall.c:140
+ el0_svc+0x60/0x1d8 arch/arm64/kernel/entry-common.c:796
+ el0t_64_sync_handler+0x44/0x104 arch/arm64/kernel/entry-common.c:815
+ el0t_64_sync+0x198/0x19c arch/arm64/kernel/entry.S:606
+Code: 97cfdb27 f9400328 9101e117 d343fee8 (387a6908) 
+---[ end trace 0000000000000000 ]---
+----------------
+Code disassembly (best guess):
+   0:	97cfdb27 	bl	0xffffffffff3f6c9c
+   4:	f9400328 	ldr	x8, [x25]
+   8:	9101e117 	add	x23, x8, #0x78
+   c:	d343fee8 	lsr	x8, x23, #3
+* 10:	387a6908 	ldrb	w8, [x8, x26] <-- trapping instruction
+
+
+---
+This report is generated by a bot. It may contain errors.
+See https://goo.gl/tpsmEJ for more information about syzbot.
+syzbot engineers can be reached at syzkaller@googlegroups.com.
+
+syzbot will keep track of this issue. See:
+https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
+
+If the report is already addressed, let syzbot know by replying with:
+#syz fix: exact-commit-title
+
+If you want syzbot to run the reproducer, reply with:
+#syz test: git://repo/address.git branch-or-commit-hash
+If you attach or paste a git patch, syzbot will apply it before testing.
+
+If you want to overwrite report's subsystems, reply with:
+#syz set subsystems: new-subsystem
+(See the list of subsystem names on the web dashboard)
+
+If the report is a duplicate of another one, reply with:
+#syz dup: exact-subject-of-another-report
+
+If you want to undo deduplication, reply with:
+#syz undup
