@@ -1,100 +1,109 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.218.45
-ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
-	t=1793626092;
-	b=gbtwfgpcR8NZCNO+SEt9zrGEfpRSUtxV/uV1AZirEBuFNFPuIO93kdwmfyWfMqaqRueS
-	 dilAJ53zN/xnZzb4oZka5EyvDfs4QWWyLN1yy/fIrK0f2oo9318ehDH00MStYOXnPe+UV
-	 jilSGBCkN/argiOzo4Hl0WH4IqsrqH7vL9sVT6dToDrTHCPwSwv3NxLSfDhX6zDDPQ1bW
-	 08XEmoVY+rxNGjRWkl7l73CEcYrRVuvaUr4V2TtRmINyZ93CMA90k9b+FY+U0IWaydfVw
-	 yfrgQcKJoLgAdnAOuUPcpxbvRHvfIZD4UiVaiUZlDgTl+kZntBy86aeUOz3opixOBmg==
-ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793626092;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:
-	 MIME-Version:References:In-Reply-To:From:Date:X-Gm-Features:
-	 Message-ID:Subject:To:Cc:Content-Type:Content-Transfer-Encoding;
-	bh=qjPej5w11WbikcynHTF6kveEbA3S0oHjvCfUZQriRUU=;
-	b=fZBigf35ZmfCWcj2PCyFF3i2jtoeUm17mw6qakmDbpCXXv3oDThemzAakd8LUWS5SVqA
-	 VAzlLDrZ4bV8M6i9XXWLRY7OtVrmKCQfPMvyThLEQh6XhtAGB37TNof8YWTGJzbuDuCHX
-	 k4jT4ZCnbgn6wh5uxdPVqcTdzo0lx9yVNyvz1HiXs/M83pvy7yo4Q0UFOobmMRbloI7kx
-	 7wz/1JeoOEF6uxTzTMbCKoIkhfxBRWMm6vfmKvW5iEZzlLGcZe6/+KXLJTwDpLraX82Bf
-	 9ncigbVS+2JW+rcZBqDryRZQnacHgGr+Xq8WMnl6NjNWFOn+FEsazbAFfOIVHWb1LiQ==
-ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=gmail.com;
-	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=eYS07XxP;
-	arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.218.45
-Received: from mail-ej1-f45.google.com (mail-ej1-f45.google.com [209.85.218.45])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
+	t=1793629260;
+	b=pCpHSVZDMMdk6s2/SWjI0YYQxt3cLXCpszddhZgCLrD+zL+P1nSYoDjGmWwEsPGQRuoS
+	 cAF+bgvb4//kt5Wwy5h30dajrh4j4Oyu4lOfrLg9hYjc+HhlN9WcTQLOx97AxD9fJDKmY
+	 GImIjoJ0o5r6bMWBreBX3aZy2fGlhnYDKn1wJzqL6Wxaav6MS4KzJC9Z5/1wzOzE8CLt9
+	 t9NIHnDkbziEWw6zFMPilZPTpBAKhNswWQpO6JtBnrRLy7fpM3gm/E/DWhUO8j+IB6HnY
+	 wm503hZLiIrM4tF2OY8MYwnk+JmVUbqFEciduIYQE6lhvx0uU1BUyMmhHg3uQqZ/32g==
+ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793629260;
+	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
+	 MIME-Version:Content-Type:X-Developer-Signature:X-Developer-Key:
+	 Content-Transfer-Encoding;
+	bh=AMQhAUoLjC1OsRhPIF0X/aZZvhoGLtnfpHmE2nV4Wn8=;
+	b=w0iUuu25LcgkA3xGhaCiKMEKC4+WEmJvuCSsM7a4JcQzbZkbzH95lmjyghuNDSZ636lM
+	 zDqlTkdA53RBUQ/pfPUtP35lwyf23hoIVTza23nSQ/mxH15ctyh9mOtI68HNAhD4vZQq2
+	 H1pAwc8FT0JABLkWPADeSKIfS3K0Si2FdjU7nGK5JKm78OPZr0ETnE6cVeYr9JSM8ejlT
+	 qSV26qfr4m9ADzs0JeKUvRhT3WqpTt1yNreGV/9s3Zy1LwstRqheSzSloj1kmuJYwmew3
+	 hQf23VzxVy8e0WCjv8ctXarDx8UwmqgUEp8H2W9zOkRKd4ZYX1BHGBPLKByfm8j/6Qg==
+ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=i0H9lG0B;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4FCDC606A326
-	for <linux-ext4@vger.kernel.org>; Mon,  2 Nov 2026 13:28:11 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 4FCDC606A326
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 821D9606A327;
+	Mon,  2 Nov 2026 14:21:00 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=eYS07XxP
-Received: by mail-ej1-f45.google.com with SMTP id a640c23a62f3a-c34bff61551so515500066b.2
-        for <linux-ext4@vger.kernel.org>; Mon, 02 Nov 2026 05:28:11 -0800 (PST)
-ARC-Seal: i=1; a=rsa-sha256; t=1793626090; cv=none;
-        d=google.com; s=arc-20260327;
-        b=B8FXJHAacBtmvfhBbuiptWYHtRAJZmVrcCSXMYAKS78IzK6oFo7mDMDD19K+p55rCm
-         8zdbl18mDoQbT5kIksYuOdy1+1R3IiIiUoTgpWD74teeEIXWnz6un3mDZtWjtRsY+ycO
-         LM2QtrMeqS/s/BX/TwnO/erziBtEDbVoYnU1qmojeSh5xa5XiG7X2hU1QXc7HpThbumr
-         MQbeZawHPHwokpIXsbQ3P9Xui2Nu5RjHEN8J5owRDSnw1U1rPibeL8cgMvt4EgLI19Z5
-         t/Gu7Q8L37eQ/r0JGrFs0frDDOTioDJ8RMl25EpNlZhCZR+XbcQha6G+9EODBUyWB4fY
-         zwaQ==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=qjPej5w11WbikcynHTF6kveEbA3S0oHjvCfUZQriRUU=;
-        fh=oS1UGLUVvPTDbarCpezPwtUYf49/BgsV21qQ6C7K7c0=;
-        b=cZTr/XZIKofvidpYb3EH3zRmVcw0SGw3l2XsjsVqOA2J95MCRTUNq4dpWWexQ7qOEq
-         2ZLNsXW8DkBdSRUbV/XbZIGIS4hgm70G9ooiiEcHop02STR6QIPo8B4s6xHGuaEmy3yM
-         /C30zcfdg6m0AFyl/kDk/9BmrkQNKCqGJUuIgfBpZVGB/3Yeg/uhMnBrkAnbjyGPbrUu
-         U5xViS3pXN4ehbwM/N95ik23ZhMpc3p3U8YCyHDEDdUMWx8853XM+crFmTvzl0IUUxp+
-         LqYyXhO3h9FePqY9ilyHkfnvoBrtHO3+IzvRMp07kqbAHMFzTWmFqZA3IsT1APnQp+80
-         yijg==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1793626090; x=1794230890; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=qjPej5w11WbikcynHTF6kveEbA3S0oHjvCfUZQriRUU=;
-        b=eYS07XxP8utYTK8HWQxrIfweY2AEeSo05MdTGi9bbVESvlC58yszyY6JPLobaWZfxc
-         imk/gxvuIXAaaTqV46KdtWmW3Q1ueQHZpbb2oWgLi8gNn6uXtkdbIzybF0KYsU5j+ayW
-         aKmXNPi+TN8LKEygHmb6+CngLX/IJwGYm57T1XXuB/0Hwxb0BVyeMHl6mO+yjqoQM26r
-         QIGMCxuRZeD0eC9omZ6Wonuh4ev5nNkK8FsviHCI0KaI33iz9G45ISt/6jkeihUvAQhw
-         AZzS1P60h62yvfPoc/o74f7YuADHPSqe7dJKIFt5i7QNTmMya1RJRdwQUTAclTJTikIQ
-         PtOw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1793626090; x=1794230890;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=qjPej5w11WbikcynHTF6kveEbA3S0oHjvCfUZQriRUU=;
-        b=rs3pG64gsWJbG5z5fW+uJwrr6F6766WXsY/3oUquv1DWSUEUypdTy+v5fu6a1oL2T5
-         9F+7OvulQSG9P80flbw4ku6Tzqaf/Kt7cghXvVMJHt0EW1heS/pxKtzCwVhpJsEtCjcw
-         ssKSsIjYgVlKCmSYuctUKFdwCk08chtgKnNBJSgswiwNUyuCGXnVUFpi5MeZOwj5ikvR
-         akR9itim2W2+mXVT0IULvFKjT4j5CDRbjCk/PpuJlxDgPaSozPx0EeV3Qne82cspO5lR
-         fvc+LwF89n6OGA8JRnoC9SAJ3Cj26PvRLvDCrQyMKRvxrdE6+MWgJUu6J2AOcZwPd9iH
-         eaGw==
-X-Forwarded-Encrypted: i=1; AKwUvBxPPhfHVuEELGCIDuiSW7qngkC1uneTBU1sQdZtu2ofTdjyPaES1eTaBjo31qAlaXDmKvVauvA+SvGN@vger.kernel.org
-X-Gm-Message-State: APuU4Z9TLKqHwuRh5nXWbWp6WqVtNv3LAbofuZTq4n2697krWKFsmuEO
-	Q28fhDUVm/EtRURBNmqgapVTz8LusXk9/7gZCNSZ3ciCuNwaEXXnkOzGeywJnDAzFnWxogM5CSR
-	kLOIXaKAVyhtVYLqe4ctnk4Rcse7+ndU=
-X-Gm-Gg: AYBFou0+PKkBWNJfR/yrPIJWKNdckYZPSdDyIs5i4czJ3H055rThjpTxxSGSEb19BQQ
-	rRfSx4C0Za59gZygy7VfQt6KaLs+kTt9YMAAoWPyh6AXnlHKCvBzZLTmFFovYAU6u6pusqXUnGt
-	Ji2jvrecOOXB8ZuAjbqRjqJ4HsNI7K6pEprlyQVF1Derh4XFfkXe7g3goh/ZfN3bSA8aPz/lVhH
-	DqPpLB1NHOqX4lPaTdAyteXO7U6TBv4KJO22NMCwo7bFQZ/IEdzX4CxA2MvI4kbNVcq+E2GW1AX
-	lwTtE7P/1FQtVrZvR5GwIIpCEr4GhH96E1n6kZlySx4N6WbYgzN2SCbe3EhXs9o9KVP5PulyNEI
-	LUC130jvC99MM8QoQAgNJa5CfR55CjGe730d28Xs=
-X-Received: by 2002:a17:907:7212:b0:c2e:3f49:df04 with SMTP id
- a640c23a62f3a-c4ca793bcd1mr794308466b.1.1793626089392; Mon, 02 Nov 2026
- 05:28:09 -0800 (PST)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=i0H9lG0B
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id EED4A1F00A24;
+	Mon,  2 Nov 2026 14:20:46 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1793629260;
+	bh=AMQhAUoLjC1OsRhPIF0X/aZZvhoGLtnfpHmE2nV4Wn8=;
+	h=From:To:Cc:Subject:Date;
+	b=i0H9lG0Be05TEfu/3sSSx1mNu2tXsbt81HU4VhWr1YaNjWqP1nbmV2PU6N9fCZNuw
+	 nivi01r4yhBVK5q6ZZ/2sNWNfeS1/SVvtod3GB/cMk9XHlaJxrROzU9uNyaCbwueWN
+	 AE/rw/aIukHRd/bUpfVF3u6Oo+d1/1nWu8xicACG8hfScuBzUWJR1oSKGUI3TT1yza
+	 I6qw7gNhliBS+HPnhAgAxa3M/VUpvB8uzbr6ovyo5O6M56NbveIxMw0j6pJhZqxruk
+	 pALxbTScur8TNXplk3A0Y4Q0gW4y8sE5l288k+10HrKs8+OO7WmnOZctFatwni3om7
+	 HzOPbsKYJ2AYQ==
+From: Christian Brauner <brauner@kernel.org>
+To: linux-fsdevel@vger.kernel.org
+Cc: Christian Brauner <brauner@kernel.org>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	Jann Horn <jannh@google.com>,
+	Josef Bacik <josef@toxicpanda.com>,
+	Chris Mason <mason@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>,
+	NeilBrown <neil@brown.name>,
+	Eric Dumazet <edumazet@kernel.org>,
+	Thomas Gleixner <tglx@kernel.org>,
+	Al Viro <viro@zeniv.linux.org.uk>,
+	Jonathan Corbet <corbet@lwn.net>,
+	Christoph Hellwig <hch@lst.de>,
+	Greg Kroah-Hartman <gregkh@suse.de>,
+	Joel Granados <joel.granados@kernel.org>,
+	Kees Cook <kees@kernel.org>,
+	Jan Kara <jack@suse.cz>,
+	Jan Kara <jack@suse.com>,
+	linux-kernel@vger.kernel.org,
+	linux-nfs@vger.kernel.org,
+	linux-acpi@vger.kernel.org,
+	linux-kselftest@vger.kernel.org,
+	linux-s390@vger.kernel.org,
+	linux-scsi@vger.kernel.org,
+	linux-um@lists.infradead.org,
+	linux-wireless@vger.kernel.org,
+	linuxppc-dev@lists.ozlabs.org,
+	netdev@vger.kernel.org,
+	ntfs3@lists.linux.dev,
+	platform-driver-x86@vger.kernel.org,
+	coreteam@netfilter.org,
+	kexec@lists.infradead.org,
+	linux-pci@vger.kernel.org,
+	linux-sound@vger.kernel.org,
+	netfilter-devel@vger.kernel.org,
+	dri-devel@lists.freedesktop.org,
+	ibm-acpi-devel@lists.sourceforge.net,
+	jfs-discussion@lists.sourceforge.net,
+	linux-alpha@vger.kernel.org,
+	linux-arm-kernel@lists.infradead.org,
+	linux-cifs@vger.kernel.org,
+	linux-fbdev@vger.kernel.org,
+	linux-hwmon@vger.kernel.org,
+	linux-mm@kvack.org,
+	linux-sh@vger.kernel.org,
+	linux-usb@vger.kernel.org,
+	samba-technical@lists.samba.org,
+	sparclinux@vger.kernel.org,
+	linux-m68k@lists.linux-m68k.org,
+	linux-doc@vger.kernel.org,
+	linux-serial@vger.kernel.org,
+	linux-atm-general@lists.sourceforge.net,
+	Chuck Lever <chuck.lever@oracle.com>,
+	Takashi Iwai <tiwai@suse.de>,
+	linux-input@vger.kernel.org,
+	linux-raid@vger.kernel.org,
+	linux-ext4@vger.kernel.org,
+	linux-modules@vger.kernel.org,
+	linux-debuggers@vger.kernel.org
+Subject: [PATCH RFC 0/7] proc: move procfs to what kernfs does
+Date: Mon,  2 Nov 2026 15:19:15 +0100
+Message-ID: <20261102-defizit-jobaussicht-kurios-7016c6e67442@brauner>
+X-Mailer: git-send-email 2.53.0
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -104,109 +113,129 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-References: <20261021085635.3633692-1-r772577952@gmail.com>
-In-Reply-To: <20261021085635.3633692-1-r772577952@gmail.com>
-From: Jiaming Zhang <r772577952@gmail.com>
-Date: Mon, 2 Nov 2026 21:27:28 +0800
-X-Gm-Features: AclHuK8kt_THxReORpsQp5Tyrq7frAGmxk4veLrbcHUVI_TWp6z1LJSbwSMGjP0
-Message-ID: <CANypQFYcKGJP7BxP-UAiKUXQ2Uw+H06WJY7kkCxuVQ742QbK_Q@mail.gmail.com>
-Subject: Re: [PATCH v2] ext4: clear in-inode xattr space before adding the
- first xattr
-To: jack@suse.cz, linux-ext4@vger.kernel.org, tytso@mit.edu, 
-	adilger.kernel@dilger.ca
-Cc: libaokun@linux.alibaba.com, linux-kernel@vger.kernel.org, 
-	ojaswin@linux.ibm.com, ritesh.list@gmail.com, stable@vger.kernel.org, 
-	yi.zhang@huawei.com
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset="utf-8"
+X-Developer-Signature: v=1; a=openpgp-sha256; l=6321; i=brauner@kernel.org; h=from:subject:message-id; bh=DeFgfcqlv/TY20j7H/EH1gPUF0B7m3TaniK1kcChAz8=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9mGNqL7pz+vPzk4KWfT6wfNmBh/f/+az2dnquniC7r OfbdVtpkY5SFgYxLgZZMUUWh3aTcLnlPBWbjTI1YOawMoEMYeDiFICJLNFkZJi9z+Wc51MV9sWG KyZ0i3EcLl3135Rh1V/p2TenWEnnPCln+F99gMWOyX62xk4Du399RQ9XTQsXMmEy4ArfuSn16RK 3R1wA
+X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
+Content-Transfer-Encoding: 8bit
 
-Jiaming Zhang <r772577952@gmail.com> =E4=BA=8E2026=E5=B9=B410=E6=9C=8821=E6=
-=97=A5=E5=91=A8=E4=B8=89 16:56=E5=86=99=E9=81=93=EF=BC=9A
->
-> An inode can hold extended attributes in the space that follows its extra
-> fields, whose size is given by i_extra_isize.  When ext4 loads an inode,
-> ext4_iget_extra_inode() validates that space only if it starts with the
-> xattr magic, and only then sets EXT4_STATE_XATTR.  Without the magic, the
-> space is treated as empty and is not checked.
->
-> ext4_xattr_ibody_set() passes the space to ext4_xattr_set_entry() whether
-> or not EXT4_STATE_XATTR is set.  ext4_xattr_set_entry() walks the entries
-> there to find min_offs, the lowest value offset.  That offset decides
-> whether the new value fits and where the value is copied:
->
->         free =3D min_offs - ((void *)last - s->base) - sizeof(__u32);
->         ...
->         void *val =3D s->base + min_offs - new_size;
->
-> A crafted image can leave non-zero bytes in that space without the magic
-> where ext4 looks for it, for example by shrinking i_extra_isize.  Those
-> bytes are parsed as entries, and an entry that claims an in-inode value a=
-t
-> offset 0 sets min_offs to 0.  Because free is a size_t, the subtraction
-> then wraps around to a huge value, and the free space check passes althou=
-gh
-> the value does not fit.  The value is copied new_size bytes before the
-> start of the space, over the inode's own fields and, for a large value, t=
-he
-> memory in front of the inode.
->
-> On a kernel without KASAN, the copy corrupts memory: it overwrites the
-> inode's own fields and, for a large value, also the memory in front of th=
-e
-> inode.  The bytes and their length are decided by the setxattr() caller.
-> Nothing is freed and reused here, so the use-after-free in the report onl=
-y
-> reflects where the write happened to land.
->
-> Triggering this issue requires mounting a crafted image, which needs
-> CAP_SYS_ADMIN or automounting of removable media; after that, any
-> setxattr() on the file reaches this path.  The issue was found by fuzzing
-> and has not been seen in production; a reproducer is available in the
-> linked report.
->
-> When EXT4_STATE_XATTR is not set, zero the first 32 bits of the space in
-> ext4_xattr_ibody_set() before calling ext4_xattr_set_entry().  These are
-> the bits IS_LAST_ENTRY() reads, so the space is treated as empty and the
-> walk stops before reading any stale entry.
->
-> Fixes: ac27a0ec112a ("[PATCH] ext4: initial copy of files from ext3")
-> Closes: https://lore.kernel.org/lkml/CANypQFZzxTAH=3D4QRRDoqH6VAw1daAq88N=
-DWiQKoM7QTOnP40sg@mail.gmail.com/
-> Cc: stable@vger.kernel.org
-> Assisted-by: Claude Code:claude-opus-5-5
-> Signed-off-by: Jiaming Zhang <r772577952@gmail.com>
-> ---
-> Changes in v2:
-> - Zero only the first 32 bits space instead of the whole space.
-> - Add a comment above the check.
-> - v1: https://lore.kernel.org/lkml/20260916084723.877552-1-r772577952@gma=
-il.com/
->
->  fs/ext4/xattr.c | 8 ++++++++
->  1 file changed, 8 insertions(+)
->
-> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-> index 5c310747b965..8e1fd26329d3 100644
-> --- a/fs/ext4/xattr.c
-> +++ b/fs/ext4/xattr.c
-> @@ -2274,6 +2274,14 @@ int ext4_xattr_ibody_set(handle_t *handle, struct =
-inode *inode,
->                 if (IS_ERR(ea_inode))
->                         return PTR_ERR(ea_inode);
->         }
-> +
-> +       /*
-> +        * Make sure xattr space is properly initialized so that
-> +        * IS_LAST_ENTRY() returns true for its first entry
-> +        */
-> +       if (!ext4_test_inode_state(inode, EXT4_STATE_XATTR))
-> +               *(__u32 *)s->first =3D 0;
-> +
->         error =3D ext4_xattr_set_entry(i, s, handle, inode, ea_inode,
->                                      false /* is_block */);
->         if (error) {
-> --
-> 2.43.0
->
+Ok, as mentioned off-list I have an RFC version of getting rid of page
+fault induced stalls in procfs when removing entry which plagues
+networking devices among others.
 
-Friendly ping, please tell me if any further change is needed.
+There was a hackish very narrow AI solution to a part of this bug class
+that was floated off-list. It used a second buffering mechanism on top
+of seqfiles which was really nasty. Plus, it didn't fix the whole bug
+class, it only eliminated a small portion. If we want to get rid of the
+whole page fault issue we need a bigger hammer. So I tried to work
+through that over the last couple of weeks. The series in a shape where
+it's not totally insane to have someone else look at it. So here it is.
+
+I understand it's big but I thought it's probably nicer to look at the
+end result than just making a promise of what it might end up looking
+like.
+
+It's not super polished yet and I haven't gotten into sorting out all
+the warts as there were some really gnarly bugs in there like the whole
+readdir mess that repeated entries or terminated early. I think we could
+go a lot further there if we wanted to but I think that blows this out
+of proportion and at some point it becomes difficult to grasp the scope.
+So I'd rather delay that until I have a sense of how acceptable this all
+is.
+
+remove_proc_entry() waits until every call into the entry has returned,
+and most of those calls copy to or from userspace with the entry pinned.
+
+A reader or writer can make a page fault in that copy take as long as
+it wants, with userfaultfd or by punching holes into a memfd over and
+over. And the callers of remove_proc_entry() like to hold locks while
+they wait. addrconf holds RTNL when it removes /proc/net/dev_snmp6/<dev>
+and xt_hashlimit holds a mutex that all network namespaces share.
+
+Every network device with IPv6 gets a /proc/net/dev_snmp6/<dev> that
+everyone can read, and addrconf_ifdown() removes it with RTNL held. So
+any local user can keep RTNL for as long as their read stays stalled.
+Until then no device can be registered, removed or renamed and no
+network namespace can be created or torn down.
+
+Without privileges a FUSE mount in a user namespace whose daemon never
+answers is enough to stall the copy. Killing the reader ends it, but
+until then whoever removes the file sits in D state.
+
+xt_hashlimit removes the proc file of a table with hashlimit_mutex
+held. Every rule insert in every network namespace takes that mutex and
+so does network namespace cleanup. cleanup_net() runs on a single
+workqueue with pernet_ops_rwsem held, so a stalled reader also stops
+every later network namespace teardown and every module load that
+registers pernet operations. xt_recent does the same with recent_mutex.
+
+And it's not specific to networking. remove_proc_entry(), proc_remove()
+and remove_proc_subtree() have over 200 callers and plenty of them hold
+locks. A stalled reader of /proc/fs/ext4/<dev>/options holds up the
+unmount of that filesystem with s_umount held, and every sync(2) with
+it. The same goes for PCI hot-removal, for freeing IRQ descriptors,
+which CPU bring-up waits on, and for unplugging a USB sound card.
+syzbot has hit removal under locks before (cf. [1]), and the xt_recent
+deadlock fixed in (1) below is another one.
+
+Stalling the kernel in a copy to or from userspace is a well-known
+exploitation primitive. It's why unprivileged userfaultfd can't do it
+by default anymore since v5.11 (d0d4730ac2e4), and FUSE has been used
+the same way.
+
+kernfs doesn't have that problem. The code of a kernfs file only ever
+runs with the node pinned and never touches userspace memory, kernfs
+copies in and out itself. This moves procfs over to the same scheme.
+
+sysfs has only held its active reference around ->show() and ->store()
+since v2.6.23, the same release that made remove_proc_entry() wait for
+the entry's callers. A copy to userspace couldn't be stalled for long
+back then. userfaultfd only came in v4.3 and FUSE in user namespaces in
+v4.18. configfs moved its copies out of its active reference in v5.3
+and DRM copies ioctl arguments in and out around the driver's handler
+the same way. debugfs still holds its reference across the copies,
+ran into a deadlock with wifi drivers because of it and grew an API to
+cancel operations instead (cf. [2]).
+
+That touches just about every ->proc_read(), ->proc_write() and
+->proc_ioctl() in the tree, so I've split it up into seven series. They
+go out as replies to this mail:
+
+(1) proc: fix a few old bugs in /proc handlers (38 patches)
+
+    Bugs in the handlers and in procfs itself that are a lot older than
+    the conversion and that reviewing it turned up. Most of them are for
+    stable. They come first so they can go there on their own and the
+    conversion doesn't have to bother with that crap.
+
+(2) proc: let procfs own the data path (16 patches)
+
+    The procfs side. procfs owns the seq_file of an entry, copies in
+    writes, copies out reads and copies ioctl arguments in and out, and
+    only calls into an entry with it pinned. proc_create_seq() and
+    friends and the plain seq_file users are switched over here too.
+
+(3) proc: convert the arch and platform entries (22 patches)
+(4) proc: convert the driver entries (23 patches)
+(5) proc: convert the fs, kernel and mm entries (27 patches)
+(6) proc: convert the net entries and the kfifo samples (11 patches)
+
+(7) proc: drop the __user methods (5 patches)
+
+    Drops the old methods for every entry that can be removed and gives
+    the new ones the names kernfs uses, ->proc_read(), ->proc_write()
+    and ->proc_ioctl(). This needs all four conversion series.
+
+The series should all indicate cleanly what dependencies they have so b4
+should be able to pull it for review. But I could be wrong.
+
+With all of it on a KASAN and lockdep kernel the removal selftests of
+every part pass, the proc, pktgen and allocinfo selftests behave like
+without it and the bugs from (1) that reproduce in a VM are gone. Every
+patch builds on its own on x86_64 and i386, and with W=1 on the
+architectures it touches.
+
+[1]: https://lore.kernel.org/r/000000000000f24f4705b6988f3e@google.com
+[2]: https://lore.kernel.org/r/20231109212251.213873-7-johannes@sipsolutions.net
+
+-- 
+Christian Brauner <brauner@kernel.org>
