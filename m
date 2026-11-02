@@ -1,49 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793629365;
-	b=bFX9oCva3XDS55XVXvUOGYHyUK+fgzq89mhgR+6TqheWnrksKM+fjHs0ajHJz9NyZqEG
-	 PPd92HKOmu0VRWFQ2bM1LFOyL5VxaK0BrGWHetHb8fUdALCp79ysK1WlaT1Om1Lethzq4
-	 +3e5KVQUuBca+1Ff6nSTLyh1uvc3FtmBe8/8ZeuhjtEzhjXt4gAaXMqw8QfgSGMza9emZ
-	 cFIoVKhNttLZPkocpjbXFvOB5m33KwjeM3sG0kecNmfam4/rvF3t8Sg0Q+RKX1mm76coc
-	 WyeAPcBcZjoVgIxlzF+pBQstTKJH9L1mBNaNxUktoNBJ8dv6DbnQxDcuRu9Oy8QCYAQ==
+	t=1793629392;
+	b=NxKfQ9lb6SaXb/XofOlaDplD5tN+QpsxmyJcIttBEw8X4L90pVVwHOxnP8TY9PWlcMcM
+	 p/q550TDaGnuAgiMDCD8P+38lbSznFDLz+waMZrNqjWq2ziOdS3f1+HdKFFDsL5KhRgHG
+	 1uYUWwkt1ccfWKsyt83Alu9qccFyqpHPMULJmaFEl/e2WMDEfuGSWsTXztNGJwNa/kCoR
+	 SCa8Jd0hulAHqH6Tkp+8esqpXzbUHlva9i9Kq1sPpvW+41To9bs3HqEelsbIrJ8XrDUDD
+	 IHvwowQldi6wwVxgz1V+E1tPwPZonglJ1c7lSWigWZmsfQcluCCv+XV0rQGF4U0jhjQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793629365;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793629392;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=bDYBcNUn+VWuCpTwTZF6KvGO9475Dcj2RU9o+tvUNt0=;
-	b=wqz+QflJgdEW4sPkejdMNIPxv0m71/aXdiVK5CS5lkfvTPdtlLQoiSOPpeSHJF23MoL7
-	 O9lhzwDf0hLK76IxuxXO2RO+S4OPV7kixBdL8Bdt+TkpfGvorEd9m0yO744LUP25tAj4p
-	 Io1xANDuwPk+NFqlYttWdQxqPYKZ+ktdQtokXSe9JgloRIVKtShvp2aWfXQItwdGOz7yo
-	 vW7AuJgLI1tlY8d3LbkoJ+f0Am0p6tcVnc6LVS0C1lHoGaTJTApye8BBwqMaIsLhQ6bn8
-	 XCK9WW0l760hwhD4zcMVbv7P9WR6WzxoX/Um9zWR2D+wsu7XXsP13nG4LdOjPRbHYXQ==
+	bh=MVs7ALsfOLkn53l0kYUUme/SDUyhPHOVCY6QDFUmXzg=;
+	b=KU6E5GJ+OjHqRRAZGa4APRK3qyYL+fgLIpIrVe4fbrtksijl8f+ufA3B/00S0P/QEb13
+	 b//BtRZlZUYxa64ln3L9cD3qj25acbSVv1KnbVbN8bJ/LY1XT2W+NyZgxvN4uoMjyaoTb
+	 nF24H5RuUCAPoshMCslv6p+xCF38vLBJCErbE56tbHapHoBpL5Gmjo54kYtWi9dOcdVMN
+	 GothnBLTJXdlHlNdBfnCuXnbzI5QDLJ/fa9e0n3EbLnkY32cU3VFPiSt2j42diZAs6PKE
+	 0v/uyqe+9Tk9I3y4zonP2Udc7ZbW3eibkEvJ4tofUMYIL1SAQnH26PYr/hz//4C3cJw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="l/9K700W";
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=FLfR5DFe;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 53836606A33A;
-	Mon,  2 Nov 2026 14:22:45 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E8592606B1D9;
+	Mon,  2 Nov 2026 14:23:11 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=l/9K700W
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id AC5661F00A18;
-	Mon,  2 Nov 2026 14:22:31 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=FLfR5DFe
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 38CDA1F00A16;
+	Mon,  2 Nov 2026 14:22:59 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793629364;
-	bh=bDYBcNUn+VWuCpTwTZF6KvGO9475Dcj2RU9o+tvUNt0=;
+	s=k20260515; t=1793629391;
+	bh=MVs7ALsfOLkn53l0kYUUme/SDUyhPHOVCY6QDFUmXzg=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=l/9K700WtETbZbiehxECDLdPCEeiiVRA3kxFDmgS/2nKE79+mMwEbcSj3UAdFTEXx
-	 6DvGrmpdgDVXnGX30oyGp8h1wecxAk4jKzxRW9aGPBdJy0OisIoFIZFTfdpRhDfBXZ
-	 KAYYL329Lr/1W5cMHSII0yRN2tcUg68lTIkupTY2K2vtTItr3nAhe86PuUrEx8QrzH
-	 ZRKhA68sEbKxiE5OFQB7qDtLFMKmYizYX4WKQpNV8RKMwbhLf5julp7cLNgPDZarPP
-	 /qEweKu2GyB/uW3f9G490N5UiUnYW1jY6yf/ITOz6Ini0L9UMQPzrnkmfsWQJTfyzK
-	 rW/DJSvgmGkgg==
+	b=FLfR5DFeQsSly/cabaQC7e9iY2bQ9zaa9/+MREBD4BU88eN1Xx3KqTRtm3qYQYpfl
+	 kCDavrMTvPYKs/rYn9gptjjElebcf4yPuRmKH7HVcqjqazHfqUR/Htiq7M6QYbzt4U
+	 zWa4rzDSZK1q8pK7OQVMGrLrU+xIoyILoyQv+YpF94q5kGFQx5QO63A+aw0aYwigp7
+	 8QwH/5quUO5K2fuIJpTTFlJf5GF8Ltsg0OQYaZW1HbdncmCkutEph8u81EsuVQiORQ
+	 PSv2MLOMncLKFj4vxCZCl4sIAOggQ39Y2OGr1AHxp6406Vqv9fSst95zy3PsIJt0ea
+	 Hqf1VPSexzNvw==
 From: Christian Brauner <brauner@kernel.org>
-Date: Mon, 02 Nov 2026 15:21:19 +0100
-Subject: [PATCH RFC 04/38] s390/dasd: don't look in front of the buffer on
- an empty write
+Date: Mon, 02 Nov 2026 15:21:21 +0100
+Subject: [PATCH RFC 06/38] xtensa: simdisk: don't read the file name
+ without the lock
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -55,7 +55,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261102-work-procfs-bugfixes-v1-4-59422ed3e465@kernel.org>
+Message-Id: <20261102-work-procfs-bugfixes-v1-6-59422ed3e465@kernel.org>
 References: <20261102-work-procfs-bugfixes-v1-0-59422ed3e465@kernel.org>
 In-Reply-To: <20261102-work-procfs-bugfixes-v1-0-59422ed3e465@kernel.org>
 To: linux-fsdevel@vger.kernel.org
@@ -91,39 +91,66 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
  "Christian Brauner (Amutable)" <brauner@kernel.org>, 
  Chuck Lever <cel@kernel.org>, stable@vger.kernel.org
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=952; i=brauner@kernel.org;
- h=from:subject:message-id; bh=vNxDJDpmoyfXJahneUuQ9vEH9eL70g/8w71rNTJgUxc=;
- b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9mJM1jeXQ3NW7/xZeaxDpdlGIUkjat+D7tG9pahOcr
- AOsJk6611HKwiDGxSArpsji0G4SLrecp2KzUaYGzBxWJpAhDFycAnCRCYwMn44HG9tefO3daCl/
- zObZjudV2/8stZoz4eUdbl4NjbdfLRkZLu1okv36OdkxUVB7scSNP4VzvOQn7V+ZlPZqvbKOm44
- /IwA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1811; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=VTDmn8Fj5UlymIH+0OFfDD9d3Id2xocQBgXcavnnib4=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9mJP1/VRcytoDLK0ufy3WLzr3+sXFE+dzGyTVYqofd
+ O+7u3tWckcpC4MYF4OsmCKLQ7tJuNxynorNRpkaMHNYmUCGMHBxCsBEUkQZ/rs27hJY5+amu8Rq
+ WoJCkbXlpumL4jqiOpe4HNF66TkndBkjwwvt4L3fvCaeXKnVx7hb7eIq/dqmQN78dydXJQe4lqT
+ uZgEA
 X-Developer-Key: i=brauner@kernel.org; a=openpgp;
  fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-dasd_get_user_string() strips a trailing newline by looking at the last
-byte that was written. For an empty write that's the byte in front of
-the buffer it just allocated. Only look if something was written.
+proc_read_simdisk() looks at dev->filename without holding dev->lock. A
+write to the same file detaches the disk and frees the name under the
+lock, so a concurrent reader can copy out freed memory. Copy the name
+with the lock held.
 
-Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
+Fixes: b6c7e873daf7 ("xtensa: ISS: add host file-based simulated disk")
 Cc: stable@vger.kernel.org
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- drivers/s390/block/dasd.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ arch/xtensa/platforms/iss/simdisk.c | 25 ++++++++++++-------------
+ 1 file changed, 12 insertions(+), 13 deletions(-)
 
-diff --git a/drivers/s390/block/dasd.c b/drivers/s390/block/dasd.c
-index 2ffe404b890f..e97891e58957 100644
---- a/drivers/s390/block/dasd.c
-+++ b/drivers/s390/block/dasd.c
-@@ -933,7 +933,7 @@ char *dasd_get_user_string(const char __user *user_buf, size_t user_len)
- 		return ERR_PTR(-EFAULT);
- 	}
- 	/* got the string, now strip linefeed. */
--	if (buffer[user_len - 1] == '\n')
-+	if (user_len && buffer[user_len - 1] == '\n')
- 		buffer[user_len - 1] = 0;
- 	else
- 		buffer[user_len] = 0;
+diff --git a/arch/xtensa/platforms/iss/simdisk.c b/arch/xtensa/platforms/iss/simdisk.c
+index a2ddb49c269d..7b115e023de9 100644
+--- a/arch/xtensa/platforms/iss/simdisk.c
++++ b/arch/xtensa/platforms/iss/simdisk.c
+@@ -238,22 +238,21 @@ static ssize_t proc_read_simdisk(struct file *file, char __user *buf,
+ 			size_t size, loff_t *ppos)
+ {
+ 	struct simdisk *dev = pde_data(file_inode(file));
+-	const char *s = dev->filename;
+-	if (s) {
+-		ssize_t len = strlen(s);
+-		char *temp = kmalloc(len + 2, GFP_KERNEL);
++	ssize_t len;
++	char *temp;
+ 
+-		if (!temp)
+-			return -ENOMEM;
++	/* a write sets at most a page, see proc_write_simdisk() */
++	temp = kmalloc(PAGE_SIZE + 2, GFP_KERNEL);
++	if (!temp)
++		return -ENOMEM;
+ 
+-		len = scnprintf(temp, len + 2, "%s\n", s);
+-		len = simple_read_from_buffer(buf, size, ppos,
+-					      temp, len);
++	spin_lock(&dev->lock);
++	len = scnprintf(temp, PAGE_SIZE + 2, "%s\n", dev->filename ?: "");
++	spin_unlock(&dev->lock);
+ 
+-		kfree(temp);
+-		return len;
+-	}
+-	return simple_read_from_buffer(buf, size, ppos, "\n", 1);
++	len = simple_read_from_buffer(buf, size, ppos, temp, len);
++	kfree(temp);
++	return len;
+ }
+ 
+ static ssize_t proc_write_simdisk(struct file *file, const char __user *buf,
 
 -- 
 2.53.0
