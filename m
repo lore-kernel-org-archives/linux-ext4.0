@@ -1,54 +1,48 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.161.72
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.127.231.112
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793591260;
-	b=fshsSfg2YxBNEdjMT50BuTlEQ0GqOnAA4hKxc/j958fpw8ing/Ylax0BSqcoogOxml6X
-	 W32FYtpg+i+WTl9qIemIfzM6MuiVfHYfE8X2pRociZXfISJy7nQJvvfH9esSjbTt7eub1
-	 OTmIkIJRQy0PRXigfcJjZSWHfgrUjPXO97/VZYEt27NN68tSHJowkk4/x8Y1SAcuEFTyi
-	 bIfWsf/FUDyncYFEfvaivijJk3k7TpSqD1cWIup2yeMtlcgMchFXZHWJv8pPg6LiqAXjR
-	 wrnvHyvIFIFW2dfWegy7n1ARKGGC88J9fN6U3SRTHqD8W+AZd/yu7wKDpxFUmyLLN2g==
+	t=1793593498;
+	b=375JWCBze+yeMzT2KXcrn3c0EFZbgAaOQPbyFzK/UDHA/s8qmUeiB0MKWYN9zTrDSaNJ
+	 e5DyrqcpPriHORRR6DMcQvlJCbK8L7N5C4yyzBjRUwYNt1jOFNWQLF9yAYEc6Sz/VdHOG
+	 7HpPwXb+AaTaEr1BLrDiAkePT0NwHmdn9n9sZqzc2l/e8PbF/khaQ6C/F4sgzkCEURmqB
+	 FLb+ZrL23SX4Lzfo74nKbRFc1J7D82rjyG5oscILwBl7slUAp9Rx1YYMu5W/NiJyrAvle
+	 N/yAlJmpUrBe7gaaxQ3bk0xpbCI8DcewRfaYy0XTs4miXW5CbI2vllByAD2Ig5EIYXA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793591260;
-	h=DMARC-Filter:Received:X-Google-DKIM-Signature:X-Forwarded-Encrypted:
-	 X-Gm-Message-State:MIME-Version:X-Received:Date:
-	 X-Google-Appengine-App-Id:X-Google-Appengine-App-Id-Alias:Message-ID:
-	 Subject:From:To:Content-Type;
-	bh=w3YWNQ9e9fM+0YHmB+mpWJhWC4zaBYJmDguwktfIzxs=;
-	b=s81FG9lyXGWZaTKcXGBbSEDml/5qh4VC2YetpQAULrCEbuw+3vHOA/c9DwtYII5/pKE9
-	 Q5Wrkhp1Bt1PBrOO7clFkkIPPck+7HY9FShn6pkIb+BfFMlMEN87N+/eKDEZC/2koB/5s
-	 hPNygkkMpEOkX1YL2TwKjZbuum4X3+2z9Q5K+SLee5IKLGkHX7p33kOnn0ifI23Hx2kcV
-	 MMMVaxA4o07xJ1sxQIOsWTUmBs86r4R0KqiO4YXTpBpGEMoTeUlGSAOJfc4fD87M2It6e
-	 PAfgGAnfhRd5C9OgFbqyKtjN2QZjz7HcLR+S2zSA3r+KL7AHKJ3YM1BUl62mNn6fH2g==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793593498;
+	h=DMARC-Filter:DKIM-Signature:Mime-Version:X-Mailer:Cc:From:Date:
+	 Content-Transfer-Encoding:To:Subject:Message-Id:X-Lms-Return-Path:
+	 X-Original-From:Content-Type;
+	bh=1SQYaIK5/066ofaBlaOZi9a4vZOf9xISb8HFkbssnA8=;
+	b=ylWPl2NV0Cjrao4gQnl0lIsZFr6ptfOjIhpcdhD+noDSVM6Jzl861mhzOB/I9QlLQsgu
+	 ewo1t/Rv7tFrFScliUnE6RsR4E313i6iPrM8AVFChqDYrQqzu6odUOrj/J0Egf18/5lY+
+	 H4yw8F7KMqw4eNX8y4RYSn+tKrS47bFN3yAsvnb6sDTGzybp5Ske/fTqq55whyo32ThJ3
+	 pFWl5E3aJJR7BVgF20GsZ3tbRwTpTuLX16mfPEdK9oO7BcWKM1n9zqH+R0OC1SoZVY2Tx
+	 2hYdZ8uooQbZh9uD6AjYcdKSktuezPwERaKt3iUV5NH9Y+Navc6UWpk4prz5gTmXgJw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=fail header.from=syzkaller.appspotmail.com;
-	spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com;
-	arc=none smtp.remote-ip=209.85.161.72
-Received: from mail-oo1-f72.google.com (mail-oo1-f72.google.com [209.85.161.72])
+	dmarc=pass header.from=bytedance.com;
+	spf=pass smtp.mailfrom=bytedance.com;
+	dkim=pass header.d=bytedance.com header.i=@bytedance.com header.a=rsa-sha256 header.s=2212171451 header.b="b07/MHzm";
+	arc=none smtp.remote-ip=209.127.231.112
+Received: from va-2-112.ptr.blmpb.com (va-2-112.ptr.blmpb.com [209.127.231.112])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9F89A606A327
-	for <linux-ext4@vger.kernel.org>; Mon,  2 Nov 2026 03:47:39 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 9F89A606A327
-Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
-Received: by mail-oo1-f72.google.com with SMTP id 006d021491bc7-7044b48537dso2626705eaf.2
-        for <linux-ext4@vger.kernel.org>; Sun, 01 Nov 2026 19:47:39 -0800 (PST)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1793591259; x=1794196059;
-        h=content-type:to:from:subject:message-id:date:mime-version
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=w3YWNQ9e9fM+0YHmB+mpWJhWC4zaBYJmDguwktfIzxs=;
-        b=kNRljHgLVCAwn4hJ2Xil5O/2MmOxGpd+hOdeHiIJoqepbn4REObdxcPYAmqWuKCZii
-         ohHzvxzkfhtq/j/IYUEWHNnxIUL/eJrkmoT/hoKOL1Eo8e/iBhkvKo3SkZa5akINYKOr
-         rGaqWuNBu00kq/lKmV1ya4HUAeKwYeQaAjWwX85n0z2YHYxZgVjP+1+4+Qx7K50EVZI+
-         rbvykxBzDiEixFT36iMtiG4VZhHnf/9VeAy7iDJSJl7oFwFo+KRkAFj7N50Co4k1w/eP
-         UsxJ6TX3nK0VIAxuHRRLOeqknwC/dL2xYdgGYlt1riXj1Dakr+YvmzQIB9xhAvnCVpRB
-         nd6g==
-X-Forwarded-Encrypted: i=1; AKwUvBwDwWbH4ZxQgHqo9rpmGjf4MPNSKNvpBVy4rGBVw7CI6mijzdFEKJN31if9aMSYLCR2jONZpTwwz/ae@vger.kernel.org
-X-Gm-Message-State: AFq9FYJjld9Q5ovbZ1tKetRV5OnXKPvisIIE56KMrlVveMJGvsujaEtr
-	g+n8exGxf3dv9TNRSBHyU4ruEJESKgaLabaSt1oLtKidKTPR8Ii4qZNdyzNupfS71UDdJuKn3Vc
-	wg4cxB/pAOhJLAkqBO8CzdGgUZjNIyEyZ9BkCL/AmOWaJ9wLS5ZO7frllOjE=
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A8A25606A324
+	for <linux-ext4@vger.kernel.org>; Mon,  2 Nov 2026 04:24:56 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org A8A25606A324
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=bytedance.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key, unprotected) header.d=bytedance.com header.i=@bytedance.com header.a=rsa-sha256 header.s=2212171451 header.b=b07/MHzm
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+ s=2212171451; d=bytedance.com; t=1793593491; h=from:subject:
+ mime-version:from:date:message-id:subject:to:cc:reply-to:content-type:
+ mime-version:in-reply-to:message-id;
+ bh=1SQYaIK5/066ofaBlaOZi9a4vZOf9xISb8HFkbssnA8=;
+ b=b07/MHzmsTvzq2au67LMwlLBJPxHp2RKuik0AUdtCjyqewe82q9iqTHetzbJGfaeC2qeRh
+ NqsxJql+GeVVpdGTLigs76WCg9RqXiJ8dMaE0BShVL3WM0ulC1u5vCJCR+kl02QPqgujIh
+ siyUHELMVZu2rtKXSB9+ImJANLNN4g6SDc3iMmWFg2ObTIMGf0htcChuFhm2kEjCKcu3Ay
+ zyrJOr0cD4/gzNWkFWcKh9G7aBchDVd74uPtJT5ixiWswZfMYe72KDTMRkGJAlrzjpc2jg
+ bNqsAz9FUZrJkRuAfgXTRShB6JFHArGS2z7MQ8/8GJoNAWXfptgTAC8n2spliA==
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -57,148 +51,166 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
-MIME-Version: 1.0
-X-Received: by 2002:a05:6820:c2d0:10b0:70a:4053:52e7 with SMTP id
- 006d021491bc7-714f1f8157amr3592158eaf.8.1793591258811; Sun, 01 Nov 2026
- 19:47:38 -0800 (PST)
-Date: Sun, 01 Nov 2026 19:47:38 -0800
-X-Google-Appengine-App-Id: s~syzkaller
-X-Google-Appengine-App-Id-Alias: syzkaller
-Message-ID: <6ae807da.c8ffc79a.e3697.002c.GAE@google.com>
-Subject: [syzbot] [block?] [ext4?] BUG: unable to handle kernel paging request
- in blk_mq_exit_hctx
-From: syzbot <syzbot+5307e3bcacec2ce4c2f0@syzkaller.appspotmail.com>
-To: axboe@kernel.dk, linux-block@vger.kernel.org, linux-ext4@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com
-Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
+X-Mailer: git-send-email 2.39.5 (Apple Git-154)
+Cc: <tytso@mit.edu>, <adilger.kernel@dilger.ca>, 
+	<libaokun@linux.alibaba.com>, <jack@suse.cz>, <ojaswin@linux.ibm.com>, 
+	<ritesh.list@gmail.com>, <yi.zhang@huawei.com>, 
+	<linux-kernel@vger.kernel.org>, "Zhao Gongyi" <zhaogongyi@bytedance.com>
+From: "Zhao Gongyi" <zhaogongyi@bytedance.com>
+Date: Mon,  2 Nov 2026 12:24:28 +0800
+Content-Transfer-Encoding: 7bit
+To: <linux-ext4@vger.kernel.org>
+Subject: [PATCH] ext4: reject impossible group free cluster counts
+Message-Id: <20261102042428.65204-1-zhaogongyi@bytedance.com>
+X-Lms-Return-Path: <lba+26ae81092+dc465e+vger.kernel.org+zhaogongyi@bytedance.com>
+X-Original-From: Zhao Gongyi <zhaogongyi@bytedance.com>
+Content-Type: text/plain; charset=UTF-8
 
-Hello,
+ext4_count_free_clusters() initializes global free-space accounting from
+group descriptors. A corrupt bigalloc image advertises 201327130 free
+clusters in a 32-cluster group. The mount succeeds and delayed
+allocation later sees an impossible free-space total.
 
-syzbot found the following issue on:
+Reject counts above the group's cluster capacity during descriptor
+validation. Reuse the existing capacity calculation so bigalloc and
+short final groups use the same bound as the block bitmap.
 
-HEAD commit:    7a19f0cc94ad Merge branch 'for-next/core' into for-kernelci
-git tree:       git://git.kernel.org/pub/scm/linux/kernel/git/arm64/linux.git for-kernelci
-console output: https://syzkaller.appspot.com/x/log.txt?x=17bddc8d580000
-kernel config:  https://syzkaller.appspot.com/x/.config?x=6602d83d2f34eb80
-dashboard link: https://syzkaller.appspot.com/bug?extid=5307e3bcacec2ce4c2f0
-compiler:       Debian clang version 22.1.8 (1~deb13u4), Debian LLD 22.1.8
-userspace arch: arm64
-syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=169be5a5580000
+Journal replay can overwrite a descriptor after the initial check. A
+crafted transaction changes a valid count to 32769 in a 32768-cluster
+group; a pre-replay-only check lets both read-only and read-write mounts
+succeed. Recheck after recovery, before initializing free-space
+counters. Limit the second scan to mounts needing recovery.
 
-Downloadable assets:
-disk image: https://storage.googleapis.com/syzbot-assets/26f2e4202da9/disk-7a19f0cc.raw.xz
-vmlinux: https://storage.googleapis.com/syzbot-assets/1e23a9081d19/vmlinux-7a19f0cc.xz
-kernel image: https://storage.googleapis.com/syzbot-assets/b51f551829ee/Image-7a19f0cc.gz.xz
-mounted in repro #1: https://storage.googleapis.com/syzbot-assets/f7427d1d35bc/mount_4.gz
-  fsck result: failed (log: https://syzkaller.appspot.com/x/fsck.log?x=15bddc8d580000)
-mounted in repro #2: https://storage.googleapis.com/syzbot-assets/22e8d60714f9/mount_5.gz
-  fsck result: OK (log: https://syzkaller.appspot.com/x/fsck.log?x=11dc1d29580000)
-mounted in repro #3: https://storage.googleapis.com/syzbot-assets/f50f15fd78d0/mount_20.gz
-  fsck result: failed (log: https://syzkaller.appspot.com/x/fsck.log?x=13ab1795580000)
-mounted in repro #4: https://storage.googleapis.com/syzbot-assets/3cdc94810dc2/mount_21.gz
-  fsck result: OK (log: https://syzkaller.appspot.com/x/fsck.log?x=13bddc8d580000)
+Apply the bound to read-only mounts too, since they use the descriptor
+count for in-memory accounting.
 
-AI-generated root cause summary:
-When dm_setup_md_queue() fails after add_disk() (for instance during
-bd_link_disk_holder() or dm_sysfs_init()), the error path invokes del_gendisk(),
-which calls blk_mq_exit_queue() -> blk_mq_exit_hctx(), freeing each hardware
-context flush queue and setting hctx->fq = NULL. However, md->type remains
-DM_TYPE_NONE and the mapped device is not torn down. When userspace retries
-table_load on the device, dm_setup_md_queue() and dm_mq_init_request_queue() run
-again, invoking blk_mq_init_allocated_queue() on the existing queue. During
-__blk_mq_realloc_hw_ctxs(), blk_mq_exit_hctx() is called on the existing
-hardware contexts, unconditionally dereferencing hctx->fq->flush_rq (offset
-0x78) when hctx->fq is NULL, causing a kernel null-pointer dereference crash.
-
-full analysis:  https://syzkaller.appspot.com/x/ai_root_cause?x=5307e3bcacec2ce4c2f0
-
-IMPORTANT: if you fix the issue, please add the following tag to the commit:
-Reported-by: syzbot+5307e3bcacec2ce4c2f0@syzkaller.appspotmail.com
-
-Unable to handle kernel paging request at virtual address dfff80000000000f
-KASAN: null-ptr-deref in range [0x0000000000000078-0x000000000000007f]
-Mem abort info:
-  ESR = 0x0000000096000005
-  EC = 0x25: DABT (current EL), IL = 32 bits
-  SET = 0, FnV = 0
-  EA = 0, S1PTW = 0
-  FSC = 0x05: level 1 translation fault
-Data abort info:
-  ISV = 0, ISS = 0x00000005, ISS2 = 0x00000000
-  CM = 0, WnR = 0, TnD = 0, TagAccess = 0
-  GCS = 0, Overlay = 0, DirtyBit = 0
-[dfff80000000000f] address between user and kernel address ranges
-Internal error: Oops: 0000000096000005 [#1]  SMP
-Modules linked in:
-CPU: 0 UID: 0 PID: 9108 Comm: syz.5.600 Not tainted syzkaller #0 PREEMPT 
-Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 08/14/2026
-pstate: 83400005 (Nzcv daif +PAN -UAO +TCO +DIT -SSBS BTYPE=--)
-pc : blk_mq_exit_hctx+0x64/0x494 block/blk-mq.c:3957
-lr : blk_mq_exit_hctx+0x40/0x494 block/blk-mq.c:3956
-sp : ffff8000984475d0
-x29: ffff8000984475e0 x28: 0000000000000000 x27: 1fffe0001b03332a
-x26: dfff800000000000 x25: ffff0000d8199950 x24: ffff0000c3aeffc0
-x23: 0000000000000078 x22: 0000000000000000 x21: ffff0000d3857000
-x20: ffff0000d8199800 x19: ffff0000eabc5388 x18: ffff8001237ae000
-x17: ffff0001acf6ce07 x16: ffff0000dad68014 x15: 0000000000000001
-x14: 0000000000000000 x13: 0000000000000001 x12: 0000000000000000
-x11: 0000000000000000 x10: ffff0000eabc53bc x9 : 0000000000000000
-x8 : 000000000000000f x7 : 0000000000000000 x6 : 0000000000000000
-x5 : 0000000000000000 x4 : 0000000000000003 x3 : 0000000000000000
-x2 : ffff0000d8199800 x1 : ffff0000dad68000 x0 : 0000000000000000
-Call trace:
- blk_mq_exit_hctx+0x64/0x494 block/blk-mq.c:3957 (P)
- __blk_mq_realloc_hw_ctxs+0x1f0/0x548 block/blk-mq.c:4583
- blk_mq_realloc_hw_ctxs block/blk-mq.c:4623 [inline]
- blk_mq_init_allocated_queue+0x2a8/0xc44 block/blk-mq.c:4653
- dm_mq_init_request_queue+0x2d8/0x474 drivers/md/dm-rq.c:573
- dm_setup_md_queue+0x134/0x434 drivers/md/dm.c:2611
- table_load+0x3d4/0x764 drivers/md/dm-ioctl.c:1661
- ctl_ioctl drivers/md/dm-ioctl.c:2221 [inline]
- dm_ctl_ioctl+0x884/0xbbc drivers/md/dm-ioctl.c:2243
- vfs_ioctl fs/ioctl.c:51 [inline]
- __do_sys_ioctl fs/ioctl.c:597 [inline]
- __se_sys_ioctl fs/ioctl.c:583 [inline]
- __arm64_sys_ioctl+0x154/0x1cc fs/ioctl.c:583
- __invoke_syscall arch/arm64/kernel/syscall.c:35 [inline]
- invoke_syscall+0x98/0x244 arch/arm64/kernel/syscall.c:49
- el0_svc_common+0xec/0x23c arch/arm64/kernel/syscall.c:121
- do_el0_svc+0x4c/0x5c arch/arm64/kernel/syscall.c:140
- el0_svc+0x60/0x1d8 arch/arm64/kernel/entry-common.c:796
- el0t_64_sync_handler+0x44/0x104 arch/arm64/kernel/entry-common.c:815
- el0t_64_sync+0x198/0x19c arch/arm64/kernel/entry.S:606
-Code: 97cfdb27 f9400328 9101e117 d343fee8 (387a6908) 
----[ end trace 0000000000000000 ]---
-----------------
-Code disassembly (best guess):
-   0:	97cfdb27 	bl	0xffffffffff3f6c9c
-   4:	f9400328 	ldr	x8, [x25]
-   8:	9101e117 	add	x23, x8, #0x78
-   c:	d343fee8 	lsr	x8, x23, #3
-* 10:	387a6908 	ldrb	w8, [x8, x26] <-- trapping instruction
-
-
+Signed-off-by: Zhao Gongyi <zhaogongyi@bytedance.com>
 ---
-This report is generated by a bot. It may contain errors.
-See https://goo.gl/tpsmEJ for more information about syzbot.
-syzbot engineers can be reached at syzkaller@googlegroups.com.
+ fs/ext4/balloc.c | 10 +++++-----
+ fs/ext4/ext4.h   |  2 ++
+ fs/ext4/super.c  | 38 ++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 45 insertions(+), 5 deletions(-)
 
-syzbot will keep track of this issue. See:
-https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index 778fe87..0f36630 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -159,8 +159,8 @@ static unsigned ext4_num_overhead_clusters(struct super_block *sb,
+ 	return num_clusters;
+ }
+ 
+-static unsigned int num_clusters_in_group(struct super_block *sb,
+-					  ext4_group_t block_group)
++unsigned int ext4_num_clusters_in_group(struct super_block *sb,
++					ext4_group_t block_group)
+ {
+ 	unsigned int blocks;
+ 
+@@ -228,7 +228,7 @@ static int ext4_init_block_bitmap(struct super_block *sb,
+ 	 * the blocksize * 8 ( which is the size of bitmap ), set rest
+ 	 * of the block bitmap to 1
+ 	 */
+-	ext4_mark_bitmap_end(num_clusters_in_group(sb, block_group),
++	ext4_mark_bitmap_end(ext4_num_clusters_in_group(sb, block_group),
+ 			     sb->s_blocksize * 8, bh->b_data);
+ 	return 0;
+ }
+@@ -240,7 +240,7 @@ unsigned ext4_free_clusters_after_init(struct super_block *sb,
+ 				       ext4_group_t block_group,
+ 				       struct ext4_group_desc *gdp)
+ {
+-	return num_clusters_in_group(sb, block_group) -
++	return ext4_num_clusters_in_group(sb, block_group) -
+ 		ext4_num_overhead_clusters(sb, block_group, gdp);
+ }
+ 
+@@ -313,7 +313,7 @@ static ext4_fsblk_t ext4_valid_block_bitmap_padding(struct super_block *sb,
+ {
+ 	ext4_grpblk_t next_zero_bit;
+ 	unsigned long bitmap_size = sb->s_blocksize * 8;
+-	unsigned int offset = num_clusters_in_group(sb, block_group);
++	unsigned int offset = ext4_num_clusters_in_group(sb, block_group);
+ 
+ 	if (bitmap_size <= offset)
+ 		return 0;
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 8d3af06..3956545 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -3468,6 +3468,8 @@ extern ext4_fsblk_t ext4_inode_bitmap(struct super_block *sb,
+ 				      struct ext4_group_desc *bg);
+ extern ext4_fsblk_t ext4_inode_table(struct super_block *sb,
+ 				     struct ext4_group_desc *bg);
++unsigned int ext4_num_clusters_in_group(struct super_block *sb,
++					ext4_group_t block_group);
+ extern __u32 ext4_free_group_clusters(struct super_block *sb,
+ 				      struct ext4_group_desc *bg);
+ extern __u32 ext4_free_inodes_count(struct super_block *sb,
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 7d8aedf..83e4ef6 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -3355,6 +3355,36 @@ void ext4_group_desc_csum_set(struct super_block *sb, __u32 block_group,
+ 	gdp->bg_checksum = ext4_group_desc_csum(sb, block_group, gdp);
+ }
+ 
++static bool ext4_check_group_free_clusters(struct super_block *sb,
++					   ext4_group_t group,
++					  struct ext4_group_desc *gdp)
++{
++	unsigned int free_clusters = ext4_free_group_clusters(sb, gdp);
++	unsigned int group_clusters = ext4_num_clusters_in_group(sb, group);
++
++	if (free_clusters > group_clusters) {
++		ext4_msg(sb, KERN_ERR,
++			 "%s: group %u has invalid free clusters count %u > %u",
++			 __func__, group, free_clusters, group_clusters);
++		return false;
++	}
++	return true;
++}
++
++static int ext4_check_replayed_free_clusters(struct super_block *sb)
++{
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	ext4_group_t group;
++
++	for (group = 0; group < sbi->s_groups_count; group++) {
++		struct ext4_group_desc *gdp = ext4_get_group_desc(sb, group, NULL);
++
++		if (!ext4_check_group_free_clusters(sb, group, gdp))
++			return -EFSCORRUPTED;
++	}
++	return 0;
++}
++
+ /* Called at mount-time, super-block is locked */
+ static int ext4_check_descriptors(struct super_block *sb,
+ 				  ext4_fsblk_t sb_block,
+@@ -3467,6 +3497,8 @@ static int ext4_check_descriptors(struct super_block *sb,
+ 			}
+ 		}
+ 		ext4_unlock_group(sb, i);
++		if (!ext4_check_group_free_clusters(sb, i, gdp))
++			return 0;
+ 		if (!flexbg_flag)
+ 			first_block += EXT4_BLOCKS_PER_GROUP(sb);
+ 	}
+@@ -5567,6 +5599,12 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
+ 		err = ext4_load_and_init_journal(sb, es, ctx);
+ 		if (err)
+ 			goto failed_mount3a;
++		/* Journal replay may change descriptors after the initial check. */
++		if (needs_recovery) {
++			err = ext4_check_replayed_free_clusters(sb);
++			if (err)
++				goto failed_mount_wq;
++		}
+ 		if (bdev_read_only(sb->s_bdev))
+ 		    needs_recovery = 0;
+ 	} else if (test_opt(sb, NOLOAD) && !sb_rdonly(sb) &&
 
-If the report is already addressed, let syzbot know by replying with:
-#syz fix: exact-commit-title
-
-If you want syzbot to run the reproducer, reply with:
-#syz test: git://repo/address.git branch-or-commit-hash
-If you attach or paste a git patch, syzbot will apply it before testing.
-
-If you want to overwrite report's subsystems, reply with:
-#syz set subsystems: new-subsystem
-(See the list of subsystem names on the web dashboard)
-
-If the report is a duplicate of another one, reply with:
-#syz dup: exact-subject-of-another-report
-
-If you want to undo deduplication, reply with:
-#syz undup
+base-commit: 8c4f6e3376348fc3162eed86a05b933921c8f9ed
+-- 
+2.39.5 (Apple Git-154)
