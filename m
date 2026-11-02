@@ -1,68 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=13.77.154.182
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793640172;
-	b=bncBb8PsZUs9nkG7vEoDGSKqaeHd2WJMWbE7OpWA8LOWU/JrrU9ReAd6IwmnHZ8Xqa8m
-	 9wCvQdJBpq7puFY5niU36wM8xVioe8VXjZtwPRoOa8YlMQA6JAJFuvGYYUGPBflGuHqRr
-	 DKOj2DkUkU0w3XKtK5a3tZiZYBm0L2jzivl0Q124jaCsvjxJnFQGtrnxFMruwMs1Mhn09
-	 rSdiHv9IPv7IMOXBJfyLOhFivmR5ZZexv/pww820vabqNjua63fmGx6lpDzUnGu6z7oxY
-	 NmWvlCfjpTpb1agm9v2FnU83CAKMfjs5pbI15hFgt+9YXHKRVnBMALzxqd9gepf5aWg==
+	t=1793640259;
+	b=2qFn+DYIwNAliGUywPMY19ZWkYwYMez/hodNayfeEv/CyDfGI6+bsZ+/GnU/mlJ3e5rb
+	 7EplpAO8wXBPSCoBmwWnYnzYa8VpeZtQGxsRXj5nFgM7F8xam3aHz3BFt3J47OJ+yMs/3
+	 bQOxzSfFb8fBfKGoX3K21M21Il5iOycWoC4PfdKs9+6Ve3POnWmm/oGrTC5a9XmuLhI/+
+	 rwVHR8M26cOcFQrZ8MJ2tiaT3FO4WXaUvq2L9OYy9T+3+Y/aIOFtnC6mNWVLd1Z+tfXkb
+	 KZ1iOslB8Ev3oyF3R35gkzrazZb/GfowVUkXUnG4VROnG7n8GPFXHNGi2msGUq+yhdw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793640172;
-	h=DMARC-Filter:Received:DKIM-Filter:DKIM-Signature:From:To:Cc:Subject:
-	 Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
-	 Content-Transfer-Encoding:X-Spam-Status:X-Spam-Checker-Version;
-	bh=GemoAJ3Z9yvwRRBlFGwLRVr4LorqE6trrN/CR7hKuuw=;
-	b=CNlRteI/gMvaNKijVsQ3r48N72YWiToARegfa/25fQGqn0WGt2UV3DkI6Nq3ZSoPaXj/
-	 YtfuTekrDgD/dlPgutzujtbajSoOrZKgyEsrqxgIFirG56J9jSd4X+UtPrXg0sl96HGTA
-	 /KKW3D001xkoD72X3XJVUFwJKfhceDQzpu/14D5ugnwIqgS1Z1e9SexTIb5cMC4W/6IwQ
-	 CufgP2tJxh61Wz202KLAx8vLr4GjAnW13UPP//vZHms/OPKj7gjbMrbM8aLVCU3P4Amrm
-	 NyMFSnShxt+twoA58knnCkGBQK8SZSHTw70ezMcDyosIDlJrERXGQYUMS1Z2QVGpiew==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793640259;
+	h=DMARC-Filter:Received:DKIM-Filter:DKIM-Signature:Message-ID:Date:
+	 MIME-Version:User-Agent:Subject:To:Cc:References:Content-Language:
+	 From:In-Reply-To:Content-Type:Content-Transfer-Encoding:X-Spam-Status:
+	 X-Spam-Checker-Version;
+	bh=BBwVsAGDI2P1A8Xz+TjsiWaX1Q+VUcv4TW1ekog7gog=;
+	b=WQZYylYUhCv37wxJK7HX+ruwbJLieSnctyYcdMdH2E6Uozy/D7Euk1HiRTvFVt5t9Lpc
+	 QVJwSgHosMRAWaDKIxhTCHQGnagjdErtrSCZAY0cJAlG3GZcAFiZ3Nx/51i9eNG+GeLnG
+	 BFV5GSyQoOpM9HeXMCYDfSebNRgLiZ7jKmZ7QSYnlEC5vPZv1EK5wC9SYQASf2C5tqIwp
+	 0bwRXQv/dnBLqCpbtIF3texdUC05A8tuxnLuTnSOuQasqNgrf5CP+voBOETDNdXv8PPdm
+	 BET0gOOibhtodkPsxsyskgTT2aBhpDugmY/jreSBUrUNSJAgekUBoy/hJLnXcGMDD/A==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=linux.microsoft.com;
 	spf=pass smtp.mailfrom=linux.microsoft.com;
-	dkim=pass header.d=linux.microsoft.com header.i=@linux.microsoft.com header.a=rsa-sha256 header.s=default header.b=r3Ai1HxN;
+	dkim=pass header.d=linux.microsoft.com header.i=@linux.microsoft.com header.a=rsa-sha256 header.s=default header.b="Ny9x/sna";
 	arc=none smtp.remote-ip=13.77.154.182
 Received: from linux.microsoft.com (linux.microsoft.com [13.77.154.182])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id E62E4606B0E9;
-	Mon,  2 Nov 2026 17:22:51 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org E62E4606B0E9
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id 6536B606B907;
+	Mon,  2 Nov 2026 17:24:19 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 6536B606B907
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.microsoft.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.microsoft.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=linux.microsoft.com header.i=@linux.microsoft.com header.a=rsa-sha256 header.s=default header.b=r3Ai1HxN
-Received: from CPC-namja-026ON.localdomain (unknown [4.213.232.21])
-	by linux.microsoft.com (Postfix) with ESMTPSA id 6A3FA20B7167;
-	Mon,  2 Nov 2026 09:22:33 -0800 (PST)
-DKIM-Filter: OpenDKIM Filter v2.11.0 linux.microsoft.com 6A3FA20B7167
+	dkim=pass (1024-bit key, unprotected) header.d=linux.microsoft.com header.i=@linux.microsoft.com header.a=rsa-sha256 header.s=default header.b=Ny9x/sna
+Received: from [192.168.1.70] (unknown [4.194.122.170])
+	by linux.microsoft.com (Postfix) with ESMTPSA id 0090020B7166;
+	Mon,  2 Nov 2026 09:24:02 -0800 (PST)
+DKIM-Filter: OpenDKIM Filter v2.11.0 linux.microsoft.com 0090020B7166
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=linux.microsoft.com;
-	s=default; t=1793640157;
-	bh=GemoAJ3Z9yvwRRBlFGwLRVr4LorqE6trrN/CR7hKuuw=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=r3Ai1HxNbWb3kZc4YpHHnwyB78qJED3cJGIzV/bToDtYwEpr98VNzVmUp9+1kiLWk
-	 dZcZ1liJefSKJgjTKMNKZvng1Jrqiw+a/ND3e5GT88xYQf+jjuLbmRWiC7/acABq6w
-	 q4+yOeght4ytzHjxfCRDYA3BTCwYDa3KhniGNwvk=
-From: Naman Jain <namjain@linux.microsoft.com>
-To: elliotjb@elliotjb.com
-Cc: tytso@mit.edu,
-	adilger.kernel@dilger.ca,
-	sashal@kernel.org,
-	willy@infradead.org,
-	almaz.alexandrovich@paragon-software.com,
-	gregkh@linuxfoundation.org,
-	jack@suse.cz,
-	sunyongjian1@huawei.com,
-	tomberek@gmail.com,
-	stable@vger.kernel.org,
-	regressions@lists.linux.dev,
-	linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	ntfs3@lists.linux.dev
-Subject: Re: [PATCH 6.1.y 0/2] Fix NULL folio dereferences from IS_ERR() checks in 6.1.191
-Date: Mon,  2 Nov 2026 17:22:43 +0000
-Message-ID: <20261102172243.2183638-1-namjain@linux.microsoft.com>
-X-Mailer: git-send-email 2.43.0
-In-Reply-To: <20261102-ext4-ntfs3-null-folio-v1-0-4fd91ee23a4a@elliotjb.com>
-References: <20261102-ext4-ntfs3-null-folio-v1-0-4fd91ee23a4a@elliotjb.com>
+	s=default; t=1793640244;
+	bh=BBwVsAGDI2P1A8Xz+TjsiWaX1Q+VUcv4TW1ekog7gog=;
+	h=Date:Subject:To:Cc:References:From:In-Reply-To:From;
+	b=Ny9x/snajR4zT66QEVZqO52W0eHruSPt3TFkBD8xarvPIvaqMl/iFPnPggCvN4Ds6
+	 +/LcieDxmQqtzktl0ypU2/GTpoT+v1vOU5Lwjmr5Hxd6DZKXHuvTWJZroZun8PxVYa
+	 nto8Qxc5tXEeLmU3XWzeJfASzddzgvUbP3Icqob8=
+Message-ID: <f81cdcf4-2e9c-404c-a698-448873b8edf5@linux.microsoft.com>
+Date: Mon, 2 Nov 2026 22:54:13 +0530
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -72,39 +53,52 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH 6.1] ext4: honor NULL returns from __filemap_get_folio()
+To: Matthew Wilcox <willy@infradead.org>
+Cc: Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>,
+ Sasha Levin <sashal@kernel.org>, stable@vger.kernel.org,
+ linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+References: <20261102163341.2170232-1-namjain@linux.microsoft.com>
+ <aujDuxgeH-TyEsXh@casper.infradead.org>
+Content-Language: en-US
+From: Naman Jain <namjain@linux.microsoft.com>
+In-Reply-To: <aujDuxgeH-TyEsXh@casper.infradead.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-> Elliot Berman <elliotjb@elliotjb.com>
->
-> We hit a kernel oops in 6.1.191 in ext4_mb_regular_allocator(), When
-> ext4's s_buddy_cache pages are evicted, the next block allocation
-> dereferences a NULL folio.
-> The cause is a mismatch in these backports first released in 6.1.191:
->     d34e4fd4e73f ("ext4: convert bd_bitmap_page to bd_bitmap_folio")
->     862483175d3d ("ext4: convert bd_buddy_page to bd_buddy_folio")
->
-> The ext4 mballoc folio conversions were written for v6.4 and later,
-> where __filemap_get_folio() returns ERR_PTR() on failure. 6.1 does
-> not have commit 66dabbb65d67 ("mm: return an ERR_PTR from
-> __filemap_get_folio") and returns NULL instead. The backports should
-> check for NULL and not IS_ERR.
-> Since the same mistake could exist elsewhere, I ran a Coccinelle script
-> over the tree to flag similar missed backports. Besides ext4, I found
-> one more case in ntfs3:
->     95b917a14b15 ("ntfs: Do not overwrite uptodate pages")
->
-> That one needs a folio allocation failure while reading a compressed
-> file, so it required crafting a fault injection in
-> __filemap_add_folio to reproduce. I've fixed this one as well.
 
-I actually sent a similar patch a little later to fix the same issue :)
-We can now ignore that. For ntfs3, there is already a patch fixing the
-same issue:
 
-https://lore.kernel.org/all/20261029031815.2783998-1-cmllamas@google.com/
+On 11/2/2026 10:39 PM, Matthew Wilcox wrote:
+> On Mon, Nov 02, 2026 at 04:33:41PM +0000, Naman Jain wrote:
+>> The bitmap and buddy folio conversions assume that
+>> __filemap_get_folio() returns error pointers. In Linux 6.1, however,
+>> it returns NULL both when a non-creating lookup misses and when folio
+>> creation fails.
+>>
+>> A cache miss therefore passes the IS_ERR() check and reaches
+>> folio_test_uptodate(NULL) in ext4_mb_load_buddy_gfp(). Creating-lookup
+>> failures can also dereference NULL in its slow paths and in
+>> ext4_mb_get_buddy_page_lock().
+>>
+>> Restore NULL checks at all six lookup sites and return -ENOMEM when a
+>> creating lookup fails. Preserve the folio locking and migration checks
+>> without changing the global filemap API.
+>>
+>> Fixes: d34e4fd4e73f ("ext4: convert bd_bitmap_page to bd_bitmap_folio")
+>> Fixes: 862483175d3d ("ext4: convert bd_buddy_page to bd_buddy_folio")
+>> Cc: stable@vger.kernel.org # 6.1.x
+>> Signed-off-by: Naman Jain <namjain@linux.microsoft.com>
+> 
+> Elliot beat you to it:
+> 
+> https://lore.kernel.org/linux-ext4/20261102-ext4-ntfs3-null-folio-v1-0-4fd91ee23a4a@elliotjb.com/
+> 
+> Care to drop a R-b on his series?
 
-For the series:
-Reviewed-by: Naman Jain <namjain@linux.microsoft.com>
+Done.
+I actually checked LKML in the morning for this :)
 
 Regards,
-Naman Jain
+Naman
+
