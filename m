@@ -1,85 +1,47 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.210.176
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=124.71.94.104
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793616805;
-	b=J63d8lNgTj9I5MbDetGxOHEVO8lTT0IPPXZ/gw27AxJVPybZ6SCAPOVc9wbfjIlPy+AY
-	 NBZkkkel6ZzSYJVsyxD7a0yjCXgDFjjZ3A2tDdxcIXj5Kb+vbb/JPMjt7f+H0oe8ZSYEl
-	 Gz2dIFMa42LW06XC+bAsPJA+5tGo6a0K6RgC8ugnRu1XidN/7+ftofQ9fBVD87Q4uRqUC
-	 +XUCxewMhJi8/J6DoAaSWM2SvMsspFLI7nSUs2TxFy9AaIkRYlBmiPigs2zFkML3NLSmr
-	 85yL5PMwTufvhN1vATI5jS0Gg2jeSnW083QOdDALCWsS4vW9UjxzmyuZkmWHzT9LNbA==
+	t=1793620260;
+	b=gbSAT5CVWWqCSGlkrqcORhbujRjtPyODZfA+Mt39r3I/XtSmm3QWQ6K/4DG4mPmwrrUf
+	 r15f0MVS0B+0+ydYQxlWk6QK8WYUKc0bPufEN2hKF8p63QoawXP4pG1A9EMTDIEKGrKsl
+	 FZV0OrGIf/tgsHN+oOQF/2q2XhLM9vOE/p4tJSMAnMVe3JC61BU3nqKMEyxN0nG/GAQwG
+	 4gL04+KBSvRe5X3KU1980qdmnCWZ2mxWfY5ddEr4ss9Ss1H9uHEdKRZiaDSB+c2R5XljN
+	 +CtA5Fz8hMrPOwHuG8x2phyOwnzDZkqK/3GRlC3sFMNT5rRlhWQMRL8EJHJYXUv1rbw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793616805;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:Message-ID:Date:
-	 MIME-Version:User-Agent:Subject:To:Cc:References:From:In-Reply-To:
-	 Content-Type:Content-Transfer-Encoding;
-	bh=rciz4+NfV/n7GNfIPMbnR7FGjDwc67n4vXgzhcNqgXQ=;
-	b=0YxAY6lRjODOxqDg7UcAfh865bOzs+tlIRn/TzUjp5DJIlT3cdo/d4UETw4NkiGJAwBm
-	 nb9ZrAQydkdMYYjaLG5zOtRGZck17qm45o6nP+aywPFPtxEbtavxRCVWbldHiaqfXvWN3
-	 /3ctRhpG2q1kDp1rjNwndiKktkCiXTAXc2rXc4BwsUiloPKex6zXb1oQJGImv5t+coh6L
-	 diV4noUQ85j24U2sXfPMALOlPK511/uaVlFXlczrHTjKr0nDVofCPBgEFfiEj3JiwI8xJ
-	 NGS1YEaBw0Qscj6nTTeBC7+WbuiMsEqpUOdKXPg+niwjDoK5wstjq8l7zKvmjsFcXnQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793620260;
+	h=DMARC-Filter:Received:Received:Received:Message-ID:Date:MIME-Version:
+	 User-Agent:Subject:To:Cc:References:Content-Language:From:In-Reply-To:
+	 Content-Type:Content-Transfer-Encoding:X-CM-TRANSID:
+	 X-Coremail-Antispam:X-CM-SenderInfo;
+	bh=yBfXxrtyA/u/OWX/eqMUUK3wKj96MZ0bPzQISUlZz2g=;
+	b=C8li4QvtbKM/4i2rt56TU4ACV1LGSXp62jmImBSCO/uFZBoreLSBM785LN+mGeXVRSap
+	 m6XrltQFqdL4vE8VsKNmZjI1nbGZ0r0ypkjCztdWijuzTosHU5ZUjtUijdQqhwOOw1yOO
+	 ztgHizgJL6wEIsE6CSkIZ6zGVHS4bRULattU4MJ2xZg+8CswhiIknEA4h6wIc1xW32vSX
+	 sC5PpV4wY0G3GgEKt7aBf/6Kv5YRhXzFD1bXiSXsVelHKH0oFdSF4rRmbv1XYdCwc3K94
+	 3ubA4+pStTzTLl8PhCVQ550dGlaCQduBAVdq/mjL5+eoV++C+dC4c6mtdfO8m+mm0Cw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=bytedance.com;
-	spf=pass smtp.mailfrom=bytedance.com;
-	dkim=pass header.d=bytedance.com header.i=@bytedance.com header.a=rsa-sha256 header.s=google header.b="ZqkG/jvY";
-	arc=none smtp.remote-ip=209.85.210.176
-Received: from mail-pf1-f176.google.com (mail-pf1-f176.google.com [209.85.210.176])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	dmarc=none header.from=huaweicloud.com;
+	spf=pass smtp.mailfrom=huaweicloud.com;
+	arc=none smtp.remote-ip=124.71.94.104
+Received: from dggmsgout13.his.huawei.com (dggmsgout13.his.huawei.com [124.71.94.104])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D6509606A327
-	for <linux-ext4@vger.kernel.org>; Mon,  2 Nov 2026 10:53:24 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org D6509606A327
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=bytedance.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=bytedance.com header.i=@bytedance.com header.a=rsa-sha256 header.s=google header.b=ZqkG/jvY
-Received: by mail-pf1-f176.google.com with SMTP id d2e1a72fcca58-8a058315c79so1277670b3a.3
-        for <linux-ext4@vger.kernel.org>; Mon, 02 Nov 2026 02:53:24 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=bytedance.com; s=google; t=1793616804; x=1794221604; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:in-reply-to:from:references
-         :cc:to:subject:user-agent:mime-version:date:message-id:from:to:cc
-         :subject:date:message-id:reply-to:content-type;
-        bh=rciz4+NfV/n7GNfIPMbnR7FGjDwc67n4vXgzhcNqgXQ=;
-        b=ZqkG/jvYw4DlBUH+7ZDQOLUwPb8HDLvyrVsSNpqO513hIK35/s4g1SiiXeCT/Eo6N6
-         5bTlT48RVI8P2a69YJHt9bk++jbBabuvYsG5XxaCl3V1UXoEm3wH1gRms1hPYZG75UpM
-         tqZ7+fEXiPBwbj3XUl2Y2eKq5SFCCOsbNN+6TT53mA5Nk20bSNEAUygORUyILR+KAFxy
-         tAUv63uOzUwNerT3dy8wrHx42SiWckF2L5B2yn6OUWKpQDo0+iymYqIYo4YAlxrhebO3
-         2YmDCgQbOa7JAmQnAxNINLvdkK3C6rVGEOrTds9YBjYPbmXiTL3IUUyVvrwyxGgswDb1
-         95qg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1793616804; x=1794221604;
-        h=content-transfer-encoding:content-type:in-reply-to:from:references
-         :cc:to:subject:user-agent:mime-version:date:message-id:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=rciz4+NfV/n7GNfIPMbnR7FGjDwc67n4vXgzhcNqgXQ=;
-        b=NPlO7s+UPDWQWcudJv6dbJvhGrBAJdWmkQj746xe3MRjWOC+4GkL4N+WAWn5A7LWH+
-         rUY4Im15+LZWjO+B0u/V9e6vA1UB+RxwEXia2HkYVUQwltfNYfE7SA2abojWwSgOxLdT
-         PJtpjzQ/CutM/AVWA0A7yRGaAgIy7M64zk0buRyjQE6OX+t6T2mYdi+kxOW8+kDKZF06
-         XHeNTkXJUW88gkd8hEMtyFuj+7w4Lf2C0gKkxlIFJOt60Zv+cRfDee9l4jFX2sNY2zAC
-         37nxUSsN1eLd946Aob2HpRAeDsWO4Wze10HG1VbqtRS3Tqv3WdYtDqsLwaX6KhI6wVH2
-         QqQw==
-X-Gm-Message-State: AFq9FYI1ZK04uFf22Q1CEu2nxpPgLnEHvWWB6skkr7zEVztcXfvEb2HE
-	W1c57EgY+DXhcPGl0BqgwRixUIudTgihGFc2gkiPDAXd/5noNGoAIwi6Fplskv+DYXQ=
-X-Gm-Gg: AYBFou0QC1OPqtTS/CrJBcrDdSmJV50jhl0tSm86zZMPZa2XfZ8ezimWHvwAIvrbEgt
-	nNuGhtzc6QC8oyjSchg8VdJwlOj2du2YBSste5B1x1CzfhgzcNSMBplQSgPPQsnnhdkuCUSXyKA
-	fRCgshv1RardBcWQ8ExhHOUvTXXClag+OXqwlU2lZMl64xnKlci9fobt3We9cC/u/ZnlAZOh6eN
-	uvvXym53hjVpMI5YImeAkZUdIDuXzTrfxLN9BTIF1dX8jfF6tlh5NOXCkupgQg4jZpbj67iUM1w
-	AOOW6Ts14cq1BBWYMy6KlM/8wtUViFm4bKsZ1Bw4oe0lE0wPm9lVnG1B4+mjHQdkrroietkwSPz
-	2PxhnvvGc3buEJ0bIX7tnXi0CNUe4XoArg6z1YFpLcE5UGZmkN2sZlzgEMyie037shSYKtrHtAK
-	vBsdiL1EN0hNkGzy9ARfqT+jG+jBjd8YCiVsVjjBFfrCKaSqmUmfRGxQzHHWKZctahcw1pRKqNv
-	0pt4NoqRIhuvi4qKf4JlgYqVGqDeGbwTiXa4F8/yTLOM24OaInDvWFxNy0Tt+KOKtmE+66VG+oh
-	4fd5oaEypbkDoDM0vsh7dRWt/o+fyt8yuX4Acj+qiyuR8/kOxkY5SuXzwP6mWT0u9QG2G6gD
-X-Received: by 2002:a05:6a20:430a:b0:3e1:78c5:dfde with SMTP id adf61e73a8af0-3e92903d6a4mr8950975637.87.1793616804031;
-        Mon, 02 Nov 2026 02:53:24 -0800 (PST)
-Received: from [100.81.10.186] ([61.213.176.58])
-        by smtp.gmail.com with ESMTPSA id 41be03b00d2f7-cdb0981bbc8sm2864285a12.26.2026.11.02.02.53.20
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Mon, 02 Nov 2026 02:53:23 -0800 (PST)
-Message-ID: <5283a93e-8373-4e2a-af31-88e50522260e@bytedance.com>
-Date: Mon, 2 Nov 2026 18:53:18 +0800
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6BF45606A324;
+	Mon,  2 Nov 2026 11:50:56 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 6BF45606A324
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.170])
+	by dggmsgout13.his.huawei.com (SkyGuard) with ESMTP id 4jJ94j4Qh1z1rqfJ;
+	Mon,  2 Nov 2026 19:50:29 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.128])
+	by mail.maildlp.com (Postfix) with ESMTP id 159914056D;
+	Mon,  2 Nov 2026 19:50:53 +0800 (CST)
+Received: from [10.174.179.19] (unknown [10.174.179.19])
+	by APP4 (Coremail) with UTF8SMTPSA id gCh0CgB3tfQbeehq7KkwCw--.20107S3;
+	Mon, 02 Nov 2026 19:50:52 +0800 (CST)
+Message-ID: <a77a4e79-582a-46fe-a01e-070db9fa43ca@huaweicloud.com>
+Date: Mon, 2 Nov 2026 19:50:51 +0800
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -90,41 +52,83 @@ List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v2 4/6] ext4: put folio on partial writeback validation
- failure
+Subject: Re: [PATCH v2] ext4: report unwritten extent conversion failures as
+ writeback errors
 To: guolingxing <guolingxing@tju.edu.cn>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
- libaokun@linux.alibaba.com, jack@suse.cz, ojaswin@linux.ibm.com,
- ritesh.list@gmail.com, riteshh@linux.ibm.com, yi.zhang@huawei.com,
+Cc: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+ Andreas Dilger <adilger.kernel@dilger.ca>,
+ Baokun Li <libaokun@linux.alibaba.com>, Ojaswin Mujoo
+ <ojaswin@linux.ibm.com>, Ritesh Harjani <ritesh.list@gmail.com>,
+ linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
  stable@vger.kernel.org
-References: <20261023061851.45579-5-sunjunchao@bytedance.com>
- <20261102083649.3798099-1-guolingxing@tju.edu.cn>
-From: Julian Sun <sunjunchao@bytedance.com>
-In-Reply-To: <20261102083649.3798099-1-guolingxing@tju.edu.cn>
+References: <20261015102943.74632-1-guolingxing@tju.edu.cn>
+ <20261101102145.647496-1-guolingxing@tju.edu.cn>
+Content-Language: en-US
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+In-Reply-To: <20261101102145.647496-1-guolingxing@tju.edu.cn>
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 7bit
+X-CM-TRANSID:gCh0CgB3tfQbeehq7KkwCw--.20107S3
+X-Coremail-Antispam: 1UD129KBjvJXoW7Kr1DCw47XF47Zw48ur18uFg_yoW8Ar1UpF
+	WDG34qgFWv9a4fCFs5GFW7Ja4vqa4xKr47ury7KFsF934DXFnYyry8KF1IgF1UC3y7Ja1x
+	ZFWFkFykXwsrJaDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUvjb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
+	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Jr0_JF4l84ACjcxK6xIIjxv20xvEc7Cj
+	xVAFwI0_Gr0_Cr1l84ACjcxK6I8E87Iv67AKxVWxJr0_GcWl84ACjcxK6I8E87Iv6xkF7I
+	0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40E
+	x7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x
+	0Yz7v_Jr0_Gr1lF7xvr2IY64vIr41lFIxGxcIEc7CjxVA2Y2ka0xkIwI1lc7CjxVAaw2AF
+	wI0_Jw0_GFyl42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAqx4
+	xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r1q6r43
+	MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY6xkF7I
+	0E14v26r1j6r4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVWU
+	JVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjxUF1
+	v3UUUUU
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-On 11/2/26 4:36 PM, guolingxing wrote:
-> Hi,
+On 11/1/2026 6:21 PM, guolingxing wrote:
+> When a data writeback bio completes successfully but the subsequent
+> unwritten extent conversion fails, ext4_end_io_end() does not record
+> the error in the inode's mapping writeback error state.
 > 
-> Thanks for agreeing to drop patch 5/6.
+> Bio failures are already recorded by ext4_end_bio(), but conversion
+> failures are not. When the conversion is processed asynchronously,
+> its return value is not propagated to userspace, so fsync() may
+> return success despite the failed conversion.
 > 
-> I also noticed that patch 4/6 duplicates an earlier patch I posted on
-> October 16:
+> Record conversion errors with mapping_set_error() before
+> ext4_release_io_end() ends folio writeback and wakes waiters. This
+> allows fsync() to observe the failure.
 > 
-> https://lore.kernel.org/linux-ext4/20261016142524.655789-1-guolingxing@tju.edu.cn/
-> 
-> The earlier patch has already received a Reviewed-by from Zhang Yi:
-> 
-> https://lore.kernel.org/linux-ext4/743d1d96-40f9-4dac-839f-5d5269364b50@gmail.com/
-> 
-> Could patch 4/6 also be dropped from the next version of the series?
-> 
-> Thanks,
-> Guolingxing
+> Cc: stable@vger.kernel.org
+> Signed-off-by: guolingxing <guolingxing@tju.edu.cn>
+> Reviewed-by: Jan Kara <jack@suse.cz>
 
-Sure.
+Thank you for the fix. This looks good to me.
 
-Thanks,
--- 
-Julian Sun <sunjunchao@bytedance.com>
+Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
+
+> ---
+> Changes since v1:
+> - Drop the incorrect Fixes tag. The conversion error was already lost
+>   before commit b82e384c7bb9, as pointed out by Jan Kara.
+> - Collect Reviewed-by from Jan Kara.
+> 
+>  fs/ext4/page-io.c | 2 ++
+>  1 file changed, 2 insertions(+)
+> 
+> diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+> index 734d856a6d478..2701452fa65ca 100644
+> --- a/fs/ext4/page-io.c
+> +++ b/fs/ext4/page-io.c
+> @@ -192,6 +192,8 @@ static int ext4_end_io_end(ext4_io_end_t *io_end)
+>  			jbd2_journal_abort(EXT4_SB(sb)->s_journal, ret);
+>  	} else {
+>  		ret = ext4_convert_unwritten_io_end_vec(handle, io_end);
+> +		if (ret < 0)
+> +			mapping_set_error(inode->i_mapping, ret);
+>  	}
+>  	if (ret < 0 && !ext4_emergency_state(sb) &&
+>  	    io_end->flag & EXT4_IO_END_UNWRITTEN) {
+
