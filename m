@@ -1,48 +1,55 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.127.231.112
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793593498;
-	b=375JWCBze+yeMzT2KXcrn3c0EFZbgAaOQPbyFzK/UDHA/s8qmUeiB0MKWYN9zTrDSaNJ
-	 e5DyrqcpPriHORRR6DMcQvlJCbK8L7N5C4yyzBjRUwYNt1jOFNWQLF9yAYEc6Sz/VdHOG
-	 7HpPwXb+AaTaEr1BLrDiAkePT0NwHmdn9n9sZqzc2l/e8PbF/khaQ6C/F4sgzkCEURmqB
-	 FLb+ZrL23SX4Lzfo74nKbRFc1J7D82rjyG5oscILwBl7slUAp9Rx1YYMu5W/NiJyrAvle
-	 N/yAlJmpUrBe7gaaxQ3bk0xpbCI8DcewRfaYy0XTs4miXW5CbI2vllByAD2Ig5EIYXA==
+	t=1793594336;
+	b=twveHbjxCKbT1jgo0ALpwZ0zjGERhEdtUGLiKp30ZW4sqL7k4Cn2yKoPUFkRPmpMwJ1m
+	 w1HQCjxeL/GI253Q99hRLWX1qyectaQE4LsJK4F0mvGZCDh6+H5tIKbSP5gZTJAHoGo+7
+	 Sx5EhY8GYfxlgzh6sP1rkkQP0rDpT5khwjlicO54+VMCRfeHP8WHT1hQ/J+bHIjBaIDKA
+	 SptSJxqe+Rr3WM06mKpG7ZEmyNxDqRVBQkEnamkWWAdQo7ctfqjNLlnVN3ma8eMu7IlIC
+	 zH6LO7sQt10UlYPffsjoZ+M1FKdBcz/e4297A28Iq56kIBv0W27zLJz2+m/YN+5tRDA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793593498;
-	h=DMARC-Filter:DKIM-Signature:Mime-Version:X-Mailer:Cc:From:Date:
-	 Content-Transfer-Encoding:To:Subject:Message-Id:X-Lms-Return-Path:
-	 X-Original-From:Content-Type;
-	bh=1SQYaIK5/066ofaBlaOZi9a4vZOf9xISb8HFkbssnA8=;
-	b=ylWPl2NV0Cjrao4gQnl0lIsZFr6ptfOjIhpcdhD+noDSVM6Jzl861mhzOB/I9QlLQsgu
-	 ewo1t/Rv7tFrFScliUnE6RsR4E313i6iPrM8AVFChqDYrQqzu6odUOrj/J0Egf18/5lY+
-	 H4yw8F7KMqw4eNX8y4RYSn+tKrS47bFN3yAsvnb6sDTGzybp5Ske/fTqq55whyo32ThJ3
-	 pFWl5E3aJJR7BVgF20GsZ3tbRwTpTuLX16mfPEdK9oO7BcWKM1n9zqH+R0OC1SoZVY2Tx
-	 2hYdZ8uooQbZh9uD6AjYcdKSktuezPwERaKt3iUV5NH9Y+Navc6UWpk4prz5gTmXgJw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793594336;
+	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
+	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
+	bh=Qy+xVR3pJ/TomO9AIO8Xn6TZWFiR1xrx8gjLY2J3ZmE=;
+	b=YPgiOXzfroYB2sDjCafJibeATbfkQz12p5C+Mo1E9IoJ9Cf76wW5rZzEyO4IK6cb/0mT
+	 sy7rU04g1qF+LKGikcmfVvoQ8bciL0wDnYZ7CJFLQ841WGA4mQcopT64HSLrlKq3ez1AI
+	 VKHnUeI16YSuZJznBwtNN8mIzZjWyfCSXInreBY630rNExwZt9DNA8hCTpp2M1RhTt7rX
+	 1FKomWJq08/MaUgDw9+Jd8yOxmkjC3J0osyc0kSduYEq9ALpxB+d5JDElxV1Z8QI0B0ue
+	 MH6/QLJQOnSBvt5dgS9ZPX7/bZIREYdT1SyPdpDtjiem3vI5q3g08y1JQ+qT95twqkQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=bytedance.com;
-	spf=pass smtp.mailfrom=bytedance.com;
-	dkim=pass header.d=bytedance.com header.i=@bytedance.com header.a=rsa-sha256 header.s=2212171451 header.b="b07/MHzm";
-	arc=none smtp.remote-ip=209.127.231.112
-Received: from va-2-112.ptr.blmpb.com (va-2-112.ptr.blmpb.com [209.127.231.112])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=nlehNi4m;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A8A25606A324
-	for <linux-ext4@vger.kernel.org>; Mon,  2 Nov 2026 04:24:56 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org A8A25606A324
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=bytedance.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 55873606A324
+	for <linux-ext4@vger.kernel.org>; Mon,  2 Nov 2026 04:38:56 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=bytedance.com header.i=@bytedance.com header.a=rsa-sha256 header.s=2212171451 header.b=b07/MHzm
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
- s=2212171451; d=bytedance.com; t=1793593491; h=from:subject:
- mime-version:from:date:message-id:subject:to:cc:reply-to:content-type:
- mime-version:in-reply-to:message-id;
- bh=1SQYaIK5/066ofaBlaOZi9a4vZOf9xISb8HFkbssnA8=;
- b=b07/MHzmsTvzq2au67LMwlLBJPxHp2RKuik0AUdtCjyqewe82q9iqTHetzbJGfaeC2qeRh
- NqsxJql+GeVVpdGTLigs76WCg9RqXiJ8dMaE0BShVL3WM0ulC1u5vCJCR+kl02QPqgujIh
- siyUHELMVZu2rtKXSB9+ImJANLNN4g6SDc3iMmWFg2ObTIMGf0htcChuFhm2kEjCKcu3Ay
- zyrJOr0cD4/gzNWkFWcKh9G7aBchDVd74uPtJT5ixiWswZfMYe72KDTMRkGJAlrzjpc2jg
- bNqsAz9FUZrJkRuAfgXTRShB6JFHArGS2z7MQ8/8GJoNAWXfptgTAC8n2spliA==
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=nlehNi4m
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id DB3281F000C1;
+	Mon,  2 Nov 2026 04:38:55 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1793594336;
+	bh=Qy+xVR3pJ/TomO9AIO8Xn6TZWFiR1xrx8gjLY2J3ZmE=;
+	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
+	b=nlehNi4mFLPVEDDBNECple19AzFKtKsxred/TAWBsnGMssehIn7XkmQtXCViQzvfW
+	 D9i6QA9VDmvodUq4hjO+tnm4QUIBm1+uV38fEU7q0sER+KW14gP7ZlCv5jsgS8JDBh
+	 nZGulEVcxObzFMvcoI8I6/6rfA3VcN0ZW3frBpaItNd8mlgE8lh7FKsx4D4zjrli3F
+	 uLknTXvyrU3ucmPJfVcLqu9tAXmX51Pj/Mkx6/vDqMMDri6+GXsxlIqFDWO2ZjfBDW
+	 O/LIg67Z5BHuLrO899RQuvW7p54qojm/MXyQyOEy51NDS3aCmgfSXENNX869vMJcwy
+	 zFsjHeXu+4q8g==
+Message-ID: <sashiko-outbox-192904@kernel.org>
+From: sashiko-bot@kernel.org
+Subject: Re: [PATCH] ext4: reject impossible group free cluster counts
+Reply-To: sashiko-reviews@lists.linux.dev
+To: "Zhao Gongyi" <zhaogongyi@bytedance.com>, linux-ext4@vger.kernel.org
+Cc: tytso@mit.edu
+In-Reply-To: <20261102042428.65204-1-zhaogongyi@bytedance.com>
+References: <20261102042428.65204-1-zhaogongyi@bytedance.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+Date: Mon, 02 Nov 2026 04:38:55 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -51,166 +58,121 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
-Mime-Version: 1.0
-X-Mailer: git-send-email 2.39.5 (Apple Git-154)
-Cc: <tytso@mit.edu>, <adilger.kernel@dilger.ca>, 
-	<libaokun@linux.alibaba.com>, <jack@suse.cz>, <ojaswin@linux.ibm.com>, 
-	<ritesh.list@gmail.com>, <yi.zhang@huawei.com>, 
-	<linux-kernel@vger.kernel.org>, "Zhao Gongyi" <zhaogongyi@bytedance.com>
-From: "Zhao Gongyi" <zhaogongyi@bytedance.com>
-Date: Mon,  2 Nov 2026 12:24:28 +0800
-Content-Transfer-Encoding: 7bit
-To: <linux-ext4@vger.kernel.org>
-Subject: [PATCH] ext4: reject impossible group free cluster counts
-Message-Id: <20261102042428.65204-1-zhaogongyi@bytedance.com>
-X-Lms-Return-Path: <lba+26ae81092+dc465e+vger.kernel.org+zhaogongyi@bytedance.com>
-X-Original-From: Zhao Gongyi <zhaogongyi@bytedance.com>
-Content-Type: text/plain; charset=UTF-8
 
-ext4_count_free_clusters() initializes global free-space accounting from
-group descriptors. A corrupt bigalloc image advertises 201327130 free
-clusters in a 32-cluster group. The mount succeeds and delayed
-allocation later sees an impossible free-space total.
+Thank you for your contribution! Sashiko AI review found 1 potential issue(=
+s) to consider:
+- [High] ext4: journal replay bypasses ext4_check_replayed_free_clusters()
+--
 
-Reject counts above the group's cluster capacity during descriptor
-validation. Reuse the existing capacity calculation so bigalloc and
-short final groups use the same bound as the block bitmap.
+commit 57978228cd9b85af900a61d55a732ad888e33b8c
+Author: Zhao Gongyi <zhaogongyi@bytedance.com>
 
-Journal replay can overwrite a descriptor after the initial check. A
-crafted transaction changes a valid count to 32769 in a 32768-cluster
-group; a pre-replay-only check lets both read-only and read-write mounts
-succeed. Recheck after recovery, before initializing free-space
-counters. Limit the second scan to mounts needing recovery.
+ext4: reject impossible group free cluster counts
 
-Apply the bound to read-only mounts too, since they use the descriptor
-count for in-memory accounting.
+This commit rejects group descriptor free cluster counts that exceed the
+group's cluster capacity during mount-time descriptor validation, and
+rechecks the free cluster counts after journal replay when recovery is
+needed.
 
-Signed-off-by: Zhao Gongyi <zhaogongyi@bytedance.com>
----
- fs/ext4/balloc.c | 10 +++++-----
- fs/ext4/ext4.h   |  2 ++
- fs/ext4/super.c  | 38 ++++++++++++++++++++++++++++++++++++++
- 3 files changed, 45 insertions(+), 5 deletions(-)
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 7d8aedfbbb87f..b7dd1d4a3b179 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -3355,6 +3355,36 @@ void ext4_group_desc_csum_set(struct super_block *=
+sb, __u32 block_group,
+>  	gdp->bg_checksum =3D ext4_group_desc_csum(sb, block_group, gdp);
+>  }
+> =20
+> +static bool ext4_check_group_free_clusters(struct super_block *sb,
+> +					   ext4_group_t group,
+> +					  struct ext4_group_desc *gdp)
+> +{
+> +	unsigned int free_clusters =3D ext4_free_group_clusters(sb, gdp);
+> +	unsigned int group_clusters =3D ext4_num_clusters_in_group(sb, group);
+> +
+> +	if (free_clusters > group_clusters) {
+> +		ext4_msg(sb, KERN_ERR,
+> +			 "%s: group %u has invalid free clusters count %u > %u",
+> +			 __func__, group, free_clusters, group_clusters);
+> +		return false;
+> +	}
+> +	return true;
+> +}
+> +
+> +static int ext4_check_replayed_free_clusters(struct super_block *sb)
+> +{
+> +	struct ext4_sb_info *sbi =3D EXT4_SB(sb);
+> +	ext4_group_t group;
+> +
+> +	for (group =3D 0; group < sbi->s_groups_count; group++) {
+> +		struct ext4_group_desc *gdp =3D ext4_get_group_desc(sb, group, NULL);
+> +
+> +		if (!ext4_check_group_free_clusters(sb, group, gdp))
+> +			return -EFSCORRUPTED;
+> +	}
+> +	return 0;
+> +}
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 778fe87..0f36630 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -159,8 +159,8 @@ static unsigned ext4_num_overhead_clusters(struct super_block *sb,
- 	return num_clusters;
- }
- 
--static unsigned int num_clusters_in_group(struct super_block *sb,
--					  ext4_group_t block_group)
-+unsigned int ext4_num_clusters_in_group(struct super_block *sb,
-+					ext4_group_t block_group)
- {
- 	unsigned int blocks;
- 
-@@ -228,7 +228,7 @@ static int ext4_init_block_bitmap(struct super_block *sb,
- 	 * the blocksize * 8 ( which is the size of bitmap ), set rest
- 	 * of the block bitmap to 1
- 	 */
--	ext4_mark_bitmap_end(num_clusters_in_group(sb, block_group),
-+	ext4_mark_bitmap_end(ext4_num_clusters_in_group(sb, block_group),
- 			     sb->s_blocksize * 8, bh->b_data);
- 	return 0;
- }
-@@ -240,7 +240,7 @@ unsigned ext4_free_clusters_after_init(struct super_block *sb,
- 				       ext4_group_t block_group,
- 				       struct ext4_group_desc *gdp)
- {
--	return num_clusters_in_group(sb, block_group) -
-+	return ext4_num_clusters_in_group(sb, block_group) -
- 		ext4_num_overhead_clusters(sb, block_group, gdp);
- }
- 
-@@ -313,7 +313,7 @@ static ext4_fsblk_t ext4_valid_block_bitmap_padding(struct super_block *sb,
- {
- 	ext4_grpblk_t next_zero_bit;
- 	unsigned long bitmap_size = sb->s_blocksize * 8;
--	unsigned int offset = num_clusters_in_group(sb, block_group);
-+	unsigned int offset = ext4_num_clusters_in_group(sb, block_group);
- 
- 	if (bitmap_size <= offset)
- 		return 0;
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 8d3af06..3956545 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -3468,6 +3468,8 @@ extern ext4_fsblk_t ext4_inode_bitmap(struct super_block *sb,
- 				      struct ext4_group_desc *bg);
- extern ext4_fsblk_t ext4_inode_table(struct super_block *sb,
- 				     struct ext4_group_desc *bg);
-+unsigned int ext4_num_clusters_in_group(struct super_block *sb,
-+					ext4_group_t block_group);
- extern __u32 ext4_free_group_clusters(struct super_block *sb,
- 				      struct ext4_group_desc *bg);
- extern __u32 ext4_free_inodes_count(struct super_block *sb,
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 7d8aedf..83e4ef6 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3355,6 +3355,36 @@ void ext4_group_desc_csum_set(struct super_block *sb, __u32 block_group,
- 	gdp->bg_checksum = ext4_group_desc_csum(sb, block_group, gdp);
- }
- 
-+static bool ext4_check_group_free_clusters(struct super_block *sb,
-+					   ext4_group_t group,
-+					  struct ext4_group_desc *gdp)
-+{
-+	unsigned int free_clusters = ext4_free_group_clusters(sb, gdp);
-+	unsigned int group_clusters = ext4_num_clusters_in_group(sb, group);
-+
-+	if (free_clusters > group_clusters) {
-+		ext4_msg(sb, KERN_ERR,
-+			 "%s: group %u has invalid free clusters count %u > %u",
-+			 __func__, group, free_clusters, group_clusters);
-+		return false;
-+	}
-+	return true;
-+}
-+
-+static int ext4_check_replayed_free_clusters(struct super_block *sb)
-+{
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+	ext4_group_t group;
-+
-+	for (group = 0; group < sbi->s_groups_count; group++) {
-+		struct ext4_group_desc *gdp = ext4_get_group_desc(sb, group, NULL);
-+
-+		if (!ext4_check_group_free_clusters(sb, group, gdp))
-+			return -EFSCORRUPTED;
-+	}
-+	return 0;
-+}
-+
- /* Called at mount-time, super-block is locked */
- static int ext4_check_descriptors(struct super_block *sb,
- 				  ext4_fsblk_t sb_block,
-@@ -3467,6 +3497,8 @@ static int ext4_check_descriptors(struct super_block *sb,
- 			}
- 		}
- 		ext4_unlock_group(sb, i);
-+		if (!ext4_check_group_free_clusters(sb, i, gdp))
-+			return 0;
- 		if (!flexbg_flag)
- 			first_block += EXT4_BLOCKS_PER_GROUP(sb);
- 	}
-@@ -5567,6 +5599,12 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
- 		err = ext4_load_and_init_journal(sb, es, ctx);
- 		if (err)
- 			goto failed_mount3a;
-+		/* Journal replay may change descriptors after the initial check. */
-+		if (needs_recovery) {
-+			err = ext4_check_replayed_free_clusters(sb);
-+			if (err)
-+				goto failed_mount_wq;
-+		}
- 		if (bdev_read_only(sb->s_bdev))
- 		    needs_recovery = 0;
- 	} else if (test_opt(sb, NOLOAD) && !sb_rdonly(sb) &&
+[ ... ]
 
-base-commit: 8c4f6e3376348fc3162eed86a05b933921c8f9ed
--- 
-2.39.5 (Apple Git-154)
+> @@ -5567,6 +5599,12 @@ static int __ext4_fill_super(struct fs_context *fc=
+, struct super_block *sb)
+>  		err =3D ext4_load_and_init_journal(sb, es, ctx);
+>  		if (err)
+>  			goto failed_mount3a;
+> +		/* Journal replay may change descriptors after the initial check. */
+> +		if (needs_recovery) {
+> +			err =3D ext4_check_replayed_free_clusters(sb);
+> +			if (err)
+> +				goto failed_mount_wq;
+> +		}
+
+[Severity: High]
+Can a journal transaction that replays both the superblock buffer and a
+group descriptor buffer bypass ext4_check_replayed_free_clusters()?
+
+During __ext4_fill_super(), ext4_check_geometry() and
+ext4_group_desc_init() -> ext4_check_descriptors() validate the initial
+superblock and group descriptors before journal recovery. Next,
+ext4_load_and_init_journal() -> ext4_load_journal() ->
+jbd2_journal_load() -> jbd2_journal_recover() -> jbd2_do_replay() replays
+journal blocks into the block device buffer cache.
+
+Because sbi->s_es points directly into sbi->s_sbh->b_data, a journal
+transaction containing logical_sb_block can overwrite s_blocks_count_lo,
+s_blocks_count_hi, and s_first_data_block in sbi->s_es (ext4_load_journal()
+only saves and restores the EXT4_S_ERR_START..EXT4_S_ERR_END range).
+
+When ext4_check_replayed_free_clusters() subsequently calls
+ext4_check_group_free_clusters() -> ext4_num_clusters_in_group() for the
+final block group:
+
+fs/ext4/balloc.c:ext4_num_clusters_in_group() {
+	if (block_group =3D=3D ext4_get_groups_count(sb) - 1) {
+		blocks =3D ext4_blocks_count(EXT4_SB(sb)->s_es) -
+			ext4_group_first_block_no(sb, block_group);
+	} else
+		blocks =3D EXT4_BLOCKS_PER_GROUP(sb);
+	return EXT4_NUM_B2C(EXT4_SB(sb), blocks);
+}
+
+blocks is computed from the live, unvalidated sbi->s_es buffer. If the
+replayed s_blocks_count is smaller than ext4_group_first_block_no(sb,
+block_group), the unsigned int blocks calculation underflows to near
+UINT_MAX; if larger, blocks can exceed EXT4_BLOCKS_PER_GROUP(sb).
+EXT4_NUM_B2C() then returns an inflated group_clusters upper bound, allowing
+an impossible replayed bg_free_blocks_count to pass the free_clusters <=3D
+group_clusters check and corrupt in-memory free-cluster accounting as well
+as bitmap initialization in ext4_init_block_bitmap() and
+ext4_valid_block_bitmap_padding().
+
+In addition, only calling ext4_check_replayed_free_clusters() after
+recovery leaves any replayed changes to bg_block_bitmap, bg_inode_bitmap,
+bg_inode_table, bg_checksum, and bg_flags (EXT4_BG_INODE_ZEROED for
+first_not_zeroed) unvalidated. Should superblock geometry and full group
+descriptors via ext4_check_descriptors() be revalidated after journal
+replay instead?
+
+--=20
+Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261102042428.6520=
+4-1-zhaogongyi@bytedance.com?part=3D1
