@@ -1,48 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793717290;
-	b=r+H4LFXfOVzVhRWMlZ10Lv1XXCPIdG0cqNqPFNV9/VrIu8uNdJuXmyfpmQopSGNc0Jgm
-	 3CEZXTg9BrPmuEAZTae3fErmvV1hpVr2wfdg1cedyNwmlgyossn6WecIpkpDvhX3FVL4U
-	 WYdSHP6g0cx5KumWHvzbU33zZS/QrqwTPliHiqb8lvY0yznCDpUrGOcxN2XDYPKzbKf5K
-	 aEgt0c4h7EyevjCAgztE980w3Aporw6GiyP9Iw7rwVDyMRrDBcLvqxqaINgINUhAcFkRn
-	 8jqdJi7ILp3jOZKU6vK9RWGB3vUYX/LmTlqHfEwI17Q/oi+W/kUyee//Hm8PXV6aBuw==
+	t=1793717309;
+	b=RqBvIweOAsWzmj/RufDI3YuDMQLgBsVZjoIx8RLCOpNHlb6XmSwEQ5/App8T4bo+A4To
+	 SENKZQKRjgxnjGU/WW/1n+XBjJWrnuCnEGY4yFleKdNF2kxwfjTFHfOhVFaTUP4QgVXe5
+	 ghKeR3J8xx0NYwO4iGw3413Biw6cw/pCtXUKmajj/IdSSpIgdl+r1ZYM5xLy7KpNruXjV
+	 QFih97qg/k8mFw4JbXvagTRZDVlUc8aMNqF4Ms3hVoVgxjHl7RaxJZBGAJCvgTaj/oJsH
+	 rCxvazyhHCS4pakfe2io9iU+ek/8x46kRwh07S/hqpNQB5YzcFITUyay2NG5yVZJwsA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793717290;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793717309;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=8mbFNT8lVL2nvpVsUKgASJ1yFuw1L2kPoKsCbuWRO+8=;
-	b=Lrct8dxy2sMSCDZ2Ov3dGFentbXSUOa0yYni/0YuXXGpIflLmMcDTpoqIfAnLyfkvw1a
-	 XecfZIxLcodpZvZ6X8VvvsmO5R8v5eQ++XniphGlsbtOlmBIEqZ3bmMEvc4LQCapFVZVi
-	 bh3SmWF71aBwJVxrNiRco3H9ZY+JQNs9WJaRjLDNT1UeNlwcdfbifkie7WkUPzGy1Q8BK
-	 fJuND5GiTPvrBxbTjqg2lKQTaKwsPGfg0yeia7tsjF1Mg0jS7Tm5f1gU6JH78dYZLfrts
-	 A9imVIPB/LJUhsNC+p6XK00VZK1XNsX8TbolZaJm8d1NOFWCbt/UCqrxpClME2G0Nqw==
+	bh=oZNMg0XOhOF82NdxKw8m3fuJZ/CwTFkJ3vKS6G2BA+8=;
+	b=c8l0nn379j/Ze26EqC6Kc8GsaXBkLle8I914+DBx7tA9mCKQVrwq1yXvvpmMgPCESC9o
+	 aZabRYzl6Pg7YFdbENiwGfjXhAkaGcVDLqoIjtetMaL+6qOAfGTMtGXzgFGjK6Yd4bymG
+	 FULh6RFA5mkzlUznoi82jgIa3MMNW1wnXhlVeo/MbZKzH8xDRWmbvJbWi+lVn+rgWDhoT
+	 E8pirJSMr8dhQ+pmY/eMoPyIFLUFCkcICaqXhiizkKQa3lnyKRdMPo+N6/gK4PWNRP4Xe
+	 osHIiJnebnrmfHmkb8VDt8MVU4N4bhPM9H8Hie/ZjT8E+QGgqlx+kR6PAODmCFHeeuQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=epjMvs1d;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=F8FNSykI;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CB90060A5BD4;
-	Tue,  3 Nov 2026 14:48:09 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 44BC4606D80F;
+	Tue,  3 Nov 2026 14:48:28 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=epjMvs1d
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1A6791F000C1;
-	Tue,  3 Nov 2026 14:48:08 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=F8FNSykI
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4DCB31F000C1;
+	Tue,  3 Nov 2026 14:48:27 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793717289;
-	bh=8mbFNT8lVL2nvpVsUKgASJ1yFuw1L2kPoKsCbuWRO+8=;
+	s=k20260515; t=1793717308;
+	bh=oZNMg0XOhOF82NdxKw8m3fuJZ/CwTFkJ3vKS6G2BA+8=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=epjMvs1dEdIwrI2DpgBsZGQorVKIJHhwUyrikWAHBc6Kk4cu+6mzN1OvGvUEUPhEM
-	 B6AUhqEbvZnjd+L44ByeppapXiuprgTdI5dgYBGzcuPQ4mliSoBdYo9ya2AhybeQeS
-	 hLysf5uAjAy1Ce1fGawoITmQs42q0WmndS/BpCcBJHCfp5/P5rgpN0KUvtsPXZ/tyI
-	 1RZJZQTcjxHQ3TMgT1oAPoFy9LwZ7R59bQU8SwJTbZ2VhKizlrum4kIdEP7KLjnN/f
-	 n8AAaCBb12w0yRYObxfiHCa2z0CKocMdytuZrknD7LG7ju9D/FRUqPhOPy2fc6VOrS
-	 AnhnaOeX0gTFQ==
-Message-ID: <sashiko-outbox-195493@kernel.org>
+	b=F8FNSykIjsbIYyaW7wlpeo7Jpn0dKaAreMckL+hzdum+Nm9DhHKifm2w4cRC12Zuf
+	 FMphUuoK+hWmYUdPHNzO6H8bziy31o7b+pN218q2Hp1gBYtkbTvpEUQ+x2kYJUTGbU
+	 amr4aSwQRjTvoLEO8pBwqFwBIAflxH0WBNUru5M44VEqR+WrJF38qQzc5RNwaaY8rK
+	 U/bSSq6pCzSaxPBgrjZXz5mOFbKW0lxZLA/85eQV8QSkyLI5I1g237UjWtVW4FOz4i
+	 7eRL44CQhswG3W572187LfOOth0Bx8K25XUo4u38O9AE4bdxmCYBIrD7N596LhCSKY
+	 60DTPQ7Vz2Maw==
+Message-ID: <sashiko-outbox-195502@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH RFC 21/38] proc: let proc_remove() remove the entry it
- was given
+Subject: Re: [PATCH RFC 30/38] powerpc/pseries/lparcfg: return h_get_ppp()'s
+ status as a long
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Christian Brauner" <brauner@kernel.org>
 Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.com>, "Josef
@@ -55,12 +55,12 @@ Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.
  Iwai" <tiwai@suse.de>, linux-ext4@vger.kernel.org, "Chuck Lever" <cel@kernel.org>, tytso@mit.edu, "Heiko
  Carstens" <hca@linux.ibm.com>, "Vasily Gorbik" <gor@linux.ibm.com>, "Alexander
  Gordeev" <agordeev@linux.ibm.com>, "Christian Borntraeger" <borntraeger@linux.ibm.com>
-In-Reply-To: <20261102-work-procfs-bugfixes-v1-21-59422ed3e465@kernel.org>
+In-Reply-To: <20261102-work-procfs-bugfixes-v1-30-59422ed3e465@kernel.org>
 References: <20261102-work-procfs-bugfixes-v1-0-59422ed3e465@kernel.org>
- <20261102-work-procfs-bugfixes-v1-21-59422ed3e465@kernel.org>
+ <20261102-work-procfs-bugfixes-v1-30-59422ed3e465@kernel.org>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Tue, 03 Nov 2026 14:48:07 +0000
+Date: Tue, 03 Nov 2026 14:48:26 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -70,32 +70,28 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-> proc_remove() looks the entry up by its name in its parent and removes
-> whatever it finds there:
+> h_get_ppp() returns the status of the H_GET_PPP hcall as an unsigned
+> int. update_ppp() hands it on as its ssize_t result, and
+> lparcfg_write() turns the hcall statuses it knows into an errno and
+> returns anything else as it is. So when H_GET_PPP fails, say with
+> H_PARAMETER (-4), the status comes back as 4294967292 and a write to
+> /proc/powerpc/lparcfg reports that many bytes written.
 >=20
->   remove_proc_subtree(de->name, de->parent);
->=20
-> If the entry was removed already, say along with its parent, that is
-> either nothing or a different entry that got the same name in the
-> meantime, and de->parent may well be gone. Two removals of the same
-> entry are a bug in the caller, but going by the name turns it into
-> removing an entry that belongs to somebody else.
->=20
-> Since commit 895b4c0c79b0 ("fs/proc: fix uaf in proc_readdir_de()")
-> an entry that was unlinked has an empty rb node. So check for that
-> under proc_subdir_lock and otherwise remove the entry itself, with the
-> loop of remove_proc_subtree() moved into a helper both of them use.
-> Nothing can help a caller that passes an entry that has been freed
-> already.
+> Return the status as the long it is. lparcfg_write() then treats it
+> like the status of H_SET_PPP and an unknown one is at least negative.
+> Before commit 11529396ea31 ("powerpc/pseries: Split processor
+> entitlement retrieval and gathering to helper routines") a failed
+> H_GET_PPP turned into -EIO.
 >=20
 > Reported-by: Chris Mason <mason@kernel.org>
-> Fixes: a8ca16ea7b0a ("proc: Supply a function to remove a proc entry by P=
-DE")
+> Fixes: 11529396ea31 ("powerpc/pseries: Split processor entitlement retrie=
+val and gathering to helper routines")
+> Cc: stable@vger.kernel.org
 > Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 
 Sashiko has reviewed this patch and found no issues.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261102-work-procf=
-s-bugfixes-v1-0-59422ed3e465@kernel.org?part=3D21
+s-bugfixes-v1-0-59422ed3e465@kernel.org?part=3D30
 
