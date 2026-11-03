@@ -1,59 +1,92 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.127.230.115
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=148.163.158.5
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793674748;
-	b=TlLRHN1FMpzEU4Shei9utCxDi3hhkKbuVcZ1BA1AYWqcm4zsuLhiJzq3lFwvgbYgvuzw
-	 883raET6Bl5QW+bfkjGDEunyNwFmuKNnoCQ7K6z03P7rVGnqTKvty91yMU1VvdCV27flI
-	 8pV8gv/G7WZNMr2qJt6naEpcBoIJs5+Vuc6gzImo0aMvAMKveb3qMF3u6zfDrnpdY+5gg
-	 RP7dALtbzdyY9earTWncZtVj+YUhDH/LsRMaank9vLSzESYOTbNAbQ/kv80Ia9vHrBKuF
-	 mA6eCBoVBZ7CGQxl7R8RAMm3v3D7wGLIlNyyLtUsLkDpgTNrqL6rhVh+8DQfZmp4mLg==
+	t=1793682690;
+	b=0DazbTqOz5xhYzp4/dg/C29aQTeh8PNS+FtsDaCwWbf3Ir4zxLcYiAUoCEMR2T8c+ehj
+	 GKRKrGEdRa5QWg9KDHPJF6CASm+SAKcx5kKQjFAPKd12y9GYerV9f+KEMz25wBhG0mOKU
+	 623lT7fosNEdrXE/j/Un3XSuItOfWequbFAnVVkCP+8rWpAj49caAhj2Q8DAjRmv313wm
+	 OLo8iMk2g8viMmAw/v5P5YONAug0DjBMyiW1xHkWtC+9D6OdCmJ67LzNA+kJxvv1n/mPF
+	 edfWnb8tMimMNVEdLoblUENi9onI9iZuAvOCWHH9ekMxdH6eI9tJq5TXLaENCl+/OkQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793674748;
-	h=DMARC-Filter:DKIM-Signature:References:User-Agent:Content-Type:To:
-	 Subject:Date:Message-Id:In-Reply-To:Cc:From:Content-Transfer-Encoding:
-	 Mime-Version:X-Original-From:X-Lms-Return-Path;
-	bh=TkYxQFL24ujwNipbqSI/lL60uuTROX0qlC7c+u8mj4Q=;
-	b=E+NVoYYSAAfGG0jeWk16R1QHqfPnmHm+qoTJ/fOZSauqK2xjh/2LJf5qt8EeIXACIRi4
-	 UJwNaEyYoL5KahYcFluA0ImvN/77+iGpYme4A0Uo6YDXXqNE1t7E43QNbdTldyqS08NGE
-	 C00o/uSes8kj8whOJzsqe34aiL/IgxKtPX4yy+0Q6qNYYe9mrPorF/Pc9BqRhKRQ9ngJD
-	 wmnDxQQPJ1o8JoV09YJ90/sJyPdyitHmuNCDSxAs3SU/DjN8G/rWFMQD+uvb3l3H7BxOV
-	 ceQ8WG4z3+6rnS4zJGLV27mmTbv2NsywRVcBAT6D1I2aOVfGBxDsAlfvJ1SBTswrLXw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793682690;
+	h=DMARC-Filter:Received:DKIM-Signature:Received:Received:Received:
+	 Received:Received:Received:Received:Date:From:To:Cc:Subject:
+	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
+	 In-Reply-To:X-TM-AS-GCONF:X-Proofpoint-Reinject:
+	 X-Proofpoint-ORIG-GUID:X-Proofpoint-Spam-Info:X-Authority-Analysis:
+	 X-Proofpoint-Spam-Details-Enc:X-Proofpoint-GUID:
+	 X-Proofpoint-Virus-Version:X-Proofpoint-Spam-Details;
+	bh=j7vQDEKQmGcWvPJaz5e72XAn3awce25f7QO5l1L+IV0=;
+	b=flE+CiE35y2ZgP/xfQIvehxiXndF9STxbHrW1jcKCb1ZSQQ1VmrR0K3wuRh/YcSyhG4G
+	 uIwoS/tCw4I12CA1abg8CCqupO44PFoV/8XReAWU8c3ynVSH5CJPftL10tQMC+1wPI9n9
+	 g+lkrqjDbqGFAnoZwgqeE5qq2vNsTAOAE754Xk7GGAfIHl41VkIzENOw6fr7s5pVC4AQN
+	 Pv/XJjYDjwnd7kdGCrCoeVs70LCrAVBhTi6XryUdb5up0GIzWBAqevzaujth5Eyw5G3Xw
+	 efcrpFyzt/uiOLRXsGnkcZVqP4Vn35kpJRe1o+5LP9r65Et3akkqhn3K67siZJehY+g==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=bytedance.com;
-	spf=pass smtp.mailfrom=bytedance.com;
-	arc=none smtp.remote-ip=209.127.230.115
-Received: from va-1-115.ptr.blmpb.com (va-1-115.ptr.blmpb.com [209.127.230.115])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	dmarc=pass header.from=linux.ibm.com;
+	spf=pass smtp.mailfrom=linux.ibm.com;
+	dkim=pass header.d=ibm.com header.i=@ibm.com header.a=rsa-sha256 header.s=pp1 header.b=YmHu2zWc;
+	arc=none smtp.remote-ip=148.163.158.5
+Received: from mx0b-001b2d01.pphosted.com (mx0b-001b2d01.pphosted.com [148.163.158.5])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 82C9C606A324
-	for <linux-ext4@vger.kernel.org>; Tue,  3 Nov 2026 02:59:01 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 82C9C606A324
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=bytedance.com
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
- s=2212171451; d=bytedance.com; t=1793674736; h=from:subject:
- mime-version:from:date:message-id:subject:to:cc:reply-to:content-type:
- mime-version:in-reply-to:message-id;
- bh=TkYxQFL24ujwNipbqSI/lL60uuTROX0qlC7c+u8mj4Q=;
- b=qmCMyisyjRaqshse65hbt4ZF6sqwcgsQgF6hlaLYSS+17mzE1VqIIxR1L9S16HkTxFWzt8
- T/cmzzpz8Pxqui5XLy8Q18Tm3pAerkw4NB7dzRe8PlhxHWPQjFJVoT/0AAnhyHbaPaATR0
- ecTtKAyJTemwne62bNT4V4Ws1OvCYp7Qsujf8LDli2ivjaqgahjj4v7DEJAPoag1FBZGIS
- KS6ZwzzXIETHqhPMJqD1Pk3ZX+zKytzGPh+sPZwQ1w250cgrOdb8N0oiw/zYJYklaiP8xx
- o+bnD5P2/CrTfIKqrDKbEI2fo5kE+mBzElZmJMNZENJ5u9oj7GYsU2VN4Q0KZQ==
-References: <20261102042428.65204-1-zhaogongyi@bytedance.com> <F238B62D-6BED-4D64-B099-B956B820BA44@dilger.ca>
-User-Agent: Mozilla Thunderbird
-Content-Type: text/plain; charset=UTF-8
-To: "Andreas Dilger" <adilger@dilger.ca>
-Subject: Re: [PATCH] ext4: reject impossible group free cluster counts
-Date: Tue, 3 Nov 2026 10:58:38 +0800
-Message-Id: <2c1663e5-fac2-4346-ab2a-b35ae652373a@bytedance.com>
-In-Reply-To: <F238B62D-6BED-4D64-B099-B956B820BA44@dilger.ca>
-Cc: <linux-ext4@vger.kernel.org>, <tytso@mit.edu>, 
-	<libaokun@linux.alibaba.com>, <jack@suse.cz>, <ojaswin@linux.ibm.com>, 
-	<ritesh.list@gmail.com>, <yi.zhang@huawei.com>, 
-	<linux-kernel@vger.kernel.org>
-From: "Zhao Gongyi" <zhaogongyi@bytedance.com>
-Content-Transfer-Encoding: 7bit
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3CD34606A324;
+	Tue,  3 Nov 2026 05:11:29 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 3CD34606A324
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key, unprotected) header.d=ibm.com header.i=@ibm.com header.a=rsa-sha256 header.s=pp1 header.b=YmHu2zWc
+Received: from pps.filterd (m0356516.ppops.net [127.0.0.1])
+	by mx0a-001b2d01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 6A31iMlM236041;
+	Tue, 3 Nov 2026 05:11:16 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=cc
+	:content-type:date:from:in-reply-to:message-id:mime-version
+	:references:subject:to; s=pp1; bh=j7vQDEKQmGcWvPJaz5e72XAn3awce2
+	5f7QO5l1L+IV0=; b=YmHu2zWcELr46SCzBTRBQGPX9RN3eVcG3XsZbMBdtUl30R
+	5DXT1zlE3ZQP1smydFmgPbKNZoobHTK4MZ0yOnttgEMZa/P1j2PsXdFiHFEwXuh7
+	DPGRYsF/dJEfSXmTTZauI568ZTCabh5rgNH3T/u9Y6AYj40aZnaYTUVabH4r5fUd
+	jPFoTvAMfJK4VdDNTH+L+MC5xXsWHf/u438BdloGe2EjXKHxrSBDwkL0xtJSRRcd
+	twfMKva33gDsfEr3I//MxN3GlFEeHxL1ZBAVzCT6n+oO+xq3BlDhqNMAdxR0qqay
+	xgNNP9gJ6ojFX/dLLtKiOFsM5vqbv0JMNLqGVLDA==
+Received: from ppma13.dal12v.mail.ibm.com (dd.9e.1632.ip4.static.sl-reverse.com [50.22.158.221])
+	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4hn5rhm1mw-1
+	(version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=NOT);
+	Tue, 03 Nov 2026 05:11:15 +0000 (GMT)
+Received: from pps.filterd (ppma13.dal12v.mail.ibm.com [127.0.0.1])
+	by ppma13.dal12v.mail.ibm.com (8.18.1.11/8.18.1.11) with ESMTP id 6A31o1JL623480;
+	Tue, 3 Nov 2026 05:11:14 GMT
+Received: from smtprelay03.fra02v.mail.ibm.com ([9.218.2.224])
+	by ppma13.dal12v.mail.ibm.com (PPS) with ESMTPS id 4hnvvfrrjw-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Tue, 03 Nov 2026 05:11:14 +0000 (GMT)
+Received: from smtpav02.fra02v.mail.ibm.com (smtpav02.fra02v.mail.ibm.com [10.20.54.101])
+	by smtprelay03.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 6A35BDEa50528598
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+	Tue, 3 Nov 2026 05:11:13 GMT
+Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id 138DD20043;
+	Tue,  3 Nov 2026 05:11:13 +0000 (GMT)
+Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id 957D42004B;
+	Tue,  3 Nov 2026 05:11:09 +0000 (GMT)
+Received: from li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com (unknown [9.39.27.56])
+	by smtpav02.fra02v.mail.ibm.com (Postfix) with ESMTPS;
+	Tue,  3 Nov 2026 05:11:09 +0000 (GMT)
+Date: Tue, 3 Nov 2026 10:41:06 +0530
+From: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+To: guolingxing <guolingxing@tju.edu.cn>
+Cc: Jan Kara <jack@suse.cz>, "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Baokun Li <libaokun@linux.alibaba.com>,
+        Ritesh Harjani <ritesh.list@gmail.com>, Zhang Yi <yi.zhang@huawei.com>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        stable@vger.kernel.org
+Subject: Re: [PATCH v2] ext4: report unwritten extent conversion failures as
+ writeback errors
+Message-ID: <auls6tGk1DAr-uTn@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
+References: <20261015102943.74632-1-guolingxing@tju.edu.cn>
+ <20261101102145.647496-1-guolingxing@tju.edu.cn>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -62,40 +95,90 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
-Mime-Version: 1.0
-X-Original-From: Zhao Gongyi <zhaogongyi@bytedance.com>
-X-Lms-Return-Path: <lba+26ae94dee+bdb50c+vger.kernel.org+zhaogongyi@bytedance.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20261101102145.647496-1-guolingxing@tju.edu.cn>
+X-TM-AS-GCONF: 00
+X-Proofpoint-Reinject: loops=2 maxloops=12
+X-Proofpoint-ORIG-GUID: SOj_O2UZAsWuD7SAr4RJPOH4R-C34hmo
+X-Proofpoint-Spam-Info: AW1haW4tMjYxMTAzMDAxOCBTYWx0ZWRfX47pcEP3Xk023
+ 8OxjPGnmf7RSamZLb4ZVBhZT2V5tNgw5FBOJ3CZrOk1UIXmz7U9Xp72A+VACO4w7jDJTazCN3uW
+ QAOxjesVUn1l/meHff3ow2jrJWKd86U=
+X-Authority-Analysis: v=2.4 cv=LokHWXdc c=1 sm=1 tr=0 ts=6ae96cf4 cx=c_pps
+ a=AfN7/Ok6k8XGzOShvHwTGQ==:117 a=AfN7/Ok6k8XGzOShvHwTGQ==:17
+ a=kj9zAlcOel0A:10 a=zJRp6_cAMcgA:10 a=VkNPw1HP01LnGYTKEx00:22
+ a=RnoormkPH1_aCDwRdu11:22 a=Y2IxJ9c9Rs8Kov3niI8_:22 a=VwQbUJbxAAAA:8
+ a=VnNF1IyMAAAA:8 a=z4EYaZmNoVUiA4pjg24A:9 a=CjuIK1q_8ugA:10
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYxMTAzMDAxOCBTYWx0ZWRfX9GkB26nBatIV
+ V6uVidMitkwwEg1ErQF5AFv0WKhV7XBPFbinKPlnRtR557uwMJLzvcauE5jcaPfnFJ2GlmE7YRg
+ 8QpAgSGFPGVvsP9V98/hjIViV4mbJK0HeQP+6fv1Kdy36PPUhuuIblhTNcuVTZGYXZaSS0wg9sU
+ e1F6yBBgdm9LEDqZ4t3vUkjGARkGwvjK/UHJ2jtLJeJCe02XFwN+ga132KFHf1KywH8GRSg3Db7
+ LrOZTQDbIJ23kscMHdogNPaz1Z1qVnFD+ttPgFohcY7oSK2UQaJ3irZrE/IIAs8Uv5F44GHyl2h
+ 8H/mM4mg6vgC0wisEkkztnL7eQ0n/qiU2K34ydTv+/WRaCEOk6WjRd3k+FQ+37BvY3x3NnvlHMr
+ Jp7FGjBS0VmqtdjJFVTzve3yULPaoajk5FbJQu+x/1GoVOewJ1yuMvJwp4wSXZz0gXgBoA1pEPQ
+ 4C/5gnPYrhGDJMTCMng==
+X-Proofpoint-GUID: WTg2K7L-m-8lLPqRSOr4RtBAyAjuxAA-
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.293,Aquarius:18.0.1176,Hydra:6.1.138,FMLib:17.12.100.49
+ definitions=2026-11-03_01,2026-11-02_03,2025-10-01_01
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
+ spamscore=0 lowpriorityscore=0 clxscore=1011 impostorscore=0
+ priorityscore=1501 suspectscore=0 phishscore=0 malwarescore=0 bulkscore=0
+ adultscore=0 classifier=typeunknown authscore=0 authtc= authcc=
+ route=outbound adjust=0 reason=mlx scancount=1 engine=8.22.0-2610300000
+ definitions=main-2611030018
 
-Hi Andreas,
-
-Thanks for the review.
-
-On 11/3/26 6:10 AM, Andreas Dilger wrote:
+On Sun, Nov 01, 2026 at 10:21:45AM +0000, guolingxing wrote:
+> When a data writeback bio completes successfully but the subsequent
+> unwritten extent conversion fails, ext4_end_io_end() does not record
+> the error in the inode's mapping writeback error state.
 > 
-> I think a lot of this class of bug could be avoided by doing very minimal
-> checks on the group descriptors initially (and other metadata, enough to
-> load and validate the journal inode itself is sane). The journal inode is
-> otherwise read-only so its allocations should never be modified.  Then
-> replaying the journal if it is dirty, and restarting the superblock/GDT
-> checks from the beginning to validate the _current_ blocks are sane.
+> Bio failures are already recorded by ext4_end_bio(), but conversion
+> failures are not. When the conversion is processed asynchronously,
+> its return value is not propagated to userspace, so fsync() may
+> return success despite the failed conversion.
 > 
-> That should only be done once per mount. To keep sanity after checks, we
-> could validate the journal never contains updates to its own inode (or at
-> least not until an SMR "wandering journal/log structure" feature exists).
+> Record conversion errors with mapping_set_error() before
+> ext4_release_io_end() ends folio writeback and wakes waiters. This
+> allows fsync() to observe the failure.
+> 
+> Cc: stable@vger.kernel.org
+> Signed-off-by: guolingxing <guolingxing@tju.edu.cn>
+> Reviewed-by: Jan Kara <jack@suse.cz>
 
-Agreed. The post-recovery check in v1 is too narrow: it uses the live
-superblock geometry, which journal replay may also have changed, and
-leaves the other replayed group descriptor fields unchecked.
+Yep, I noticed this recently when an endio failed during conversion in
+prod but fsync went through :/ 
 
-I will rework v2 so that only the checks needed to safely load the
-journal are done before recovery, followed by full superblock geometry
-and group descriptor validation after replay and before free-space
-accounting. I will also check which existing validation helpers can be
-safely rerun without duplicating initialization side effects.
+Thanks for fixing it, feel free to add:
 
-Validating that the journal does not update its own inode also sounds
-useful. If that requires broader journal changes, I will handle it
-separately.
+Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
 
-Thanks,
-Gongyi
+Regards,
+ojaswin
+
+> ---
+> Changes since v1:
+> - Drop the incorrect Fixes tag. The conversion error was already lost
+>   before commit b82e384c7bb9, as pointed out by Jan Kara.
+> - Collect Reviewed-by from Jan Kara.
+> 
+>  fs/ext4/page-io.c | 2 ++
+>  1 file changed, 2 insertions(+)
+> 
+> diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+> index 734d856a6d478..2701452fa65ca 100644
+> --- a/fs/ext4/page-io.c
+> +++ b/fs/ext4/page-io.c
+> @@ -192,6 +192,8 @@ static int ext4_end_io_end(ext4_io_end_t *io_end)
+>  			jbd2_journal_abort(EXT4_SB(sb)->s_journal, ret);
+>  	} else {
+>  		ret = ext4_convert_unwritten_io_end_vec(handle, io_end);
+> +		if (ret < 0)
+> +			mapping_set_error(inode->i_mapping, ret);
+>  	}
+>  	if (ret < 0 && !ext4_emergency_state(sb) &&
+>  	    io_end->flag & EXT4_IO_END_UNWRITTEN) {
+> -- 
+> 2.34.1
+> 
