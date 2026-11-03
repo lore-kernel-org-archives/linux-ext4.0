@@ -1,107 +1,105 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.131
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793705739;
-	b=dOK2Nyy9v35aliRkmDx70xfgQnRxfCAmib5FLRXJnwfNm8WM++yyQR9zjOURR8dVlhnR
-	 75ZlLnvamc2dIJCexrkslfcMQIv6bneeqSgu4jQa938GBkZg7BWPwO8ZvtPNYLzctcYSt
-	 e0dac2jbRZCiTri3gGOZ9AatDMSytj5Q+g4eWHUIQ0G83sTnXNTgcHBpEywnpRtDUuk+h
-	 FawY9gB5o0MhEUNvGPAoiumhoqEEbjwBO08lJ73YjTtI4lDI8gWTOXv2RWl3AuRuPVy0F
-	 GEnqrDZiUh5e5LeLHnqtTzGqkFts7fJXaNKBtRO9pFRvZLl56Jix2aqIHeZfLJTEetQ==
+	t=1793711080;
+	b=cFb3+SbTQ7yPq7BWVPpweVVgSOqriblfynYzQXiyAPbesUpAATRPxLgPkYbN49Hz4SWF
+	 9SmeKybHByJjC9WGz8qW0msCMwrSk2JdUIkTmW1UlIKwBh605lxO8BovrrQAkJvkKN/Z2
+	 zS2QwJCu4LiG5l88grSKXxarjbCc/o2j2wgjSLSaRwtuxJpUiXDffF7FptLWOrxY4iihg
+	 SCmsfkrzkGPIeWldcocmHFsQtU/omODfQ7Bbi60M1CpCJAv+dCOWTQSyfI3Wsf82k+FcT
+	 6dfbRzAUs0ex0uKCCN9MuEvevuhh/x+w47RJIh54Bkjtuob7+Ox4b4m3f5RM6pKSlxQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793705739;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793711080;
 	h=DMARC-Filter:Received:DKIM-Signature:DKIM-Signature:DKIM-Signature:
 	 DKIM-Signature:Received:Received:Received:Date:From:To:Cc:Subject:
 	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
-	 In-Reply-To:X-Spamd-Result:X-Spam-Score:X-Spam-Level:X-Spam-Flag;
-	bh=tq7Gw8/N7dMi6Jp6jCkdU58YUV5cYBcIl0gh884XL6Q=;
-	b=Tyz3CKytswyHDRn7+m1oJtzsX0VwTAPt7EZoEdUkueX6rV0AFVDheMuORWNjPAz6h1R3
-	 7UOdTggePoVpx2JbhM5oCF6zpv3zTEQGmwZxQ62iCJGxojxiZbrBYcjMqYQXfy6m5tfmR
-	 O0YIGcUzFwH2NnNjfHw53PYqYcIvfcm9CecIzN6e9p1AJD+Hlnc33UiAp0WqRMJp20LJz
-	 /N6+83f8ne6ltzX5z2v9wgc+hVdLNFI3enXdB4Pu3/TdJe5tMQfBJ6gPrpGbx8eRUi3q+
-	 B76J6Kt13oLdu+fK+34RjMIH9TihaNdR+/A9iTFhT/xIKch3M4wvGVqpMt//McpQLrg==
+	 In-Reply-To:X-Spam-Flag:X-Spam-Level:X-Spamd-Result:X-Spam-Score;
+	bh=Q/139jPZQKwaBkBJtZnCZovtebJHazLS5gj57OpiMCU=;
+	b=WooyQVew37KDAg6schMRl9LuDrrBfppGQwQuuWUWGt0JMJGR2EO6NkdkzVn1qEGsLLKU
+	 Nqcd8YJqsfpLqca8A5D2GeCfV5aFI1d3HQtyoLE1yunYH8nbP0FJXGQZxsPPnnPao7AWU
+	 4nSgxOjWVhxpd/a94gFQd+s1bRgzwz+p/1MZzxm9OpajrmDUT7n0mCAZGEAoaTuw3U48Y
+	 dQDByHyLIvSezLZYOeoBkmimjjZjtzW2uCfvWatanFnC2BscSJ3/CNLb5TtHGjXgF5Yvf
+	 IlnhNwCZ3GddFpnO+iiv8i6FtWkP+AOsMj4uEx7qXeu3ZRerRSzqu0MxYhawcMB4+kw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=none header.from=suse.cz;
 	spf=pass smtp.mailfrom=suse.cz;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=FUWe+Mbl;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=s3nCb7XB;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=FUWe+Mbl;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=s3nCb7XB;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=ANF1cIVM;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=8TtvGv8L;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=bpU2mnKn;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=n3Jo7DY8;
 	arc=none smtp.remote-ip=195.135.223.131
 Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 37293606A32F;
-	Tue,  3 Nov 2026 11:35:38 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 37293606A32F
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 77240606A326;
+	Tue,  3 Nov 2026 13:04:39 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 77240606A326
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=FUWe+Mbl;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=s3nCb7XB;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=FUWe+Mbl;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=s3nCb7XB
+	dkim=pass (1024-bit key, unprotected) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=ANF1cIVM;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=8TtvGv8L;
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=bpU2mnKn;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=n3Jo7DY8
 Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 610571F820;
-	Tue,  3 Nov 2026 11:35:35 +0000 (UTC)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 8C0401F800;
+	Tue,  3 Nov 2026 13:04:36 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1793705735; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1793711077; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=tq7Gw8/N7dMi6Jp6jCkdU58YUV5cYBcIl0gh884XL6Q=;
-	b=FUWe+MblIrLA443mpy0UAYxyfYhvbn43DS49e/1gi/tS7kDpyFl1p2zzUHMx0kF43eNlwK
-	cs5X9fxSHkaNDsm4s3ZXodD1YpF82BZ0J6cjuZGn7x/Xo3UPdiRdhDIpMfzLxWydmoGr7W
-	Bq5+jnhVWvDXGoDuuKJMYwFV7VwDORA=
+	bh=Q/139jPZQKwaBkBJtZnCZovtebJHazLS5gj57OpiMCU=;
+	b=ANF1cIVMSLHBMUtiUiWpejgfLoTl0vyjQbaj1cfpnkISIUp5n1u/unwcPeBpxYRUXDb2Tf
+	UjkzlUADXxC21UJesyuBuvMgPUaM+qkc4HdnIfAb9nYFnHHZO4tM79LYsKi9fNwS4K+zEY
+	zzZwkBN6+sP3g4dO0a1d3wBr/UMhEKM=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1793705735;
+	s=susede2_ed25519; t=1793711077;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=tq7Gw8/N7dMi6Jp6jCkdU58YUV5cYBcIl0gh884XL6Q=;
-	b=s3nCb7XBHHd5/xsbcXio2NEA5+JHZSzpIjhjgtIFDlypktRbCnOeZLPC0l2egVZ/BPD6zk
-	HXQDxFwTMfcJv6Ag==
+	bh=Q/139jPZQKwaBkBJtZnCZovtebJHazLS5gj57OpiMCU=;
+	b=8TtvGv8LVvaJNbWvsrZCPn29cQMVgdY2m8SALwuRQjpf1HzJoLSINDgKpsOa4NSzd7q7HS
+	NfuXGjHg7ELMZjCg==
 Authentication-Results: smtp-out2.suse.de;
 	none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1793705735; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1793711076; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=tq7Gw8/N7dMi6Jp6jCkdU58YUV5cYBcIl0gh884XL6Q=;
-	b=FUWe+MblIrLA443mpy0UAYxyfYhvbn43DS49e/1gi/tS7kDpyFl1p2zzUHMx0kF43eNlwK
-	cs5X9fxSHkaNDsm4s3ZXodD1YpF82BZ0J6cjuZGn7x/Xo3UPdiRdhDIpMfzLxWydmoGr7W
-	Bq5+jnhVWvDXGoDuuKJMYwFV7VwDORA=
+	bh=Q/139jPZQKwaBkBJtZnCZovtebJHazLS5gj57OpiMCU=;
+	b=bpU2mnKnYN+zKrAYR4qXQGbnlEINOq8954vktVD00uY4y5twdC0IjokGGOxptbf+tU+41O
+	rLAlFEQP+apDyazT7sl20WRIx43hlY/IFaFh1c7Zy51/I6O6+cb0xGSJHOAbafuR0I0B18
+	75D0P6vFtlJBKtL3Gw76k1mvls5XUBc=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1793705735;
+	s=susede2_ed25519; t=1793711076;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=tq7Gw8/N7dMi6Jp6jCkdU58YUV5cYBcIl0gh884XL6Q=;
-	b=s3nCb7XBHHd5/xsbcXio2NEA5+JHZSzpIjhjgtIFDlypktRbCnOeZLPC0l2egVZ/BPD6zk
-	HXQDxFwTMfcJv6Ag==
+	bh=Q/139jPZQKwaBkBJtZnCZovtebJHazLS5gj57OpiMCU=;
+	b=n3Jo7DY86tJw9BmI+i9ULYOaUv2VKZ/eZEUY6IJaW7MXHYnV6VV4/+OGbge4Xnj2ImtL7w
+	mJuzycoKfWcmBTCw==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 36BE9134B8;
-	Tue,  3 Nov 2026 11:35:35 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 60E521350A;
+	Tue,  3 Nov 2026 13:04:36 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id zGlEBQfH6WqFSQAAD6G6ig
-	(envelope-from <jack@suse.cz>); Tue, 03 Nov 2026 11:35:35 +0000
+	id 0+TTDuTb6WoFJwAAD6G6ig
+	(envelope-from <jack@suse.cz>); Tue, 03 Nov 2026 13:04:36 +0000
 Received: by quack.suse.cz (Postfix, from userid 1000)
-	id B8D3EB22F; Tue, 03 Nov 2026 12:35:30 +0100 (CET)
-Date: Tue, 3 Nov 2026 12:35:30 +0100
+	id DF27DB262; Tue, 03 Nov 2026 14:04:31 +0100 (CET)
+Date: Tue, 3 Nov 2026 14:04:31 +0100
 From: Jan Kara <jack@suse.cz>
-To: Pedro Falcato <pfalcato@suse.de>
-Cc: Jan Kara <jack@suse.cz>, Jan Kara <jack@suse.com>, 
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] ext2: take invalidate_lock in ext2_write_failed()
-Message-ID: <cvebsi2jymuhgzjnt4n7mzx2p2fu4hcmtycb2nfrqjvhvbtabc@7ak5jdz4ao3a>
-References: <20261024222726.889520-1-pfalcato@suse.de>
- <akdbsbqjyqpju5a42sh64yovrl47p7ty3yp5nm36pmfgrduaxj@tlx6yc5atpiy>
- <at-BCY4VuCMiwICf@pedro-suse.tail5790ac.ts.net>
+To: Josef Bacik <josef@toxicpanda.com>
+Cc: Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org, 
+	linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] ext2: only flush DIRSYNC directories on every change
+Message-ID: <pfzengv7itu5b2rgi7kx55rpkzh56ynzzte5gtifgmfnmccplh@zxxbbfgfu6zu>
+References: <20261027-b4-ext2-dirsync-v1-1-3dcd012d518d@toxicpanda.com>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -113,7 +111,9 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <at-BCY4VuCMiwICf@pedro-suse.tail5790ac.ts.net>
+In-Reply-To: <20261027-b4-ext2-dirsync-v1-1-3dcd012d518d@toxicpanda.com>
+X-Spam-Flag: NO
+X-Spam-Level: 
 X-Spamd-Result: default: False [-12.80 / 50.00];
 	SUSE_INTERNAL_BYPASS(-9.00)[];
 	BAYES_HAM(-3.00)[100.00%];
@@ -130,79 +130,68 @@ X-Spamd-Result: default: False [-12.80 / 50.00];
 	RCVD_COUNT_THREE(0.00)[3];
 	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
 	FROM_EQ_ENVFROM(0.00)[];
-	RCPT_COUNT_FIVE(0.00)[5];
+	RCPT_COUNT_THREE(0.00)[4];
 	TO_MATCH_ENVRCPT_ALL(0.00)[];
 	RCVD_TLS_LAST(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.de:email,suse.com:email,imap1.dmz-prg2.suse.org:helo]
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,toxicpanda.com:email,imap1.dmz-prg2.suse.org:helo]
 X-Spam-Score: -12.80
-X-Spam-Level: 
-X-Spam-Flag: NO
 
-On Mon 26-10-26 16:48:03, Pedro Falcato wrote:
-> On Mon, Oct 26, 2026 at 02:16:19PM +0100, Jan Kara wrote:
-> > On Sat 24-10-26 23:27:26, Pedro Falcato wrote:
-> > > Currently, ext2_write_failed() takes care of removing extra data
-> > > (folios & blocks) from the page cache by first truncating the page cache,
-> > > then truncating the actual inode's blocks.
-> > > 
-> > > Understanding that this is correct - namely, that a concurrent page cache
-> > > lookup can't create stale pages and stale block mappings between
-> > > truncate_pagecache() and ext2_truncate_blocks() - is non trivial. This is
-> > > correct for two non-obvious reasons:
-> > > 
-> > > 1) every caller of ext2_write_failed() holds some sort of exclusion
-> > > against truncation. In most cases, callers hold (in some way) the inode
-> > > lock. ext2_write_failed() is only reachable from buffered/direct IO write
-> > > paths, which hold it. page_symlink() can also call write_begin _without
-> > > the inode lock_, but at that point the inode is I_NEW, so there are no other
-> > > users.
-> > > 
-> > > 2) the page cache is generally extremely careful at never instantiating
-> > > pages beyond EOF.
-> > > 
-> > > This is all quite confusing. Holding the invalidate lock across both
-> > > operations is largely simpler, and mirrors other bits of other filesystems
-> > > (like ext4_truncate_failed_write). Do that.
-> > > 
-> > > This has the side effect of making it so ext2_evict_inode() doesn't take
-> > > the invalidate_lock when truncating blocks on inode deletion. This is safe
-> > > as the inode should not have any users at that point.
-> > > 
-> > > Signed-off-by: Pedro Falcato <pfalcato@suse.de>
-> > 
-> > There's actually one more reason - filesystems that don't support hole
-> > punching are generally ok with the synchronization provided by inode lock
-> > and i_size checks (as within i_size allocated space can never disappear
-> > under you). But I agree this is all too subtle so you're change is a good
-> > one. Added to my tree.
+On Tue 27-10-26 18:43:14, Josef Bacik wrote:
+> Every change of an ext2 directory is written to disk before the system call
+> returns, whether the directory is DIRSYNC or not: its pages with
+> filemap_write_and_wait() and its inode with sync_inode_metadata().
 > 
-> Thanks!
+> Writes which reach the device for 2000 files, and 200 directories, in a
+> directory without DIRSYNC, with the flusher turned off:
 > 
-> Right. So I'm wondering if we couldn't assert some locks in truncate code.
-> Something like (in truncate_inode_pages_range):
-> 	/* truncation is only safe in a couple of cases:
-> 	 * 1) caller holds the invalidate_lock. This protects against hole
-> 	 * punching and other truncate-like activities.
-> 	 * 2) caller holds the inode lock. This excludes against truncate-like
-> 	 * operations in a variety of cases.
-> 	 * 3) inode is new or freeing - no need to synchronize anything since
-> 	 * we should be the only user for this inode.
-> 	 */
-> 	lockdep_assert(lockdep_is_held(&mapping->invalidate_lock) ||
-> 			((lockdep_is_held(&mapping->host->i_rwsem) &&
-> 			 (lstart >= i_size_read(mapping->host) ||
-> 			 file_does_not_support_holes) ||
-> 			inode_new_or_freeing);
+>             create   rename   unlink   mkdir
+>     before    4000     8000     4000     800
+>     after        0        0        0       0
 > 
-> I'm sure I'm missing some silly edgecase, but it would be nice to have this
-> properly written down and asserted.
+> In a directory with chattr +D the numbers are those of "before", before and
+> after.
+> 
+> commit bc943f4872a7 ("ext2: Don't flush page immediately for DIRSYNC
+> directories") moved the flush from ext2_commit_chunk() to the new
+> ext2_handle_dirsync().  The IS_DIRSYNC() check which was around it didn't
+> move along.
+> 
+> Fix by putting the check into ext2_handle_dirsync().
+> 
+> Fixes: bc943f4872a7 ("ext2: Don't flush page immediately for DIRSYNC directories")
+> Signed-off-by: Josef Bacik <josef@toxicpanda.com>
 
-The part "file_does_not_support_holes" will be somewhat difficult to assert
-but honestly, I'd be willing to transition to a state where all the
-filesystems in truncate code are required to hold i_rwsem *and* invalidate_lock
-unless they are working beyond i_size, on new, or on freed inodes.
+Thanks! Added to my tree.
 
 								Honza
+
+> ---
+> I ran into this while testing an overlayfs series with ext2 as the upper
+> file system. Directory entries were always on disk after a crash, also
+> the ones nobody had synced.
+> ---
+>  fs/ext2/dir.c | 3 +++
+>  1 file changed, 3 insertions(+)
+> 
+> diff --git a/fs/ext2/dir.c b/fs/ext2/dir.c
+> index e17bbc7598c1..5de32c221a83 100644
+> --- a/fs/ext2/dir.c
+> +++ b/fs/ext2/dir.c
+> @@ -442,6 +442,9 @@ static int ext2_handle_dirsync(struct inode *dir)
+>  {
+>  	int err;
+>  
+> +	if (!IS_DIRSYNC(dir))
+> +		return 0;
+> +
+>  	err = filemap_write_and_wait(dir->i_mapping);
+>  	if (!err)
+>  		err = sync_inode_metadata(dir, 1);
+> 
+> ---
+> base-commit: c03c1a14507dfaf8b856c2608f9ac216021fc222
+> change-id: 20261027-b4-ext2-dirsync-86ca140154bc
+> 
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
