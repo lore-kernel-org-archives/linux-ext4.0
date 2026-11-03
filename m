@@ -1,47 +1,47 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793718067;
-	b=B+uCmY+g6fZmuFGeOjsscVUlj8N0WfKf1b5K8BqHBZ/wULy2LHfGzZmey6NfG0GZD+r4
-	 Njb0aeZ+rXALJMPdLTxMKnpijGUC3hsfiYb4s9CwnrfqNpTdpJkjPP+uGDrCwuGZPg5Ya
-	 GTpAVvxxcB4JDuNP6MGmq03l09UOVxF3KujRNEKXaI8efWGOp1k4xE/Nfm9+6g/WNKpEs
-	 0a3ZxWKbpS1hnueL0KkExcS95mXtmcylnAwLoTEwB85RazVppgChzv3mYgn2knOxnm0+j
-	 HJ7oaj6Tz/ZIPCxEqLwBj9WsVa7eJ/5GvGmI1tBz4lcDFmgxCmB9SxMcIvjls3Iea7g==
+	t=1793718061;
+	b=cLZV+PLdmUAHdn6dXMGmYY8SUuoiWm9BnvIQL3QFCcEVudYONSjo64rSpwRtiv1eqllw
+	 cSChgaf5oKI1KgdYLUOxvFwr33qq09whbn8tKHmYpLTdOUDwdGLm2kp/H4sjZtknfP4I0
+	 N3hDhOrPOxfQn1D81lu/S6nZF2jIm99WesrrAR/Msj6Kv4pjfxsJBWgcvYzIRAck3exLB
+	 IqBkvT7jVD6HlY261ZyLOcQlXFpJojYMCamgBI/QqXdwlVvr8G0lvSODSqzbkQnVVgQmC
+	 b28eIFN6lKKOWd4Wq7CltlDtN1Wi15UQHJpkZLPdxsQMwsZBpvZMICoeSm7RsSHCFzg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793718067;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793718061;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=ID7LC75za88M69BElGmlUwzZxk8blr2d/qu4Qw48pXo=;
-	b=OctM8YV+wiJ0N1IvuOZZ/R+WsLyXoVYVvr32YXH63iAaNUbhNBmApDv4x3MkjCJrqCPG
-	 oCuHi2fruaJT2Xdi0HyEzPC/onhykQ/JYviRWGLEhFRIWrx7SYgMPQk3s+iX+GSHs9otn
-	 Uldrn53mM0+EZAjdI5+21hV7xjsj1+xhjxFij5wQmkrAYL9fV0L/Vx/fxhP1DJwugH2wM
-	 G1mMiPcfy51b+jlR5WFPByhHKR+v9sXrwmQ9Kgy3YJNyvIo/wwNi9Wjnvdv7R6IRSQnLl
-	 GFrcV9+daWBoH0nNqn2KUpSUxpS30AY6yIM4+25GYeiLAHkm2KPOSAZWwYiO6yxkzWA==
+	bh=l0X2QAFJot0IX2Q2/PWev3um4yqz8IITz7l9GjGkrL4=;
+	b=fKZHxDUqnGKoNPhEUIi/S8BWu+o8VeB4zwLAIKJTr6QG12OrJEYdKKus/fscW6Z9Rdwa
+	 ReFZgpJk4MGRmTnReifg2r517P9DYyM3wGskKaMuUU2i/+1bD8UeEVuek/+K+2sZJefa1
+	 WMRxxO7Q96Afl1e1LfR1uFXE+gEFO4itocHvZihoTLev/94jWf/AG5WoN/p/nolVVkAY1
+	 5d/IsmYnEOAap7IkIHXua30Ef0M2OmhzCUjiKj1gwX+irg4lTunWlxIMdTYhycYbHvmmI
+	 TIg4zf0pnqkniytDhNLSWi69BywTSKS9Pzy+KDJZyqMKeel4KmxCi8Yu1IJSWQW3adw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=jajaKVz5;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=YkpfZkS7;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B81DC606A795;
-	Tue,  3 Nov 2026 15:01:06 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7B653606A780;
+	Tue,  3 Nov 2026 15:01:01 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=jajaKVz5
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id AE5311F00A1E;
-	Tue,  3 Nov 2026 15:01:04 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=YkpfZkS7
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A043C1F00A1F;
+	Tue,  3 Nov 2026 15:00:59 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793718066;
-	bh=ID7LC75za88M69BElGmlUwzZxk8blr2d/qu4Qw48pXo=;
+	s=k20260515; t=1793718061;
+	bh=l0X2QAFJot0IX2Q2/PWev3um4yqz8IITz7l9GjGkrL4=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=jajaKVz5uF5jV8KNkaRZ9jm2p4d6qjnBibcW+RdQG415ddsGl+0d3bo5j0mleaLxm
-	 RwN0oymilT3njGexXy56725ypD8aMhBv35E9z3nBKq7iYYj1uGr0z2x1vioz+IJ0zr
-	 CIMhu6ko7LsevcSiGh6ht2M3uptrpuTNi8xCLl9RYAGb2JQIB1dYpM4tY3O3Yj0v1Q
-	 i6wOkRWSaCouWbczxv6hLshYtafnWa40AAByma6d3JjyufxRbPRcUODDXJFJzDRzTt
-	 QFQvvpET6EoFeMBD9/m6afIrzXxj97ddDjVi2YA1OzWzbIgGVogylw7h1FKknnweMl
-	 qgPPLhzd74S9A==
-Message-ID: <sashiko-outbox-195530@kernel.org>
+	b=YkpfZkS7dZWvU26v0lWwGLaCaRutuB6NiB2HUX/uekFcZ6yPhi43CmkI0piScwXiG
+	 XdmBl4Dct7JDxY3Oc7vA0poDAVacBGmgTZaVJ7ciP4PhbjXPYKY3rpzkHBOsWEuvfj
+	 PJZNqUEfVII+aZ6SZHk3HybJGmkzh2Ta9HFLe/fuaYrlEEFMWJnDyneLI4ytXuGeYK
+	 ilddlytumyI3zcVD0Jtpr/3wYGR4B7vu09t2E2PQFcbxIfr/kjBi78lHIMRodLZAan
+	 +mf+PcsUlbGluhMP5X6y+JNOjw2mxyTW3Ila/ruuoWUTlbTJtmYRKX+yfPYzVC48+Q
+	 X/ep1///7lR2g==
+Message-ID: <sashiko-outbox-195528@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH RFC 03/16] proc: make room for more entry flags
+Subject: Re: [PATCH RFC 01/16] proc: drop the compat file operations
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Christian Brauner" <brauner@kernel.org>
 Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.com>, "Josef
@@ -54,12 +54,12 @@ Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.
  Iwai" <tiwai@suse.de>, linux-ext4@vger.kernel.org, "Chuck Lever" <cel@kernel.org>, tytso@mit.edu, "Heiko
  Carstens" <hca@linux.ibm.com>, "Vasily Gorbik" <gor@linux.ibm.com>, "Alexander
  Gordeev" <agordeev@linux.ibm.com>, "Christian Borntraeger" <borntraeger@linux.ibm.com>
-In-Reply-To: <20261102-work-procfs-core-v1-3-75df35e4f8b8@kernel.org>
+In-Reply-To: <20261102-work-procfs-core-v1-1-75df35e4f8b8@kernel.org>
 References: <20261102-work-procfs-core-v1-0-75df35e4f8b8@kernel.org>
- <20261102-work-procfs-core-v1-3-75df35e4f8b8@kernel.org>
+ <20261102-work-procfs-core-v1-1-75df35e4f8b8@kernel.org>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Tue, 03 Nov 2026 15:01:04 +0000
+Date: Tue, 03 Nov 2026 15:00:59 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -69,9 +69,19 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-> ->flags of struct proc_dir_entry is a u8 and the next patches need more
-> flags than it has room for, so make it a u16. Bit 6 stays free,
-> vfs-7.5.mount takes it for PROC_ENTRY_CANT_MOUNT.
+> procfs has both sets of file operations twice, with and without
+> ->compat_ioctl(), and picks the one with it for entries that have
+> ->proc_compat_ioctl(). That's from commit 778f3dd5a13c ("Fix procfs
+> compat_ioctl regression") when a file without ->compat_ioctl() went
+> through the translation tables in fs/compat_ioctl.c and one with it
+> didn't. Those tables are gone since commit 77b9040195de ("compat_ioctl:
+> simplify the implementation"). compat_sys_ioctl() answers -ENOTTY for a
+> file without ->compat_ioctl() now, which is what
+> proc_reg_compat_ioctl() answers for an entry without
+> ->proc_compat_ioctl().
+>=20
+> So always set ->compat_ioctl() and drop the second set of file
+> operations and the flag that picked it.
 >=20
 > No functional changes.
 >=20
@@ -81,5 +91,5 @@ Sashiko has reviewed this patch and found no issues.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261102-work-procf=
-s-core-v1-0-75df35e4f8b8@kernel.org?part=3D3
+s-core-v1-0-75df35e4f8b8@kernel.org?part=3D1
 
