@@ -1,56 +1,57 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793720672;
-	b=1ndSTii99TMtNnJQ69ys6WhmevHRsoUNLtjAyupc51a+nsh2XiMtJNBZtMD/4gqFYVGi
-	 4sEwOXXF9qhMJGmesjW6khfmXfyAKRwpMkX/COH6IUfXjudmBdd3f5Fed2beE50xOYncS
-	 jXSKsjQL8s72yUiCnUF/WLyRpLCrwCDUKEL76yv7nBcnpmFYp3HyGKL/EG0O0HB8PjLxn
-	 iiOT96QZn71/IvxumIht/BWGsKVHzeMTdXu+m8UKeCaQyRVuZk9vv5uM4wZGf4Umth96S
-	 tGaJmYrkj4km071PrtWdmL5nyLzMvgBm81rq4KOgKiXPCPlx0t1OgrSI03Sh1aKPW2Q==
+	t=1793720744;
+	b=JK+Mrxo4vxOSbeUkC60h9i1Aa7u0MVE+5BgZ5ITECBIANK6FPkW9NISDTG3OUbuLsoJh
+	 QhOa46q4LHfEN8bg0/cd0v2G0jjhAK+1lcIMtsQX22bs/CnmNfUblybGW6Aq3ST5rKzhy
+	 8DsrWTtjk9MLL95DItElcvMZ02OS36rgLd5uljxqMb3Sc6lhWMLJ/N+2HPKufCTAtokPj
+	 a5HflCCsmPLhCK8bjuvgbswqNCqYa6hWvX7u5BJd5nN3CfsN98MhSYddrmb/ukW0ZkPyf
+	 k2gn+dgYrgpZJKoDI14D0iPyYGaB7VZ8IK2Ri8vrIJcrdwYuaFbakD1v4i5fHccm1Bg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793720672;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793720744;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=Jt5aLCSjfQsnxO2fmof6yPupB1YMql43faLHHjO7krQ=;
-	b=5M+7MjyGbEmsv4TQV/lp2BkpHbjSZhOodkSstMYle/bDoTjXdbL7Zo+bKxoxFzWtWwMt
-	 wwYzI7lGP3Jc9XwmManRjFGi5FTI8E9mlutSVc0ig/+9on+x+k/te5asWwTyJ9zK3T92v
-	 5gdrIa8JsAT+xIaS2x/RCwZn9/pGmZK5W/l0R64mir6k6h44Ztn6JFhX7GhGskmXPTHXg
-	 3vDDHUQmRFu1KgpF5iF4OroXTr1QWzblsGdu5wrqlSxj756P6ezPpAhsGhZimXtTchswK
-	 mBleiuN+Tx5p/WzOTfEn8UBf3SqcqT9AMhMZvMLXRDuLRj/V2Z+9u820pyhmSehfUQw==
+	bh=O+VIe5Sva4ZfVt7FvpSwqSi7jWwmAVD5CxLUb/JvQHc=;
+	b=ZR9R4mQSwoC2it7v4T7yzr04JLy+Zy/I4tio+cybnl6g+WrIFo24glInCU9dA//saWKR
+	 opgAPQN+uoHU2RZX/iHr8CvAC4RLxYmXfcB8BwqM7yHRXa94G1Rv2mIweECWqhHrRhK8E
+	 iO/tAwlULaamj5OfHQwNpykvc8lRJMAO2UW9lsDg1pLQ9e/xRYXPCTXiFvi4i8V5bXNOw
+	 PzAtFCaXAgsCcboLxoASI3A6cbiKh6erOOkmq/pr6FTcQJccVIMNwcKKMLffhTB/IIwzl
+	 pZ8ESq2jFkzyEL9Jzrkg53HDKFbxUGB0gfZf8YYyWycsc4GQnZGusmLtVgsC4fh6HKw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="BkVJDYS/";
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="Y/O57+wr";
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 917DF606D817
-	for <linux-ext4@vger.kernel.org>; Tue,  3 Nov 2026 15:44:32 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C0CA3606A324;
+	Tue,  3 Nov 2026 15:45:43 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=BkVJDYS/
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 01F1D1F00A15;
-	Tue,  3 Nov 2026 15:44:31 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Y/O57+wr
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id B52E51F000C1;
+	Tue,  3 Nov 2026 15:45:42 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793720672;
-	bh=Jt5aLCSjfQsnxO2fmof6yPupB1YMql43faLHHjO7krQ=;
+	s=k20260515; t=1793720743;
+	bh=O+VIe5Sva4ZfVt7FvpSwqSi7jWwmAVD5CxLUb/JvQHc=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=BkVJDYS/aFAMEcsFdngSkJWXGaeYNyQiCI4UE1lEJweTIscJLldvYMWSBUJACIHO7
-	 gVAaksF89W4r9eT8FFFVwJl3t1woZCSMTIcEdn3nlQhigMJOg9FE3FyJqG2qEZptk2
-	 patKvClpxfJDFwit03ruTiiH2LTIlxHCV94XcDX7F2OP1lhOXD4L4NcPl9p00awLPM
-	 ///B3d6c+z4APuLF/ZZTKGpqGFgdX//mzeUaiH9XiunwJKytx/TTPMRMht1BR2Vvjx
-	 Oc1NE77qHl3xwBymsNCDlULvvkcuNTHeSOtHrH14Hjo0SHzzchfk9tq0OZ9no4kz3t
-	 O64Pcc4WrwmYA==
-Message-ID: <sashiko-outbox-195645@kernel.org>
+	b=Y/O57+wr1nQHWP9m3PK90OidszGkTi5nWNB3mYE+w4+vcxQ4j3YELiKD7ldz87Whb
+	 qY2pWsar4oIAlatlOVA3WKhDQWeXvH6IFjDbzLbLZ2popDJk6L/nvnGrL3+v7vaHOW
+	 VmQLjg6aSt6pxZon/+XM6gr8k3VUxgeQER2qGx9ia75V1KNR686bf2YuYs0g7EqndE
+	 Z/KZ4UL6MMgOjDrQLS1jBfOyue5mmtfwaL6sbOm6R6DoabaZFlgYCFr99Nnasf4nY4
+	 yG8XWzbQn6gWmQjnfTfBaRFwiF1qL1S8vAGp1BJ+cWJL+Qxgyili8GbBOovmUIzqkz
+	 FY9HABvV4glig==
+Message-ID: <sashiko-outbox-195647@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH 1/4] fscrypt: Cap data units at the page size
+Subject: Re: [PATCH 2/4] fscrypt: Validate the test_dummy_encryption policy
+ for new inodes
 Reply-To: sashiko-reviews@lists.linux.dev
-To: "Baokun Li" <libaokun@linux.alibaba.com>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-In-Reply-To: <20261103153132.4154855-2-libaokun@linux.alibaba.com>
+To: "Baokun Li" <libaokun@linux.alibaba.com>, linux-fscrypt@vger.kernel.org
+Cc: ebiggers@kernel.org, jaegeuk@kernel.org, tytso@mit.edu, linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca, jack@suse.cz, yi.zhang@huawei.com, ojaswin@linux.ibm.com, ritesh.list@gmail.com
+In-Reply-To: <20261103153132.4154855-3-libaokun@linux.alibaba.com>
 References: <20261103153132.4154855-1-libaokun@linux.alibaba.com>
- <20261103153132.4154855-2-libaokun@linux.alibaba.com>
+ <20261103153132.4154855-3-libaokun@linux.alibaba.com>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Tue, 03 Nov 2026 15:44:31 +0000
+Date: Tue, 03 Nov 2026 15:45:42 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -60,35 +61,71 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-> blk-crypto-fallback cannot handle a data unit larger than a page:
-> it walks the bio one page-sized segment at a time, so a data unit
-> that spans multiple pages never ends on a segment boundary and
-> the bio fails with BLK_STS_INVAL after the I/O was already
-> reported to userspace as successful, losing data.
->=20
-> Fix this in fscrypt_supported_v2_policy() by rejecting any v2 policy
-> that explicitly specifies a data unit size larger than the page size.
->=20
-> A v1 policy always uses the block size as its data unit size,
-> so fscrypt_supported_v1_policy() has to reject any v1 policy on
-> a filesystem with a block size larger than the page size (e.g. ext4).
->=20
-> A v2 policy with no data unit size specified uses the block size too,
-> but rejection is not necessary there: sub-block data units are
-> supported, so it is enough to cap the data unit bits at PAGE_SHIFT in
-> fscrypt_policy_v2_du_bits().
->=20
-> Note that a filesystem whose block size exceeds 4K then cannot be
-> made compatible across page sizes (e.g. 4K and 64K); this can be
-> avoided by explicitly specifying a data unit size of 4K or smaller.
->=20
-> Suggested-by: Eric Biggers <ebiggers@kernel.org>
-> Link: https://lore.kernel.org/r/20261015185325.GG2170687@google.com
-> Signed-off-by: Baokun Li <libaokun@linux.alibaba.com>
+Thank you for your contribution! Sashiko AI review found 1 potential issue(=
+s) to consider:
+- [Medium] fscrypt: missed S_CASEFOLD check in fscrypt_prepare_new_inode()
+--
 
-Sashiko has reviewed this patch and found no issues.
+commit fa704dc171d6c1edb5f7cea48ff46447da451c52
+Author: Baokun Li <libaokun@linux.alibaba.com>
+
+fscrypt: Validate the test_dummy_encryption policy for new inodes
+
+This commit validates the test_dummy_encryption policy in
+fscrypt_prepare_new_inode() when creating a new inode in an unencrypted
+directory so that unsupported policies are rejected before being applied.
+
+> diff --git a/fs/crypto/keysetup.c b/fs/crypto/keysetup.c
+> index a77b889d7578c..497ba67ec6fed 100644
+> --- a/fs/crypto/keysetup.c
+> +++ b/fs/crypto/keysetup.c
+> @@ -763,6 +763,14 @@ int fscrypt_prepare_new_inode(struct inode *dir, str=
+uct inode *inode,
+>  	    !S_ISLNK(inode->i_mode))
+>  		return 0;
+> =20
+> +	/*
+> +	 * A policy inherited from an encrypted directory was validated
+> +	 * when the directory's key was set up.  The test dummy policy was
+> +	 * not, so check it here.
+> +	 */
+> +	if (!IS_ENCRYPTED(dir) && !fscrypt_supported_policy(policy, inode))
+> +		return -EINVAL;
+
+[Severity: Medium]
+Does fscrypt_supported_policy(policy, inode) miss the casefold check when
+creating a new subdirectory inside an unencrypted, casefolded directory with
+test_dummy_encryption=3Dv1?
+
+When fscrypt_prepare_new_inode() is called by __ext4_new_inode() or
+f2fs_new_inode(), only inode->i_mode and inode->i_blkbits are set on the new
+inode. The filesystem has not yet inherited the casefold flag from dir or s=
+et
+S_CASEFOLD on inode->i_flags, which is why fscrypt_prepare_new_inode() chec=
+ks
+IS_CASEFOLDED(dir) && S_ISDIR(inode->i_mode) just below:
+
+	return fscrypt_setup_encryption_info(inode, policy, nonce,
+					     IS_CASEFOLDED(dir) &&
+					     S_ISDIR(inode->i_mode));
+
+However, fscrypt_supported_policy() -> fscrypt_supported_v1_policy() checks
+IS_CASEFOLDED(inode):
+
+	if (IS_CASEFOLDED(inode)) {
+		/* With v1, there's no way to derive dirhash keys. */
+		fscrypt_warn(inode,
+			     "v1 policies can't be used on casefolded directories");
+		return false;
+	}
+
+Since IS_CASEFOLDED(inode) is still false at this point, creating a
+subdirectory in an unencrypted casefolded directory under
+test_dummy_encryption=3Dv1 passes validation and creates a v1-encrypted,
+casefolded directory without an initialized dirhash key, triggering
+WARN_ON_ONCE(!ci->ci_dirhash_key_initialized) in fscrypt_fname_siphash() on
+subsequent lookups or creations.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261103153132.4154=
-855-1-libaokun@linux.alibaba.com?part=3D1
-
+855-1-libaokun@linux.alibaba.com?part=3D2
