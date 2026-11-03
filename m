@@ -1,48 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793717258;
-	b=lVjrIV/BKmEi9LeHf6A75ESYimoH5v7VA7kP1V+VfDixMmxm82Jq63xHepR+fEwUKBFb
-	 e4sUv5u8O5xUmHbr0bfOp8mb5Kkj0vI0IsdRQ1yvpI9SRd7+TD0STTyEkdhbkYvvyHQu1
-	 otw8iy3JQyYRi2Ocrg6cXqaii99e1m6AekhmcLIfoQquF5+gZFM7b+YB6SrRsyG4P79MS
-	 xF/rv3M0jB1o/dnHzJL7bhDAJXOnWrN1WhWnp4WBXdS9a43seCOiJ8YTFWVBUGIFn7lIB
-	 efkbjSjHgwWC3xuHJtr3DwujF3Ss/lEipkRIZZyJYYWLoI+uUmc6GDV4FuIg3mbXglw==
+	t=1793717254;
+	b=u20xhdCtT6PHNTFfsRItYBBpJotsBP9QMu8QeEuPwfbsL22gMcuANgHQyZg9WG7HSzbs
+	 Kd2R65CRtrRGAzqXlV520JKOaP/ztHqhfdiQpsrIBHLBK45XajZrIncsieHxVAFwGL/2Z
+	 Hlhpns18ETXCm/8FTrAlCDX1x7roa/WZmc18JYiT9aAWfKVfw9sJrJJfYAJgwHrurYQeI
+	 y94Evio6PJfd1O9z3SuQpREXjxxdTJyTExywgC5lY4tv/GcevRUAdewYI/ckufkwKg/SV
+	 viOlkG8F+WeOIDuyQQkCRCIiHfj+Njh0qZY6L9swKTs5f8c1wWh3g1gPhZTRMWTITrA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793717258;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793717254;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=N05eG3DcsrZpQfqjL5D91LwnvEOvTP0/ov6vkT4Pvcs=;
-	b=ueNhz16KqETrw0MHsZ7aK3hfWpQ+B4cEBsr4T61+bGLTdkyNr+1uzz7oB8vUeUK6r7yC
-	 ccaZK77aoSSKcXYLQ3/n9mqXPWLorZs74j22/7ucqZdHUHPlfa7M9//A6B/LukbB+xbq+
-	 5AodtnsjMFQQe9lLewy9fzn3JTRtruuxOanHFm4OHYg9kSU1gEHPScdS/0LcFRAQXgF9l
-	 /82fl5yBl8QT+7cHA74DdAFRpUd5R+Ii8fCza0sbFYy+dyZa7YQVM4KM5TmzhxllWXuTA
-	 4sibO1+eGFnzKtMREzCPJqRCm3czJsLpmds6AEvRZG2EKnKJzMAZvVYcHtuOty/LSyw==
+	bh=4+bnBfQZju8fpAB/8X14BeZjZQCkdXf0D+qDeon2Ak4=;
+	b=ntCXVu+Jtq4/TFnvjGTOx5jfPHLxZ1uJxb6bSQ8jOBR17fONCcGWNpLBuMtlYIy/ugDU
+	 fLkzb2hlYWqepjvBiKxB+p0bdfDyGUIra78EolBLSNsV3GnZsBngyx+gPjDyxR3b+l9+N
+	 kamnu9KgndD0fiXle3FX7CkWNpKc6ld+nVhutpkNfBvBtyzMgvyhAEit+JnkAFdq2TzQj
+	 RMYHnqeTwtj0nChVmizCyL2SvoxbXfcMmVm5bFm0KbducGVTebWoZwItySEVPpKDa1iZp
+	 dQdCPMt+nIduw/gmEgmwcVv7Ow4s9Rrq72h6D51VBDoWZ0MVQc9fB6pFeX2i8ipHFYA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=hasVYka7;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=RMc4cr4T;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A9D14606A33E;
-	Tue,  3 Nov 2026 14:47:37 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3185C606D80C;
+	Tue,  3 Nov 2026 14:47:33 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=hasVYka7
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E80461F00A1A;
-	Tue,  3 Nov 2026 14:47:35 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=RMc4cr4T
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 01E0F1F000C1;
+	Tue,  3 Nov 2026 14:47:31 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793717257;
-	bh=N05eG3DcsrZpQfqjL5D91LwnvEOvTP0/ov6vkT4Pvcs=;
+	s=k20260515; t=1793717253;
+	bh=4+bnBfQZju8fpAB/8X14BeZjZQCkdXf0D+qDeon2Ak4=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=hasVYka7WfTQX4gVG72LHVrtfNEhVp4P8ZtdcWyH+LgHzqiGmI0IYbQHO1iwq9m07
-	 y/1lwfnTHWCCY+cbAgh9hskIZQ97rVMlqM95iGbxPIOe3f8RS9bNGt+mxw9ntpVqb/
-	 scjaMJLEVTqoyjO6TjfG7nqX7032JBfqmizKNDbPX8HDDI6FUj87MgRMBXyr8hd/G6
-	 o/Ht1P5w/7ACphg2RTZAjkTSNTX/ebWs2gke1l0yWrd0iIR+fNLltdhYI899csOJwZ
-	 1y9qK6xl8eu6MrQZdcUR4uzY+8RNuZ/DmBvaIF0iaqRFYBY29TqHfRB0P45MNfIHFj
-	 usD+mtvrE3OkA==
-Message-ID: <sashiko-outbox-195477@kernel.org>
+	b=RMc4cr4TMiothzZr1gQV3jJQjTeueKFUXv5zwuxzcbh5/HdxeLC2IglsSlv1VEwFv
+	 Ur/LQ/eR3wSsqQbS8ZUk0SCD2Jx4kztRhXfrHkH4Xo77UmXiqjwaE6vDGM+mgmJYHJ
+	 tuYlF3IhQZw5QVy6DfHtL2C9tEk+v13TCjTgx+HnNYr8+fPG6IYPcoxzaksDgA2jAp
+	 31qr2fSSwX5A2grnozzQ2Af9r57Tn+8pY9j8ePIL8X9VbUZE1bN2J7wgKWw8Wgp+BQ
+	 6U7CHQuUZsauwLE/6W1MtHqTP42XyAHvVqnScnEzcPB+Ebjn8acd6ZXDg8/h4mKSSS
+	 gUZdMs5bhS6lA==
+Message-ID: <sashiko-outbox-195475@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH RFC 05/38] platform/x86: toshiba_acpi: reject malformed
- brightness and fan writes
+Subject: Re: [PATCH RFC 03/38] netfilter: xt_recent: don't remove the proc
+ entries under a spinlock
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Christian Brauner" <brauner@kernel.org>
 Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.com>, "Josef
@@ -55,12 +55,12 @@ Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.
  Iwai" <tiwai@suse.de>, linux-ext4@vger.kernel.org, "Chuck Lever" <cel@kernel.org>, tytso@mit.edu, "Heiko
  Carstens" <hca@linux.ibm.com>, "Vasily Gorbik" <gor@linux.ibm.com>, "Alexander
  Gordeev" <agordeev@linux.ibm.com>, "Christian Borntraeger" <borntraeger@linux.ibm.com>
-In-Reply-To: <20261102-work-procfs-bugfixes-v1-5-59422ed3e465@kernel.org>
+In-Reply-To: <20261102-work-procfs-bugfixes-v1-3-59422ed3e465@kernel.org>
 References: <20261102-work-procfs-bugfixes-v1-0-59422ed3e465@kernel.org>
- <20261102-work-procfs-bugfixes-v1-5-59422ed3e465@kernel.org>
+ <20261102-work-procfs-bugfixes-v1-3-59422ed3e465@kernel.org>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Tue, 03 Nov 2026 14:47:35 +0000
+Date: Tue, 03 Nov 2026 14:47:31 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -70,18 +70,28 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-> When lcd_proc_write() and fan_proc_write() were refactored their checks
-> were inverted but the && stayed. They only fail if sscanf() didn't
-> parse anything and the value is out of range at the same time, and for
-> the brightness value < 0 && value > levels can't be true at all. So an
-> out of range brightness or fan setting is passed on to the hardware,
-> and so is the uninitialized value if nothing could be parsed.
+> recent_proc_net_exit() removes the proc entries of all tables with
+> recent_lock held. remove_proc_entry() waits until nobody calls into the
+> entry anymore, and reading one of them takes recent_lock in
+> recent_seq_start() while procfs has the entry pinned. So when a reader
+> gets there while the network namespace goes away, the exit path sleeps
+> with a spinlock held and bh disabled, waiting for a reader that spins
+> on that very lock:
 >=20
-> Restore the checks as they were before the refactoring.
+>   BUG: sleeping function called from invalid context at kernel/sched/comp=
+letion.c:116
+>   in_atomic(): 1, irqs_disabled(): 0, non_block: 0, pid: 12, name: kworke=
+r/u16:0
+>   locks held by kworker/u16:0/12: 4, last CPU#2:
+>    #2: (pernet_ops_rwsem){++++}-{4:4}, at: cleanup_net+0xbf/0x860
+>    #3: (recent_lock){+...}-{3:3}, at: recent_net_exit+0x3d/0x170 [xt_rece=
+nt]
+>   Workqueue: netns cleanup_net
+>   Call Trace:
+> [ ... ]
+> with a proc entry pinned takes it. So take recent_mutex instead.
 >=20
-> Fixes: e1a949c1b988 ("toshiba_acpi: Refactor *{get, set} functions return=
- value")
-> Fixes: 3e07e5baa2af ("toshiba_acpi: Add set_fan_status function")
+> Fixes: 665e205c16c1 ("netfilter: xt_recent: fix namespace destroy path")
 > Cc: stable@vger.kernel.org
 > Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 
@@ -89,5 +99,5 @@ Sashiko has reviewed this patch and found no issues.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261102-work-procf=
-s-bugfixes-v1-0-59422ed3e465@kernel.org?part=3D5
+s-bugfixes-v1-0-59422ed3e465@kernel.org?part=3D3
 
