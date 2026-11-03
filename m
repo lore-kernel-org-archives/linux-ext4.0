@@ -1,47 +1,47 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=115.124.30.100
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=115.124.30.118
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793719930;
-	b=Uw+FA+jgW3npUx6UKY1nHimpshpt52X35qaWFZLYzGdo47j9D9n+oMNJUJPsqgVwecCa
-	 P17nQBXPAxkJkRkt4QCWtHKQXwatGYhf+sWQy+m/WZDIdN88B9PJ4BVhqZtgYs8pDW61C
-	 WzMfJ9/N35XBPOphVVJDVt3e6Ua5PA/5/0XAMe+ErXfIiVx0dCfHnaQUcDiGwjb8wTnq9
-	 1LQB7sWDau1sGkhwQ8LQz3SvLOxqDCO/Rs1v1o23vKK5AaqBBBluqpQf7Ezent8r+PyTk
-	 ARBsEIG8SxPoLd/n+8dXeBWKaNbVDAL3NRHzip6kmcVBF6xjjiMxpuiHAJBmVDBHWOw==
+	t=1793719928;
+	b=KLH4BOfIDZ81puXxYHfhT8JDpLM+0q7D/Je5VV3jRqc27qXCLmGinHRRCPuNz1zxqKtd
+	 PwumVtZv7LFJTRC12+ZDD5LhbWAmIGbr1LNw7JFa5XXp1egQElGgnE/MnB/8UkANBLjqX
+	 FjasopkWrEY0ldjfTKOFjWKzJGgrTg+/5++ELzMYZHm5Ja7p+o+NJvq7Hk3l5F/lEVMs5
+	 +kmyDd5Tn4ioCl+46N3n8LTVq9Bbx+Ng0FGQP/pYqcdt/rWKCBJKK3hv69SL/pP3H2i97
+	 EH23wbdy6wA7syGWf7UlT5hNkTi9V1WMr9QMkTTKNhf7boOjbMXxmNW2N5675In6QHA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793719930;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793719928;
 	h=DMARC-Filter:DKIM-Signature:X-Alimail-AntiSpam:Received:From:To:Cc:
 	 Subject:Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
 	 Content-Transfer-Encoding;
-	bh=X5ZpIgBof+TLGiClZWygRJ4L7+XLfmAF6PbPLumsy60=;
-	b=qO7Z/mfxMupjy+tgiiG3NTDBtvkdyYTiyahTpXyD4PZN7z2V8MotpCgG77b1A9ymVJgI
-	 ZA1CJODV8x0ip6XP0egY+MENARmxIEmd17Jp2AE3yi9AmyiO+hal0Iv/RgWi8zpUrLwqp
-	 qiSNMSfzANfL/69XEJeJGlTHTMYytbSmMExfdaLssCVvfrx8zieaJa3o8+SFkNg01CyXJ
-	 1yFjBP3QMetN2Qmp2nx5Z5nPBLrwTdZWLy33A+945G2nlfcOTRNP0C2QJF6ERbh8dq0p0
-	 /+NVyltdJwXjouq2omVH8+Pc2D3pJOkaJVNIutrLFtQgmefuy4XozCpUeiHHOcv1FAg==
+	bh=xpIMSn7l3l6OBOGSWWNUxE8zcd+CUJHKxWoXv5WS5/A=;
+	b=i8OriswRkZaRJOwwcbU3TrgoiAPMyNiyz11bk8r8UPnx8FyHl8frDYHrSbe1QRNPsjYX
+	 o8DAwDVbOtzY09UrenrbSCz0WTBFufIwzh7ZJXglX37Hq1QMc5BzmGinnOzJOsQ9TI4Rq
+	 A0PTwMvDDxuvx7P7YW+W1tc/E8iXZO4v2mGqEPb+Ril7dZ87TBxtOAeE73senpna1qOgj
+	 aMSeNJbygC6nO+31HYketu6FsaycydBD9MUKN55B5RqmrzZ4wKmF3rk0+2jGkEBrUcHy+
+	 z7yP01VCJeXQRzRHVNbHVGVOUYILXx+ASEEUu/RXxnjqxeJqA2M8Jn6ylUJGHxYFSOA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=linux.alibaba.com;
 	spf=pass smtp.mailfrom=linux.alibaba.com;
-	dkim=pass header.d=linux.alibaba.com header.i=@linux.alibaba.com header.a=rsa-sha256 header.s=default header.b=yG6YTb9a;
-	arc=none smtp.remote-ip=115.124.30.100
-Received: from out30-100.freemail.mail.aliyun.com (out30-100.freemail.mail.aliyun.com [115.124.30.100])
+	dkim=pass header.d=linux.alibaba.com header.i=@linux.alibaba.com header.a=rsa-sha256 header.s=default header.b="ftTU31X/";
+	arc=none smtp.remote-ip=115.124.30.118
+Received: from out30-118.freemail.mail.aliyun.com (out30-118.freemail.mail.aliyun.com [115.124.30.118])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 96140606A329;
-	Tue,  3 Nov 2026 15:32:07 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 96140606A329
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0D2BC606A324;
+	Tue,  3 Nov 2026 15:32:06 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 0D2BC606A324
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.a=rsa-sha256 header.s=default header.b=yG6YTb9a
+	dkim=pass (1024-bit key, unprotected) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.a=rsa-sha256 header.s=default header.b=ftTU31X/
 DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
 	d=linux.alibaba.com; s=default;
-	t=1793719925; h=From:To:Subject:Date:Message-ID:MIME-Version;
-	bh=X5ZpIgBof+TLGiClZWygRJ4L7+XLfmAF6PbPLumsy60=;
-	b=yG6YTb9aoQwYZb9xNoSaoTm3TbglTApLjqgs8Mm5Oquan+Bd9uUUONdbhpswFOCgK4ev6Rmu6RGSO5N8YZ3aNvNvtpRJFIzOxyeN/LfjcNDLlKD0rwLKwbmVcc1j8xQFH0/HujPmz74FieUx2r9jl2jLxA+LAV3jSJN2G58YN74=
-X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R821e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033037033178;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=12;SR=0;TI=SMTPD_---0XE3LUUD_1793719924;
-Received: from x31h02109.sqa.na131.tbsite.net(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0XE3LUUD_1793719924 cluster:ay36)
+	t=1793719924; h=From:To:Subject:Date:Message-ID:MIME-Version;
+	bh=xpIMSn7l3l6OBOGSWWNUxE8zcd+CUJHKxWoXv5WS5/A=;
+	b=ftTU31X/prydL2d4t0mIUY1fjEdBkNT9MDgCebre06FIq7TJraCa5XWKF+GiutGLulcJ80uUPsajT/DDPnOqSY2zVZTDpx1ryC2wji7FaekQ26ZO9RRSg6IGHRk5f1q6jcnLvkVIaSNqQRN+K1CrMsbQ7CTCO5FoDpLjxulNngg=
+X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R311e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033045098064;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=12;SR=0;TI=SMTPD_---0XE3LUTu_1793719923;
+Received: from x31h02109.sqa.na131.tbsite.net(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0XE3LUTu_1793719923 cluster:ay36)
           by smtp.aliyun-inc.com;
-          Tue, 03 Nov 2026 23:32:04 +0800
+          Tue, 03 Nov 2026 23:32:03 +0800
 From: Baokun Li <libaokun@linux.alibaba.com>
 To: linux-fscrypt@vger.kernel.org
 Cc: ebiggers@kernel.org,
@@ -54,9 +54,9 @@ Cc: ebiggers@kernel.org,
 	ojaswin@linux.ibm.com,
 	ritesh.list@gmail.com,
 	linux-kernel@vger.kernel.org
-Subject: [PATCH 3/4] ext4: don't put a DUN wraparound in the middle of a read bio
-Date: Tue,  3 Nov 2026 23:31:31 +0800
-Message-ID: <20261103153132.4154855-4-libaokun@linux.alibaba.com>
+Subject: [PATCH 2/4] fscrypt: Validate the test_dummy_encryption policy for new inodes
+Date: Tue,  3 Nov 2026 23:31:30 +0800
+Message-ID: <20261103153132.4154855-3-libaokun@linux.alibaba.com>
 X-Mailer: git-send-email 2.43.7
 In-Reply-To: <20261103153132.4154855-1-libaokun@linux.alibaba.com>
 References: <20261103153132.4154855-1-libaokun@linux.alibaba.com>
@@ -71,54 +71,44 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Under IV_INO_LBLK_32, a file's DUNs wrap at 2^32, and the policy
-is only allowed when the block size equals the page size.
+Policies set through FS_IOC_SET_ENCRYPTION_POLICY or inherited from
+an encrypted directory are validated, but the test_dummy_encryption
+policy is not.
 
-ext4_mpage_readpages() adds a whole folio to one bio, but checks
-only the DUN of the first block. blk-crypto assumes the DUNs
-in a bio are contiguous and never wraps them, so blocks past
-the wraparound are read with the wrong DUNs.
+fscrypt_prepare_new_inode() applies it directly to the new inode.
+As a result, a v1 dummy policy on a filesystem whose block size
+exceeds the page size is used unchecked, and data written under
+it is lost at writeback.
 
-Writeback and direct I/O get this right, but with large folios
-a single folio can still span the wraparound.
-
-Fix this by routing such a folio through the buffer_head path,
-which submits one bio per block and so gives each block its own DUN.
-
-fscrypt_limit_io_blocks() tells whether the wraparound falls after
-the first block; a wraparound at the first block itself is already
-caught by fscrypt_mergeable_bio().
-
-A file's DUNs wrap at most once, so at most one folio per file takes
-the slower path, and the per-block bios can be merged again by the
-block layer.
+Fix this by validating dummy policy in fscrypt_prepare_new_inode()
+before applying it. Inodes in an encrypted directory inherit an
+already validated policy, so the check only concerns the unencrypted
+case where the dummy policy is used.
 
 Signed-off-by: Baokun Li <libaokun@linux.alibaba.com>
 ---
- fs/ext4/readpage.c | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+ fs/crypto/keysetup.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
-diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
-index c7b6cdb2e124..43af6d9d6ddb 100644
---- a/fs/ext4/readpage.c
-+++ b/fs/ext4/readpage.c
-@@ -264,6 +264,16 @@ static int ext4_mpage_readpages(struct inode *inode, struct fsverity_info *vi,
- 			folio_set_mappedtodisk(folio);
- 		}
+diff --git a/fs/crypto/keysetup.c b/fs/crypto/keysetup.c
+index a77b889d7578..497ba67ec6fe 100644
+--- a/fs/crypto/keysetup.c
++++ b/fs/crypto/keysetup.c
+@@ -763,6 +763,14 @@ int fscrypt_prepare_new_inode(struct inode *dir, struct inode *inode,
+ 	    !S_ISLNK(inode->i_mode))
+ 		return 0;
  
-+		/*
-+		 * blk-crypto assumes a bio's DUNs are contiguous, but under
-+		 * IV_INO_LBLK_32 alone they wrap at 2^32.  A folio spanning
-+		 * the wrap would be decrypted with wrong IVs, so it goes to
-+		 * the buffer_head-based path, one bio per block.
-+		 */
-+		if (first_hole >
-+		    fscrypt_limit_io_blocks(inode, pos >> blkbits, first_hole))
-+			goto confused;
++	/*
++	 * A policy inherited from an encrypted directory was validated
++	 * when the directory's key was set up.  The test dummy policy was
++	 * not, so check it here.
++	 */
++	if (!IS_ENCRYPTED(dir) && !fscrypt_supported_policy(policy, inode))
++		return -EINVAL;
 +
- 		/*
- 		 * This folio will go to BIO.  Do we need to send this
- 		 * BIO off first?
+ 	*encrypt_ret = true;
+ 
+ 	get_random_bytes(nonce, FSCRYPT_FILE_NONCE_SIZE);
 -- 
 2.43.7
 
