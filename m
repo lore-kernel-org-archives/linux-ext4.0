@@ -1,56 +1,73 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=80.241.56.152
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793714288;
-	b=I+5kwFwKm7HJ2mQSnPjtmYg+OrU9pFEUobyN3O/8IMITmEMSkfFCCozQH7wQEWXQVcNh
-	 C9cV29thbda7sLU1VfMKVU8r2eG8fb50WzMZG1saz6osWMfvP4M1zq072nSXThZ4elo+s
-	 WYHGpbh0+/uDNkr6PI9YTl7zgRKvEfps+vTy09p7YIgVYYJU4Xyk1xKR4FwKQUXUqmyc7
-	 fII2cDfEZZ7fI6l5EHtIhaF0nspc8j6U1f8Uq807BwL5djUDKOc6PSNv60mYpu86b+RiI
-	 G5NwDeQFMyHF+qp0IBgrjwXBtQ/yxPcRmv0vK2N6mpcgq6PtNcbfb6xJj73HEmOT9aQ==
+	t=1793714369;
+	b=K3Y+uoL+DYzTkoYu6rpt4yCnauzVYV8g7+0lG5fjnWSfUPnsm11I19rKF2UtRN4tyZin
+	 67lO73b3F+m4cDMFVMR+UpWz4/nFKOEeV4eHKH1Ks9Awa0EosUfZ6q2kz0dCoW0SldqFW
+	 nigFDpMSOhvNhFZSqJR5qDc8MhMFiRCiGiwcRKPSU6OKAHSrD+RziNTm6khqBRfb7XynU
+	 yFX1GF7Yod0sfOUcM07+4Inj4ZIQ4X/senc03WhAsghyT1Wnk8WJHdSCPtrP+Was6Efgx
+	 Z7DqW7NHi2MOLY01jIQT9UeuF/ATTEgbAYcL0OHBauohNPHh9a2ALUhP+DQo0aVujqQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793714288;
-	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
-	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=ls5O2DT7dFmXSZwNv357xq6uFTSprLSYEt4JDtPCaCw=;
-	b=ely95fj/y/NBv1sctjFXJDGf0OkETMz7M0mhw04KtdB+QpC5oP0t5Z6wLuAh2z40XbVW
-	 FW/OcqwbmowdwZQB4tfFLIXggvaf7615cOCCRJbTD6DobUxUBEeSzbcSV+KFlsrYFnsAr
-	 jvUUlAKDnIL/nytLHDzClUbLw1W5DEQD6gIptQQ7hC7EmIoZKuJD8bcCYZbk4uV1dO3k3
-	 T59DhNoxvC6J/YRjFM704dpZs5uQXZvGHvaGgSTWMWENfaQNonQTuqPR9l2Tt/An7lKKh
-	 KCQ8KO92AbG146llu/D4l9tI+8jEhnYRX+eMNb+0aK1dY8vss8a0wz88bFTW7ZFv1Mw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793714369;
+	h=DMARC-Filter:Received:DKIM-Signature:Message-ID:Subject:From:To:Cc:
+	 Date:In-Reply-To:References:Content-Type:Content-Transfer-Encoding:
+	 User-Agent:MIME-Version:X-MBO-RS-META:X-MBO-RS-ID;
+	bh=/8LuhXp97qtdFj406BlwMUOjhk0vBw5Jtvt8qfn+3xk=;
+	b=OBw2mXFUaISZQhUsrNeBpYgyTA0pvsLuewBgK/QjPvWZQ4Wbjq5RZ1morFfedT3rNilN
+	 b3NQWZjhHrWHZ/ANhmXLuWg4QbgP1IU7bMnW+1o+ubTadf2AkDGtxvIAlMzwgyW60Zg8I
+	 UeGXW7bNELaqX0MuUTknlyR9oOQMDszFj03cQoPQyXD0vP2mTDXOyLJqN9122K69TopVM
+	 qwUJ96dl1W1rjw2q4FEM5DphAdB1mUhptjdc6Lb6+ojl9FCZ1ls/QrmWxeRQGzghobkuL
+	 zjvZKUM68VfkFmu1FaVhHaZ/ge6PSt03wEvfR2DCuYO5dm5l/gjmBQ3Ri8To1MMxRhw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=oPdmh4QV;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	dmarc=pass header.from=mailbox.org;
+	spf=pass smtp.mailfrom=mailbox.org;
+	dkim=pass header.d=mailbox.org header.i=@mailbox.org header.a=rsa-sha256 header.s=mail20150812 header.b=HkNKB+he;
+	arc=none smtp.remote-ip=80.241.56.152
+Received: from mout-p-102.mailbox.org (mout-p-102.mailbox.org [80.241.56.152])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 15B87606A324
-	for <linux-ext4@vger.kernel.org>; Tue,  3 Nov 2026 13:58:07 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C50DE606D83C;
+	Tue,  3 Nov 2026 13:59:28 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org C50DE606D83C
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=mailbox.org
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mailbox.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=oPdmh4QV
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3752F1F000C1;
-	Tue,  3 Nov 2026 13:58:07 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793714287;
-	bh=ls5O2DT7dFmXSZwNv357xq6uFTSprLSYEt4JDtPCaCw=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=oPdmh4QVGia6OfFzfL7VzQczGQ5vcrKay9dD8itXviBJs5iRucYTb4XX1CB8FRTtu
-	 p2NQdnz9wnaArb6l9mYcZmyVKQWW9DmA3zPmw54L2kBDnGZdkJ0omcS2CEKPjhDnrq
-	 6pAvyQwga8gf3QzZ+mHidGslxou3jPWI9jlyzt52QEfLvs9TwgVJU8E1swGKv/KnYG
-	 RDkSFMX3qEfXbmYRkpGWR0mrG+16Ite6neGN76GF/r5wwtW/QJm7oh4SDQWklzghLs
-	 08+pmTqkgqgEMxURUi9ipbLe9SsLiBELlY0ZHj/fhJXj57WJxZz033rkskl1mdRW5a
-	 wQQMDLE91wQ1Q==
-Message-ID: <sashiko-outbox-195407@kernel.org>
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH v14 04/12] ext4: add ext4_dir_entry_is_tail()
-Reply-To: sashiko-reviews@lists.linux.dev
-To: "Artem Blagodarenko" <artem.blagodarenko@gmail.com>, linux-ext4@vger.kernel.org
-Cc: tytso@mit.edu
-In-Reply-To: <20261103134921.610047-5-ablagodarenko@thelustrecollective.com>
-References: <20261103134921.610047-1-ablagodarenko@thelustrecollective.com>
- <20261103134921.610047-5-ablagodarenko@thelustrecollective.com>
-Content-Type: text/plain; charset=utf-8
+	dkim=pass (2048-bit key, unprotected) header.d=mailbox.org header.i=@mailbox.org header.a=rsa-sha256 header.s=mail20150812 header.b=HkNKB+he
+Received: from smtp102.mailbox.org (smtp102.mailbox.org [IPv6:2001:67c:2050:b231:465::102])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519MLKEM768 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by mout-p-102.mailbox.org (Postfix) with ESMTPS id 4jJqv04dS7zKnBS;
+	Tue, 03 Nov 2026 14:59:24 +0100 (CET)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mailbox.org; s=mail20150812;
+	t=1793714364;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=/8LuhXp97qtdFj406BlwMUOjhk0vBw5Jtvt8qfn+3xk=;
+	b=HkNKB+heHlv5LaJqH/hz7nrve9bKBwybj0+1qChGIgpa+e7iuKXtzlKpK4nHz22fI/i3Uf
+	X0wVmp8KMeNnzTpbrzl1N984xj17Dv6HJQnxgWDppb+nPDRi+etPprIXLnLiFtGSZMhWeg
+	dbe6Xj6C/qQJfCeJ+hJnxhCyFhue9qIwx/2Dxusu5/D8y+Uo2pRIMYCCeGNxFCXaGbH5n5
+	K2riW2QxpOhnAmw3dI5GCrz41+ESnFOX6NAB3agesDT91tyYTSNSO4s6elFGTdQN1dyiz4
+	riqlv9cyRgBa0Ao9iOHugO1DuiVSIxJWTZQBzKyvBxRYAbYU1cbQyVMwzpP7Rg==
+Message-ID: <2b8dcc231ad8fb9049f1d05082e0c18e57a0f3b6.camel@mailbox.org>
+Subject: Re: [PATCH v2] ext4, doc: remove unnecessary bracket
+From: Manuel Ebner <manuelebnerli@mailbox.org>
+To: Theodore Ts'o <tytso@mit.edu>, Andreas Dilger
+ <adilger.kernel@dilger.ca>,  Baokun Li <libaokun@linux.alibaba.com>, Jan
+ Kara <jack@suse.cz>, Ojaswin Mujoo <ojaswin@linux.ibm.com>,  "Ritesh
+ Harjani (IBM)"	 <ritesh.list@gmail.com>, Zhang Yi <yi.zhang@huawei.com>,
+ Jonathan Corbet	 <corbet@lwn.net>, Shuah Khan <skhan@linuxfoundation.org>,
+ Randy Dunlap	 <rdunlap@infradead.org>
+Cc: linux-ext4@vger.kernel.org, linux-doc@vger.kernel.org, 
+	linux-kernel@vger.kernel.org
+Date: Tue, 03 Nov 2026 14:59:17 +0100
+In-Reply-To: <20260916104251.296148-3-manuelebnerli@mailbox.org>
+References: <20260916104251.296148-3-manuelebnerli@mailbox.org>
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
-Date: Tue, 03 Nov 2026 13:58:06 +0000
+User-Agent: Evolution 3.60.2 (3.60.2-1.fc44) 
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -59,60 +76,50 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
+MIME-Version: 1.0
+X-MBO-RS-META: hpcmcbqhu3poy9dpa96q15gh7cnjntie
+X-MBO-RS-ID: f02d63db6813a739ef4
 
-Thank you for your contribution! Sashiko AI review found 1 potential issue(=
-s) to consider:
-- [Low] ext4: unrelated error message changes in ext4_dx_csum_verify() and =
-_set()
---
+Hi,
 
-commit b38526265cad346b429002b55eb969cb4c97bc1c
-Author: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+On Wed, 2026-09-16 at 12:42 +0200, Manuel Ebner wrote:
+> Fix sentence structure to improve readability
+>=20
+> Signed-off-by: Manuel Ebner <manuelebnerli@mailbox.org>
+> Reviewed-by: Jan Kara <jack@suse.cz>
+> CC: Randy Dunlap <rdunlap@infradead.org>
 
-ext4: add ext4_dir_entry_is_tail()
+Can I do anything to get this applied?
 
-This commit adds the ext4_dir_entry_is_tail() helper and replaces the
-open-coded check in get_dirent_tail() with a call to it.
+Thanks
+ Manuel
 
-> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-> index dc8035707feb6..6e934e2732fe9 100644
-> --- a/fs/ext4/namei.c
-> +++ b/fs/ext4/namei.c
-
-[ ... ]
-
-> @@ -478,7 +474,8 @@ static int ext4_dx_csum_verify(struct inode *inode,
->  		return 0;
->  	}
->  	if (count > limit) {
-> -		EXT4_ERROR_INODE(inode, "dir seems corrupt?  Run e2fsck -D.");
-> +		EXT4_ERROR_INODE(inode, "dir seems corrupt (%i > %i)? "
-> +				 "Run e2fsck -D.", count, limit);
->  		return 0;
->  	}
->  	t =3D (struct dx_tail *)(((struct dx_entry *)c) + limit);
-> @@ -511,7 +508,8 @@ static void ext4_dx_csum_set(struct inode *inode, str=
-uct ext4_dir_entry_2 *diren
->  		return;
->  	}
->  	if (count > limit) {
-> -		EXT4_ERROR_INODE(inode, "dir seems corrupt?  Run e2fsck -D.");
-> +		EXT4_ERROR_INODE(inode, "dir seems corrupt (%i > %i)? "
-> +				 " Run e2fsck -D.", count, limit);
->  		return;
->  	}
-
-[Severity: Low]
-This isn't a bug, but were these error message updates in
-ext4_dx_csum_verify() and ext4_dx_csum_set() meant to be folded into
-commit 70f1e1d58c97 ("ext4: validate count against limit in
-ext4_dx_csum_verify/_set") instead of included in this patch without mention
-in the commit message?
-
-Also, the continuation line in ext4_dx_csum_set() has an extra leading space
-compared to ext4_dx_csum_verify(), resulting in two spaces before
-"Run e2fsck -D.".
-
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261103134921.6100=
-47-1-ablagodarenko@thelustrecollective.com?part=3D4
+> ---
+> @Jan Kara, is the reviewed-tag ok even though I changed the patch?
+>=20
+> [v2]
+> =C2=A0Incorporate Randys suggestion.
+>=20
+> [v1]
+> =C2=A0https://lore.kernel.org/all/20260902143254.702971-2-manuelebnerli@m=
+ailbox.org/
+> ---
+> =C2=A0Documentation/filesystems/ext4/directory.rst | 2 +-
+> =C2=A01 file changed, 1 insertion(+), 1 deletion(-)
+>=20
+> diff --git a/Documentation/filesystems/ext4/directory.rst b/Documentation=
+/filesystems/ext4/directory.rst
+> index 9b003a4d4..6d8021309 100644
+> --- a/Documentation/filesystems/ext4/directory.rst
+> +++ b/Documentation/filesystems/ext4/directory.rst
+> @@ -429,7 +429,7 @@ block (precisely the length of one dx_entry) are used=
+ to store a
+> =C2=A0``count`` entries in the dx_root/dx_node structures are adjusted as
+> =C2=A0necessary to fit the dx_tail into the block. If there is no space f=
+or
+> =C2=A0the dx_tail, the user is notified to run e2fsck -D to rebuild the
+> -directory index (which will ensure that there's space for the checksum.
+> +directory index, which will ensure that there's space for the checksum.
+> =C2=A0The dx_tail structure is 8 bytes long and looks like this:
+> =C2=A0
+> =C2=A0.. list-table::
