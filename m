@@ -1,82 +1,82 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.128.41
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.128.51
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793713858;
-	b=lGvZFKBntt/u2h6WkeFGuwSbh+oU+1euYCoQrdm+7aqgS0AFmMUumyjo2vGGUxCQyTh8
-	 4lvMmp2V2DeDYW29YSKmgT1O++YGTxyhlvyrkPVaOVW7WfQsskZRdyoIRM0yZsLpMNFmX
-	 98ViqkvEVINM7vdUwoNdpi++CJJOg5E3BmPAxo6m1IXFLPHXYtJGqZ5YWCNn1pVPn1/G5
-	 JJ3L+E9KqXIAgO1WaD4ul8bu2ittos/fr6a0oDYCn3UhlY4P1xVFL6vrcz9hL749aiDxP
-	 B4636yk/cQpPYOjlzRyxPPU1RJ27dy/nxWKnNjd3ymwQBL/GcVCODCV2baLEVhPz3lw==
+	t=1793713859;
+	b=r6BeLIaZraDn2lk+CciHhTrqpijMGdIooCwlCnTMnxxcBUuiFIVTDKhnHM5TsV7kirs0
+	 SAvCJ7NN+GtQDx48Klt4VGUIJuUSEJdFyyQHZn0WWESU3LB/vrAdPILPgkmilGJl63DJq
+	 Blelh1NB8ubojXhj1dkckgFf5kvnFEcaAsTbdKcAxSpuGXjLCWXuorlVXyMil9fEGnCtf
+	 WJwUbhxMWfR1NY12kAYhQG6w+Ae0U7IFG0rlpCTs22+jYL/X0lWkRfkHXRxSdfHjN2FzU
+	 kvIOLAQ86SWJlmv/wGm++aiEqVGLTF02jWdeRrZFehp4EtBqUn6jx1Xql7Str1clktA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793713858;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793713859;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
 	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:From:
 	 X-Google-Original-From:To:Cc:Subject:Date:Message-ID:X-Mailer:
 	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
-	bh=Oh5wadepJCt4QSXjtXcy/CqSnuwNEPwAM0JuVlA645E=;
-	b=vI3qCc5e1s69NUiGIGadVnFaDKP0u3PADaUFX/FNlxvtClMkdN7XvqxgV3aIUdMcHWeW
-	 RrtDrtKzLznvu255oD7+Fv/yTp4n8PRiLSMPEHSBV7qVgfV4DDqMvSp/xvoWFwoD3Y/nF
-	 0nFqjUTHgzUYJ7afu5A6FFWMvIPIq2LHTjM5r2zjsFy0zqojtwj9AJrJ9YwhPU0pjUJw+
-	 rex13uqI4revgL+ObBvDOlyeKWScYUAWfoNEDFZDvlzhxm7H94THJ0z+6HKubB42D9a0W
-	 XGuJztak5LcsIyky0gz67rgrDb7Z6jct/ZKuA43V8TnLVlaCmQMArB/5y5N7hhGtZ0A==
+	bh=E+XGOdV9Ng43y7QoYPGs0jtHE/NJkGVytBAQnXl0czs=;
+	b=g0bKxW3L4ydW6OMjt23C7/68SXFtkniezJnnZR/MFtaeYldOdhusrVCgYXsbtZuvecNF
+	 Qh9l31ayMy2PsG+L2jkaYX6HTeSWSHuqAMjIeuo6n+3LrFnep9vCdMBrKZF+3wFEgCmPK
+	 6dGDg4jfgbxOCyIIIomfoFNR3IE19pZVFKM96S6qEeeenuUDfp5nMQU2KaVS4rdAj/ml/
+	 EmMR8E7USfsX2NRreFofUfsFXIOB35BXHLwdDE1rnWKyeNIaqv6GPoLpymWpZqW2Uc1Lt
+	 iKzZsIEixpnjNsPxOiXdUU6Q8fZuGW+cnSYdTulKXp3OOg5+6zgokyf1V0KRqu2cqgg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=gmail.com;
 	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=NL2rjL8q;
-	arc=none smtp.remote-ip=209.85.128.41
-Received: from mail-wm1-f41.google.com (mail-wm1-f41.google.com [209.85.128.41])
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=SRnWmlPV;
+	arc=none smtp.remote-ip=209.85.128.51
+Received: from mail-wm1-f51.google.com (mail-wm1-f51.google.com [209.85.128.51])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 041DB606EE9B
-	for <linux-ext4@vger.kernel.org>; Tue,  3 Nov 2026 13:50:57 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 041DB606EE9B
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C2187606EEA3
+	for <linux-ext4@vger.kernel.org>; Tue,  3 Nov 2026 13:50:58 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org C2187606EEA3
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=NL2rjL8q
-Received: by mail-wm1-f41.google.com with SMTP id 5b1f17b1804b1-4a35a60499eso39764505e9.0
-        for <linux-ext4@vger.kernel.org>; Tue, 03 Nov 2026 05:50:57 -0800 (PST)
+	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=SRnWmlPV
+Received: by mail-wm1-f51.google.com with SMTP id 5b1f17b1804b1-4a208d93758so44809935e9.3
+        for <linux-ext4@vger.kernel.org>; Tue, 03 Nov 2026 05:50:58 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1793713856; x=1794318656; darn=vger.kernel.org;
+        d=gmail.com; s=20260707; t=1793713857; x=1794318657; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=Oh5wadepJCt4QSXjtXcy/CqSnuwNEPwAM0JuVlA645E=;
-        b=NL2rjL8qI8mh5LrgbNru9A/KkzhPYmG3xPt6uvZQanWUqZWCMjEFeEsP+XygoXkqhw
-         l7YbRdi9TZu4eC4vdDrqfQAqZ0ldMd8/iaJgOukgijtGnig0d4I5o9xiMRGXTG7lN04q
-         B3SwWisfLpOLgBfkQggSbVg1M7/V2WwEJiDoQnNcLyINyUDjH4m6jEdqsW1CY2LildyT
-         ruU6BwJauS2CsHa3Psr3uBfSNpxWeyiKg+Mg/Ikc2s2x7XcxsBw6yasynDFPFVa8T1UY
-         6XAsGyh+UyvDyHMClO86vdlpuLfnAToE+ehv1ypze89oOdUGWaW2vuuU774c5JOioq3S
-         cSMA==
+        bh=E+XGOdV9Ng43y7QoYPGs0jtHE/NJkGVytBAQnXl0czs=;
+        b=SRnWmlPVijWnRSQBmFDg2EefRutv+rs7OGQfkeke1Bw5idKYpctmLywjoS0zFy1dgm
+         qpLeSwtCsfyNz/1zfjCDdxT9qkrGabs55fGIEqFKVV4Rp2bc6d1uWU8mpoK3bv/aEWfn
+         OgDEi0mXGjslKk/lxMRgTWoHzx1qdnk7OGJCKKe0JQ6nlxWOiza717PitStfQKpXNJeF
+         qvoRUlxjgrh2mhe1aXIK8h/rUxMWrYKpI55VjGPtnGK4zluDDpMcC07f4a6RELgXwPRq
+         Cycu+39Dxvi+cKdm7bPyN3mLIEuhD+p0+N8WgoUHGwR81j4pKmuOYEI0tOrMo/xsrJ0z
+         d7vg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1793713856; x=1794318656;
+        d=1e100.net; s=20260707; t=1793713857; x=1794318657;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=Oh5wadepJCt4QSXjtXcy/CqSnuwNEPwAM0JuVlA645E=;
-        b=o4IZ+haKSN+WajEXAfREvBHCdvuBEb5GU1Mo7qIg1RdGmKZBs80fpPrMSwwPM5JUWs
-         ivSKgDbpAjHRNOyhvRHo9yI044vkVJfsaVKNGTyXk2euDw6e/V7VCACFJcv2hNyYwFxo
-         0kleGJ1TJz0+KAvvnRSiXJfrq6QIFMT9Fk7KVnp+5YEJGkR2U+ejIV/fhMGLUTtmkIrs
-         9pUn9pZyLHeOATeEyJxPsWt4IPywyWtLlIDJJWstGQIZM6DNhyxpUQRHb26AlBCsLbM/
-         oghlEjBxP3hfnt9ZRKxSubjeGTO8l2dyOru8Xk8CKLzLOCtzuqg7y95IanhHuq2K9NPh
-         mdHw==
-X-Gm-Message-State: APuU4Z+ZKlOpMy658AFlnLPmBG8g+a16dJOLUygd9nQdRHbi7rsGLRHL
-	ubnrE/j9eplHWLsYd7/0OXpguSHpjQXxddM1PKtdoAT/wR4g36x1rYZEfE8lEKB3nXg=
-X-Gm-Gg: AYBFou3dD4AMXiK3UrZXH6L5t7gsfntxsdR0vdSNpCL4k/P2PI1XYZ2M7kGOJE/K0PT
-	ELD00HvALQAW2uazM42P88LMJVN0vtW3Tj3RL/SSJhSuye8j7o/9tWee/O8j7+kwyD/RYkS8QAb
-	0tLQAm7rxPLL+zLxraCjaDVVQWFQOdLYgTNJphBCgM51SPoDsVPjoBDVycdo6zL9Q37qiSbTxGl
-	LkszGCUBJEVq0DoaD7IaLujkgbNAi8qD0TlMAaowdFXx3m2rHZeMKczP9IXS5ijYdI0w0N5a9tk
-	M/xKXIhySOLMsQa/mtNu7uMjoxXTAMqdYc5h1T2woBFGYL6E2u3m8fyJYb9guBpe9alv9uQg34/
-	e9dVbqSeqTAoyNAMRDGbMelAQ/88ZuC7qHJxWdB1x4WNMxZ+1W6cnHXW/qvMSI6D2B333UOKv0T
-	kQiJEOuy48L9CdGOmuTQMhFm/CYPLV79HFbtRnmFh57mh6UeoWsFJ3o3925b3teJb4DWuGd6u0Q
-	cwpfAA7QLJMIvmwA5Dq6Nzz1uGTLc210jzteH4zlqAoXfTcfhREWIO3THu9IZLG8brp7+Ht5GGc
-	b70GWWNMsVsXWggg9MDahgky+i22lcLvUDXMlHcPx3pMw5Os1Owu4aCL6NZW
-X-Received: by 2002:a05:600c:4e50:b0:4a1:7d9b:d4ae with SMTP id 5b1f17b1804b1-4ac16fa3523mr312084455e9.5.1793713856311;
-        Tue, 03 Nov 2026 05:50:56 -0800 (PST)
+        bh=E+XGOdV9Ng43y7QoYPGs0jtHE/NJkGVytBAQnXl0czs=;
+        b=r48k66kNoJamu7Z5x+eVYAX/R0IDXzR1TMQNP4N9OYawBVY90AUKq+AIpN9GWZ0QN3
+         tXMpauLqtI9IWfkG/xU9YKIiWt1mqBW6cw42fXY8vypOYiXLH5KuJn51BJtpE3NxOqDB
+         64nxVIlR0PI59ASqUB/vul3Xi5XNcKgA2VDJ2GYFUU8gXRImw06iChCN/dzrGoJ1Vx2P
+         tZAz8EIDYyJIwHPwgJAvX7sOvh1emw6dxZfD69WWg6RSdDGJNTgJgDdqBkFoqdewj9C6
+         Ixyu0AooAJkSMZDXzgxN7k2bsM2q99+2QBovRk7C8KjGhR+61zjNxkwdDXlzMI0UVD7l
+         d9xA==
+X-Gm-Message-State: APuU4Z92h7DutFrNnl/UAU92VZGr3MI3PaQtl16w6V1uoKYYg6r8MKRF
+	B5uPhxS6cd4VFuT98rTELDp7xlshBgDKDp5hLWCgJI50zLji6O8LqLBB14+bux2Q+1M=
+X-Gm-Gg: AYBFou087QycXdYhVgdixG4Y4onBBqHqUtS8qtOQSiWcf/o2o+O9TO6n0t/tMqeDO6S
+	mvP3oj3QX/MclScr/ddYIhxEMjZJBvBg1r818vX9CEtsp53uzrhR6AqfOsdQ5lz14Gw4zysXP3t
+	9zM7C9+KW2Z+FBmal+HuXdranz4Vrq/F+oR0hhrxzokuaEEYYrIsnz76udLOb62WQex/ubPP5de
+	7Q5RArPSTlt03tN5hdZoiIMx70PwiJ4F7X4U6qRdMHfh9mKU6yHTHYr7oTDAf/FCeDMl7da+yu2
+	Whcuy7QgnsLFm9BAWdkqo1tT+1nbO1ePEp752K3ObnVOp12KrXxqR/vYhYcDl5A6OAhhkkqen0t
+	UETwUQmXGcj6OnDHFolby9/5dcfL7fLmVJ9+ph/mc+sIAAX/UWAFQTj1vipA4x0DQLmVvqxKbIT
+	xLoxB5hxwHkjgHfCrNpWm1pzScsAqN6GMnRqozgsIOCft7umInfsO0xJDfa5c9ZsdYq2xYQl7ui
+	RthPl/EsVD9zjyxjNGol4wffpTJxEcy7FC+RFw0ocyccnWeb+ee71QWsLun1G+/iV61pXUM+qGv
+	vCif9iAWcdmXDpBlwP724vpCq6pDsFl/dqCh156+eD2y21zvKqBRhZcodA9y
+X-Received: by 2002:a05:600c:5397:b0:4a4:4d57:8462 with SMTP id 5b1f17b1804b1-4ac18b7e65bmr297292595e9.24.1793713857136;
+        Tue, 03 Nov 2026 05:50:57 -0800 (PST)
 Received: from Cluster2.powerhub ([2a0a:ef40:18b5:9e01:225:90ff:fefc:9ffe])
-        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-48e71b78a6bsm25036829f8f.27.2026.11.03.05.50.55
+        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-48e71b78a6bsm25036829f8f.27.2026.11.03.05.50.56
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 03 Nov 2026 05:50:55 -0800 (PST)
+        Tue, 03 Nov 2026 05:50:56 -0800 (PST)
 From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 X-Google-Original-From: Artem Blagodarenko <ablagodarenko@thelustrecollective.com>
 To: linux-ext4@vger.kernel.org
@@ -87,9 +87,9 @@ Cc: tytso@mit.edu,
 	Andreas Dilger <adilger@whamcloud.com>,
 	Pravin Shelar <pravin@clusterfs.com>,
 	Andreas Dilger <adilger@dilger.ca>
-Subject: [PATCH v4 08/13] debugfs: add dirdata display support
-Date: Tue,  3 Nov 2026 13:50:32 +0000
-Message-ID: <20261103135037.610132-9-ablagodarenko@thelustrecollective.com>
+Subject: [PATCH v4 09/13] mke2fs/tune2fs: add dirdata feature support
+Date: Tue,  3 Nov 2026 13:50:33 +0000
+Message-ID: <20261103135037.610132-10-ablagodarenko@thelustrecollective.com>
 X-Mailer: git-send-email 2.52.0
 In-Reply-To: <20261103135037.610132-1-ablagodarenko@thelustrecollective.com>
 References: <20261103135037.610132-1-ablagodarenko@thelustrecollective.com>
@@ -106,175 +106,107 @@ Content-Transfer-Encoding: 8bit
 
 From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 
-Enhance debugfs debug utility with dirdata display capabilities. This allows
-users to inspect Lustre File IDentifier (LUFID) and checksum hash (CFHASH)
-data embedded in directory entries.
+Add user-facing feature support for dirdata in filesystem creation and
+modification tools. Users can now create filesystems with the dirdata feature
+or enable it on existing filesystems.
+
+Usage examples:
+  mke2fs -O dirdata /dev/sda1           # Create filesystem with dirdata
+  tune2fs -O dirdata /dev/sda1         # Enable dirdata on existing filesystem
 
 Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
 Signed-off-by: Pravin Shelar <pravin@clusterfs.com>
 Signed-off-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 ---
- debugfs/debugfs.8.in |  7 ++++-
- debugfs/ls.c         | 63 +++++++++++++++++++++++++++++++++++++++++---
- debugfs/ncheck.c     |  3 +++
- 3 files changed, 69 insertions(+), 4 deletions(-)
+ e2fsck/pass2.c        | 3 +--
+ lib/ext2fs/dirblock.c | 7 ++++---
+ lib/ext2fs/ext2fs.h   | 2 +-
+ misc/mke2fs.c         | 1 +
+ misc/tune2fs.c        | 2 ++
+ 5 files changed, 9 insertions(+), 6 deletions(-)
 
-diff --git a/debugfs/debugfs.8.in b/debugfs/debugfs.8.in
-index 08f41fdf..5a5dd32b 100644
---- a/debugfs/debugfs.8.in
-+++ b/debugfs/debugfs.8.in
-@@ -575,7 +575,7 @@ Instead, it will stop only when the entire log is printed or after
- .I num_trans
- transactions.
- .TP
--.BI ls " [\-l] [\-c] [\-d] [\-p] [\-r] filespec"
-+.BI ls " [\-l] [\-c] [\-d] [\-p] [\-r] [\-D] filespec"
- Print a listing of the files in the directory
- .IR filespec .
- The
-@@ -595,6 +595,11 @@ non-printing characters at the end of filenames.
- The
- .I \-r
- flag will force the printing of the filename, even if it is encrypted.
-+The
-+.I \-D
-+flag will print the extra data found inside each entry when the
-+.I \-l
-+flag is used.
- .TP
- .BI list_deleted_inodes " [limit]"
- List deleted inodes, optionally limited to those deleted within
-diff --git a/debugfs/ls.c b/debugfs/ls.c
-index 613ad738..d225982c 100644
---- a/debugfs/ls.c
-+++ b/debugfs/ls.c
-@@ -24,6 +24,7 @@ extern char *optarg;
- #endif
- 
- #include "debugfs.h"
-+#include "ext2fs/lfsck.h"
- 
- /*
-  * list directory
-@@ -32,6 +33,7 @@ extern char *optarg;
- #define LONG_OPT	0x0001
- #define PARSE_OPT	0x0002
- #define RAW_OPT		0x0004
-+#define DIRDATA_OPT	0x0008
- #define ENCRYPT_OPT	0x8000
- 
- struct list_dir_struct {
-@@ -44,6 +46,55 @@ struct list_dir_struct {
- static const char *monstr[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
- 				"Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
- 
-+static void list_dirdata(struct list_dir_struct *ls,
-+			 struct ext2_dir_entry *dirent)
-+{
-+	unsigned char	*data;
-+	int		dlen;
-+	__u8		dirdata_mask;
-+	__u8		file_type = dirent->name_len >> 8;
-+
-+	data = (unsigned char *)dirent->name +
-+		(dirent->name_len & EXT2_NAME_LEN) + 1;
-+
-+	for (dirdata_mask = EXT2_FT_MASK + 1;
-+	     dirdata_mask != 0; dirdata_mask <<= 1) {
-+		if ((dirdata_mask & file_type) == 0)
-+			continue;
-+
-+		dlen = data[0];
-+
-+		if (dirdata_mask == EXT2_DIRENT_LUFID) {
-+			struct lu_fid fid;
-+			int offset = 0;
-+			fprintf(ls->f, " fid=");
-+			while (offset < (dlen - 1)) {
-+				memcpy(&fid, data + offset + 1, sizeof(fid));
-+				fid_be_to_cpu(&fid, &fid);
-+				offset += sizeof(fid);
-+				fprintf(ls->f, DFID, PFID(&fid));
-+				if (offset < (dlen - 1))
-+					fprintf(ls->f, ",");
-+			}
-+		} else if (dirdata_mask == EXT2_DIRENT_CFHASH) {
-+			struct ext4_dirent_hash hash;
-+
-+			memcpy(&hash, data, sizeof(hash));
-+			hash_le_to_cpu(&hash, &hash);
-+
-+			fprintf(ls->f, "hash: 0x%08x, minor_hash: 0x%08x",
-+				hash.dh_hash.hash, hash.dh_hash.minor_hash);
-+		} else {
-+			int i;
-+
-+			for (i = 1; i < dlen; i++)
-+				fprintf(ls->f, "%02x", data[i]);
-+		}
-+
-+		data += dlen;
-+	}
-+}
-+
- static int print_filename(FILE *f, struct ext2_dir_entry *dirent, int options)
+diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
+index 639a84a6..3127ac87 100644
+--- a/e2fsck/pass2.c
++++ b/e2fsck/pass2.c
+@@ -435,8 +435,7 @@ void ext2_fix_dirent_dirdata(struct ext2_dir_entry *de)
+ int e2fsck_check_dirent_data(e2fsck_t ctx, struct ext2_dir_entry *de,
+ 			     unsigned int offset, struct problem_context *pctx)
  {
- 	unsigned char	ch;
-@@ -146,7 +197,10 @@ static int list_dir_proc(ext2_ino_t dir EXT2FS_ATTR((unused)),
- 			inode_uid(inode), inode_gid(inode));
- 			fprintf(ls->f, "%5llu",
- 				(unsigned long long) EXT2_I_SIZE(&inode));
--		fprintf(ls->f, " %s ", datestr);
-+		fprintf(ls->f, " %s", datestr);
-+		if ((ls->options & DIRDATA_OPT) != 0)
-+			list_dirdata(ls, dirent);
-+		fprintf(ls->f, " ");
- 		print_filename(ls->f, dirent, options);
- 		fputc('\n', ls->f);
- 	} else {
-@@ -195,7 +249,7 @@ void do_list_dir(int argc, ss_argv_t argv, int sci_idx EXT2FS_ATTR((unused)),
- 		return;
- 
- 	reset_getopt();
--	while ((c = getopt (argc, argv, "cdlpr")) != EOF) {
-+	while ((c = getopt(argc, argv, "cdDlpr")) != EOF) {
- 		switch (c) {
- 		case 'c':
- 			flags |= DIRENT_FLAG_INCLUDE_CSUM;
-@@ -203,6 +257,9 @@ void do_list_dir(int argc, ss_argv_t argv, int sci_idx EXT2FS_ATTR((unused)),
- 		case 'l':
- 			ls.options |= LONG_OPT;
- 			break;
-+		case 'D':
-+			ls.options |= DIRDATA_OPT;
-+			break;
- 		case 'd':
- 			flags |= DIRENT_FLAG_INCLUDE_REMOVED;
- 			break;
-@@ -219,7 +276,7 @@ void do_list_dir(int argc, ss_argv_t argv, int sci_idx EXT2FS_ATTR((unused)),
- 
- 	if (argc > optind+1) {
- 	print_usage:
--		com_err(0, 0, "Usage: ls [-c] [-d] [-l] [-p] [-r] file");
-+		com_err(0, 0, "Usage: ls [-c] [-d] [-D] [-l] [-p] [-r] file");
- 		return;
+-	if (!(ctx->fs->super->s_feature_incompat &
+-			EXT4_FEATURE_INCOMPAT_DIRDATA)) {
++	if (!ext2fs_has_feature_dirdata(ctx->fs->super)) {
+ 		if ((de->name_len >> 8) & ~EXT2_FT_MASK) {
+ 			/* clear dirent extra data flags. */
+ 			if (fix_problem(ctx, PR_2_CLEAR_DIRDATA, pctx)) {
+diff --git a/lib/ext2fs/dirblock.c b/lib/ext2fs/dirblock.c
+index d1d5a9e7..fa7cc83f 100644
+--- a/lib/ext2fs/dirblock.c
++++ b/lib/ext2fs/dirblock.c
+@@ -74,13 +74,14 @@ int ext2_get_dirdata_field_size(struct ext2_dir_entry *de,
+ 		dirdata_flags >>= 1;
  	}
  
-diff --git a/debugfs/ncheck.c b/debugfs/ncheck.c
-index 1410e7c6..03d1e49c 100644
---- a/debugfs/ncheck.c
-+++ b/debugfs/ncheck.c
-@@ -51,6 +51,9 @@ static int ncheck_proc(struct ext2_dir_entry *dirent,
- 	iw->position++;
- 	if (iw->position <= 2)
- 		return 0;
-+	if (current_fs->super->s_feature_incompat &
-+	    EXT4_FEATURE_INCOMPAT_DIRDATA)
-+		filetype &= EXT2_FT_MASK;
- 	for (i=0; i < iw->num_inodes; i++) {
- 		if (iw->iarray[i] == dirent->inode) {
- 			if (!iw->parent && !iw->get_pathname_failed) {
+-	/* add NUL terminator byte to dirdata length */
+-	return dlen + (dlen != 0);
++	return dlen;
+ }
+ 
+ int ext2_get_dirdata_size(struct ext2_dir_entry *de)
+ {
+-	return ext2_get_dirdata_field_size(de, ~EXT2_FT_MASK);
++	int size = ext2_get_dirdata_field_size(de, ~EXT2_FT_MASK);
++	/* Add 1 becasue NULL after the name */
++	return size + (size ? 1 : 0);
+ }
+ 
+ errcode_t ext2fs_read_dir_block2(ext2_filsys fs, blk_t block,
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index cb946b2a..61029689 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -2278,7 +2278,7 @@ _INLINE_ struct ext2_dx_root_info *ext2fs_get_dx_root_info(ext2_filsys fs,
+ 	de = (struct ext2_dir_entry *)((char *)de + de->rec_len);
+ 
+ 	/* dx root info is after dotdot entry */
+-	de = EXT2_NEXT_DIRENT(de);
++	de = (struct ext2_dir_entry *)((char *)de + EXT2_DIRENT_REC_LEN(de));
+ 
+ 	return (struct ext2_dx_root_info *)de;
+ }
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index dd8c53d9..2bcb7036 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -1279,6 +1279,7 @@ static __u32 ok_features[3] = {
+ 		EXT4_FEATURE_INCOMPAT_FLEX_BG|
+ 		EXT4_FEATURE_INCOMPAT_EA_INODE|
+ 		EXT4_FEATURE_INCOMPAT_MMP |
++		EXT4_FEATURE_INCOMPAT_DIRDATA|
+ 		EXT4_FEATURE_INCOMPAT_64BIT|
+ 		EXT4_FEATURE_INCOMPAT_INLINE_DATA|
+ 		EXT4_FEATURE_INCOMPAT_ENCRYPT |
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index 2d85fb70..7adc5183 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -192,6 +192,7 @@ static __u32 ok_features[3] = {
+ 		EXT4_FEATURE_INCOMPAT_FLEX_BG |
+ 		EXT4_FEATURE_INCOMPAT_EA_INODE|
+ 		EXT4_FEATURE_INCOMPAT_MMP |
++		EXT4_FEATURE_INCOMPAT_DIRDATA |
+ 		EXT4_FEATURE_INCOMPAT_64BIT |
+ 		EXT4_FEATURE_INCOMPAT_ENCRYPT |
+ 		EXT4_FEATURE_INCOMPAT_CSUM_SEED |
+@@ -222,6 +223,7 @@ static __u32 clear_ok_features[3] = {
+ 	EXT2_FEATURE_INCOMPAT_FILETYPE |
+ 		EXT4_FEATURE_INCOMPAT_FLEX_BG |
+ 		EXT4_FEATURE_INCOMPAT_MMP |
++		EXT4_FEATURE_INCOMPAT_DIRDATA |
+ 		EXT4_FEATURE_INCOMPAT_64BIT |
+ 		EXT4_FEATURE_INCOMPAT_CSUM_SEED |
+ 		EXT4_FEATURE_INCOMPAT_CASEFOLD,
 -- 
 2.52.0
 
