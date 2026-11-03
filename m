@@ -1,48 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793717256;
-	b=cAmr+vID9xYBs92eeGjjPuTuPgSWY2R7QpJBaIzyWu8r9IocI4bLJ4twVAmqTWxm3xJT
-	 kqoKirm2KEkQO20qpkBVM++sB2QfVhV6gBLyEEaNj0/PaXR5DpbWLIbj9kGpumVX/siPx
-	 FKSGp++4ttHVl/yDO22afJJbsA7qI4bqh2lp3QF11eu8V0xMRAeeTc4rvF5V4PRJbnp/f
-	 arN6dq4/bd1wg23F90Fc8aB/jS+8jv+ci34fxmMUFD5WOn0dZFpH5iN14FkMHeCjeU9Pb
-	 SdsVx82ub3T7+Li4o9b61OMYJjGmMuuNAJMGTWWb5o4m2g7AQ8Qzaz0icsazaex8pEg==
+	t=1793717266;
+	b=nj3GEo372ysVR+nmauW6+8iiFxhtYcDW0bRFqcfXFps5MBFPiqpYkzNCPz727Sr4s7He
+	 DGIzKcc4ub9EwmDLw2z0wPcuba/EFwH9e3BRFbVZp91rM2YjlmmxNt7K/az3acQxoNeNB
+	 bUXMg5W4QqSSqAbpSqPa1pfyTv7Ju8uOQQn/N7B2J8ji6Wxvv77KMEExNg+MfIdiUo6iE
+	 w0bhY1TY0Y73QgVNBEWxJuBpoD3CUxDtkNGpEK/zf/xcGKbjsM905QG9UJ7LxSqX2CG+8
+	 XKT37XlvyKiX3rxxdOjwNZKaHTpdscBCrQpH0UUENa5PoWUA6U5HvDjLhtjqBuVKFZg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793717256;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793717266;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=q0d4FPmWtZwKMh/sPGL0i6hRLuYL8e+WwbXcE1bGJN4=;
-	b=cTt0jR6iNrpyNGRE/DEb4mbsff+HV0V6vPt7UqSoB200gSnC6vIwUr0d5BblsIeqLc3J
-	 VcKw5TyFIzxZzOx/QAiTe7zQ7t0j9Y7tt/B2O8xye/I7A8XsaHcBQKoXBUyuj1yrFkl7c
-	 dHPD8x7WbrtHOGAFpKOIFH9CJAgoAfZ8j4v1hANPAT/w5FnlFvUVqeU7LFYaK2WHMoFgo
-	 icKZ2HfC0xtWSLqfPz/LgtLyd5G+DSCGoKItRFaLauisAO3+YZhisk4cJDLSFsLG0k5Rn
-	 6mwvRzxihGrHJfX7ivMozLY0jxVOXKxCmQG05QDjuOGor5NIXTHSVgn3t7EmGZTzuNQ==
+	bh=/tLnPlPXv9G/A5LSRwB4ABldzL7QTmUhIz0U/QfhmpY=;
+	b=y/P4rGdfF9O7ohpqZOiRY5FiBVF33k70YDXjjH5sVYL/KjNEresWKZpV4wmmFida857Y
+	 0NLdRNnmYdhBbqxIBd0f+rBwS4wpYWx0ZR8w65FdldNu2e6nrviOB/U5NxTJUuNM34E4h
+	 /tExmGjMPjSGtThA9omw1RWkivT0T/plaCFyvjX/h5WeTLyIvVh/RGR4LC/+2hE30Ku2X
+	 QxJflVw+a3f+HasurWo0uVP6bvDSUedV/B3HbJR5Gw6umKOG81oPnkVfDT+OLDdigTq+Y
+	 /VWyRaSt79uyOaX6iQaihPllh6j03fEuLaw2CzEY58AEe8/MZ47XI47a7V5NbxL5N6Q==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ecNUXxnh;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gnVr8aal;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CB1D0606A333;
-	Tue,  3 Nov 2026 14:47:35 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 09F84606EEB1;
+	Tue,  3 Nov 2026 14:47:45 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ecNUXxnh
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E75901F00A16;
-	Tue,  3 Nov 2026 14:47:33 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gnVr8aal
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id DF6A61F00A15;
+	Tue,  3 Nov 2026 14:47:43 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793717255;
-	bh=q0d4FPmWtZwKMh/sPGL0i6hRLuYL8e+WwbXcE1bGJN4=;
+	s=k20260515; t=1793717265;
+	bh=/tLnPlPXv9G/A5LSRwB4ABldzL7QTmUhIz0U/QfhmpY=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=ecNUXxnh2OcVVvSa0U3huTG0L9O+PzIB1xuXCxIUp/GZPPPzipCpRc1/qlsk4J6CA
-	 x7U8X9eMczAWPO2ZaCpsl6YNtO0NoBu0+DXnA39JSuS9XY9AjGBFyXlc/Ccq4RTQY0
-	 UAugm1HYHytJJ48gGhh5Ikw7HuDNMAn11k6igesT8J9xgHn79oAIaLwhkpwX1VrdQQ
-	 +5bvleOIuzZz7sQeEwq2Hki4vo4gTrOnLMNutAIHZebuy2qBXQktzKVc8aWpJCw5wT
-	 EMd2yrUC+CDD8BIHuYrdGWQwA/PwlqJVUVRxCdpabP9PdTkesHJyvmQoHa6OBE4VbX
-	 e+c9Js8H66prA==
-Message-ID: <sashiko-outbox-195476@kernel.org>
+	b=gnVr8aallzvFHKfX8uMv/E5wuzx/U/e4tluWEOCpd4vxwHOAENFWai+QEj59i2Zbf
+	 FueR79cYduQK5Wd5775YLQ1Hnbw6N0rNFl8tFIRymAq3riJru71CWcnQrbOEI+G5dx
+	 /PEy6cYs37h8d3VhAVmzYfGRdTRtJZRTHPBg4V0U28aDjF5G7LYmT7YlnuJVVxai7h
+	 ASHng6hlOTQ/Rl8NdR8RiigPr1Mf941O/AAQOSUaA9aPrreg56qXg5kiVDOPyVN58u
+	 vtE8gdT8BAP9hwnrG5Pw6qYUmibEvlAQY4bRxxSrAdo8QA8keLjhL+hfdLPBx+Wckk
+	 ICpm/kdChLz5w==
+Message-ID: <sashiko-outbox-195481@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH RFC 04/38] s390/dasd: don't look in front of the buffer
- on an empty write
+Subject: Re: [PATCH RFC 09/38] ALSA: info: don't write past the end of a
+ data entry
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Christian Brauner" <brauner@kernel.org>
 Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.com>, "Josef
@@ -55,12 +55,12 @@ Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.
  Iwai" <tiwai@suse.de>, linux-ext4@vger.kernel.org, "Chuck Lever" <cel@kernel.org>, tytso@mit.edu, "Heiko
  Carstens" <hca@linux.ibm.com>, "Vasily Gorbik" <gor@linux.ibm.com>, "Alexander
  Gordeev" <agordeev@linux.ibm.com>, "Christian Borntraeger" <borntraeger@linux.ibm.com>
-In-Reply-To: <20261102-work-procfs-bugfixes-v1-4-59422ed3e465@kernel.org>
+In-Reply-To: <20261102-work-procfs-bugfixes-v1-9-59422ed3e465@kernel.org>
 References: <20261102-work-procfs-bugfixes-v1-0-59422ed3e465@kernel.org>
- <20261102-work-procfs-bugfixes-v1-4-59422ed3e465@kernel.org>
+ <20261102-work-procfs-bugfixes-v1-9-59422ed3e465@kernel.org>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Tue, 03 Nov 2026 14:47:33 +0000
+Date: Tue, 03 Nov 2026 14:47:43 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -70,11 +70,17 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-> dasd_get_user_string() strips a trailing newline by looking at the last
-> byte that was written. For an empty write that's the byte in front of
-> the buffer it just allocated. Only look if something was written.
+> snd_info_entry_write() clamps the count to what is left of the entry
+> by computing entry->size - pos as a size_t. For a position past the end
+> that wraps and the write goes to the driver unclamped, for opl4 into
+> sample memory outside of what the entry covers. At the end of the entry
+> the driver gets a count of 0 and vmalloc(0) warns. Before the clamp
+> moved into the common code the driver ignored such writes. Fail them
+> with -ENOSPC instead, like a block device does at the end of the
+> device. Returning 0 would make writers that use stdio retry forever.
 >=20
-> Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
+> Fixes: d97e1b78239c ("ALSA: info - Check file position validity in common=
+ layer")
 > Cc: stable@vger.kernel.org
 > Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 
@@ -82,5 +88,5 @@ Sashiko has reviewed this patch and found no issues.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261102-work-procf=
-s-bugfixes-v1-0-59422ed3e465@kernel.org?part=3D4
+s-bugfixes-v1-0-59422ed3e465@kernel.org?part=3D9
 
