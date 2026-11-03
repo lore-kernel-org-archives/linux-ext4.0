@@ -1,73 +1,57 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=80.241.56.152
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793714369;
-	b=K3Y+uoL+DYzTkoYu6rpt4yCnauzVYV8g7+0lG5fjnWSfUPnsm11I19rKF2UtRN4tyZin
-	 67lO73b3F+m4cDMFVMR+UpWz4/nFKOEeV4eHKH1Ks9Awa0EosUfZ6q2kz0dCoW0SldqFW
-	 nigFDpMSOhvNhFZSqJR5qDc8MhMFiRCiGiwcRKPSU6OKAHSrD+RziNTm6khqBRfb7XynU
-	 yFX1GF7Yod0sfOUcM07+4Inj4ZIQ4X/senc03WhAsghyT1Wnk8WJHdSCPtrP+Was6Efgx
-	 Z7DqW7NHi2MOLY01jIQT9UeuF/ATTEgbAYcL0OHBauohNPHh9a2ALUhP+DQo0aVujqQ==
+	t=1793714760;
+	b=w2SxPfz1i0TbX6QcbStD+23XhOXtCIl7UJ9w4x2tKxBKPmE/h2MRmwBgYckX33OyWF6y
+	 JMYXfU8bVeVP0pbPSn3FTNoPbdGtsA8NBMuL3k6HU+QPGyo0dx6LiksFUpPlUFlmIZ85d
+	 LeMyJLpo7+WEqw6URDq3n0q8+q3rbLJw9vh6bpYN16iWTLUV4LQYeHkDQuFVNhCDXCsJH
+	 1zmcGnv1JckikYK/NauCtw6JEI2yTFjm6Jc9a2RlWDYIw4xpGdYWcySVTv6waEDnaCTo2
+	 43PCKYeWuaYJGXYP+3UysZ8+c5b4S3Kse/TEg9+4YbDNPRXhwA4WzwNZYPODutQGKiA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793714369;
-	h=DMARC-Filter:Received:DKIM-Signature:Message-ID:Subject:From:To:Cc:
-	 Date:In-Reply-To:References:Content-Type:Content-Transfer-Encoding:
-	 User-Agent:MIME-Version:X-MBO-RS-META:X-MBO-RS-ID;
-	bh=/8LuhXp97qtdFj406BlwMUOjhk0vBw5Jtvt8qfn+3xk=;
-	b=OBw2mXFUaISZQhUsrNeBpYgyTA0pvsLuewBgK/QjPvWZQ4Wbjq5RZ1morFfedT3rNilN
-	 b3NQWZjhHrWHZ/ANhmXLuWg4QbgP1IU7bMnW+1o+ubTadf2AkDGtxvIAlMzwgyW60Zg8I
-	 UeGXW7bNELaqX0MuUTknlyR9oOQMDszFj03cQoPQyXD0vP2mTDXOyLJqN9122K69TopVM
-	 qwUJ96dl1W1rjw2q4FEM5DphAdB1mUhptjdc6Lb6+ojl9FCZ1ls/QrmWxeRQGzghobkuL
-	 zjvZKUM68VfkFmu1FaVhHaZ/ge6PSt03wEvfR2DCuYO5dm5l/gjmBQ3Ri8To1MMxRhw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793714760;
+	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
+	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
+	bh=jbIW66aFOrU4/OwLsajGlkdgNDTlsYGBFtGhweKFcGI=;
+	b=2o+oab7znHutZHMr+UBI6f5r+cj4x2/JOMo0Wk9/ZjYDYRJtBoVWCX+TJVjjFKBFIsZc
+	 TXGgF7yLludOuZcKm+ZkPNLYuombSOHEzbliYWxklIn+sRj3OM+Uar2j5Mm6SCM6Y9OAo
+	 NYQcyREU7MDvAYjmDRM57Mbt5KrDBEfMbf6/W2gtz7WLc2r2rJrOPj6xgISXgseFI79Qj
+	 nrEqz9pElhX5kEGp3BzwvfZ3j6A+/Ynvvz0TmGXYcITZtg1ivS27afVsLMMcmh1NoK6On
+	 WXs9D1AwIBJzwWWmfMPRF6SJP7hBaGOcXFT0cdGeTo9v57J81eUw08lGLZqJev7GysA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=mailbox.org;
-	spf=pass smtp.mailfrom=mailbox.org;
-	dkim=pass header.d=mailbox.org header.i=@mailbox.org header.a=rsa-sha256 header.s=mail20150812 header.b=HkNKB+he;
-	arc=none smtp.remote-ip=80.241.56.152
-Received: from mout-p-102.mailbox.org (mout-p-102.mailbox.org [80.241.56.152])
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ZUYxj5Nx;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C50DE606D83C;
-	Tue,  3 Nov 2026 13:59:28 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org C50DE606D83C
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=mailbox.org
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mailbox.org
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2B374606EE90
+	for <linux-ext4@vger.kernel.org>; Tue,  3 Nov 2026 14:06:00 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=mailbox.org header.i=@mailbox.org header.a=rsa-sha256 header.s=mail20150812 header.b=HkNKB+he
-Received: from smtp102.mailbox.org (smtp102.mailbox.org [IPv6:2001:67c:2050:b231:465::102])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519MLKEM768 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by mout-p-102.mailbox.org (Postfix) with ESMTPS id 4jJqv04dS7zKnBS;
-	Tue, 03 Nov 2026 14:59:24 +0100 (CET)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mailbox.org; s=mail20150812;
-	t=1793714364;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=/8LuhXp97qtdFj406BlwMUOjhk0vBw5Jtvt8qfn+3xk=;
-	b=HkNKB+heHlv5LaJqH/hz7nrve9bKBwybj0+1qChGIgpa+e7iuKXtzlKpK4nHz22fI/i3Uf
-	X0wVmp8KMeNnzTpbrzl1N984xj17Dv6HJQnxgWDppb+nPDRi+etPprIXLnLiFtGSZMhWeg
-	dbe6Xj6C/qQJfCeJ+hJnxhCyFhue9qIwx/2Dxusu5/D8y+Uo2pRIMYCCeGNxFCXaGbH5n5
-	K2riW2QxpOhnAmw3dI5GCrz41+ESnFOX6NAB3agesDT91tyYTSNSO4s6elFGTdQN1dyiz4
-	riqlv9cyRgBa0Ao9iOHugO1DuiVSIxJWTZQBzKyvBxRYAbYU1cbQyVMwzpP7Rg==
-Message-ID: <2b8dcc231ad8fb9049f1d05082e0c18e57a0f3b6.camel@mailbox.org>
-Subject: Re: [PATCH v2] ext4, doc: remove unnecessary bracket
-From: Manuel Ebner <manuelebnerli@mailbox.org>
-To: Theodore Ts'o <tytso@mit.edu>, Andreas Dilger
- <adilger.kernel@dilger.ca>,  Baokun Li <libaokun@linux.alibaba.com>, Jan
- Kara <jack@suse.cz>, Ojaswin Mujoo <ojaswin@linux.ibm.com>,  "Ritesh
- Harjani (IBM)"	 <ritesh.list@gmail.com>, Zhang Yi <yi.zhang@huawei.com>,
- Jonathan Corbet	 <corbet@lwn.net>, Shuah Khan <skhan@linuxfoundation.org>,
- Randy Dunlap	 <rdunlap@infradead.org>
-Cc: linux-ext4@vger.kernel.org, linux-doc@vger.kernel.org, 
-	linux-kernel@vger.kernel.org
-Date: Tue, 03 Nov 2026 14:59:17 +0100
-In-Reply-To: <20260916104251.296148-3-manuelebnerli@mailbox.org>
-References: <20260916104251.296148-3-manuelebnerli@mailbox.org>
-Content-Type: text/plain; charset="UTF-8"
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ZUYxj5Nx
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id AE0A11F00919;
+	Tue,  3 Nov 2026 14:05:59 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1793714759;
+	bh=jbIW66aFOrU4/OwLsajGlkdgNDTlsYGBFtGhweKFcGI=;
+	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
+	b=ZUYxj5Nx3Z/LftgoPkb8qZ59YuDxS0mfz4bS4Qtnnbpfp/VeN8gmWPjwJ9DHcVN97
+	 xKUtZ71bJv8wMHl0I9pDe6vNR02ZbPkMyxlMwttEN4mJqogNuRDIgxHwVOoDN/VjMU
+	 P9LQxHAAbO2/Nzpwc1NoiurW1FGxWHSFDmZHFFr1HFRLjIG2jKbeOWkH4s0ep9nzJ+
+	 1MPcZlJnXEYpiUTRFeaQ9eFUZfi0VQNebLFTS8bstsJKh43Ubp/XA1eufsBiDyEYrm
+	 /LHu2/d0ilUszzfT75c7E3iw/YytIY8RB6CdFSsezsdtpgMwzqRRMicaYdxTQFm+eE
+	 fiZpzjc31pxqg==
+Message-ID: <sashiko-outbox-195417@kernel.org>
+From: sashiko-bot@kernel.org
+Subject: Re: [PATCH v14 03/12] ext4: replace ext4_dir_entry with
+ ext4_dir_entry_2
+Reply-To: sashiko-reviews@lists.linux.dev
+To: "Artem Blagodarenko" <artem.blagodarenko@gmail.com>, linux-ext4@vger.kernel.org
+Cc: tytso@mit.edu
+In-Reply-To: <20261103134921.610047-4-ablagodarenko@thelustrecollective.com>
+References: <20261103134921.610047-1-ablagodarenko@thelustrecollective.com>
+ <20261103134921.610047-4-ablagodarenko@thelustrecollective.com>
+Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.60.2 (3.60.2-1.fc44) 
+Date: Tue, 03 Nov 2026 14:05:59 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -76,50 +60,24 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
-MIME-Version: 1.0
-X-MBO-RS-META: hpcmcbqhu3poy9dpa96q15gh7cnjntie
-X-MBO-RS-ID: f02d63db6813a739ef4
 
-Hi,
-
-On Wed, 2026-09-16 at 12:42 +0200, Manuel Ebner wrote:
-> Fix sentence structure to improve readability
+> From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 >=20
-> Signed-off-by: Manuel Ebner <manuelebnerli@mailbox.org>
-> Reviewed-by: Jan Kara <jack@suse.cz>
-> CC: Randy Dunlap <rdunlap@infradead.org>
-
-Can I do anything to get this applied?
-
-Thanks
- Manuel
-
-> ---
-> @Jan Kara, is the reviewed-tag ok even though I changed the patch?
+> Replace remaining uses of struct ext4_dir_entry in namei.c
+> with struct ext4_dir_entry_2.
 >=20
-> [v2]
-> =C2=A0Incorporate Randys suggestion.
+> The code paths affected by this change already depend on the
+> filetype feature, so using struct ext4_dir_entry_2 is
+> appropriate and avoids mixing the two directory entry types
+> unnecessarily.
 >=20
-> [v1]
-> =C2=A0https://lore.kernel.org/all/20260902143254.702971-2-manuelebnerli@m=
-ailbox.org/
-> ---
-> =C2=A0Documentation/filesystems/ext4/directory.rst | 2 +-
-> =C2=A01 file changed, 1 insertion(+), 1 deletion(-)
+> This change does not affect support for 16-bit rec_len.
 >=20
-> diff --git a/Documentation/filesystems/ext4/directory.rst b/Documentation=
-/filesystems/ext4/directory.rst
-> index 9b003a4d4..6d8021309 100644
-> --- a/Documentation/filesystems/ext4/directory.rst
-> +++ b/Documentation/filesystems/ext4/directory.rst
-> @@ -429,7 +429,7 @@ block (precisely the length of one dx_entry) are used=
- to store a
-> =C2=A0``count`` entries in the dx_root/dx_node structures are adjusted as
-> =C2=A0necessary to fit the dx_tail into the block. If there is no space f=
-or
-> =C2=A0the dx_tail, the user is notified to run e2fsck -D to rebuild the
-> -directory index (which will ensure that there's space for the checksum.
-> +directory index, which will ensure that there's space for the checksum.
-> =C2=A0The dx_tail structure is 8 bytes long and looks like this:
-> =C2=A0
-> =C2=A0.. list-table::
+> Signed-off-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+
+Sashiko has reviewed this patch and found no issues.
+
+--=20
+Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261103134921.6100=
+47-1-ablagodarenko@thelustrecollective.com?part=3D3
+
