@@ -1,57 +1,57 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793714196;
-	b=EEX82Cy/Johxo9y5WzaE+vBRdlYPtgF0UOkV1lNlCm9O3ySlMKHqPD/WOQyttKlNpA0Z
-	 1lBHr1bQJrOt8w/BCf3kzB8Wcjca3acVs3lv/RuOmQ1jlC59Zu57e+fhds1kNDDohogBw
-	 izV2k97fDJ6FhtARBmJbNf0R7FRJA/gfvxrl6zE8JWqI2Vjn+tlwR1slYg0GAuyxHeeHz
-	 OTpMyVgeVsym+2kJEsqRrEyebiQGPxjMX3gLdLTRy3wCA+TyHRrRVtlfhHuIjhZP7exzw
-	 1f+jeSNafIUPKSAeQnDazBwaEvyj4u12/qAafzILTes5YqQVyN1xuvnTYpF2dweUKJA==
+	t=1793714217;
+	b=gXP1liIAuOgPXI8tpfGd/NfI8nsiTluj+3T/eeZO2JDDUaBWPkv2XEWQN45fHKwOX4BL
+	 BnIuxs+Wvud2KtMLbPEUlT2Qt1R6RGVxsn8vFZjhqG64Rtz1aZlp6nvLnfr9a5a2JUGgr
+	 G2wlSE3maaB0J4Mue0IlA0JwB8YK3OTjPMLIbpyom8NVxmXU+B7K2jmRF7qy7W4l69sCY
+	 g6eANxvDVtx/V/7ZkFCvF9t3ADi24iOFdeMy21SK4+7+RZRkUMP+y+kQmGtweyTW3zi2V
+	 Q6CfQoTIq6Ut09QgNL0kQamZZ6Nx3H3RZbpKwPsDI9CMFED2j2Lk0xlbGYSSs9KZWww==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793714196;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793714217;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=K3uJCHsS09WXu3MNMbbZ8/akJ2g4USfVzR0SyeUxNpg=;
-	b=N5QClh6PtFoNp1KdR5iGbSLrJR49X1dJ6rDEAwTeRWmVJvP9fMtm6JKerK3S5lbq4ELt
-	 QXbB2mUtur4s+UYU9k43l3ydNKl3lojE6eK2kE2gs/DTKakULsCKXnqinSkLIvZl2Q6F2
-	 55eeiA4mDP0TxQJv/aZaA2O486tdfNBvtC5HKg0l8656MVR0SWZHrSXgn4nf3d+vlxmYM
-	 T4UFWqUPmAEldy4T9v+4aaYgRTy7oduomSjp6u7OMx8jZFz3Q/83zytfgE3SN97TSLf9G
-	 WvCxY0MSxT1NwCfgNa22Hn7Nyu5/5/aZN7xYjopImBTDQglTjoyGJLGCSKPyz9jj1NQ==
+	bh=5XdxHQmj61CdkFGg3hL8Jd8Lh2vA9xn2XTxOhcTbeY8=;
+	b=Cc2FBiHzS7ozMZ3Ph1IqI+epY2TLWcJEnN59QO7z5VgnIMnGkPeavxFXpdoTENP2JAmS
+	 0w9uZipUHre7uOSzOVU+1ZlDLAO0wlmuVhiih6m1I/j7C+FnTxgI01U+6XeQJeHrdtQbO
+	 me0D0yJ5Re8h4h8k9MHD2MpxmuwCKBblYiMb3rB7XDQrerwdPw/OcCkcG0uQT8Y0SOtXw
+	 OnDXn4z5LCo4kRHYUg4jbCKMPIxyIo3nHtOwyR7HeVcK8l8m4kLySnbeFOitewlKM1Wtn
+	 uslYdQxYO/cAILnItcxou0wUYj4AdALcgQMfvJq8j8W2O0lFSQG4HBnKv6YVXXQc66w==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=kby7zCvI;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="Kzmez/BA";
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 41111606D809
-	for <linux-ext4@vger.kernel.org>; Tue,  3 Nov 2026 13:56:36 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0BC39606A324
+	for <linux-ext4@vger.kernel.org>; Tue,  3 Nov 2026 13:56:56 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=kby7zCvI
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D05A51F000C1;
-	Tue,  3 Nov 2026 13:56:35 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Kzmez/BA
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7A9681F000C1;
+	Tue,  3 Nov 2026 13:56:56 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793714196;
-	bh=K3uJCHsS09WXu3MNMbbZ8/akJ2g4USfVzR0SyeUxNpg=;
+	s=k20260515; t=1793714216;
+	bh=5XdxHQmj61CdkFGg3hL8Jd8Lh2vA9xn2XTxOhcTbeY8=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=kby7zCvIoqaDx1+JnZNNQ2aN1C0K+WqUvQSNbeMhhFA6quDT4pRXLhGM+wBB9pTRi
-	 nKxSMCr/Y+rP6H0hRiKRdm+iJ/nwMMFvixviWyfo86CVSsnmuD44Wt085ZbjAnJ94O
-	 K7dlQ4mqh6ZmjaRCAqkcRFs5nHfYXAiJHwWqdepxFO6Y1zMZUXdV72tjgeq72uo4wK
-	 6RTqqKlyO5NqO1FjrpjXGERfmA0UEoDvZnIWzLfMTHSGSWzoXK1UP2SX4AEYW1f56u
-	 Mnq4/pWVja2n06SjDz8ubU8BpUSvfLQ/rHqo3N5LBeZ5/ZMBL0FdAgkyZbOcuZ+qdk
-	 jZZjYy1snRChw==
-Message-ID: <sashiko-outbox-195403@kernel.org>
+	b=Kzmez/BA6u7Ko9qgmjj7mzkvIXCHV1/+VAOh3fURX8rDN+0LAPy6nspOtFM3KRelj
+	 SPy+ld+PoSm0K63HwhjkCAoKpHiK6WoAXDArbqxhs2twChEbJ2CSQksfxB4ykIoLgj
+	 2GBIOX7lTojputwmKhf5wtJRVoN+YMHEogv1CrUYCKefJWEVBH8jFxh3ivt/5ahNgX
+	 tAjPcQz455J+djh6XCn+Zc3eEcEy2IQ+7OrQtkk8U8ExNnY8VjFyA3VfMlM7S9kgdt
+	 xzGzYuQahcdrY7r1gHAUce0GJkdv/beggNIK6/NMHc07QDHnpC7i4Bo2nQVotUVweO
+	 XCjRFe64nlzeg==
+Message-ID: <sashiko-outbox-195405@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH v14 02/12] ext4: use the e2fsck limit for htree index
- nodes
+Subject: Re: [PATCH v14 05/12] ext4: add dirdata format definitions and
+ access helpers
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Artem Blagodarenko" <artem.blagodarenko@gmail.com>, linux-ext4@vger.kernel.org
 Cc: tytso@mit.edu
-In-Reply-To: <20261103134921.610047-3-ablagodarenko@thelustrecollective.com>
+In-Reply-To: <20261103134921.610047-6-ablagodarenko@thelustrecollective.com>
 References: <20261103134921.610047-1-ablagodarenko@thelustrecollective.com>
- <20261103134921.610047-3-ablagodarenko@thelustrecollective.com>
+ <20261103134921.610047-6-ablagodarenko@thelustrecollective.com>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Tue, 03 Nov 2026 13:56:35 +0000
+Date: Tue, 03 Nov 2026 13:56:56 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -61,32 +61,29 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-> From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+> Define the on-disk format for ext4 directory entry extension data.
 >=20
-> Since commit 471fbbea7ff7 ("ext4: handle casefolding with encryption"),
-> dx_node_limit() passes the directory to ext4_dir_rec_len(), which for a
-> casefolded+encrypted directory reserves 8 bytes for a hash in the fake
-> dirent at the start of an index node.  That dirent never holds a name or
-> a hash, and e2fsck computes the limit without it.  e2fsck also only
-> treats a block as an index node when its limit has that value.
+> The upper four bits of de->file_type indicate the presence of
+> optional data stored after the filename NUL terminator.  This patch
+> defines flags for LUFID, 64-bit inode numbers, and casefold hash
+> data stored in that area.
 >=20
-> As a result, on a casefolded+encrypted directory deep enough to have
-> index nodes, e2fsck reports the index nodes the kernel wrote as corrupt
-> leaf blocks ("directory corrupted"), and the kernel refuses the index
-> nodes that e2fsck -D wrote ("dx entry: limit 510 !=3D node limit 509",
-> 4k blocks with metadata_csum).
+> Add struct ext4_dirent_data_header to describe variable-length
+> extension records and struct ext4_dirent_hash for hash storage used
+> by casefold and fscrypt.
 >=20
-> Compute the limit without the hash, as e2fsck does, and keep accepting
-> the old value so that directories written by older kernels can still be
-> read.  Older kernels already reject index nodes written by e2fsck -D;
-> they will reject those written by this kernel in the same way.
+> Provide ext4_dirdata_next() to advance to the next extension record
+> and ext4_dirent_get_data_len() to compute the total extension data
+> length associated with a directory entry.
 >=20
-> Fixes: 471fbbea7ff7 ("ext4: handle casefolding with encryption")
+> No functional changes.
+>=20
+> Signed-off-by: Pravin Shelar <pravin.shelar@sun.com>
 > Signed-off-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 
 Sashiko has reviewed this patch and found no issues.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261103134921.6100=
-47-1-ablagodarenko@thelustrecollective.com?part=3D2
+47-1-ablagodarenko@thelustrecollective.com?part=3D5
 
