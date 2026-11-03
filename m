@@ -1,66 +1,63 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=115.124.30.119
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793719154;
-	b=5n3OFGJQFBaG1HBZ5QRGVfI7YmwjBGcqGK76IApt4G1r4qaK5Rkm9KI6QMnZzgBvvZMy
-	 bFR7WEMO3U65MjOQ77Uycmn3C2L9MNcUtxAkPemndCd+9Xmj8yvxGiv5s84SIXlgu8Etr
-	 Ldx/fEmotYdp1GWW68lJJqrYXkj0qi1RBUVvlfvrhHifyXoqAQ/7oLjPg9x1xxhzjKsUT
-	 QhJVGntI2nNVdji5BqKiLLKhGKTRLnfmtaDGb2SuAU4KeIvBYO0iFIlD0BGYRM09A6TzO
-	 3xL5VM/t9/tUhhxP5rnZvapXChZbz5vJL7wVGk5HW/gDeWMd98g/OIS4tCzcsLXeJEw==
+	t=1793719928;
+	b=bUzDWKRpTfRYBuX5UoJSMqNi3ncj9Xc83grBULibOMBKAVsGQ6klF9jiVbAJ2qViaEx0
+	 BK+3Uvbd/fakbpaCEAjmxqFqxnCHdJ+EOHwFz9l5ZyK6pKkn5YlysH7AaRA7ZBHYO+6OD
+	 AX4rWx1r9wERBQn8lp5fyz/ZWuQ9M7M5DUySID7RTbspm5oJT96DxbBQjRvEo9TsOcUCj
+	 0ib5/pCUxiMeYt4DueIAtscEMZSaZrhdwH/a9Jk0DDzeF1hsoUP8ziV8+qZXMS8A3QgKX
+	 7vyqE/QR6NGgNJLQNU/Y+bzI/JmXJ2oH82appB1c+3XL1rgSjInY31ajbApOexugTgA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793719154;
-	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
-	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=QIotc9uipaRy1fYVILWJFOZjIjeNZQOV2tWEZh+pwRk=;
-	b=vY3CF+Z6YvJvhFkAv26yaNcdUDkIZRhKNWVWtv/SZwXBa35icb8FAQSUZnCEnJlnRupU
-	 dxF79PbL/fRWK0XZMDGjfTKzvFbqyXScSIqRni10B58kUCQ4zfUrNC4dcquv3CSeykiBn
-	 ZWYqfjZbjoo/lOBDjTqY7NDFKLQ0dBPbIZRuazjla9t+E0l+p0FnNEFVNGEHIfpmU6pIG
-	 FRN25fQOBUtDEf96SjOrpyuB5Gh5wV/tn6ZNy1FoHJqZsZBmUqiwXkwEQ3QfKEhwrQ3Y+
-	 CrLy7zheSYSvWo3NOnIuyYwZMSgvwMnrFmTfOUHORi1PuldfywdHMIRavCwBi78kwbQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793719928;
+	h=DMARC-Filter:DKIM-Signature:X-Alimail-AntiSpam:Received:From:To:Cc:
+	 Subject:Date:Message-ID:X-Mailer:MIME-Version:
+	 Content-Transfer-Encoding;
+	bh=HmCkZORht9awkKXevmoWlUgHYW61U//k8/StSQKTvUw=;
+	b=J7/vFRacd2o/TZpWVhWZk7id5dRpEggY77Hq/El2MzdKNK6WMTycn232r97chQQrOHws
+	 uyIE6vbvgn3mI7VTyjhTDAAwTOjykc+z8A4ZwK0Wh0TMhgWWgxBphbKtow/8RiqLgpRSL
+	 kJCA4iHyAVYQGMtISdK4WAT+KO3mzxU6VPJaeM69DNuwVLoQQrhz8r0/2CJY1E8NNPLYZ
+	 9FQOig4nxnniiN/vkmJX1P9Fo2M1YrOED9fH1QS3WzqqMYN+GFLr8Q7GYA1bFZl+IJHH/
+	 lD/FfxmKBoJw7vZszumNADCYpxJZS7E/Qy41lbwh5cocvdxVLqRUlqj1Fa9ENhym3HQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=UhGRax2D;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	dmarc=pass header.from=linux.alibaba.com;
+	spf=pass smtp.mailfrom=linux.alibaba.com;
+	dkim=pass header.d=linux.alibaba.com header.i=@linux.alibaba.com header.a=rsa-sha256 header.s=default header.b=dRyzmM6J;
+	arc=none smtp.remote-ip=115.124.30.119
+Received: from out30-119.freemail.mail.aliyun.com (out30-119.freemail.mail.aliyun.com [115.124.30.119])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4FDA56082BFE;
-	Tue,  3 Nov 2026 15:19:14 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6FFAA606A326;
+	Tue,  3 Nov 2026 15:32:05 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 6FFAA606A326
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=UhGRax2D
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 843E11F00A15;
-	Tue,  3 Nov 2026 15:19:12 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793719154;
-	bh=QIotc9uipaRy1fYVILWJFOZjIjeNZQOV2tWEZh+pwRk=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=UhGRax2DDiXkSRlLYrZ6YprHE7VVwxA/XbrOJLCg12HZCsn4e0jikOJEn0tCq3YSq
-	 VOw//CAS8p5tsReDM0FCdWFyEe8u1co+G6UNE3Dxza3JFT3TQ4o7dckveRjDK76vy2
-	 tY2jrVJ2cfwVpnZf4WDSK4IobBt4sGg1BZyK3GVmeAq9oAaAjzUPT8hANCXRKvpqRN
-	 l7ejjvhfOnKI+gxdoPhF5yz3jsMxIeuZUCiv2ifRbTblvbOeqt429RJIi2lN6DUha9
-	 E8OxK8FB+CzBqgwGM9cRNOmo5L7Psxs2k0RoXIqxbHyIFhJ+4yEVw5VWuUAZw9sGTB
-	 vMcRQv70kODkQ==
-Message-ID: <sashiko-outbox-195602@kernel.org>
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH RFC 22/23] ALSA: info: let procfs copy out reads of data
- entries
-Reply-To: sashiko-reviews@lists.linux.dev
-To: "Christian Brauner" <brauner@kernel.org>
-Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.com>, "Josef
- Bacik" <josef@toxicpanda.com>, "Chris Mason" <mason@kernel.org>, "Jeff
- Layton" <jlayton@kernel.org>, NeilBrown <neil@brown.name>, "Eric Dumazet" <edumazet@kernel.org>, "Thomas
- Gleixner" <tglx@kernel.org>, "Al Viro" <viro@zeniv.linux.org.uk>, "Jonathan
- Corbet" <corbet@lwn.net>, "Christoph Hellwig" <hch@lst.de>, "Greg
- Kroah-Hartman" <gregkh@suse.de>, "Joel Granados" <joel.granados@kernel.org>, "Kees
- Cook" <kees@kernel.org>, "Jan Kara" <jack@suse.cz>, "Jan Kara" <jack@suse.com>, linux-s390@vger.kernel.org, coreteam@netfilter.org, kexec@lists.infradead.org, linux-pci@vger.kernel.org, linux-hwmon@vger.kernel.org, linux-usb@vger.kernel.org, samba-technical@lists.samba.org, linux-m68k@lists.linux-m68k.org, linux-serial@vger.kernel.org, "Takashi
- Iwai" <tiwai@suse.de>, linux-ext4@vger.kernel.org, "Chuck Lever" <cel@kernel.org>, tytso@mit.edu, "Heiko
- Carstens" <hca@linux.ibm.com>, "Vasily Gorbik" <gor@linux.ibm.com>, "Alexander
- Gordeev" <agordeev@linux.ibm.com>, "Christian Borntraeger" <borntraeger@linux.ibm.com>
-In-Reply-To: <20261102-work-procfs-drivers-v1-22-a994bd4d3b1a@kernel.org>
-References: <20261102-work-procfs-drivers-v1-0-a994bd4d3b1a@kernel.org>
- <20261102-work-procfs-drivers-v1-22-a994bd4d3b1a@kernel.org>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Tue, 03 Nov 2026 15:19:12 +0000
+	dkim=pass (1024-bit key, unprotected) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.a=rsa-sha256 header.s=default header.b=dRyzmM6J
+DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
+	d=linux.alibaba.com; s=default;
+	t=1793719922; h=From:To:Subject:Date:Message-ID:MIME-Version;
+	bh=HmCkZORht9awkKXevmoWlUgHYW61U//k8/StSQKTvUw=;
+	b=dRyzmM6J8TnZg+N5t+K0KcLi+exL75X7ofzeUsGqnp7UGh5NaQqTqpP8Br1kErnU6HzLiDo1Xr+517jaK2FjKuiU9Kege6EPfPW2CzqAHtkxxMZ3i7oU7MaTtAOqwJgaVBHmTGVSxG7tWQ++Y6tece+UR7DmK+qYrFEh4muiIFU=
+X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R851e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033037033178;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=12;SR=0;TI=SMTPD_---0XE3LUMI_1793719892;
+Received: from x31h02109.sqa.na131.tbsite.net(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0XE3LUMI_1793719892 cluster:ay36)
+          by smtp.aliyun-inc.com;
+          Tue, 03 Nov 2026 23:32:02 +0800
+From: Baokun Li <libaokun@linux.alibaba.com>
+To: linux-fscrypt@vger.kernel.org
+Cc: ebiggers@kernel.org,
+	jaegeuk@kernel.org,
+	tytso@mit.edu,
+	linux-ext4@vger.kernel.org,
+	adilger.kernel@dilger.ca,
+	jack@suse.cz,
+	yi.zhang@huawei.com,
+	ojaswin@linux.ibm.com,
+	ritesh.list@gmail.com,
+	linux-kernel@vger.kernel.org
+Subject: [PATCH 0/4] ext4: support encryption with block size larger than page size
+Date: Tue,  3 Nov 2026 23:31:28 +0800
+Message-ID: <20261103153132.4154855-1-libaokun@linux.alibaba.com>
+X-Mailer: git-send-email 2.43.7
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -69,26 +66,106 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 
-> Implement ->proc_read_buf() for data entries so procfs copies what is
-> read to userspace after it unpinned the entry. ->read() of struct
-> snd_info_entry_ops fills procfs' buffer now. opl4 reads the sample
-> memory into it without a vmalloc() buffer of its own, gus, cs46xx,
-> emu10k1, scarlett2, cs4281 and mixart copy into it instead of to
-> userspace. The driver guide still told raw callbacks to copy to and from
-> userspace, so update its example as well. Data entries ask for
-> PROC_ENTRY_FULL_READS so that reading all of an entry at once keeps
-> working. A read that faults on its buffer in a later piece returns the
-> pieces before it now instead of failing with -EFAULT.
->=20
-> Unbinding a card then no longer waits for a reader that faults on its
-> buffer.
->=20
-> Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
+Motivation
+==========
 
-Sashiko has reviewed this patch and found no issues.
+Currently ext4 refuses encryption on a filesystem whose block size
+is larger than page size.  The reason is in the fallback path:
+fscrypt takes the fs block size as the default data  unit size,
+while blk-crypto-fallback supports no data unit larger than a page.
 
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261102-work-procf=
-s-drivers-v1-0-a994bd4d3b1a@kernel.org?part=3D22
+fscrypt already supports a data unit size smaller than the block size.
+So when none is specified, taking the smaller of the block size and the
+page size as the data unit size is enough for fscrypt to support LBS.
+
+Based on v7.4-rc1.
+
+Patch Overview
+==============
+
+Patch 1: Caps the default data unit at the page size and rejects the
+         policies that would exceed it.
+Patch 2: Validates the test_dummy_encryption policy before applying it.
+Patch 3: Sends a folio that covers a DUN wraparound to the buffer_head
+         path.
+Patch 4: Removes the block size > page size checks and enables large
+         folios for encrypted files.
+
+Testing
+=======
+
+kvm-xfstests -c ext4/all -g auto has been executed with no new failures.
+
+On ext4/32k, two groups of tests fail because they are not adapted, and
+no other regressions were observed:
+
+ - the tests that use v1 policies: ext4/024, generic/395, 397, 398, 399,
+   419, 421, 429, 440, 576, 580, 581, 593, 613.
+ - the tests that don't explicitly set the data unit size (generic/582,
+   583, 584): the kernel gets a 4K data unit by default on a 4K-page
+   machine while the tests still use the block size.
+
+With the xfstests fix, the first group is skipped and the second group
+passes.  The fix will be sent separately.
+
+Benchmark
+=========
+
+Hardware: 96-core machine, 3.84T NVMe, 512G memory
+Filesystem: ext4, encryption on the fallback path
+
+Buffered sequential 1M writes and reads (1G, fsync) in MiB/s;
+medians of 3 runs.
+
+Base tree, 4k-block filesystem:
+
+  job         4k plain    4k enc
+  --------    --------    ------
+  seqwrite        1969      1418
+  seqread         1021       907
+
+LBS enabled, encrypted 4k-block vs 32k-block filesystem:
+
+  job         4k enc    32k enc    32k plain    4k->32k
+  --------    ------    -------    ---------    -------
+  seqwrite      1430       1958         2138       +37%
+  seqread        964       2004         1834      +108%
+
+Buffered sequential writes (1G, fsync) of the encrypted 4k-block
+filesystem across request sizes, base tree vs this series:
+
+  fio bs    Before    After    gain
+  ------    ------    -----    ----
+  4k        1272      1261     -1%
+  16k       1457      1803    +24%
+  64k       1499      2060    +37%
+  256k      1488      2103    +41%
+  1M        1418      1928    +36%
+
+Comments and questions are, as always, welcome.
+
+Thanks,
+Baokun
+
+Baokun Li (4):
+  fscrypt: Cap data units at the page size
+  fscrypt: Validate the test_dummy_encryption policy for new inodes
+  ext4: don't put a DUN wraparound in the middle of a read bio
+  ext4: allow large folios and bs > ps encryption
+
+ Documentation/filesystems/fscrypt.rst | 19 +++++++++++++++----
+ fs/crypto/fscrypt_private.h           |  4 +++-
+ fs/crypto/keysetup.c                  |  8 ++++++++
+ fs/crypto/policy.c                    | 11 ++++++++++-
+ fs/ext4/crypto.c                      |  9 ---------
+ fs/ext4/inode.c                       |  6 ------
+ fs/ext4/readpage.c                    | 10 ++++++++++
+ fs/ext4/super.c                       | 22 +---------------------
+ 8 files changed, 47 insertions(+), 42 deletions(-)
+
+-- 
+2.43.7
 
