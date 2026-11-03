@@ -1,48 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793719146;
-	b=OysCpz06//A8i5SL52PKPvRLuY0hnRibCO8E8mcDCY2ay2ffxwoAc7x2mKK0IdqKpeUY
-	 oi4MlguJmHzPOkjOtvnGOjYXRsPlYxxYtloqVWjm45wVArrhic8yMVEez4Vx2hJqU/Q3A
-	 jAmGFiPIkzJWrhvpYYSNt0uZ9Pv1SsUB2qeQ7r/hL+j+agyOQCNVqxG1cE0DN4tEIBTcg
-	 WhRiyP9poSrAhMclillZSQCji8lr4TVq9Jc5vtTO5azxIt4oFBYi7uW3ZuvGEEcM3k0uz
-	 5VJ5WnF3G0m9EpEOKyAGmMM69hJioh1kPRXItUSE4vx8M36LGYATRfNbS1PRqtvazXw==
+	t=1793719138;
+	b=wfiYz7NMOp+OtBffRsiV6XEtUlPhtGjEtriBF4pmcnCtLBQu+c2x/b71C6m6YHmv76Ox
+	 czygbAAuMwXIzkI0QxedagoHm8cp0DRFD7w7hgwUmN/7sVHHAWlCy+ty7zYOonuiZkXIj
+	 gV4oUXjxYsnXVNzSQ7wYrYN+d4AyuEexU5lmCx6r6aUnGuQRKdmKCnTm0msAUFs8UWUii
+	 2M6MmFUPjGM40ro9DA5ym1yPdHoPPXS8Q/g8KVuVSa1mSTwhOGsTVQ39WmFC8JGaEkA+U
+	 KPUxnT9yREUDaxO0iEBlfjUt7kzTm3UAp4L4npqUL0Lr+dCcu7ggGMaPmI2wMzzZX5Q==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793719146;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793719138;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=9VM4VycIJxG9B23kFs1jpcDVPOgTfnwXyJOXznUgmT0=;
-	b=IAS4XEQDxmmh0PlWaxDZZYUMV+NOnCn2VjyBaEET0hnEJUgnJggCnIyRIlzM0mi71EqB
-	 /VdKTJlnk6mmKHvRPPI2zZ+qN0TwQzawP2qeaiA8cdPGiGdiufqN2cshUG55IxCeuUJiX
-	 17q96uRf1jdGBb6jRoFKHjk1CpEmWiWGqfCXQwsFemQL9D3SVtUfmq8HjZbIAGCXJpD0A
-	 P5xVDyiWlvnu8kZI0cyVtOgZw1FhI8vpDIefv9P+Qt4mcBsNW2x03l/o9i78AwHWd3R1V
-	 mJQjRIJWf6Qt65/G8IkpKtC+V7N/kK2sAVQsnFILhtYLC15mBiaVL5iObW4AJ3SHq6g==
+	bh=pXYmXnE4YnSZAwVsghhJ8qwzD8WHMLT3acK3fEE1c5w=;
+	b=VRVzrOzKHjuke7e/KwRA7aIJ0pYm/yiqZHO3k6XSPmnKTcpReF1kk4SR0/o6y9X39NFZ
+	 7336z3pxLK2WKSQM9SvRc1iOwsDjNR9lEkBU/0OdOshY0EL5+ZeIU6Qpmx/f3ghtOfCMx
+	 MQ82En/FnxNNdnwReTczJ6UAfmjmLhvNTfviE2WV2D79SlmTAEbhp9TLyFrMrjjv0FOE6
+	 mQuqf1Gu7vdyV9v8gfzY3SuGQMajzqEO+aTqqibQHGJ+HKqO2OQmOEGKbfQ/Ti1yF9awy
+	 +vJfXhOUmmLLlYjIztkJSQt+XVdcrC+b7n+/JzlrAjseUKDHsszd4++fLHdXEhKPNNw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=TXLZhHtB;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=lt7kWY0w;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D148C60A380C;
-	Tue,  3 Nov 2026 15:19:05 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C5E5C6082BFE;
+	Tue,  3 Nov 2026 15:18:57 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=TXLZhHtB
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2B0E71F00A15;
-	Tue,  3 Nov 2026 15:19:04 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=lt7kWY0w
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 224A01F00A2C;
+	Tue,  3 Nov 2026 15:18:55 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793719145;
-	bh=9VM4VycIJxG9B23kFs1jpcDVPOgTfnwXyJOXznUgmT0=;
+	s=k20260515; t=1793719137;
+	bh=pXYmXnE4YnSZAwVsghhJ8qwzD8WHMLT3acK3fEE1c5w=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=TXLZhHtBBQ/MwOWloq1a719SQTAPon23w6JmMKZCt88Jd96TH83Ml+nM4Ur+GAwBf
-	 HIGjyq9tA314fRNV+6HTEn7xJ5G+/lUkqqaajiwpVTla9zE2ZdMK9TN9R05B1lhMTL
-	 gG7iev8TBAZ1R6LRWHTADcOV/KA8ODBmZ6NAAseQrwJ8cTF7zrs5wQjrg8m7amlIy2
-	 a5D05LqkfrZGcwMdNoPisCJwwcI8ZAno6RdiJNlyxhj5f3WJeUVTRcW/XBb2wOgDBz
-	 C1Qe+80yXKtcjrTSgvFLmh4nF9st0qRHA6dP8yeGfACHozhzWrcxJDaIto8ZtRYuHc
-	 drplGlm4GLlUA==
-Message-ID: <sashiko-outbox-195598@kernel.org>
+	b=lt7kWY0w9ieExJiXhsRbswLZTk4I62Ut15H6kMqjEztfFu4VGWWEAsyq1h1RunGi7
+	 quYJ9gon1XZinTxL/vkjGOaRSh41+Spy89HkKrIkDLVlyQ2DPkr57UTA8uNv7ZJQPX
+	 Gkb+9Ork4a09lK3yz7JxXHSWqFcBarBUl6xpojcbcZ6LCj9+K0W6f0I8igzSlL1ee7
+	 HOzooULSEPo6yfs5dQxOzgo+Ck2+yelQJNljZ0d/RFz7CfzGvoYCRRMJGyc+UGPBSP
+	 xmtleTQuYNol2touf60/WN8WAXQ5Y7pfGj4AOYhP5EA7RtetswDsaHw6Wd78ymD48r
+	 5m+hEjoe7SkUg==
+Message-ID: <sashiko-outbox-195594@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH RFC 18/23] wifi: ipw2x00: let procfs copy in writes to
- the debug level
+Subject: Re: [PATCH RFC 14/23] scsi: esas2r: let procfs copy the ioctl
+ argument of the ATTONode file
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Christian Brauner" <brauner@kernel.org>
 Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.com>, "Josef
@@ -51,16 +51,18 @@ Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.
  Gleixner" <tglx@kernel.org>, "Al Viro" <viro@zeniv.linux.org.uk>, "Jonathan
  Corbet" <corbet@lwn.net>, "Christoph Hellwig" <hch@lst.de>, "Greg
  Kroah-Hartman" <gregkh@suse.de>, "Joel Granados" <joel.granados@kernel.org>, "Kees
- Cook" <kees@kernel.org>, "Jan Kara" <jack@suse.cz>, "Jan Kara" <jack@suse.com>, linux-s390@vger.kernel.org, coreteam@netfilter.org, kexec@lists.infradead.org, linux-pci@vger.kernel.org, linux-hwmon@vger.kernel.org, linux-usb@vger.kernel.org, samba-technical@lists.samba.org, linux-m68k@lists.linux-m68k.org, linux-serial@vger.kernel.org, "Takashi
- Iwai" <tiwai@suse.de>, linux-ext4@vger.kernel.org, "Chuck Lever" <cel@kernel.org>, tytso@mit.edu, "Heiko
+ Cook" <kees@kernel.org>, "Jan Kara" <jack@suse.cz>, "Jan Kara" <jack@suse.com>, linux-s390@vger.kernel.org, linux-scsi@vger.kernel.org, coreteam@netfilter.org, kexec@lists.infradead.org, linux-pci@vger.kernel.org, linux-sound@vger.kernel.org, dri-devel@lists.freedesktop.org, linux-hwmon@vger.kernel.org, linux-mm@kvack.org, linux-usb@vger.kernel.org, samba-technical@lists.samba.org, sparclinux@vger.kernel.org, linux-m68k@lists.linux-m68k.org, linux-serial@vger.kernel.org, "Takashi
+ Iwai" <tiwai@suse.de>, linux-input@vger.kernel.org, linux-raid@vger.kernel.org, linux-ext4@vger.kernel.org, linux-modules@vger.kernel.org, "Chuck
+ Lever" <cel@kernel.org>, tytso@mit.edu, dmitry.torokhov@gmail.com, "Petr
+ Pavlu" <petr.pavlu@suse.com>, "Anna Schumaker" <anna@kernel.org>, yukuai@fygo.io, "Heiko
  Carstens" <hca@linux.ibm.com>, "Vasily Gorbik" <gor@linux.ibm.com>, "Alexander
  Gordeev" <agordeev@linux.ibm.com>, "Christian Borntraeger" <borntraeger@linux.ibm.com>
-In-Reply-To: <20261102-work-procfs-drivers-v1-18-a994bd4d3b1a@kernel.org>
+In-Reply-To: <20261102-work-procfs-drivers-v1-14-a994bd4d3b1a@kernel.org>
 References: <20261102-work-procfs-drivers-v1-0-a994bd4d3b1a@kernel.org>
- <20261102-work-procfs-drivers-v1-18-a994bd4d3b1a@kernel.org>
+ <20261102-work-procfs-drivers-v1-14-a994bd4d3b1a@kernel.org>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Tue, 03 Nov 2026 15:19:03 +0000
+Date: Tue, 03 Nov 2026 15:18:54 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -70,16 +72,68 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-> Implement ->proc_write_buf() so procfs copies in what is written before
-> it pins the entry, and parse the level from that copy. Writes larger
-> than PAGE_SIZE - 1 bytes fail with -EINVAL now, and a buffer that can't
-> be read fails with -EFAULT instead of looking like it was written.
->=20
-> Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
+Thank you for your contribution! Sashiko AI review found 1 potential issue(=
+s) to consider:
+- [Low] scsi: esas2r: split declaration and initialization of __free() vari=
+able in esas2r_ioctl_handler()
+--
 
-Sashiko has reviewed this patch and found no issues.
+commit 0fd79b7040b09fc840e0499afbc88e68b34a3e18
+Author: Christian Brauner <brauner@kernel.org>
+
+scsi: esas2r: let procfs copy the ioctl argument of the ATTONode file
+
+This commit factors the core logic of esas2r_ioctl_handler() into
+esas2r_ioctl_buf() operating on a kernel copy of struct atto_express_ioctl,
+and converts the procfs ATTONode file to use .proc_ioctl_buf and
+.proc_ioctl_args so procfs handles copying the ioctl buffer in and out.
+
+> diff --git a/drivers/scsi/esas2r/esas2r_ioctl.c b/drivers/scsi/esas2r/esa=
+s2r_ioctl.c
+> index f99318f61c934..eb39ba8263b31 100644
+> --- a/drivers/scsi/esas2r/esas2r_ioctl.c
+> +++ b/drivers/scsi/esas2r/esas2r_ioctl.c
+
+[ ... ]
+
+> @@ -1515,19 +1501,43 @@ int esas2r_ioctl_handler(void *hostdata, unsigned=
+ int cmd, void __user *arg)
+> =20
+>  	}
+> =20
+> +	return 0;
+> +}
+> +
+> +int esas2r_ioctl_handler(void *hostdata, unsigned int cmd, void __user *=
+arg)
+> +{
+> +	struct atto_express_ioctl *ioctl __free(kfree) =3D NULL;
+> +	int err;
+> +
+> +	esas2r_log(ESAS2R_LOG_DEBG, "ioctl (%p, %x, %p)", hostdata, cmd, arg);
+> +
+> +	if ((arg =3D=3D NULL)
+> +	    || (cmd < EXPRESS_IOCTL_MIN)
+> +	    || (cmd > EXPRESS_IOCTL_MAX))
+> +		return -ENOTSUPP;
+> +
+> +	ioctl =3D memdup_user(arg, sizeof(struct atto_express_ioctl));
+
+[Severity: Low]
+This isn't a bug, but in esas2r_ioctl_handler() in
+drivers/scsi/esas2r/esas2r_ioctl.c, ioctl is declared with __free(kfree) =3D
+NULL at the top of the function before the argument validation check and
+assigned later via memdup_user().
+
+Per the Cleanup API conventions, could the __free(kfree) variable definition
+and initialization be combined into a single statement at the point of
+allocation:
+
+	struct atto_express_ioctl *ioctl __free(kfree) =3D
+		memdup_user(arg, sizeof(struct atto_express_ioctl));
+
+after the early return check?
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261102-work-procf=
-s-drivers-v1-0-a994bd4d3b1a@kernel.org?part=3D18
-
+s-drivers-v1-0-a994bd4d3b1a@kernel.org?part=3D14
