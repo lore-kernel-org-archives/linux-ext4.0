@@ -1,65 +1,75 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=115.124.30.97
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793722177;
-	b=zdZVAWbHHxKbbXx3xH+E3M8dbt8nsEmnmWY0qiTHnT/2Mr0wIx5oj8esGJ2V1yK6UMQU
-	 NInJ1GjHsbeqlJUU9D2n1HEeOMOsl4nuaWyhIrG58aNjqP1kX3yMOnPq3tsTMitb+2pFO
-	 /7Y4KvfumLzfSlfj3vbGfNE6KQwKsRCVfozsVI/Io+OPdoVATFU79vJA7U9Wb670Yt2pm
-	 q3FPK4EX94YzSxaV3znO3AmTSr1DDEYDXwxeQSlDMB1EXm5BI2gyy9/w+FSRr0jqRU8FL
-	 7XzKV7RUGQFLuSNpkqoJJdM/Jl4A18R+rilicnjFyh7sG3Rh+huJTVXZsFFQcFcG58g==
+	t=1793723196;
+	b=de0t5tAyrnyXAbkQbiTZ2C+cbAYfDQs2cTyl/SqxKfDJG3XHdMeMj3022Ufe+mERdVAT
+	 +ZzygmdJOITO18ZCTcF6Hze1dneVPtjYSJLLNNOZ4bq4JZQoTyhfB2H4OWGAlSDtbAp8X
+	 lMw+lQb0HBhfuqekU6sPU6XOcgN62V2BzWtztyYNkR5lDMcxukdlo1ZJ+1pazOpZmQLfn
+	 yWXqCMjxYFEfYAIrmYqyKPh7vya7mLyXWm99lwJ3Yunl0DlePoZ15H46ZKsOVXA5XjajR
+	 amsBuX0CyCvpY0OOus2YL65Do0Uox5LMAGQG9R6+YMBItQrG2k2yVSvVPsokIp2mzZA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793722177;
-	h=DMARC-Filter:DKIM-Signature:X-Alimail-AntiSpam:Received:From:To:Cc:
-	 Subject:Date:Message-ID:X-Mailer:MIME-Version:
-	 Content-Transfer-Encoding;
-	bh=VvejGUVxmaiLNVk+Kiil53rHji7qg0RpKsHyxlR2IsQ=;
-	b=daKmjMfA1opgH3X/UkG+IJl7//CK6vvoITs60jlJP/OWne4faq8+uvlIzhk/lVGHDwSM
-	 FbyahgKKKDFCIKKlFixyDk2KPQciE57R4SejB06uQwR2rPuRB04WBZWft4YeQvM6D4JLw
-	 7YNY0LHQQgQ7XC4L5JJ0ziqyfso7Xvq1e5m/YT//a4gQ+bcgsY3dvA08kJBjnKkrMshWR
-	 bAU9to6q4BhXZQFo2QwCZvKdwCAvvYjd4C1r1Ir0qxb/h1TiNAQHDxxlXsI5TgHuHQKCG
-	 Vut76CmReyMYow5BrFEy9g8L0srCqOD0ZbL7cTqInArAnLG8Lpidv4tBt4ygN3Et78g==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793723196;
+	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
+	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
+	bh=88x5nWCU4/5DUnm5J75+/44oJREtwTCj+m3lJcaJoNE=;
+	b=tdawQlYfgDrb3alGEDfr439O5Cw+xIZMzgxuDQTvu1eq98R7olpfgWnXNElxe+6RNneW
+	 +WtM6uldUVExM54iZpuquygLBgV4ss9v1DdlPrhBRgjlpJsdA9htasb5VqBuKI9xdRRZQ
+	 mXNqPuVznzoA01sj3DERKYaelKX3fIa36NpOutkvXGqh8Mxsj0eSKWhsIaJedFVEQIxti
+	 n7X9odVx6mncFTtIw7BeW8JUrJIaRC0dbILM11QFF47/8afyZkTDuml9E/fnFFfGtarJY
+	 +ME6FErInGL9MCUfBY7Ykc5Ds6s17BJZSRUQzGoG5BB1MPpvwHhtpkwzrDzTAt0asVQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=linux.alibaba.com;
-	spf=pass smtp.mailfrom=linux.alibaba.com;
-	dkim=pass header.d=linux.alibaba.com header.i=@linux.alibaba.com header.a=rsa-sha256 header.s=default header.b="Afl9tf/y";
-	arc=none smtp.remote-ip=115.124.30.97
-Received: from out30-97.freemail.mail.aliyun.com (out30-97.freemail.mail.aliyun.com [115.124.30.97])
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=HyDteQG2;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EA008606A328;
-	Tue,  3 Nov 2026 16:09:33 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org EA008606A328
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 259F4606A327;
+	Tue,  3 Nov 2026 16:26:35 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.a=rsa-sha256 header.s=default header.b=Afl9tf/y
-DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
-	d=linux.alibaba.com; s=default;
-	t=1793722171; h=From:To:Subject:Date:Message-ID:MIME-Version;
-	bh=VvejGUVxmaiLNVk+Kiil53rHji7qg0RpKsHyxlR2IsQ=;
-	b=Afl9tf/y/rlR81qOGBfINq+CjMEXL1YvQfYVoJAl4jpgWq49/J6gsSVPyDPhUmiRlj57BfwPMq+SwS+9jWODMtuE3nVco0RzoHz12GEUZmlB9At+N7ak5jcz3o1a8BPDasOS7qqMZiIUJ5ufjwFXnBlnPFi4I14t/n8nK7ROVOg=
-X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R651e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033045133197;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=14;SR=0;TI=SMTPD_---0XE3LcOt_1793722147;
-Received: from x31h02109.sqa.na131.tbsite.net(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0XE3LcOt_1793722147 cluster:ay36)
-          by smtp.aliyun-inc.com;
-          Wed, 04 Nov 2026 00:09:30 +0800
-From: Baokun Li <libaokun@linux.alibaba.com>
-To: fstests@vger.kernel.org
-Cc: zlang@kernel.org,
-	linux-fscrypt@vger.kernel.org,
-	ebiggers@kernel.org,
-	jaegeuk@kernel.org,
-	tytso@mit.edu,
-	linux-ext4@vger.kernel.org,
-	adilger.kernel@dilger.ca,
-	jack@suse.cz,
-	yi.zhang@huawei.com,
-	ojaswin@linux.ibm.com,
-	ritesh.list@gmail.com,
-	linux-kernel@vger.kernel.org
-Subject: [PATCH] common/encrypt: support block sizes larger than the page size
-Date: Wed,  4 Nov 2026 00:09:06 +0800
-Message-ID: <20261103160906.188544-1-libaokun@linux.alibaba.com>
-X-Mailer: git-send-email 2.43.7
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=HyDteQG2
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 09A721F000C1;
+	Tue,  3 Nov 2026 16:26:23 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1793723195;
+	bh=88x5nWCU4/5DUnm5J75+/44oJREtwTCj+m3lJcaJoNE=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=HyDteQG2VBDz2pwudxJvRFZ3NzuhMM1n/qoJyRpSIEa+4sIo8qfNjCKCMkx9fqPnu
+	 PTXEB3HB8c+csEYJbUqrD18YNji+Wb3P0nPR4rCDriU41qd0d35Q951xfxtaew6zqD
+	 xTRV7HQa/evoV4YEWVb3yEGxlVh8/pDAOnR650sPVOaA2QtXNMiUjYtFVGzVyuFmxJ
+	 cuqSFcaDMPcPNDAwdq/HarCHKLW8nQ/TcudxBJnTO/IQN1HpQ6LTm2xHx92xHn7YRV
+	 9GYQVIg2n29fkajQrtiWC1hueIuFYRrAfwMXbzDr3+UFxfeou5MMiBIFbN+ZYhp4th
+	 RFlMkVbcaKQDw==
+Date: Tue, 3 Nov 2026 17:26:21 +0100
+From: Christian Brauner <brauner@kernel.org>
+To: Chuck Lever <cel@kernel.org>
+Cc: linux-fsdevel@vger.kernel.org, 
+	Linus Torvalds <torvalds@linux-foundation.org>, Jann Horn <jannh@google.com>, Josef Bacik <josef@toxicpanda.com>, 
+	Chris Mason <mason@kernel.org>, Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
+	Eric Dumazet <edumazet@kernel.org>, Thomas Gleixner <tglx@kernel.org>, 
+	Alexander Viro <viro@zeniv.linux.org.uk>, Jonathan Corbet <corbet@lwn.net>, Christoph Hellwig <hch@lst.de>, 
+	Greg Kroah-Hartman <gregkh@suse.de>, Joel Granados <joel.granados@kernel.org>, 
+	Kees Cook <kees@kernel.org>, Jan Kara <jack@suse.cz>, Jan Kara <jack@suse.com>, 
+	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org, linux-acpi@vger.kernel.org, 
+	linux-kselftest@vger.kernel.org, linux-s390@vger.kernel.org, 
+	"linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>, linux-um@lists.infradead.org, linux-wireless@vger.kernel.org, 
+	Linuxppc Dev <linuxppc-dev@lists.ozlabs.org>, netdev@vger.kernel.org, ntfs3@lists.linux.dev, 
+	platform-driver-x86@vger.kernel.org, coreteam@netfilter.org, kexec@lists.infradead.org, 
+	linux-pci@vger.kernel.org, linux-sound@vger.kernel.org, netfilter-devel@vger.kernel.org, 
+	dri-devel@lists.freedesktop.org, ibm-acpi-devel@lists.sourceforge.net, 
+	jfs-discussion@lists.sourceforge.net, linux-alpha@vger.kernel.org, 
+	linux-arm-kernel@lists.infradead.org, linux-cifs@vger.kernel.org, linux-fbdev@vger.kernel.org, 
+	linux-hwmon@vger.kernel.org, linux-mm@kvack.org, linux-sh@vger.kernel.org, 
+	linux-usb@vger.kernel.org, samba-technical@lists.samba.org, sparclinux@vger.kernel.org, 
+	linux-m68k@lists.linux-m68k.org, linux-doc@vger.kernel.org, linux-serial@vger.kernel.org, 
+	linux-atm-general@lists.sourceforge.net, Takashi Iwai <tiwai@suse.de>, linux-input@vger.kernel.org, 
+	linux-raid@vger.kernel.org, linux-ext4@vger.kernel.org, linux-modules@vger.kernel.org, 
+	linux-debuggers@vger.kernel.org, stable@vger.kernel.org
+Subject: Re: [PATCH RFC 27/38] sunrpc: make queue_wait a global wait queue
+ again
+Message-ID: <20261103-lufttemperatur-absondern-zweifach-31d272ad55ab@brauner>
+References: <20261102-work-procfs-bugfixes-v1-0-59422ed3e465@kernel.org>
+ <20261102-work-procfs-bugfixes-v1-27-59422ed3e465@kernel.org>
+ <16f91f93-16b4-49b1-b7fa-cec69759c349@app.fastmail.com>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -69,222 +79,72 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+In-Reply-To: <16f91f93-16b4-49b1-b7fa-cec69759c349@app.fastmail.com>
 
-v1 encryption policies use the filesystem block size as their data unit
-size, so they cannot be used on a filesystem whose block size exceeds
-the page size.  Make _require_scratch_encryption() skip such tests
-when a v1 policy is requested.  Tests that request a v2 policy but
-also exercise v1 policies, i.e. generic/580, 581, 593, and 613,
-call _require_v1_encryption_support() explicitly.
+On Mon, Nov 02, 2026 at 10:12:12AM -0500, Chuck Lever wrote:
+> 
+> 
+> On Mon, Nov 2, 2026, at 9:21 AM, Christian Brauner wrote:
+> > Since commit 552d0e17ea04 ("sunrpc: convert queue_wait from global to
+> > per-cache-detail waitqueue") poll() and epoll queue their waiters for a
+> > channel file on the queue_wait head in struct cache_detail. But the
+> > cache_detail can be freed while its channel file is still open and
+> > waited on.
+> >
+> > The procfs channel files of a network namespace are removed when the
+> > namespace goes away. Removing a procfs file waits for the callers that
+> > are in one of its methods right now and then calls ->release on every
+> > file that is still open (cf. close_pdeo()). The waiters that poll() and
+> > epoll left on the head stay queued until their file is really closed.
+> > So:
+> >
+> >   sunrpc_exit_net()
+> >   -> ip_map_cache_destroy()
+> >      -> cache_unregister_net()
+> >         -> remove_cache_proc_entries()
+> >            -> proc_remove()      // ->release, the waiters stay queued
+> >      -> cache_destroy_net()      // kfree(cd)
+> >
+> > and when poll() returns remove_wait_queue() writes to the freed
+> > cache_detail:
+> >
+> >   BUG: KASAN: slab-use-after-free in _raw_spin_lock_irqsave+0x4b/0xa0
+> >   Read of size 1 at addr ff110001131bb570 by task sunrpc-poll-uaf/242
+> >   Call Trace:
+> >    remove_wait_queue+0x22/0x1c0
+> >    poll_freewait+0xc2/0x230
+> >    do_sys_poll+0x9ba/0xd50
+> >    __x64_sys_poll+0x165/0x470
+> >   Freed by task 12:
+> >    kfree+0x267/0x620
+> >    sunrpc_exit_net+0x34/0x80
+> >    ops_undo_list+0x271/0x8d0
+> >    cleanup_net+0x3f3/0x860
+> >
+> > Closing an epoll instance that watches the file gets there through
+> > ep_unregister_pollwait() instead.
+> >
+> > The channel files of a network namespace belong to the root of its
+> > user namespace and cache_open() doesn't check for a capability. So an
+> > unprivileged user can open the channel file of a namespace of its own
+> > from the outside, poll it and let the namespace die.
+> >
+> > Go back to a single static wait queue that never goes away. A wakeup
+> > for one cache wakes the waiters of all caches again but cache_poll()
+> > reports per cache_detail so that's just a spurious wakeup. procfs
+> > should really own the wait queue of its files like kernfs does but
+> > that's nothing for stable.
+> >
+> > Reported-by: Chris Mason <mason@kernel.org>
+> > Fixes: 552d0e17ea04 ("sunrpc: convert queue_wait from global to 
+> > per-cache-detail waitqueue")
+> > Cc: stable@vger.kernel.org
+> > Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
+> 
+> Acked-by: Chuck Lever <cel@kernel.org>
 
-A v2 policy with log2_data_unit_size 0 uses min(bs, PS) as its data
-unit size, not the block size. Add _get_encryption_du_size() and
-use it to calculate the expected ciphertext.
-
-Also skip the v1 policy probe in _require_scratch_encryption() when a
-v2 policy is requested.  Update the ext4/309 and ext4/310 comments for
-the new default data unit size.
-
-Signed-off-by: Baokun Li <libaokun@linux.alibaba.com>
----
- common/encrypt    | 68 +++++++++++++++++++++++++++++++++++++++--------
- tests/ext4/309    |  6 ++---
- tests/ext4/310    |  2 +-
- tests/generic/580 |  1 +
- tests/generic/581 |  1 +
- tests/generic/593 |  1 +
- tests/generic/613 |  1 +
- 7 files changed, 65 insertions(+), 15 deletions(-)
-
-diff --git a/common/encrypt b/common/encrypt
-index c9e0853d8d8c..feaef0682a44 100644
---- a/common/encrypt
-+++ b/common/encrypt
-@@ -18,15 +18,21 @@
- _require_scratch_encryption()
- {
- 	local arg
-+	local policy_version=1
-+	local prev=
- 
- 	_require_scratch
- 	_require_xfs_io_command "set_encpolicy"
- 
- 	for arg; do
-+		if [ "$prev" = "-v" ]; then
-+			policy_version=$arg
-+		fi
- 		if [ "$arg" = "-s" ]; then
- 			# -s option was added later.  Make sure it's available.
- 			_require_xfs_io_command "set_encpolicy" "-s"
- 		fi
-+		prev=$arg
- 	done
- 
- 	# The 'test_dummy_encryption' mount option interferes with trying to use
-@@ -56,13 +62,24 @@ _require_scratch_encryption()
- 	# to set an encryption policy.  (For ext4 we could instead check for the
- 	# presence of /sys/fs/ext4/features/encryption, but this is broken on
- 	# some older kernels and is ext4-specific anyway.)
--	mkdir $SCRATCH_MNT/tmpdir
--	if _set_encpolicy $SCRATCH_MNT/tmpdir 2>&1 >>$seqres.full | \
--		grep -Eq 'Inappropriate ioctl for device|Operation not supported'
--	then
--		_notrun "kernel does not support $FSTYP encryption"
-+	#
-+	# If the test requires a v2 policy, don't probe with a v1 policy:
-+	# v1 policies are not supported when the block size exceeds the page
-+	# size.  _require_encryption_policy_support() will check for the
-+	# requested policy version below.
-+	if [ "$policy_version" -le 1 ]; then
-+		mkdir $SCRATCH_MNT/tmpdir
-+		if _set_encpolicy $SCRATCH_MNT/tmpdir 2>&1 >>$seqres.full | \
-+			grep -Eq 'Inappropriate ioctl for device|Operation not supported'
-+		then
-+			_notrun "kernel does not support $FSTYP encryption"
-+		fi
-+		rmdir $SCRATCH_MNT/tmpdir
-+
-+		# v1 policies use the block size as their data unit size,
-+		# which doesn't work if the block size exceeds the page size.
-+		_require_v1_encryption_support
- 	fi
--	rmdir $SCRATCH_MNT/tmpdir
- 
- 	# If required, check for support for the specific type of encryption
- 	# policy required by the test.
-@@ -73,6 +90,39 @@ _require_scratch_encryption()
- 	_scratch_unmount
- }
- 
-+# Require that the filesystem supports v1 encryption policies.  v1
-+# policies use the filesystem block size as their data unit size, so
-+# they aren't supported when the block size exceeds the page size.
-+#
-+# The scratch filesystem must be mounted.
-+_require_v1_encryption_support()
-+{
-+	local block_size=$(_get_block_size $SCRATCH_MNT)
-+
-+	if [ "$block_size" -gt "$(_get_page_size)" ]; then
-+		_notrun "v1 encryption policies aren't supported on filesystems with block size > page size"
-+	fi
-+}
-+
-+# Get the data unit size in bytes for a v2 encryption policy with the
-+# given log2_data_unit_size on the filesystem mounted at $1.  A zero
-+# value selects min(filesystem block size, page size).
-+_get_encryption_du_size()
-+{
-+	local mnt=$1
-+	local log2_dusize=$2
-+	local block_size=$(_get_block_size "$mnt")
-+	local page_size=$(_get_page_size)
-+
-+	if [ "$log2_dusize" -ne 0 ]; then
-+		echo $((1 << log2_dusize))
-+	elif [ "$block_size" -gt "$page_size" ]; then
-+		echo "$page_size"
-+	else
-+		echo "$block_size"
-+	fi
-+}
-+
- _require_encryption_policy_support()
- {
- 	local mnt=$1
-@@ -1014,11 +1064,7 @@ _verify_ciphertext_for_encryption_policy()
- 	fi
- 	_scratch_mount
- 
--	if (( log2_dusize != 0 )); then
--		crypt_util_contents_args+=" --data-unit-size=$((1 << log2_dusize))"
--	else
--		crypt_util_contents_args+=" --data-unit-size=$(_get_block_size $SCRATCH_MNT)"
--	fi
-+	crypt_util_contents_args+=" --data-unit-size=$(_get_encryption_du_size $SCRATCH_MNT $log2_dusize)"
- 
- 	crypt_util_args+=" --fs-uuid=$(blkid -s UUID -o value $SCRATCH_DEV | tr -d -)"
- 
-diff --git a/tests/ext4/309 b/tests/ext4/309
-index 6bc9b8cb4a4a..aa1b3b68fc8c 100755
---- a/tests/ext4/309
-+++ b/tests/ext4/309
-@@ -5,9 +5,9 @@
- # FS QA Test No. ext4/309
- #
- # Verify that file contents encryption works on a filesystem with a block size
--# larger than the page size.  fscrypt uses the block size as the data unit size
--# by default, so this tests data units that span multiple pages, both for the
--# writeback path and for the on-disk ciphertext.
-+# larger than the page size.  fscrypt uses min(block size, page size) as the
-+# default data unit size, so this tests 4K data units on a 32K-block
-+# filesystem, both for the writeback path and for the on-disk ciphertext.
- #
- . ./common/preamble
- _begin_fstest auto quick encrypt
-diff --git a/tests/ext4/310 b/tests/ext4/310
-index 215d3a83cd6d..84473930f8cb 100755
---- a/tests/ext4/310
-+++ b/tests/ext4/310
-@@ -6,7 +6,7 @@
- #
- # Test reading and writing an encrypted file with O_DIRECT on a filesystem
- # with a block size larger than the page size.  The data unit size is the
--# block size by default, so each data unit spans several pages here.
-+# page size by default on such a filesystem.
- #
- . ./common/preamble
- _begin_fstest auto quick encrypt
-diff --git a/tests/generic/580 b/tests/generic/580
-index eff3f2104bfe..bcb984d1fd82 100755
---- a/tests/generic/580
-+++ b/tests/generic/580
-@@ -20,6 +20,7 @@ _require_scratch_encryption -v 2
- 
- _scratch_mkfs_encrypted &>> $seqres.full
- _scratch_mount
-+_require_v1_encryption_support
- 
- test_with_policy_version()
- {
-diff --git a/tests/generic/581 b/tests/generic/581
-index 2773c9108b35..54f31595a832 100755
---- a/tests/generic/581
-+++ b/tests/generic/581
-@@ -33,6 +33,7 @@ _require_scratch_encryption -v 2
- 
- _scratch_mkfs_encrypted &>> $seqres.full
- _scratch_mount
-+_require_v1_encryption_support
- 
- dir=$SCRATCH_MNT/dir
- 
-diff --git a/tests/generic/593 b/tests/generic/593
-index 05f868f92422..61976df8194d 100755
---- a/tests/generic/593
-+++ b/tests/generic/593
-@@ -21,6 +21,7 @@ _require_command "$KEYCTL_PROG" keyctl
- _init_session_keyring
- _scratch_mkfs_encrypted &>> $seqres.full
- _scratch_mount
-+_require_v1_encryption_support
- _require_add_enckey_by_key_id $SCRATCH_MNT
- 
- test_with_policy_version()
-diff --git a/tests/generic/613 b/tests/generic/613
-index 499af18ef476..aadb3893e73e 100755
---- a/tests/generic/613
-+++ b/tests/generic/613
-@@ -26,6 +26,7 @@ _require_command "$XZ_PROG" xz
- 
- _scratch_mkfs_encrypted &>> $seqres.full
- _scratch_mount
-+_require_v1_encryption_support
- 
- echo -e "\n# Adding encryption keys"
- _add_enckey $SCRATCH_MNT "$TEST_RAW_KEY"
--- 
-2.43.7
-
+Fwiw, I have a patch series on top of this that makes procfs own the
+waitqueue and then this whole UAF issues goes away structurally and you
+get to elide that global thing here.
