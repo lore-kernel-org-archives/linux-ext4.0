@@ -1,48 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793717305;
-	b=ohwrqtzX/ZP1ZbrOE6EW0w1Z4HhXLeb+1w0W5ML84XsyCIDjpqvbheWSwE2mp4Ekb73r
-	 65SXAfV1OAF+4g5ok90BbvkgmZ/S6jfWAn+SEhsTCTnx+X1Y9aJWxd3+gRL1aTMf9Vido
-	 z/jREXMeTN5524ECTnuOHYGlvRDRoIvlQFvVKo5cZb4Q5pwpZoaxhEW73rx4L8RjlZIak
-	 wkPL0uPsQQrH8FqR+TUE4STQRFGq3kmKlaXkg47Lly6qxuLD/tGlTe5jdGp2CEci+yTMJ
-	 fXdXT9UISAjTp8TvGw5L1Cr95q0rRHouRk+Mg9bLKKm0eDMqwWZezyDZlabDmDSsajw==
+	t=1793717300;
+	b=5Tm0iVJ4zCJ+8CQzmW+6Fvyc9/g5zWaEJ4kyrSXMKtFrj/TFyeVJ/AxSXlNEslO2acNW
+	 xXVEk2HpktG+Y/i8lV3FUj06S8ELUV1JwmR9xhjw4R5M/sUhtp/vcUL1T9ktkgiRYUZ0y
+	 qu82PGbFsTM7AzcZXoDpJ/j7Gjl2yjBVMTbqXNsLacntkvjuvdJWJhCqIpYzocPpHImEE
+	 Bdje4KD0ALNBe4SXj9+tyaAMqSgZIy+J5YxChusou0pCATVaM7FToZUu9yaf7ZRjGwd9g
+	 aQWEmcKlNMmzb944DsSX7RdA7JqRIoOX7Tn0v7VyeuJD2B/R4UauaCEpr1N9Mw08Ojw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793717305;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793717300;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=c0x/bwvUTy91TeSNlshE2x6EC5UWF1SAOxo9ylrayLg=;
-	b=5mPQym73+iKZn6w2LBq2+N3PywUVFCYBiyWcqAsRMVAhtudsa60NDRWaqq16d2U/vLAa
-	 SFxjqT6a3/RpuCcZTGtv9uEqyHmeTayqb9Ng7+vfd7nZnt3buk1tICkQZ0522vatsA3n6
-	 WRqob25JFY/7fn8UEZmVofXRCSbX9B+RZTUZhig5kgzxwpEWEAUsPEfyQjN/RZMGp49W1
-	 jT8xX4OB+YopWFRx6QVFmMWixQWD4Xsd+R39zuvdRO/wWZHv3jb0QNWY8NTO+gpIPRP38
-	 ewkhtuQSHS6EnxQirZSAnvqPb/+C+W/cecPBzi5UlWneg3xEQx9yA2u3j7V1dFC50fw==
+	bh=/kElDKkabdJCRO6xnlGV31zxVfj0y3IarZ4wubDtz0o=;
+	b=zGcTJdpQw115apLDXs21JEP85JxCRiQ50LFcexoGVtt0aqMXVRaHQEtX4R7B4S2t6++Q
+	 qJmiQwxe5EugIAXaK2UK2wnU/g1HFDBkBbbBkfsAKLOSG7puvLf9j+YHfRMX3ZVzkCi9p
+	 a9nKV8Uq+BPnODMsA1IfcU/EmGW30SM4vHaiNZTCiRYyHhIaV+loYO+JjRjz8bL6jySIn
+	 4lzNM5QFsezQAtrnwO1TL/Mnac/i0VzRqVmwVZLcGOFvpgaBldvqe6+yA9BE8YX/HOer0
+	 TMYJHCSAn0QX0kevuVxcCPv9VJHUOiQEtXy51hai0Kl/0TNASdgx8bJJtM99Pno3oow==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=bqxUBmmI;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=LexbkyPl;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F1179606B250;
-	Tue,  3 Nov 2026 14:48:24 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8558C6071C31;
+	Tue,  3 Nov 2026 14:48:20 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=bqxUBmmI
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B29171F000C1;
-	Tue,  3 Nov 2026 14:48:22 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=LexbkyPl
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id F41511F00A18;
+	Tue,  3 Nov 2026 14:48:18 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793717304;
-	bh=c0x/bwvUTy91TeSNlshE2x6EC5UWF1SAOxo9ylrayLg=;
+	s=k20260515; t=1793717300;
+	bh=/kElDKkabdJCRO6xnlGV31zxVfj0y3IarZ4wubDtz0o=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=bqxUBmmIruc8WVpdDnTaZKZMybp6tbdqSNtX5Vxb8SbRLH8Zr2JWwBPY98aQ3hFcO
-	 mF4KERe0Pl6zVdX7ZTe2YfvSwUDpjVOk0tXjo8nokMnupOaJWZpwf9x3s1jjDqLc7o
-	 D8x2o27+nwq7964W+Sy/E0e8KLqKLtVO62ftCwu5g7mpOe3sE4UYTyU1eKEd9wvkG6
-	 9ziGsoyYsjc+8FEQzGARNtSKo/GIQynC+oiEc7kqzm/+yyy218WWaRIIGwPjaGFK1d
-	 0aiHWvAjGKyvLg2SLb3ZdKLVkElsDVk3YwkpAFqEpwcF1NBvaDa6WRGXNTZsB/rjMv
-	 m/ZkDBbjhFEUA==
-Message-ID: <sashiko-outbox-195500@kernel.org>
+	b=LexbkyPlz2zQIYc8bF2pRjKX/AkvfQPkVIaTn+eJLpPY+XRILitZ5nAWg6f3Tusuh
+	 HQNETtvJbmEhM0aoKtzkgu0kgjOexpa4LlDw0I6/3+mwhTU3usX4A/HlO3gr8J6oLM
+	 IgH6VaEhvysagiE3cAOglcKn4CUmS6tVKtwMnQexbp3BGK7R3zHHh+uU933vnYx9Ua
+	 HvERM1FpNfN9QoeRRHMNLIBS3U06l9Wt5PRzW5n7A08d1qMfsTfUwwoEI1pq6/YOvV
+	 5vPuxcrk8/zjzD9bphuDNnUp+Mj8VlIBw+rT8egZkVw3b5mCtS0M+aGGgGqwKCSnhr
+	 y91xEUDL0eaDg==
+Message-ID: <sashiko-outbox-195498@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH RFC 28/38] scsi: esas2r: bound the lengths of the HBA,
- SMP and firmware ioctls
+Subject: Re: [PATCH RFC 26/38] powerpc/crash_dump: recover from a machine
+ check in copy_oldmem_page()
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Christian Brauner" <brauner@kernel.org>
 Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.com>, "Josef
@@ -51,18 +51,16 @@ Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.
  Gleixner" <tglx@kernel.org>, "Al Viro" <viro@zeniv.linux.org.uk>, "Jonathan
  Corbet" <corbet@lwn.net>, "Christoph Hellwig" <hch@lst.de>, "Greg
  Kroah-Hartman" <gregkh@suse.de>, "Joel Granados" <joel.granados@kernel.org>, "Kees
- Cook" <kees@kernel.org>, "Jan Kara" <jack@suse.cz>, "Jan Kara" <jack@suse.com>, linux-s390@vger.kernel.org, linux-scsi@vger.kernel.org, coreteam@netfilter.org, kexec@lists.infradead.org, linux-pci@vger.kernel.org, linux-sound@vger.kernel.org, dri-devel@lists.freedesktop.org, linux-hwmon@vger.kernel.org, linux-mm@kvack.org, linux-usb@vger.kernel.org, samba-technical@lists.samba.org, sparclinux@vger.kernel.org, linux-m68k@lists.linux-m68k.org, linux-serial@vger.kernel.org, "Takashi
- Iwai" <tiwai@suse.de>, linux-input@vger.kernel.org, linux-raid@vger.kernel.org, linux-ext4@vger.kernel.org, linux-modules@vger.kernel.org, "Chuck
- Lever" <cel@kernel.org>, tytso@mit.edu, dmitry.torokhov@gmail.com, "Petr
- Pavlu" <petr.pavlu@suse.com>, "Anna Schumaker" <anna@kernel.org>, yukuai@fygo.io, "Heiko
+ Cook" <kees@kernel.org>, "Jan Kara" <jack@suse.cz>, "Jan Kara" <jack@suse.com>, linux-s390@vger.kernel.org, coreteam@netfilter.org, kexec@lists.infradead.org, linux-pci@vger.kernel.org, linux-hwmon@vger.kernel.org, linux-usb@vger.kernel.org, samba-technical@lists.samba.org, linux-m68k@lists.linux-m68k.org, linux-serial@vger.kernel.org, "Takashi
+ Iwai" <tiwai@suse.de>, linux-ext4@vger.kernel.org, "Chuck Lever" <cel@kernel.org>, tytso@mit.edu, "Heiko
  Carstens" <hca@linux.ibm.com>, "Vasily Gorbik" <gor@linux.ibm.com>, "Alexander
  Gordeev" <agordeev@linux.ibm.com>, "Christian Borntraeger" <borntraeger@linux.ibm.com>
-In-Reply-To: <20261102-work-procfs-bugfixes-v1-28-59422ed3e465@kernel.org>
+In-Reply-To: <20261102-work-procfs-bugfixes-v1-26-59422ed3e465@kernel.org>
 References: <20261102-work-procfs-bugfixes-v1-0-59422ed3e465@kernel.org>
- <20261102-work-procfs-bugfixes-v1-28-59422ed3e465@kernel.org>
+ <20261102-work-procfs-bugfixes-v1-26-59422ed3e465@kernel.org>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Tue, 03 Nov 2026 14:48:22 +0000
+Date: Tue, 03 Nov 2026 14:48:18 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -72,94 +70,34 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-Thank you for your contribution! Sashiko AI review found 1 potential issue(=
-s) to consider:
-- [High] scsi: esas2r: TOCTOU race on data_length in handle_hba_ioctl() via=
- read_hw()
---
+> A capture kernel reads the memory of the crashed kernel, and that memory
+> may well have uncorrectable errors. On powerpc a machine check in the
+> kernel is only recovered from if the instruction that took it has an
+> exception table entry (cf. mce_common_process_ue()). copy_oldmem_page()
+> copies with copy_to_iter(). For a read() of /proc/vmcore that is a user
+> copy, all of whose loads have exception table entries, so the machine
+> check turns into a short copy and read_from_oldmem() returns -EFAULT.
+>=20
+> But since commit 4a22fd20379c ("vmcore: convert __read_vmcore to use an
+> iov_iter") /proc/vmcore can be spliced too, and splice(), sendfile()
+> and copy_file_range() copy into kernel pages with memcpy(), which has
+> no exception table entries. A machine check there panics the capture
+> kernel. The same goes for the reads of the ELF headers and notes that
+> vmcore does itself.
+>=20
+> Copy with _copy_mc_to_iter() instead. PPC64 selects ARCH_HAS_COPY_MC
+> and there it uses copy_mc_generic() for kernel and user destinations
+> alike, which has the exception table entries. Everywhere else it is
+> _copy_to_iter().
+>=20
+> Reported-by: Chris Mason <mason@kernel.org>
+> Fixes: 4a22fd20379c ("vmcore: convert __read_vmcore to use an iov_iter")
+> Cc: stable@vger.kernel.org
+> Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 
-commit 8af21917bc01e9991b2ab872e7a4c38c91a6e388
-Author: Christian Brauner <brauner@kernel.org>
-
-scsi: esas2r: bound the lengths of the HBA, SMP and firmware ioctls
-
-This commit adds bounds checks on user-supplied lengths for the HBA, SMP,
-and firmware ioctls in esas2r to prevent out-of-bounds reads and writes past
-the end of struct atto_express_ioctl and a->local_atto_ioctl.
-
-> diff --git a/drivers/scsi/esas2r/esas2r_ioctl.c b/drivers/scsi/esas2r/esa=
-s2r_ioctl.c
-> index 3f7c1d131ec34..f99318f61c934 100644
-> --- a/drivers/scsi/esas2r/esas2r_ioctl.c
-> +++ b/drivers/scsi/esas2r/esas2r_ioctl.c
-
-[ ... ]
-
-> @@ -1221,11 +1231,16 @@ static void hba_ioctl_done_callback(struct esas2r=
-_adapter *a,
->  	}
->  }
-> =20
-> +/* @room is the size of the buffer that starts with @ioctl_hba. */
->  u8 handle_hba_ioctl(struct esas2r_adapter *a,
-> -		    struct atto_ioctl *ioctl_hba)
-> +		    struct atto_ioctl *ioctl_hba, size_t room)
->  {
->  	struct esas2r_buffered_ioctl bi;
-> =20
-> +	/* The data follows @ioctl_hba in the same buffer. */
-> +	if (ioctl_hba->data_length > room - sizeof(struct atto_ioctl))
-> +		return IOCTL_INVALID_PARAM;
-> +
->  	memset(&bi, 0, sizeof(bi));
-> =20
->  	bi.a =3D a;
-
-[Severity: High]
-Can a concurrent write_hw() bypass this bounds check when handle_hba_ioctl()
-is called from read_hw()?
-
-In drivers/scsi/esas2r/esas2r_main.c, read_hw() and write_hw() both operate
-on the shared a->local_atto_ioctl buffer without holding a driver lock (and
-kernfs only serializes per open file description via of->mutex, not across
-separate file descriptors):
-
-drivers/scsi/esas2r/esas2r_main.c:read_hw() {
-	...
-	if (handle_hba_ioctl(a, a->local_atto_ioctl,
-			     sizeof(struct atto_ioctl)) !=3D IOCTL_SUCCESS)
-		return -ENOMEM;
-	...
-}
-
-drivers/scsi/esas2r/esas2r_main.c:write_hw() {
-	...
-	memset(a->local_atto_ioctl, 0, sizeof(struct atto_ioctl));
-	memcpy(a->local_atto_ioctl, buf, length);
-	...
-}
-
-Inside handle_hba_ioctl(), ioctl_hba->data_length is read twice without
-synchronization:
-
-drivers/scsi/esas2r/esas2r_ioctl.c:handle_hba_ioctl() {
-	if (ioctl_hba->data_length > room - sizeof(struct atto_ioctl))
-		return IOCTL_INVALID_PARAM;
-
-	memset(&bi, 0, sizeof(bi));
-
-	bi.a =3D a;
-	bi.ioctl =3D ioctl_hba;
-	bi.length =3D sizeof(struct atto_ioctl) + ioctl_hba->data_length;
-	...
-	return handle_buffered_ioctl(&bi);
-}
-
-If write_hw() overwrites a->local_atto_ioctl->data_length with a non-zero
-value between the bounds check and the assignment to bi.length, wouldn't
-handle_buffered_ioctl() still read and write bi.length bytes past the end of
-a->local_atto_ioctl?
+Sashiko has reviewed this patch and found no issues.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261102-work-procf=
-s-bugfixes-v1-0-59422ed3e465@kernel.org?part=3D28
+s-bugfixes-v1-0-59422ed3e465@kernel.org?part=3D26
+
