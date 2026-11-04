@@ -1,45 +1,45 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793819950;
-	b=gnM6b721FWOAViWdy38LzFjny4lN3EM1kUn/kZwqtMotMozDOr/d1WwXcM4KsqjOvIy0
-	 dRO7u4qBgbOoLiVpsoRm8YB+fJDHPPwBWJYz3nHD110Mw4rf/sKanJZCFZPKX4ZY50wTK
-	 v2SG5XyfE0ICyf37caFzLkH5XhPEzRemZkp34p0Vgkhw69eYjNya06NPElSOC9iWZQvyT
-	 6VcNh+G7CrNHVrEFhM8/wq8+fr6oxQWbWjZ7nYpqX9QTuT9hJt3Ja9rjLK7cq78wtcthH
-	 UFKbb4pacsPkLzYd0g3AD8qXRx1sIzWdhAM/OWWhp1m0ixZq7NzhKGGEnw+8TtQGg8w==
+	t=1793819978;
+	b=qZ7y8/maU8FhIztwLp5801ZxcmYwLQwXKJTB/CG1G3RpzDGgCzs5Ygnit7enfmj2IpSo
+	 weJugtbV/GVoS+NtI3aPnY2E4TRVC/x3m/9qbLl3GzKS8/w9i4KK1CPLVfG0gO6ZIp4ph
+	 wR70j1jenQOOphIJMrNwZXmGKp40yKDlKnbdjgYMV2y4KkKeSRgp1x3e6VwiFNaJ82dBN
+	 n9fpKvG3FIP/I2CxlVx7w0Zdj4STqItJVMqfs9/uGtwm4Z5PTaSnyy3I1A4m3R+xkaWKo
+	 FG1hDdkKTX/ixJ0h3/sTZqI9/UiaDj+JvW7tKpWS/P+mQ6J/oyEjM+cr49ePICF1Law==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793819950;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793819978;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
 	 In-Reply-To:References:MIME-Version:Content-Type:X-Mailer:
 	 X-Developer-Signature:X-Developer-Key:Content-Transfer-Encoding;
-	bh=mdnthwMs9LvqnLJy6kPpeiwqrlhi6ADC7izliWiN2IE=;
-	b=y0DuHJ6Hqh10zF2HxgCOZ29yff9MPETAKUvhzDGYmuZrZ66COCwSFG90roW8M3j2X2HO
-	 6RaPAgJkkTmKzCWsNIqaatPRF4yf1JcPEM0VF/jnIZ3tr7eQotr698uCF3TcQUtPSJCdN
-	 3SeQ+NTNdoCy8OqpHEJRvd9Z+hJrJAuaqak09hZJpfrDNWryUuYwA3irwmolo/jQ5C5l0
-	 iyGQ1klJiLy6TjA839mbqVHIvI3OTPii9PLWLlma7UjgrAPd1A29Fyll6akOaTUMkCk73
-	 5m7ayUy8M+2qP+ZXXwiL3d2UM1i5P6LJHnaFryRLnLdmKZMp1V4WXD7V+18gbdR0tQA==
+	bh=3ZyIQLij17XFBIkY/FnNnjbp2RgAs/rkMBTgRuVD6WA=;
+	b=I5x2YtlNi2yCYDfmQMHISeYj4oMHwym9B0YNJUVXHiufcu+eySIP4GHDLefClHb78zHG
+	 Zn2fnk9hs8ogMpjYt/77o0rfNUXDKnZkP0q8woRZCqpegJ0oDm62LJVHrFKgvHDg3NyBa
+	 LhZdsLJKshuHGM11MtBRuvMpqTpLn3I6iHKEtIk/F4BPpR5jNbMg5PjMzxoAKlHYUQvC6
+	 JP2QvpD1ROI6w47PeP6R896C1zRCsK7+WQgxkj9wV3nA6tYBRvgtrwZ+LYDf/7yNnw+ZN
+	 uTNYFp3DBUfztrAQFFPwTAy+hL5Nznl2QskAaoLgjDheuFyHFwZdQOtxE7tqQL1OzUA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ijnLltQe;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=UquQVFdG;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B8603606D834;
-	Wed,  4 Nov 2026 19:19:09 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 874B1606A329;
+	Wed,  4 Nov 2026 19:19:38 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ijnLltQe
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C86A61F000C1;
-	Wed,  4 Nov 2026 19:18:57 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=UquQVFdG
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8F2211F000C1;
+	Wed,  4 Nov 2026 19:19:26 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793819949;
-	bh=mdnthwMs9LvqnLJy6kPpeiwqrlhi6ADC7izliWiN2IE=;
+	s=k20260515; t=1793819978;
+	bh=3ZyIQLij17XFBIkY/FnNnjbp2RgAs/rkMBTgRuVD6WA=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=ijnLltQe5Qk+CqE+VUlDwwHbbObH+9ltW/RmuNk6+QVTedz2m/LYfiuF9co7AFJwE
-	 sjrkuOfRO38+K7HcQrICBAwdPPqSWw81opUhQAieZFdKhLDYrT6ksUVuCvctpIzPGG
-	 5IfV2bo/AIGZF92z/NIw2/tSYbEzpTKjlj5R/IpCOGOCq9t1qLgWWrxzM1Ldm3iL6v
-	 jl4JL0l0pT78R+g4k6uEp1SAko5fY5xHs148DGpmxVJocVPvD8ORDyvyCDVv0yKLOp
-	 0BGiObxQ1YUEMDTuDs/OR2Xrm+87BYRn1BsklV+azupKzmP8Z1i0K9CmVfX9sZIjIF
-	 wvV04uPKt3MdQ==
+	b=UquQVFdGSzwe7fOqi+LzTOMp+2rigsfWxIAUBskeYKdDPktAPBz0dC1Ky9xVgLPJ6
+	 PxjYY4ad50AsLCrFoewzc6rxKhLSxBpDvF0I5ej6BOl/KhPCUg0fxW0LnI/ODrAteZ
+	 gjr5s8RQxg56swgMcrzZtkIliG4rHYkP/qWWVil89NvValFsxYuugkdm3C+LD7HEVh
+	 JaWz4IeTKnJ3KLOVpGdXpdtkBFXK3vnj1bwsYl7cZuhnH0ZL7cCDtZWYuzFyV19v4t
+	 59bUwTSf4dkWbRcTPcvwXUGjo4Xs+7a4ChNX/KHaOiJQMZrRfbBtelWToON7Uage1C
+	 8mpDuOEVUITsA==
 From: Christian Brauner <brauner@kernel.org>
 To: linux-fsdevel@vger.kernel.org
 Cc: Linus Torvalds <torvalds@linux-foundation.org>,
@@ -99,10 +99,11 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	linux-modules@vger.kernel.org,
 	linux-debuggers@vger.kernel.org,
 	"Christian Brauner (Amutable)" <brauner@kernel.org>,
-	Chuck Lever <cel@kernel.org>
-Subject: [PATCH RESEND v2 12/51] powerpc/rtas: consume the whole write to /proc/powerpc/rtas/progress
-Date: Wed,  4 Nov 2026 20:18:55 +0100
-Message-ID: <20261104-work-procfs-bugfixes-v2-12-021c84d852e0@kernel.org>
+	Chuck Lever <cel@kernel.org>,
+	stable@vger.kernel.org
+Subject: [PATCH RESEND v2 14/51] proc: sysctl: don't stop readdir at an entry that is being unregistered
+Date: Wed,  4 Nov 2026 20:19:24 +0100
+Message-ID: <20261104-work-procfs-bugfixes-v2-14-021c84d852e0@kernel.org>
 In-Reply-To: <20261104-work-procfs-bugfixes-v2-0-021c84d852e0@kernel.org>
 References: <20261104-work-procfs-bugfixes-v2-0-021c84d852e0@kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -116,42 +117,49 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1217; i=brauner@kernel.org; h=from:subject:message-id; bh=uNEn+pHXbIRRMkqtNF6NnFXDW3eMy9Pk3SJ7wJuNwck=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9brzZHzRlctZde+1Go+8eGv7b1+cVSZ7+f//NhYzz+ 8+/DW/t7ChlYRDjYpAVU2RxaDcJl1vOU7HZKFMDZg4rE8gQBi5OAZhI5ROG/2mHUo8Ur0zzZ3Z9 kx7D/2mua/jtI8eaYjr1fyTPTo02WcfIcOywWBSj5altb2eddZvFnrJ1ZrTjumSG/rNnerMtg50 vcgMA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1722; i=brauner@kernel.org; h=from:subject:message-id; bh=6hLGzd3ohIjIvoG2NrLKRAR6DerSlran3UFG44ON0F0=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9bryzb4l1yo+SbW0v26c6WF3kejzthlPTlKvH65zrf 4ekRggkdJSyMIhxMciKKbI4tJuEyy3nqdhslKkBM4eVCWQIAxenAExkZRMjw7lnT3e45jJIFvEe lD2X/fbQ8Qfz7ab9fzQ1681BpYwLPlsZfjGre3twV17+P+2PxgzpuirDdx07b2yVkzfcP7Xlxf1 UFxYA
 X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 Content-Transfer-Encoding: 8bit
 
-ppc_rtas_progress_write() shows the first 255 bytes of a write and
-returns that many, so a writer that loops until everything is written
-shows the rest as a second message. Return the whole count, the rest is
-ignored.
+proc_sys_fill_cache() creates the inode of an entry that has no dentry
+yet. Since ace0c791e6c3 ("proc/sysctl: Don't grab i_lock under
+sysctl_lock.") proc_sys_make_inode() refuses to do that once the table
+is being unregistered and fails with -ENOENT. readdir takes every table
+it lists into use and unregister_sysctl_table() marks the table as
+being unregistered before it waits for readdir to let go of it. So an
+entry that is unregistered right then makes proc_sys_fill_cache() fail,
+proc_sys_readdir() stops there and returns 0. If that getdents64() call
+hadn't emitted anything before that entry userspace sees the end of the
+directory and never gets the entries behind it. A listing of
+/proc/sys/net/ipv6/conf can end early that way while a device goes
+away.
 
-Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
+So skip an entry whose table is being unregistered, like readdir
+already skips a link it can't follow. Lookup treats such an entry as
+gone too since ea5751ccd665 ("proc/sysctl: don't return ENOMEM on
+lookup when a table is unregistering").
+
+Fixes: ace0c791e6c3 ("proc/sysctl: Don't grab i_lock under sysctl_lock.")
+Cc: stable@vger.kernel.org
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- arch/powerpc/kernel/rtas-proc.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ fs/proc/proc_sysctl.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/arch/powerpc/kernel/rtas-proc.c b/arch/powerpc/kernel/rtas-proc.c
-index f38df72e64b8..89b165986851 100644
---- a/arch/powerpc/kernel/rtas-proc.c
-+++ b/arch/powerpc/kernel/rtas-proc.c
-@@ -311,6 +311,7 @@ static int ppc_rtas_poweron_show(struct seq_file *m, void *v)
- static ssize_t ppc_rtas_progress_write(struct file *file,
- 		const char __user *buf, size_t count, loff_t *ppos)
- {
-+	size_t len = count;
- 	unsigned long hex;
+diff --git a/fs/proc/proc_sysctl.c b/fs/proc/proc_sysctl.c
+index 6c0859c66563..b4a309d49698 100644
+--- a/fs/proc/proc_sysctl.c
++++ b/fs/proc/proc_sysctl.c
+@@ -704,6 +704,9 @@ static bool proc_sys_fill_cache(struct file *file,
+ 			if (unlikely(res)) {
+ 				dput(child);
  
- 	if (count >= MAX_LINELENGTH)
-@@ -324,7 +325,7 @@ static ssize_t ppc_rtas_progress_write(struct file *file,
- 	hex = simple_strtoul(progress_led, NULL, 10);
++				/* skip an entry whose table is being unregistered */
++				if (res == ERR_PTR(-ENOENT))
++					return true;
+ 				if (IS_ERR(res))
+ 					return false;
  
- 	rtas_progress ((char *)progress_led, hex);
--	return count;
-+	return len;
- 
- 	/* clear the line */
- 	/* rtas_progress("                   ", 0xffff);*/
 
 -- 
 2.53.0
