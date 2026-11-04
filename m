@@ -1,110 +1,57 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793821866;
-	b=4eEokNWp6HZIKPnQBbbE0exeDxdYL2LkjV+aVEl072MIgkYVrGH2Qd7Bzt1dnO+4d3fr
-	 7lpsnULBn9QDirYTsb4PRp9ZMLdaqZ2Tk3+xBZyYbjAilZ3FwXMajL/Utzle4ziGKRUts
-	 eL9HvG6azgS4FjIEsrYxIk9f6ynlNVGQAVVdUjdDfvArMMrAzYwF4DRKnSQ8OmxNJJg+j
-	 sBFTPOfT6LdVsjQaz3R7QQfjCtUSflpH6svXWVj8NC8u6hGM9tkY3emgrgP7sGh37l59Z
-	 VGhunzERI7HgSqqdtEmDYmPgnIF6Hn6l74UasatzASp9P2+sT9rfrgnb0jiSiV6BgKg==
+	t=1793821890;
+	b=UixCXPfD3a8MzPNgHmWKH8w1fEjyLnT7BDY6pQxFizMvlOo5uzzIwniMQ2YM42rd3ZI1
+	 YNKoYkm/je/W8ZrpvexOSZf+8QRs7HX90AiPvBG77QXlXPuqfJAosfr2kbHKYX2qkOHzu
+	 EiLVGzuWtrU14UHDOSb4MN03A1u2kRSgUcBUizQnQfFSm81uPqaztfl72PmyHdTY3DG0l
+	 PP0LwjGHiOI4JM8ggF4ZCXRMX0DmjEGBndNMVNPUyv9WLSOGjWDOsAU0WyDItt5ISC/8h
+	 Rywyf/XiAjEUV2VZZVYjqTdXbqbzdAHdx2gU34MoTiYY8/dhd0zJqHGraCN8M+AjELQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793821866;
-	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
-	 In-Reply-To:References:MIME-Version:Content-Type:X-Mailer:
-	 X-Developer-Signature:X-Developer-Key:Content-Transfer-Encoding;
-	bh=nEQe0uyLMhpY0v6D+NYVpfdWFgM7DE6SumWpafCq12g=;
-	b=DmUQzX+uhxC73RSUT75Hz61XxufgTKqE4bCgFlTCCDqZVHX90Odyi72nRJ+brNPf8Q7B
-	 0Q+cLxHZ1Y6m+FjGNCCFcRC8YDBTfgPmfbAA2pcK+esfVWKdJHtHyiv/VaNvh9EYmfpYF
-	 jnY/K+ddYV18Klxc5Q4ERClD1HagD2rfQwbMk/E4Q8UpkqSbfyMOhEny8QAbehF7yMA4U
-	 lqotrZvsJ1hxHtixePUsSodKc6rypwZ0A3nj/0rhiUN8GWndEhKeVJ4HPq7CuQMXmv/od
-	 RujJ6uRQ8JTCRIu8v23rQ1jij+FAjNfdcR+wP5U9Wzk1CKsBLhm0BxPJCM35DHMt3Fg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793821890;
+	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
+	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
+	bh=IxJxKooA4bVxA5wejStOMx/9yIbFrchATEfWkVqBn/o=;
+	b=JZHcS6Wu1oz8fj3xfnkhOG2j6GzkxT4Mh8uNMQA29nC0c0G3fUyWKQ34BaWqBmxMvhfE
+	 QCAXZzQdGVMJ1e2P4GFVwD4t4cX3bysp2saW7P7Q9NVCPFl2+w+JSURoRdJWUIfR/aDT0
+	 +49x05QKbak39xrpq1VYNCBAfG3OrRdZvTCTL7gaG2BPlfTp0FU8Uzk9iN7atREdO1a/d
+	 4MARd0kmpIm30nz7qv/ocmxMr6gmCnvBxmD6v68Qn/RgAJYHM+Ukx91UYTVQmqwnw1vGe
+	 Qz52LCp+n96+CSs8uHUxw9ud919gIaNPIn8F7W/MVxT26vm4rOPTfgFXS62iggvN4ww==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=PNR1RL0M;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=iqZRpGOh;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 21A196092BD2;
-	Wed,  4 Nov 2026 19:51:05 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9B730606BA01;
+	Wed,  4 Nov 2026 19:51:30 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=PNR1RL0M
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7FE711F000C1;
-	Wed,  4 Nov 2026 19:50:53 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=iqZRpGOh
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 785F91F00919;
+	Wed,  4 Nov 2026 19:51:29 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793821865;
-	bh=nEQe0uyLMhpY0v6D+NYVpfdWFgM7DE6SumWpafCq12g=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=PNR1RL0MdGjcQerL1pRweO0sDyx5srKRXEN8HDA+Rakv7ORmxGv0M2c4pYe9RS1TQ
-	 0hEIzB+5FOF0UCUZDy2W4t4c7HuYIzaQJTIIdmOzZYD7DdxjyO4UPMNhgtsSPIcilP
-	 VKQkCD781my0Xdy0OOhH6pW79rQPVmEqRIUUxd2NdY92712CXUTz6e3VpbB0hBPCek
-	 OuNQy8Ti5KEKBVAOmNI7xjQ/es+OJejnGIOCcQv3TLP2VhuvJQoptNjkpFmMJ9AFiD
-	 0pSOj7vYCxBvgAkRaIbFsX+qFB2wBAEL9TsIawHW/SCRe0fGQn34mw49XBQgFh27d6
-	 NX3UXBJy8hndg==
-From: Christian Brauner <brauner@kernel.org>
-To: linux-fsdevel@vger.kernel.org
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-	Jann Horn <jannh@google.com>,
-	Josef Bacik <josef@toxicpanda.com>,
-	Chris Mason <mason@kernel.org>,
-	Jeff Layton <jlayton@kernel.org>,
-	NeilBrown <neil@brown.name>,
-	Eric Dumazet <edumazet@kernel.org>,
-	Thomas Gleixner <tglx@kernel.org>,
-	Al Viro <viro@zeniv.linux.org.uk>,
-	Jonathan Corbet <corbet@lwn.net>,
-	Christoph Hellwig <hch@lst.de>,
-	Greg Kroah-Hartman <gregkh@suse.de>,
-	Joel Granados <joel.granados@kernel.org>,
-	Kees Cook <kees@kernel.org>,
-	Jan Kara <jack@suse.cz>,
-	Jan Kara <jack@suse.com>,
-	linux-kernel@vger.kernel.org,
-	linux-nfs@vger.kernel.org,
-	linux-acpi@vger.kernel.org,
-	linux-kselftest@vger.kernel.org,
-	linux-s390@vger.kernel.org,
-	linux-scsi@vger.kernel.org,
-	linux-um@lists.infradead.org,
-	linux-wireless@vger.kernel.org,
-	linuxppc-dev@lists.ozlabs.org,
-	netdev@vger.kernel.org,
-	ntfs3@lists.linux.dev,
-	platform-driver-x86@vger.kernel.org,
-	coreteam@netfilter.org,
-	kexec@lists.infradead.org,
-	linux-pci@vger.kernel.org,
-	linux-sound@vger.kernel.org,
-	netfilter-devel@vger.kernel.org,
-	dri-devel@lists.freedesktop.org,
-	ibm-acpi-devel@lists.sourceforge.net,
-	jfs-discussion@lists.sourceforge.net,
-	linux-alpha@vger.kernel.org,
-	linux-arm-kernel@lists.infradead.org,
-	linux-cifs@vger.kernel.org,
-	linux-fbdev@vger.kernel.org,
-	linux-hwmon@vger.kernel.org,
-	linux-mm@kvack.org,
-	linux-sh@vger.kernel.org,
-	linux-usb@vger.kernel.org,
-	samba-technical@lists.samba.org,
-	sparclinux@vger.kernel.org,
-	linux-m68k@lists.linux-m68k.org,
-	linux-doc@vger.kernel.org,
-	linux-serial@vger.kernel.org,
-	linux-atm-general@lists.sourceforge.net,
-	Takashi Iwai <tiwai@suse.de>,
-	linux-input@vger.kernel.org,
-	linux-raid@vger.kernel.org,
-	linux-ext4@vger.kernel.org,
-	linux-modules@vger.kernel.org,
-	linux-debuggers@vger.kernel.org,
-	"Christian Brauner (Amutable)" <brauner@kernel.org>,
-	Chuck Lever <cel@kernel.org>
-Subject: [PATCH RESEND v2 05/30] nfsd: factor out setting up the exports seq_file
-Date: Wed,  4 Nov 2026 20:50:51 +0100
-Message-ID: <20261104-work-procfs-fs-v2-5-319e0f9a8aae@kernel.org>
-In-Reply-To: <20261104-work-procfs-fs-v2-0-319e0f9a8aae@kernel.org>
-References: <20261104-work-procfs-fs-v2-0-319e0f9a8aae@kernel.org>
+	s=k20260515; t=1793821890;
+	bh=IxJxKooA4bVxA5wejStOMx/9yIbFrchATEfWkVqBn/o=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=iqZRpGOhGtUs1PfmlyQP7y/lEokp4FAva4HbJMTTyYoOynnqg1n+IPWs/gTfvoYPu
+	 6C7Jh2CGKstiFuxPtRwU7xc2tPT1Y77q44CaiTo3wzeTNc0Ds6TT0Bc7yzNzq5Qoci
+	 XXl8H+h/jN3otpgbP57kV8m0MWIAg4vOIYQNBBAo1cTpgiYpAgqKdvXT/iv7REKQXf
+	 tr4Dp4w275xo/lZ+kYwZsZx+aFW7uh0oroETGxi2nh5n+obHY2bt81LgLV3Tjy7ioj
+	 OhxYCvnGf2psWNlLgR4056h0ce/kt+47KVErf3+wTjtozfGszV9UXROo9tgTqSsyFg
+	 qkF29iNh0lQ4w==
+Date: Wed, 4 Nov 2026 11:51:27 -0800
+From: Eric Biggers <ebiggers@kernel.org>
+To: Baokun Li <libaokun@linux.alibaba.com>
+Cc: linux-fscrypt@vger.kernel.org, jaegeuk@kernel.org, tytso@mit.edu,
+	linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca, jack@suse.cz,
+	yi.zhang@huawei.com, ojaswin@linux.ibm.com, ritesh.list@gmail.com,
+	linux-kernel@vger.kernel.org
+Subject: Re: [PATCH 1/4] fscrypt: Cap data units at the page size
+Message-ID: <20261104195127.GA1971@quark>
+References: <20261103153132.4154855-1-libaokun@linux.alibaba.com>
+ <20261103153132.4154855-2-libaokun@linux.alibaba.com>
+ <20261103224006.GC2281@quark>
+ <922240f9-8233-4466-a787-2f7ddba7c490@linux.alibaba.com>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -114,76 +61,47 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1726; i=brauner@kernel.org; h=from:subject:message-id; bh=vD80ghFjEqER+DW0z2Tx247oQHe2lrzCvRX/1X8RBv4=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS97jE4HGMmWSWebTGtb+f+qbf6t/93PO9leHL1HTEbl YAwmQUfO0pZGMS4GGTFFFkc2k3C5ZbzVGw2ytSAmcPKBDKEgYtTACayJpThr5Txruw7h8z+75d5 n1L9ZprSX0ON4zl3v9jMV5lvl7Zx8waG/4W80ze0KR4rWpY6/3hi66zKk8tmbsxvP1RSWORQnvT 3OCsA
-X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <922240f9-8233-4466-a787-2f7ddba7c490@linux.alibaba.com>
 
-Move setting up ->private and taking the reference to the network
-namespace into exports_net_init() and dropping it into
-exports_net_put(). The procfs file needs them without the seq_open()
-and seq_release() around them.
+On Wed, Nov 04, 2026 at 10:31:46AM +0800, Baokun Li wrote:
+> What I had in mind before was to keep the default as min(bs, PS) and
+> allow DU > PS only when explicitly specified, which seemed to give
+> better compatibility.  Cross-machine or cross-page-size cases seem
+> uncommon, and existing machines have probably already avoided them by
+> specifying a 4K or smaller DU.
+> 
+> Keeping the existing default semantics and returning an error in the
+> LBS case for the user to specify seems feasible.  But then
+> test_dummy_encryption and the xfstests cases that use the default would
+> need to specify the DU explicitly, otherwise the LBS + encrypt test
+> coverage would drop a lot.  That is, in the kernel or the tests we
+> always have to set a default DU size.
+> 
+> If you confirm that we should take the route where LBS requires an
+> explicit data unit size and the default is rejected, I can adapt the
+> kernel and xfstests in v2.  Or should we go back to the more compatible
+> DU > page size approach?
 
-No functional changes.
+It will indeed be annoying to have to explicitly specify the data unit
+size, but I don't see a better solution for now, given the complexity of
+supporting data unit sizes larger than the page size.  I think making
+the on-disk format needing PAGE_SIZE to interpret is a no-go.
 
-Acked-by: Chuck Lever <cel@kernel.org>
-Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
----
- fs/nfsd/nfsctl.c | 26 +++++++++++++++++---------
- 1 file changed, 17 insertions(+), 9 deletions(-)
+I suppose that in theory, how FS_IOC_SET_ENCRYPTION_POLICY handles
+log2_data_unit_size=0 could be changed: it could start actually writing
+log2_data_unit_size=12 to disk (rather than writing 0 which means the
+filesystem block size).  I think that can still lead to problems,
+though.  For one FS_IOC_GET_ENCRYPTION_POLICY would return something
+different from what was set.
 
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index f32311f2d7cf..f8ce3c0fb077 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -143,28 +143,36 @@ static const struct file_operations transaction_ops = {
- 	.llseek		= default_llseek,
- };
- 
-+static void exports_net_init(struct net *net, struct seq_file *seq)
-+{
-+	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
-+
-+	seq->private = nn->svc_export_cache;
-+	get_net(net);
-+}
-+
-+static void exports_net_put(struct seq_file *seq)
-+{
-+	struct cache_detail *cd = seq->private;
-+
-+	put_net(cd->net);
-+}
-+
- static int exports_net_open(struct net *net, struct file *file)
- {
- 	int err;
--	struct seq_file *seq;
--	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 
- 	err = seq_open(file, &nfs_exports_op);
- 	if (err)
- 		return err;
- 
--	seq = file->private_data;
--	seq->private = nn->svc_export_cache;
--	get_net(net);
-+	exports_net_init(net, file->private_data);
- 	return 0;
- }
- 
- static int exports_release(struct inode *inode, struct file *file)
- {
--	struct seq_file *seq = file->private_data;
--	struct cache_detail *cd = seq->private;
--
--	put_net(cd->net);
-+	exports_net_put(file->private_data);
- 	return seq_release(inode, file);
- }
- 
+Regarding xfstests, take a look at how common/verity adds $FSV_BLOCKSIZE
+to all 'fsverity enable' commands by default, to select some Merkle tree
+block size that the filesystem supports.  Something similar could be
+done with fscrypt.  Yes, this won't work with v1 encryption policies,
+but v1 policies are obsolete.  Most of the xfstests that use v1 policies
+should just be updated to use v2 instead.  The btrfs folks were working
+on that earlier, since they're not planning to support v1 at all.
 
--- 
-2.53.0
-
+- Eric
