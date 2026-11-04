@@ -1,45 +1,45 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793819993;
-	b=MFym2OydRjdnTwbLMwhTXZEAPntJSwLAP8YhXUw+ePKFzozhWYY8SBYjqweQwJe/OCM1
-	 /5oYjogCR7p78ElyPtAS+hR6q8m3j2FiE/ufODHO8bVz1QGTnZC6+hKA7EzcySX2LuUzX
-	 uFJYTUwci8AL3FUnCe8Sqpti79OtaOsTNzR65e9Z1N39XU7gMEDvm5Zauw5J20o8sjxLS
-	 DDTIXBC3ajs53tbCZthZ0/l5qbMDFN26q04H6/fQ74UsmDxm5OtN27JwmeWDaC/CSodWt
-	 nWN9UtFToJiPrTg7MzjyBz+e6HkZLflcOtIoS0rkcTkmY4ccOl8dn8gHT/u2ZIrZg9g==
+	t=1793820022;
+	b=cmsO9gdmLCf6kG0+xKnfqeOsJkvesfryuf0gdzxA/oGAbbQ0kTO0x6TJhPtVpAV3NktE
+	 Q0ciShAZKmoJjufxUb2QYkHzXWVtx+Sn3W5b2zetbUNSNDUiOdZSDlXqxX5o0WiXjHlCG
+	 oYE6bEtdghiFN7wH0gzNUQGYrVN9eR4BZwWpGBavs88XvjmBy1rD5d1lBqphtNoZtFgHL
+	 gUIrOEVkwTfDnj7h39+a4bTNVvuz8kfaFKTB2aT93C2mocvNuQCH6XlVtir9+amzrlhun
+	 3a3EXDv7THXRbLv0OjE2GTYRwySvsW1IHpxNxqXy+8Q5fUaAWb6w0JH2s5CYREMbLbw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793819993;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793820022;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
 	 In-Reply-To:References:MIME-Version:Content-Type:X-Mailer:
 	 X-Developer-Signature:X-Developer-Key:Content-Transfer-Encoding;
-	bh=0oFqdYtQQ93hmf66Xu9P3kJmoMCkLJeiEqd5UgVqoAA=;
-	b=arFbcheXt5duqwn1REcfwQ+O4cbIxxreJ9qPIuzmRbTR2POQ01AYzRyoNEGbFXUiuUm0
-	 Ksu1Y6CLH15I/Yft9Ob+3J7FsxZFOHhhS7+C22eWQrgx/0YNMV8kHpcs+xRBAPxmKzX7m
-	 2OGT1FyLNfMng/28dpD6Rfy+NSfegM3oByb0iPZSZL8WwVQloq3oMNxpMCVxzeRpK0tDV
-	 A6fkjNciuoMogDJnuUeeZL/o7mxcm0Rp3s9cDAgQv0dke//RrJYbTjGp6u6U8+jd8bRLc
-	 qdeontbP91Onc+V1O5Se/Ee5M8hdoERulwrVxr36PMYGvOmB9nBdhsfKSuFp+ZlwOsQ==
+	bh=bDYBcNUn+VWuCpTwTZF6KvGO9475Dcj2RU9o+tvUNt0=;
+	b=4K/1Q3gT2n4Gfe1SUwTTgT6WSOFI52k08Nl+g9eMmWh0eMM+M7gZQ/RyQVonjduFCbq6
+	 eS6KjL7uocB/XBF0Viq2OnpIKrMCnwgf3AJbgYhxE8Ok534hgvfWm/i60FWSKsActFSHH
+	 p4HglvuJ/qO3mQSIkEELVZuw4qlQOluXlxu9//pFP1RNVu1BNO93uKzm9sjWl0ylETOqq
+	 gdI9JwZW7i0tvT3upwd1gbyTLbkBC5j8uUeKQ0zAMZY+bZeYnmWq/22csxOm5qaHTb2f1
+	 rX4xYzhk/VBgXDi5OisaTc+Jg8xxq7mP77Px0Mbm1m6z0Tz4VPX351ZWCNMpVrHRc3g==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=hz+Hi3BA;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="Xc/lpKFD";
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 045C9606D812;
-	Wed,  4 Nov 2026 19:19:53 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D52C1607264F;
+	Wed,  4 Nov 2026 19:20:21 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=hz+Hi3BA
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 00FB41F00A20;
-	Wed,  4 Nov 2026 19:19:40 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Xc/lpKFD
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id E53051F00919;
+	Wed,  4 Nov 2026 19:20:09 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793819992;
-	bh=0oFqdYtQQ93hmf66Xu9P3kJmoMCkLJeiEqd5UgVqoAA=;
+	s=k20260515; t=1793820021;
+	bh=bDYBcNUn+VWuCpTwTZF6KvGO9475Dcj2RU9o+tvUNt0=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=hz+Hi3BAL89sr/lh4dJvgeuEtclyRy1SO0NwI+zM8ybFv2jV939+Dv5j/nFojjivC
-	 34KWZ812aeES23dMGvAnt3ycz/SqajABSGrcdN3MX9xaOrork7AxoU/7QteXfxvHfl
-	 /V4rWTo2CoC5Jzjt8ZGo2GAXtUIc69Tn9FoUURbwhYdsskX97AesbdGMm73a/kHJmu
-	 TWwsRNLr3d8FIdQP7kWnDBE0CbOSCCNE5mAI3+7DlKk2UgHvWoVbDBDqf4bqYXIQ1F
-	 1/2Tfi4Gd8xeoe7KjATEoAV/9UDvE75iATYms6WdPb3WRBuJ8ZphmbEUZbFmU49bNO
-	 mp7Eo0gjrTdqA==
+	b=Xc/lpKFDn4s3PLh92W7MP/0EYRbr9DtSlo+aTgCoiS4rp456CG2OTm4mdzAcBJWEq
+	 Ldjk5qAoEyhPyjStEGoJwwsLF6muQudRMZSm3dpoh/6WOOqikDwAONtjMuVpHReos4
+	 Y67yz+y4bnZfnPjGe5X72XzUWZlpcgaEPlqDhTQSTzjJGylhHoAXVkmsvgtRloeENx
+	 Ezkm9787vd7BxlmMILJww46DT1dWDqRcMPOg2nMKQMVCbPmPG41MkkecEf01xpeInf
+	 S+AV+2Ll9y4McQGjdLnxElbFeubshKJGcRNGF7y6UPi9zZBWMvJNlUtStZmpr1zHH6
+	 a4kGFVBEfnA0w==
 From: Christian Brauner <brauner@kernel.org>
 To: linux-fsdevel@vger.kernel.org
 Cc: Linus Torvalds <torvalds@linux-foundation.org>,
@@ -101,9 +101,9 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	"Christian Brauner (Amutable)" <brauner@kernel.org>,
 	Chuck Lever <cel@kernel.org>,
 	stable@vger.kernel.org
-Subject: [PATCH RESEND v2 15/51] PCI/proc: don't truncate the position of config space accesses
-Date: Wed,  4 Nov 2026 20:19:38 +0100
-Message-ID: <20261104-work-procfs-bugfixes-v2-15-021c84d852e0@kernel.org>
+Subject: [PATCH RESEND v2 17/51] s390/dasd: don't look in front of the buffer on an empty write
+Date: Wed,  4 Nov 2026 20:20:07 +0100
+Message-ID: <20261104-work-procfs-bugfixes-v2-17-021c84d852e0@kernel.org>
 In-Reply-To: <20261104-work-procfs-bugfixes-v2-0-021c84d852e0@kernel.org>
 References: <20261104-work-procfs-bugfixes-v2-0-021c84d852e0@kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -117,89 +117,34 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2714; i=brauner@kernel.org; h=from:subject:message-id; bh=57Zv3BgjxHPYJgAYtfWWUhWCD6jzurA4v7Zp2iJg+04=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9brzb+9rGxHjWvh7zmt3Cx6bFvVAJkBPctFNvxnKOf apBXbbyHaUsDGJcDLJiiiwO7Sbhcst5KjYbZWrAzGFlAhnCwMUpABNRf8Twz2qLtYhEpvbj94Wu aQbrKrb8tHnS1sSutCx7f+mETxuYtRn+Cnk3vJkpqGW+cuXUS7IR5159W7FMY03xNO+3W9a/8tV 5zgYA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=952; i=brauner@kernel.org; h=from:subject:message-id; bh=vNxDJDpmoyfXJahneUuQ9vEH9eL70g/8w71rNTJgUxc=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9bnywlMF3yW3bTMV5otIz0k5cNnaUnbRb6akLs2LWJ ybd53uyOkpZGMS4GGTFFFkc2k3C5ZbzVGw2ytSAmcPKBDKEgYtTACYyczUjw+J7+6Q6zp3ZqLzq nmj5ZNvI96xHteJ17jyP5eFsniikWcrIcPHN7+NqVe8Wda9KbvPRPx9rN23XpqQDn9ky+1XSGSp leAE=
 X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 Content-Transfer-Encoding: 8bit
 
-proc_bus_pci_write() truncates the file position to an int. A pwrite()
-at an offset like 0xfffff000 turns it negative, the check against the
-size of the config space passes and the count it clamps to ends up
-larger than what was written. The loop then reads past the end of the
-caller's buffer and writes all of it into config space at negative
-offsets, which pci_user_write_config_*() pass on to the config
-accessors unchecked. The write also returns more than it was asked to
-write.
-
-An offset above 4G that truncates to a small positive value writes to
-the start of config space instead. proc_bus_pci_read() keeps the
-position in an unsigned int, so a read at such an offset returns the
-start of config space instead of hitting EOF.
-
-Check the position against the size of the config space before
-narrowing it.
+dasd_get_user_string() strips a trailing newline by looking at the last
+byte that was written. For an empty write that's the byte in front of
+the buffer it just allocated. Only look if something was written.
 
 Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
 Cc: stable@vger.kernel.org
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- drivers/pci/proc.c | 15 ++++++++-------
- 1 file changed, 8 insertions(+), 7 deletions(-)
+ drivers/s390/block/dasd.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/pci/proc.c b/drivers/pci/proc.c
-index 3d7a9ed5fc22..e0dc70123f82 100644
---- a/drivers/pci/proc.c
-+++ b/drivers/pci/proc.c
-@@ -32,8 +32,7 @@ static ssize_t proc_bus_pci_read(struct file *file, char __user *buf,
- 				 size_t nbytes, loff_t *ppos)
- {
- 	struct pci_dev *dev = pde_data(file_inode(file));
--	unsigned int pos = *ppos;
--	unsigned int cnt, size;
-+	unsigned int pos, cnt, size;
- 
- 	/*
- 	 * Normal users can read only the standardized portion of the
-@@ -51,8 +50,9 @@ static ssize_t proc_bus_pci_read(struct file *file, char __user *buf,
- 	if (!nbytes)
- 		return 0;
- 
--	if (pos >= size)
-+	if (*ppos >= size)
- 		return 0;
-+	pos = *ppos;
- 	if (nbytes >= size)
- 		nbytes = size;
- 	if (pos + nbytes > size)
-@@ -119,9 +119,8 @@ static ssize_t proc_bus_pci_write(struct file *file, const char __user *buf,
- {
- 	struct inode *ino = file_inode(file);
- 	struct pci_dev *dev = pde_data(ino);
--	int pos = *ppos;
- 	int size = dev->cfg_size;
--	int cnt, ret;
-+	int pos, cnt, ret;
- 
- 	ret = security_locked_down(LOCKDOWN_PCI_ACCESS);
- 	if (ret)
-@@ -130,14 +129,16 @@ static ssize_t proc_bus_pci_write(struct file *file, const char __user *buf,
- 	if (!nbytes)
- 		return 0;
- 
-+	if (*ppos >= size)
-+		return 0;
-+	pos = *ppos;
-+
- 	if (resource_is_exclusive(&dev->driver_exclusive_resource, pos, nbytes)) {
- 		pci_warn_once(dev, "%s: Unexpected write to kernel-exclusive config offset %x",
- 			      current->comm, pos);
- 		add_taint(TAINT_USER, LOCKDEP_STILL_OK);
+diff --git a/drivers/s390/block/dasd.c b/drivers/s390/block/dasd.c
+index 2ffe404b890f..e97891e58957 100644
+--- a/drivers/s390/block/dasd.c
++++ b/drivers/s390/block/dasd.c
+@@ -933,7 +933,7 @@ char *dasd_get_user_string(const char __user *user_buf, size_t user_len)
+ 		return ERR_PTR(-EFAULT);
  	}
- 
--	if (pos >= size)
--		return 0;
- 	if (nbytes >= size)
- 		nbytes = size;
- 	if (pos + nbytes > size)
+ 	/* got the string, now strip linefeed. */
+-	if (buffer[user_len - 1] == '\n')
++	if (user_len && buffer[user_len - 1] == '\n')
+ 		buffer[user_len - 1] = 0;
+ 	else
+ 		buffer[user_len] = 0;
 
 -- 
 2.53.0
