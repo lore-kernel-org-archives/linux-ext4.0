@@ -1,82 +1,55 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=203.205.221.221
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793779983;
-	b=DbdF+ugc0xeRGkyWw/l5lCE24/1+DKYd/78I3FLstHUcPPVCSjbKTcVk99N/nc8GFKbv
-	 PQRvlcgg2nBuSZ8k4ko67VROEeLylB6XH0hGijq1IoMFleoSVUxLitnVbVVYRCO+lRBEb
-	 ghMidFR+I3GPNL+fj2mCMXtNU7lEqoFmW9kf8OkpQXIfyhj/3TWwaYcyP5sa1503EUAsI
-	 7DOcOhYrNelFF71ucj5IsrvazU6YlhjSXBHm8oVVn0F+f98jxWuYZMgZjWsyFqfqAsTsv
-	 y6079Nq7IC511/84hJsIU3dQbRlO1oiesNJ+zzqyotK5D9gbm7ZPTiclorWqeHgqEpw==
+	t=1793780786;
+	b=k8tl/O7aQNU7zoU3qIPaxPXIMmKrpD46pjxyr280DuZUqMBXH61QCpjqHiRMqB9e5sic
+	 fcDbGThJnBaa7ZC6Abg5BzIESMMUVLSQ7skCdBn+5wcmU+4VtiroeRR1QRFEOZICnEshI
+	 NtqNDBDI9wrt+FW+cJfwB0C11Xl4fPt28e1qIA2SV/hDciwquo1+Le39UVap4XJNcBN+L
+	 7UJI157s/hJdc4To5elNx6fm7UQcyza5R+/w55Dv8pLBhQdp8YoJ1EVMO+ZlAMi0LCTzG
+	 g+1ndV8KLzihc+VuqcXpNx8AbsJpQPwLRp6qPS81vsscWYHtQGmQ2N+Qog1G9/KdbVw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793779983;
-	h=DMARC-Filter:DKIM-Signature:Received:X-QQ-mid:Message-ID:
-	 X-QQ-XMAILINFO:X-QQ-XMRINFO:From:To:Cc:Subject:Date:X-OQ-MSGID:
-	 X-Mailer:MIME-Version:Content-Transfer-Encoding;
-	bh=S/YVX51d+YFgjFTpFmGYpWUbOdKLDllTGQah6OFPrpo=;
-	b=LhS14Qdx6XOTF2M+/zFgtmPwzGhzGmM2wahfOltLkrcb9QJi0yzGiQcv+wROQyRzW/fI
-	 4NteQTkoSIxaWOOTq2dMh+WdNKUeHXMSYDx+OvtG8R732BjsRsp6t+8hKmGZC7nCJxJ3V
-	 ngL4MGWM6BHs0eAGbMW7O3zThzP22Y6G0pzjcDGQsI38D/6WXWG6cKxliXh/F7Ni9uGXS
-	 QGhO/caUipPnYsi7m7/7MPXeo0Eb+Zhh+QcE473DajZtLZerIa9uH561caseJeeZs1YGx
-	 6BsMqhhUwTxRp8P5edwTzVjQeiwM1WyfX8Aq9QXU47HJjXdwICEic5WkIBBN0jXrX1A==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793780786;
+	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
+	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
+	bh=RUh3LAf5cPpiQ5/3sOe7kSUo0VodGP3PWwMfmN37IX0=;
+	b=h9QaffQGaVO+5bYtnqAspcc19fQrRStBRaWAjzN2D0jo0QZzwMU7IG44IqKwb68n70ao
+	 82lzgNDfkm72MKwKcPLTAFNlDWfBki7u/Nw84X9ScYqg9x5PTth4t0hqw3kl7SUFXl2nJ
+	 RS5Pn/W1X814IuOnzEz/wLswrb/JJnREcKFHt2I6xzCpk5smVhe2D7+HwjT/vSBuCFqcb
+	 GgH41/ysNB5DCtiC0oiYhBJ13v0vKqSwxdbSIo7DPHnYbqJbuHLMjRlgweRoIlVhxTNvq
+	 Y2AfjSeXtTVSLwccblCdE2NwHS4CxyOMhly0p1HRus4z0Ae5Fbg1UIJALVJ8oUw33Fg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=qq.com;
-	spf=pass smtp.mailfrom=qq.com;
-	dkim=pass header.d=qq.com header.i=@qq.com header.a=rsa-sha256 header.s=s201512 header.b=TPenK9bW;
-	arc=none smtp.remote-ip=203.205.221.221
-Received: from out203-205-221-221.mail.qq.com (out203-205-221-221.mail.qq.com [203.205.221.221])
-	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=fSvqdmAi;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B385B606A331;
-	Wed,  4 Nov 2026 08:13:01 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org B385B606A331
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=qq.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6199C606A31B
+	for <linux-ext4@vger.kernel.org>; Wed,  4 Nov 2026 08:26:26 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=qq.com header.i=@qq.com header.a=rsa-sha256 header.s=s201512 header.b=TPenK9bW
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=qq.com; s=s201512;
-	t=1793779973; bh=S/YVX51d+YFgjFTpFmGYpWUbOdKLDllTGQah6OFPrpo=;
-	h=From:To:Cc:Subject:Date;
-	b=TPenK9bWMOIf1KC+d1po0I/fMTgIqocugscB0JUDPGac3meIFfHvDhpRmjj0ctMT1
-	 c7OfLGA/jqK3xVYCfVErnBm5XVtRA/Ae7CevWOGRuPbNdDVPpGDxCjK0TDahdLL1+S
-	 26t59iVCAtmnS2NUVih7v+a0Ki8DdpHmBRXbgZz8=
-Received: from shuai-VMware-Virtual-Platform.. ([218.28.192.28])
-	by newxmesmtplogicsvrszb51-1.qq.com (NewEsmtp) with SMTP
-	id 3272383A; Wed, 04 Nov 2026 16:12:39 +0800
-X-QQ-mid: xmsmtpt1793779959td668sw7l
-Message-ID: <tencent_76448BFB81B402CBBF3C529331EEA998FA06@qq.com>
-X-QQ-XMAILINFO: MipYEBg1qKqIq0wuplufvRhP1JDQPijVv6mHXd6vajxUJE4MclRdcZAjoHIlmZ
-	 r7FboEiFeIF4qH194IizylKO12853sP3U866z3B5XcGZ4NAaROmKeaHk8uKuuDk2HK89Uw8aW/g2
-	 LnPvzklKMwDCBlHZt3vLHdmfDNh/vitIArdln0+LyoE25x+Ymwws5gTf0j8EtJ4y64Q8Oc/eySN1
-	 DXos9IDRPE4KXuNgmfaCAacoU0ZAJ+pIVMYRfSW48c0Hy1qI20mskmRlfR5I0m8v4fR4bEJgLBDN
-	 QQqNnzsF3Wr/k4/yJOpNZTHQvP4AVIn+mORDbOw7/vQy7DBuNtyyND2KfVn/44fjh1PXUHuxGnZG
-	 NdVWsY66u5t0gIIawW1VFXA+UM9RHHZzdXtyIliYog4DE1X7G4PlBnRnwr6Hnk6/YoZOdiX9oy9N
-	 Ryr4s417UnwEESy2mU78W1TtcJZd6/bdgCBTwzOm5BUijY4alBhocRe5Bg9yo5XPnThPHubxtv1v
-	 mR4RPyafhDsaAlEvg0IIywrWNQsMaBRArKu1f36Oduzcg6r13z4jUhqvV0LYv225yc8j0wPPW574
-	 RfUrjvvaHR8woESNrjH2ao9NUcp04k1F2wN66p0hHGocwmu9c2ZYmDs2Nbia6oxaB3oZ29SCVOUb
-	 UyzrrwFswEvUXi9nSkwFHAj6iMjrfZQSZy5yovViTXQDnRUmJJAe7jKz/24MaUESEXGeJhgsYFDW
-	 pquE0xXP1yuY2BbPhRFu0Xa9bsc7Hw8vDt04jGdEjlX0v8pOPak/OEjUP+PaYJqBxUIv0Wi4NDmb
-	 pqUYoSoBtM4jY67GmMCMXDSnLxmD6Po/TQ1P1MFAJTNURhB2FkR5G8sMlW/Jpbluc+BBojwQgfYU
-	 jVFY7Y2VzcLK5im0KRURCj2MTACpdY/m7zz9dKfI34rLbcUFqORmbNu7R+i5oGruoWpbmFTWy5p0
-	 OxS9+BDbrdAEqJ4WcQoKmLtYx4tC5xjvuEefu/+o+Ge6f9WEQS74kSq5Y8utl0trPiS6cbNyQv1f
-	 DaR8kOp5CG3+Z7gxAq1pAc+S70e9qnnvnhb7rq6OPuZ3oJK7pDsTVbGeAP8ABsAl/Em/OPzzGp3b
-	 TsySaK
-X-QQ-XMRINFO: M/715EihBoGS47X28/vv4NpnfpeBLnr4Qg==
-From: Shuai Liu <847807867@qq.com>
-To: linux-ext4@vger.kernel.org
-Cc: tytso@mit.edu,
-	adilger.kernel@dilger.ca,
-	libaokun@linux.alibaba.com,
-	jack@suse.cz,
-	ojaswin@linux.ibm.com,
-	ritesh.list@gmail.com,
-	yi.zhang@huawei.com,
-	linux-kernel@vger.kernel.org,
-	syzbot+09bec78ee77613a3efdd@syzkaller.appspotmail.com,
-	Shuai Liu <847807867@qq.com>,
-	stable@vger.kernel.org
-Subject: [PATCH] ext4: fix slab-use-after-free in do_split()
-Date: Wed,  4 Nov 2026 16:12:37 +0800
-X-OQ-MSGID: <20261104081237.704486-1-847807867@qq.com>
-X-Mailer: git-send-email 2.43.0
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=fSvqdmAi
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id B4F541F00A1D;
+	Wed,  4 Nov 2026 08:26:25 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1793780785;
+	bh=RUh3LAf5cPpiQ5/3sOe7kSUo0VodGP3PWwMfmN37IX0=;
+	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
+	b=fSvqdmAij3Jr933Dr4Rjc3V9a2o13SqnT9KHXMA5YbqgKHmyz2Ra4+OluTpRd7x0e
+	 XGHoET2QfBkV11fKu39MoJ6V7QoJAM0UnXE19sIMliKy++JSPVPzonwZgdzZmuLaF0
+	 jTlaZ/owlLijfC168xmiZd1UlkaSgUJCaYQGh6FUmDpiSXYzw82hbeGrTg6VdpNHLg
+	 78u0IN29e0VFlBwO1j9gpOC62YIJ/qrm0T4aK+okIJQ9F1wh7+VYD4LujM07g0Saqu
+	 rqh94nQUNpuNkyvAm02oCq+JpwAw2Lp+w0cAmANh0kJu1y3EpNVWB7hbcWrrGMIYy3
+	 PK5Co/b/rFbtw==
+Message-ID: <sashiko-outbox-196874@kernel.org>
+From: sashiko-bot@kernel.org
+Subject: Re: [PATCH] ext4: fix slab-use-after-free in do_split()
+Reply-To: sashiko-reviews@lists.linux.dev
+To: "Shuai Liu" <847807867@qq.com>, linux-ext4@vger.kernel.org
+Cc: tytso@mit.edu
+In-Reply-To: <tencent_76448BFB81B402CBBF3C529331EEA998FA06@qq.com>
+References: <tencent_76448BFB81B402CBBF3C529331EEA998FA06@qq.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+Date: Wed, 04 Nov 2026 08:26:25 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -85,57 +58,109 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
 
-do_split() allocates a new directory block with ext4_append() to hold
-the second half of the entries of the leaf block being split, then
-dx_move_dirents() copies entries from the old block (*bh) into the new
-one (bh2).  Nothing verifies that the newly allocated block differs
-from the block being split.
+Thank you for your contribution! Sashiko AI review found 2 potential issue(=
+s) to consider:
+- [Medium] ext4: buffer_head reference leak in do_split() when bh2 aliases =
+*bh
+- [Medium] ext4: negative errno and logical block passed to ext4_error_inod=
+e_block()
+--
 
-On a filesystem whose block bitmap is inconsistent with the directory
-tree, a block already referenced as a directory leaf can still be
-marked free, so ext4_append() can return that same block.  With
-concurrent operations on such a filesystem (as exercised by the
-syzbot reproducer), the block can even be freed between allocations,
-resulting in bh2 aliasing *bh.  dx_move_dirents() then copies the
-block onto itself, corrupting directory entries mid-copy: a rec_len
-field can be overwritten with name bytes, so the subsequent wipe of
-the stale entry memset()s a bogus length, causing the slab-use-
-after-free reported by syzbot.
+commit 03492d237958226b95dd674bad3a9c3663bcb8b7
+Author: Shuai Liu <847807867@qq.com>
 
-Fix this by checking for bh2 == *bh right after ext4_append() and
-bailing out with -EFSCORRUPTED before any directory block contents
-are modified, reporting the corruption via ext4_error_inode_block().
+ext4: fix slab-use-after-free in do_split()
 
-Reported-by: syzbot+09bec78ee77613a3efdd@syzkaller.appspotmail.com
-Closes: https://syzkaller.appspot.com/bug?extid=09bec78ee77613a3efdd
-Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
-Cc: stable@vger.kernel.org
-Signed-off-by: Shuai Liu <847807867@qq.com>
----
- fs/ext4/namei.c | 7 +++++++
- 1 file changed, 7 insertions(+)
+This commit adds a check in do_split() to verify that the newly allocated
+directory block buffer_head (bh2) does not alias the block being split (*bh=
+),
+returning -EFSCORRUPTED if they match.
 
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 354fc2d22df1..4ef7983d46c6 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -1928,6 +1928,13 @@ static struct ext4_dir_entry_2 *do_split(handle_t *handle, struct inode *dir,
- 		*bh = NULL;
- 		return ERR_CAST(bh2);
- 	}
-+	if (bh2 == *bh) {
-+		ext4_error_inode_block(dir, newblock, -EFSCORRUPTED,
-+				       "cannot split aliased directory block");
-+		brelse(bh2);
-+		*bh = NULL;
-+		return ERR_PTR(-EFSCORRUPTED);
-+	}
- 
- 	BUFFER_TRACE(*bh, "get_write_access");
- 	err = ext4_journal_get_write_access(handle, dir->i_sb, *bh,
--- 
-2.43.0
+> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+> index 231a274b814ec..bffd4c460842a 100644
+> --- a/fs/ext4/namei.c
+> +++ b/fs/ext4/namei.c
+> @@ -1928,6 +1928,13 @@ static struct ext4_dir_entry_2 *do_split(handle_t =
+*handle, struct inode *dir,
+>  		*bh =3D NULL;
+>  		return ERR_CAST(bh2);
+>  	}
+> +	if (bh2 =3D=3D *bh) {
+> +		ext4_error_inode_block(dir, newblock, -EFSCORRUPTED,
+> +				       "cannot split aliased directory block");
 
+[Severity: Medium]
+Should ext4_error_inode_block() take (*bh)->b_blocknr and a positive errno
+(or 0, which save_error_info() normalizes to EFSCORRUPTED) instead of
+newblock and -EFSCORRUPTED?
+
+ext4_error_inode_block() passes error and block to __ext4_error_inode() ->
+ext4_handle_error():
+
+fs/ext4/super.c:ext4_handle_error() {
+	...
+	if (!continue_fs && !ext4_emergency_ro(sb) && journal)
+		jbd2_journal_abort(journal, -error);
+
+	if (!bdev_read_only(sb->s_bdev)) {
+		save_error_info(sb, error, ino, block, func, line);
+	...
+}
+
+When error is negative (-EFSCORRUPTED), jbd2_journal_abort(journal, -error)
+receives a positive value instead of a negative errno, and
+save_error_info() -> __save_error_info() -> ext4_errno_to_code() fails to
+match -EFSCORRUPTED against the positive errno entries in err_translation[],
+recording EXT4_ERR_UNKNOWN in the superblock.
+
+In addition, the block parameter of ext4_error_inode_block() expects a
+physical block number (ext4_fsblk_t) such as (*bh)->b_blocknr rather than t=
+he
+logical directory block offset newblock, matching the existing call later in
+do_split():
+
+	if (WARN_ON_ONCE(split =3D=3D 0)) {
+		/* Should never happen, but avoid out-of-bounds access below */
+		ext4_error_inode_block(dir, (*bh)->b_blocknr, 0,
+			"bad indexed directory? hash=3D%08x:%08x count=3D%d move=3D%u",
+			hinfo->hash, hinfo->minor_hash, count, move);
+		err =3D -EFSCORRUPTED;
+		goto out;
+	}
+
+> +		brelse(bh2);
+> +		*bh =3D NULL;
+> +		return ERR_PTR(-EFSCORRUPTED);
+> +	}
+
+[Severity: Medium]
+Does this path leak a buffer_head reference on *bh?
+
+When do_split() is entered from ext4_dx_add_entry() or make_indexed_dir(),
+the caller holds a reference on *bh. Inside do_split(), ext4_append() ->
+ext4_bread() -> ext4_getblk() -> getblk_unmovable() looks up the buffer_head
+for the newly allocated block and increments b_count. When bh2 =3D=3D *bh, =
+the
+same buffer_head now has two references held on it: one from *bh and one fr=
+om
+bh2.
+
+Calling brelse(bh2) only drops one reference, and setting *bh =3D NULL prev=
+ents
+the caller's error cleanup (such as brelse(bh) at cleanup: in
+ext4_dx_add_entry()) from dropping the original reference.
+
+Could this jump to out: (or call brelse(*bh) as well) so that both referenc=
+es
+are released before *bh is cleared:
+
+out:
+	brelse(*bh);
+	brelse(bh2);
+	*bh =3D NULL;
+	return ERR_PTR(err);
+
+--=20
+Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/tencent_76448BFB81B=
+402CBBF3C529331EEA998FA06@qq.com?part=3D1
