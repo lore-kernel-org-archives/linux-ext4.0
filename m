@@ -1,45 +1,45 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793821613;
-	b=CKXRN1uMELTmPHIf+NU3rPT0RPbNrmLI4i7K49Zm6ZF0hzWeiLO6xxWlrEimvwgowZLv
-	 753R88cgTJuy50hXZ6TLk16tbZzkYXMS2eTvOyAdY6DqZXNaDw0M94kAQ4W8/BhukoLU5
-	 543IKelCY7LEcA9isDTc80tX9bQnrSxJPLe1qSdgDx6j81A0qdV0uAhNK05xhfLANTC4W
-	 pvh+Hsmx64LH5ZWW5BXnWQnmr9nWUV6FazSpdvnSwXfZNL5apG/gEKcUgNqu3m+b3ihMW
-	 mX+ybDXGdWxTMZwfhwol7yPsnhwAkppd3muDpCeOguYzI1amGIiW718ghVPYwszuMFw==
+	t=1793821643;
+	b=Wt7rQ+i01XquR0COuyD15lhYykOFsSHcHjA9K49m73Ll5rec4nOcz5hxWvPIwcsS1e3A
+	 +i+OMefiy1Q//GA6qeYb9VaChZMDxIAQ09vIsZ6vSKJ5WpREzW911EYfwgaqBK99/UQhZ
+	 6g9AjbxYqdRfSSNpDDXsY9gglJIM1a91l7AbVaRnYOLghvWnQILsNqXNY25gW/vLUvZCY
+	 fw7exDMEJJMRmzfb1ch5xiy4F3su5CHD2mPSvy1zNOY6MQDQ8pLpfbis6LM217k4l2xhr
+	 YO8cSHY0HRmzCKNC9KbNZzpAEPkZ3aKNRVm8eAqj9887KuSlg/FlZAtopkwXCaqFahg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793821613;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793821643;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
 	 In-Reply-To:References:MIME-Version:Content-Type:X-Mailer:
 	 X-Developer-Signature:X-Developer-Key:Content-Transfer-Encoding;
-	bh=goLGxFor5aDHmq+/63YZ7VsFVk0WPo8/IlwPxf0/q/E=;
-	b=K+hVZXXdqoQpoA3x5V63avBY60AGAv/sDsWFubxHqi4DKLTRdUTF6E9Fr3dKTvGbMZhe
-	 /udn40LqDHvjAydqjzR7FcI8MocnC+YCmfaGEBrsgfqsetyZYiCDLtB58quOrF4ruACrC
-	 7u1tUAA8u7WKBOMP6tgQPJ6dAsrk63dfpCtQTfJQIytjeHcRqP1KEj1lzJ4WzvUhDVHzZ
-	 BxAtspFIbQ6ZLMyRLPWUwfpftR3KyYAm0A/olQWycdmAApm0tad0LLFoy6vzEMbHmLaro
-	 AGHh5pKNGhJ2dpxN+14szmHJdv5CxTADO4fYH4M10YCOGvByWiG6VQPFZNhsHXD4f+g==
+	bh=pUc3XnniVQ5ZOuyDhOysKqrOAZk7AW9/FnAFYC6PjCY=;
+	b=pmjVPs8sSVQRG2TFBsyHHyQEALKk6d8UAW8tZs8DfEezlfMF/dgvG8lw4AVOidfcpiMB
+	 72vZ6ttnxSEPftpz/GwByp/h/9HworZEzdxrwOrXXMlt9TdolACb2l/WrvLoB/0OlWWdM
+	 7EfGDOv5khYATvhotil7JwdVz6Po+jZce9LurrsMjL1wjrdJwculvIEm1ElQeiZpDCwi3
+	 yaDOWFrkegP3+BsywplTUg6/VrzSSlp1wf28YDK1qTkTEN71VnuwrfxR14oeRSdxuElsn
+	 oN/QO/GxLfZAbwnQeOUkWHmU6jleN8bP89hX+Y4S7HTdTvhw4NhuCk+ucTKrYRdTSxg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=LVMZm0IO;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=MRau239w;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 975D360CBCC2;
-	Wed,  4 Nov 2026 19:46:53 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8CECF6074FA2;
+	Wed,  4 Nov 2026 19:47:23 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=LVMZm0IO
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4276C1F00A02;
-	Wed,  4 Nov 2026 19:46:40 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=MRau239w
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id BD6491F000C1;
+	Wed,  4 Nov 2026 19:47:10 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793821613;
-	bh=goLGxFor5aDHmq+/63YZ7VsFVk0WPo8/IlwPxf0/q/E=;
+	s=k20260515; t=1793821643;
+	bh=pUc3XnniVQ5ZOuyDhOysKqrOAZk7AW9/FnAFYC6PjCY=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=LVMZm0IOAoe/DQ3iyc33C0U6vvCfuYGfRKLyvK77JIS2ad2dYfo1fr0s6jyBo2HeF
-	 /cO/gHafe4OKtglnS2gd2IbNq62I2DciBiFSQRPnWz49+1Da+Yfxn7yCQOHHdkkqhJ
-	 SyQJLxdbTjGThvJqrZ0hQlwH1BvCiRfW2DR2w48PwSAs2SGNzc8ijfGt5Ti7FX0Ma9
-	 ZALNkIaZxmt5uLaGJebUicapo3YQcj3RmKTzNB/is1bSZz6+a5/MRe1UfphuPsFeSA
-	 fMTDefO4/GNM4PXANBsPbqE3sMPNAev963B+WLNxipJzgCOoS8dQJsh8kr6gfxBiJJ
-	 8JFSzbUONxOuQ==
+	b=MRau239woFQtdlJcfyIuzdt/Mz7tXpQLHgX2J3HFCxtIoQ7p0t8aEvclvbqPlKOGa
+	 EedaHfHccZGMzhB5vcIwAhuyyQDAPau+H/YAUhBdRbtxFhlJqgcxmK2czVG9y5wP7T
+	 vy2fA02WDdK3VJ+RlZqpZVnSB9uMz9+ib+VE15vj7NVBBxUCWLKrh6ChnabmilIhZU
+	 3Y5JjgpF66wHdUqRob6tq7eO9hwAVhqpVsM3MxH/8UpRQy6y5G6Z47XYSlSWJ2d5uP
+	 6lZJVoMkctk/0jcZI5OX7z1nQPxzj8u8pGN0oIBxSIKKB6fvv2I5CNKbtMZ1A+Sjdx
+	 r3Q7BlsL714Bw==
 From: Christian Brauner <brauner@kernel.org>
 To: linux-fsdevel@vger.kernel.org
 Cc: Linus Torvalds <torvalds@linux-foundation.org>,
@@ -99,10 +99,11 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	linux-modules@vger.kernel.org,
 	linux-debuggers@vger.kernel.org,
 	"Christian Brauner (Amutable)" <brauner@kernel.org>,
-	Chuck Lever <cel@kernel.org>
-Subject: [PATCH RESEND v2 18/26] usb: gadget: function: rndis: let procfs copy in writes
-Date: Wed,  4 Nov 2026 20:46:38 +0100
-Message-ID: <20261104-work-procfs-drivers-v2-18-245e54e87116@kernel.org>
+	Chuck Lever <cel@kernel.org>,
+	Jiri Slaby <jirislaby@kernel.org>
+Subject: [PATCH RESEND v2 20/26] tty: sysrq: let procfs copy in writes to /proc/sysrq-trigger
+Date: Wed,  4 Nov 2026 20:47:08 +0100
+Message-ID: <20261104-work-procfs-drivers-v2-20-245e54e87116@kernel.org>
 In-Reply-To: <20261104-work-procfs-drivers-v2-0-245e54e87116@kernel.org>
 References: <20261104-work-procfs-drivers-v2-0-245e54e87116@kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -116,54 +117,55 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1569; i=brauner@kernel.org; h=from:subject:message-id; bh=saz4p5rW2UOPmCRi+6zEslqjX7E5721ehvji7/y2TLU=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS97upctyQt79Wuds/t/D5NXqfXll7mFlqtJ78++jiLv oG1bkd2RykLgxgXg6yYIotDu0m43HKeis1GmRowc1iZQIYwcHEKwETsOxn+CmzmuTZxSeutN4J8 yYLimhPX1T2olmPLe3C06PkTyd7GfkaGX4klP1sT33A25J06fD9ObenelTMCZxUxKZStmM3E/WI 5EwA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1564; i=brauner@kernel.org; h=from:subject:message-id; bh=xA04tAm65fsCtMg0xl0tBqqUoHOUL5b4F/HBKwEi4qU=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS97up5wHzVwMj/4s+/qsc0lZwe6RUvWPryURRj4B+1W WLHtl+Y3FHKwiDGxSArpsji0G4SLrecp2KzUaYGzBxWJpAhDFycAjCRvW8Z/srfZV/202bOs6pv bO3FhjJLqzofzqvaU2easvxKpvXzafoMf3jnJ8cnHTZnrf/9WuLLwePxp5qz7/ZoyYesNj+yaqb 8JzYA
 X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 Content-Transfer-Encoding: 8bit
 
-Implement ->proc_write_buf() so procfs copies in what is written to
-/proc/driver/rndis-<n> before it pins the entry, and handle the
-commands from that copy. Writes larger than PAGE_SIZE - 1 bytes fail
-with -EINVAL now.
+Implement ->proc_write_buf() so procfs copies in what is written before
+it pins the entry, and handle the keys from that copy. Writes larger
+than PAGE_SIZE - 1 bytes fail with -EINVAL now. They used to trigger the
+first key, or all of them in bulk mode. procfs allocates the copy, which
+is as small as the write, opening the file allocated as much already.
 
+Reviewed-by: Jiri Slaby <jirislaby@kernel.org>
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- drivers/usb/gadget/function/rndis.c | 9 ++++-----
- 1 file changed, 4 insertions(+), 5 deletions(-)
+ drivers/tty/sysrq.c | 9 +++------
+ 1 file changed, 3 insertions(+), 6 deletions(-)
 
-diff --git a/drivers/usb/gadget/function/rndis.c b/drivers/usb/gadget/function/rndis.c
-index 3c7bd30b8a3a..e05e0c6ae8fb 100644
---- a/drivers/usb/gadget/function/rndis.c
-+++ b/drivers/usb/gadget/function/rndis.c
-@@ -1138,7 +1138,7 @@ static int rndis_proc_show(struct seq_file *m, void *v)
- 	return 0;
- }
- 
--static ssize_t rndis_proc_write(struct file *file, const char __user *buffer,
-+static ssize_t rndis_proc_write(struct file *file, char *buffer,
- 				size_t count, loff_t *ppos)
+diff --git a/drivers/tty/sysrq.c b/drivers/tty/sysrq.c
+index f4571d05b496..99363e1b59ed 100644
+--- a/drivers/tty/sysrq.c
++++ b/drivers/tty/sysrq.c
+@@ -1200,17 +1200,14 @@ EXPORT_SYMBOL(unregister_sysrq_key);
+  * However, if the first character is an underscore,
+  * all characters are processed.
+  */
+-static ssize_t write_sysrq_trigger(struct file *file, const char __user *buf,
++static ssize_t write_sysrq_trigger(struct file *file, char *buf,
+ 				   size_t count, loff_t *ppos)
  {
- 	rndis_params *p = pde_data(file_inode(file));
-@@ -1146,9 +1146,8 @@ static ssize_t rndis_proc_write(struct file *file, const char __user *buffer,
- 	int i, fl_speed = 0;
+ 	bool bulk = false;
+ 	size_t i;
  
  	for (i = 0; i < count; i++) {
 -		char c;
--		if (get_user(c, buffer))
+-
+-		if (get_user(c, buf + i))
 -			return -EFAULT;
-+		char c = *buffer;
-+
- 		switch (c) {
- 		case '0':
- 		case '1':
-@@ -1185,7 +1184,7 @@ static ssize_t rndis_proc_write(struct file *file, const char __user *buffer,
++		char c = buf[i];
  
- static const struct proc_ops rndis_proc_ops = {
- 	.proc_show	= rndis_proc_show,
--	.proc_write	= rndis_proc_write,
-+	.proc_write_buf	= rndis_proc_write,
+ 		if (c == '_')
+ 			bulk = true;
+@@ -1225,7 +1222,7 @@ static ssize_t write_sysrq_trigger(struct file *file, const char __user *buf,
+ }
+ 
+ static const struct proc_ops sysrq_trigger_proc_ops = {
+-	.proc_write	= write_sysrq_trigger,
++	.proc_write_buf	= write_sysrq_trigger,
+ 	.proc_lseek	= noop_llseek,
  };
  
- #define	NAME_TEMPLATE "driver/rndis-%03d"
 
 -- 
 2.53.0
