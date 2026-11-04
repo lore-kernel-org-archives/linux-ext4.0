@@ -1,54 +1,82 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.167.200
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=203.205.221.221
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793778953;
-	b=AriqI/13rdZK3/IxL4UuheMP8Up9J/v03N2k/MtJFSJCDvjUo8HckPIoRlPIfUq6qkMf
-	 U0YJM8ooyVGwZRMV7R4uj8Pnf/1cHcPRJp4l+mv/u4vpfBfxUvC54ClEckygenu8MAUzb
-	 TToAUL5TNRbChqN5DsRpwFjWIEZrMRVTheRK0G3ojws3t+tsx5rHa0jKH2UbA6A41q40U
-	 AEmcvePY+bun7j3G54RhosWqJ13BNncIskkGugdYzXuFpm1A2eOd78Ovl/U65x5Lc4NBO
-	 48wdYurJIdZEU+HJSapL65EPvHdj9WclzF28YTtwVmIKKT1VMb3SgYWDD+Td4x4WIow==
+	t=1793779983;
+	b=DbdF+ugc0xeRGkyWw/l5lCE24/1+DKYd/78I3FLstHUcPPVCSjbKTcVk99N/nc8GFKbv
+	 PQRvlcgg2nBuSZ8k4ko67VROEeLylB6XH0hGijq1IoMFleoSVUxLitnVbVVYRCO+lRBEb
+	 ghMidFR+I3GPNL+fj2mCMXtNU7lEqoFmW9kf8OkpQXIfyhj/3TWwaYcyP5sa1503EUAsI
+	 7DOcOhYrNelFF71ucj5IsrvazU6YlhjSXBHm8oVVn0F+f98jxWuYZMgZjWsyFqfqAsTsv
+	 y6079Nq7IC511/84hJsIU3dQbRlO1oiesNJ+zzqyotK5D9gbm7ZPTiclorWqeHgqEpw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793778953;
-	h=DMARC-Filter:Received:X-Google-DKIM-Signature:X-Forwarded-Encrypted:
-	 X-Gm-Message-State:MIME-Version:X-Received:Date:In-Reply-To:
-	 X-Google-Appengine-App-Id:X-Google-Appengine-App-Id-Alias:Message-ID:
-	 Subject:From:To:Content-Type;
-	bh=jOF9VC+FyuoiOL7uBzh8l/7un8l/rjldOsAOW9RYlzg=;
-	b=3e5sZneVHlvYpKs/RiEEbHGvFZ86iwO1eZfAoxIXUppSfjJwCUpoCnBVxP034/ADDuHm
-	 JUrDxroNBJNTqtgiDSvJOc6+0uuG8EcbHfNFstwUPnuYzO5fdQHkx26OizKo4kaYrEvTN
-	 auc4GDeZJNjpanMIdV6KSb9cNxfb0IIpvNjPY6ihmxfA9mIuB5VUf/F17dIWonZFmAZox
-	 oQTHu1vx9sVPikBIoOR96mHm75dVd6rLHNN89RV+sEFgDAJ+J3tXEejah0msRyrkyiw42
-	 vLWOYFmkaS2N4dAo2OAaa2hKaXKbDUi1IdSNBxEXibSvy6NF7+P5O7PxLeuOGhVG6Aw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793779983;
+	h=DMARC-Filter:DKIM-Signature:Received:X-QQ-mid:Message-ID:
+	 X-QQ-XMAILINFO:X-QQ-XMRINFO:From:To:Cc:Subject:Date:X-OQ-MSGID:
+	 X-Mailer:MIME-Version:Content-Transfer-Encoding;
+	bh=S/YVX51d+YFgjFTpFmGYpWUbOdKLDllTGQah6OFPrpo=;
+	b=LhS14Qdx6XOTF2M+/zFgtmPwzGhzGmM2wahfOltLkrcb9QJi0yzGiQcv+wROQyRzW/fI
+	 4NteQTkoSIxaWOOTq2dMh+WdNKUeHXMSYDx+OvtG8R732BjsRsp6t+8hKmGZC7nCJxJ3V
+	 ngL4MGWM6BHs0eAGbMW7O3zThzP22Y6G0pzjcDGQsI38D/6WXWG6cKxliXh/F7Ni9uGXS
+	 QGhO/caUipPnYsi7m7/7MPXeo0Eb+Zhh+QcE473DajZtLZerIa9uH561caseJeeZs1YGx
+	 6BsMqhhUwTxRp8P5edwTzVjQeiwM1WyfX8Aq9QXU47HJjXdwICEic5WkIBBN0jXrX1A==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=fail header.from=syzkaller.appspotmail.com;
-	spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com;
-	arc=none smtp.remote-ip=209.85.167.200
-Received: from mail-oi1-f200.google.com (mail-oi1-f200.google.com [209.85.167.200])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	dmarc=pass header.from=qq.com;
+	spf=pass smtp.mailfrom=qq.com;
+	dkim=pass header.d=qq.com header.i=@qq.com header.a=rsa-sha256 header.s=s201512 header.b=TPenK9bW;
+	arc=none smtp.remote-ip=203.205.221.221
+Received: from out203-205-221-221.mail.qq.com (out203-205-221-221.mail.qq.com [203.205.221.221])
+	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 22A37606A328
-	for <linux-ext4@vger.kernel.org>; Wed,  4 Nov 2026 07:55:52 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 22A37606A328
-Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
-Received: by mail-oi1-f200.google.com with SMTP id 5614622812f47-54dbbf252cdso692919b6e.2
-        for <linux-ext4@vger.kernel.org>; Tue, 03 Nov 2026 23:55:52 -0800 (PST)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1793778952; x=1794383752;
-        h=content-type:to:from:subject:message-id:in-reply-to:date
-         :mime-version:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to:content-type;
-        bh=jOF9VC+FyuoiOL7uBzh8l/7un8l/rjldOsAOW9RYlzg=;
-        b=BIOwTLOmgTYMXyop8iJKqMuqvcGn42hqdZMP4yZy4H3bhfMXP36cADpOLNBnjFu9BY
-         6KibHKgRGJjKhG7lIIQ/w3SyYCybU87w8u21rdri9MIRV8vjZShnvV9pwdV3U8rELalD
-         Ghi0evfNLbRqhPpJzQ1m/AeJUb+ku8e0bIb90murWFG84Q4UYEh/u7pIxjmqUBXCnmzv
-         U9+k/hrtuB+q4BPIkMU4Hm16zjEIUASnCNLn60Po8TgqpRADO+Oag8M4dJ4jSA6/fwYU
-         9hpoIgxQ/4MYvzWcjCfptJe9RCRqr5GLIdfQR07+lHf4MCO7IR1iQXqV1GFEIG4JH+9H
-         EV0A==
-X-Forwarded-Encrypted: i=1; AKwUvBzeD5lQEEcQmrYoUQJ8ZrUnw6AzoEAqamPmeePc+ihfRJVoE3QAGYmwyQjmayt/LZCF/69C/2epwbB1@vger.kernel.org
-X-Gm-Message-State: APuU4Z/z6SGGhqcl/ZCosNJxH5HkcCCKWa6yaU6Zbw+t9s7SIIFn+Rg+
-	RvmzrJrCnjDzZELppqaQZXuwDTwoDJXrsFO8eBR0CP/hOqpsB/UgRJkjkr2VYqjVPLhQALZhwbT
-	54TOU5uh3QbU1QdEh1cG5SwSMkMGytfU41yY8/w8GINo5qTGSZDV+3LhzrnI=
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B385B606A331;
+	Wed,  4 Nov 2026 08:13:01 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org B385B606A331
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=qq.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (1024-bit key, unprotected) header.d=qq.com header.i=@qq.com header.a=rsa-sha256 header.s=s201512 header.b=TPenK9bW
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=qq.com; s=s201512;
+	t=1793779973; bh=S/YVX51d+YFgjFTpFmGYpWUbOdKLDllTGQah6OFPrpo=;
+	h=From:To:Cc:Subject:Date;
+	b=TPenK9bWMOIf1KC+d1po0I/fMTgIqocugscB0JUDPGac3meIFfHvDhpRmjj0ctMT1
+	 c7OfLGA/jqK3xVYCfVErnBm5XVtRA/Ae7CevWOGRuPbNdDVPpGDxCjK0TDahdLL1+S
+	 26t59iVCAtmnS2NUVih7v+a0Ki8DdpHmBRXbgZz8=
+Received: from shuai-VMware-Virtual-Platform.. ([218.28.192.28])
+	by newxmesmtplogicsvrszb51-1.qq.com (NewEsmtp) with SMTP
+	id 3272383A; Wed, 04 Nov 2026 16:12:39 +0800
+X-QQ-mid: xmsmtpt1793779959td668sw7l
+Message-ID: <tencent_76448BFB81B402CBBF3C529331EEA998FA06@qq.com>
+X-QQ-XMAILINFO: MipYEBg1qKqIq0wuplufvRhP1JDQPijVv6mHXd6vajxUJE4MclRdcZAjoHIlmZ
+	 r7FboEiFeIF4qH194IizylKO12853sP3U866z3B5XcGZ4NAaROmKeaHk8uKuuDk2HK89Uw8aW/g2
+	 LnPvzklKMwDCBlHZt3vLHdmfDNh/vitIArdln0+LyoE25x+Ymwws5gTf0j8EtJ4y64Q8Oc/eySN1
+	 DXos9IDRPE4KXuNgmfaCAacoU0ZAJ+pIVMYRfSW48c0Hy1qI20mskmRlfR5I0m8v4fR4bEJgLBDN
+	 QQqNnzsF3Wr/k4/yJOpNZTHQvP4AVIn+mORDbOw7/vQy7DBuNtyyND2KfVn/44fjh1PXUHuxGnZG
+	 NdVWsY66u5t0gIIawW1VFXA+UM9RHHZzdXtyIliYog4DE1X7G4PlBnRnwr6Hnk6/YoZOdiX9oy9N
+	 Ryr4s417UnwEESy2mU78W1TtcJZd6/bdgCBTwzOm5BUijY4alBhocRe5Bg9yo5XPnThPHubxtv1v
+	 mR4RPyafhDsaAlEvg0IIywrWNQsMaBRArKu1f36Oduzcg6r13z4jUhqvV0LYv225yc8j0wPPW574
+	 RfUrjvvaHR8woESNrjH2ao9NUcp04k1F2wN66p0hHGocwmu9c2ZYmDs2Nbia6oxaB3oZ29SCVOUb
+	 UyzrrwFswEvUXi9nSkwFHAj6iMjrfZQSZy5yovViTXQDnRUmJJAe7jKz/24MaUESEXGeJhgsYFDW
+	 pquE0xXP1yuY2BbPhRFu0Xa9bsc7Hw8vDt04jGdEjlX0v8pOPak/OEjUP+PaYJqBxUIv0Wi4NDmb
+	 pqUYoSoBtM4jY67GmMCMXDSnLxmD6Po/TQ1P1MFAJTNURhB2FkR5G8sMlW/Jpbluc+BBojwQgfYU
+	 jVFY7Y2VzcLK5im0KRURCj2MTACpdY/m7zz9dKfI34rLbcUFqORmbNu7R+i5oGruoWpbmFTWy5p0
+	 OxS9+BDbrdAEqJ4WcQoKmLtYx4tC5xjvuEefu/+o+Ge6f9WEQS74kSq5Y8utl0trPiS6cbNyQv1f
+	 DaR8kOp5CG3+Z7gxAq1pAc+S70e9qnnvnhb7rq6OPuZ3oJK7pDsTVbGeAP8ABsAl/Em/OPzzGp3b
+	 TsySaK
+X-QQ-XMRINFO: M/715EihBoGS47X28/vv4NpnfpeBLnr4Qg==
+From: Shuai Liu <847807867@qq.com>
+To: linux-ext4@vger.kernel.org
+Cc: tytso@mit.edu,
+	adilger.kernel@dilger.ca,
+	libaokun@linux.alibaba.com,
+	jack@suse.cz,
+	ojaswin@linux.ibm.com,
+	ritesh.list@gmail.com,
+	yi.zhang@huawei.com,
+	linux-kernel@vger.kernel.org,
+	syzbot+09bec78ee77613a3efdd@syzkaller.appspotmail.com,
+	Shuai Liu <847807867@qq.com>,
+	stable@vger.kernel.org
+Subject: [PATCH] ext4: fix slab-use-after-free in do_split()
+Date: Wed,  4 Nov 2026 16:12:37 +0800
+X-OQ-MSGID: <20261104081237.704486-1-847807867@qq.com>
+X-Mailer: git-send-email 2.43.0
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -58,115 +86,56 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-X-Received: by 2002:a05:6808:6410:b0:541:139a:881a with SMTP id
- 5614622812f47-5640de70b3dmr10704597b6e.59.1793778952194; Tue, 03 Nov 2026
- 23:55:52 -0800 (PST)
-Date: Tue, 03 Nov 2026 23:55:52 -0800
-In-Reply-To: <6ae807da.c8ffc79a.e3697.002c.GAE@google.com>
-X-Google-Appengine-App-Id: s~syzkaller
-X-Google-Appengine-App-Id-Alias: syzkaller
-Message-ID: <6aeae508.be891901.2a0dec.0004.GAE@google.com>
-Subject: Re: [syzbot] [block?] [ext4?] BUG: unable to handle kernel paging
- request in blk_mq_exit_hctx
-From: syzbot <syzbot+5307e3bcacec2ce4c2f0@syzkaller.appspotmail.com>
-To: axboe@kernel.dk, linux-block@vger.kernel.org, linux-ext4@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com
-Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
 
-syzbot has found a reproducer for the following issue on:
+do_split() allocates a new directory block with ext4_append() to hold
+the second half of the entries of the leaf block being split, then
+dx_move_dirents() copies entries from the old block (*bh) into the new
+one (bh2).  Nothing verifies that the newly allocated block differs
+from the block being split.
 
-HEAD commit:    6628e7d4c6b2 Linux 7.4-rc1
-git tree:       git://git.kernel.org/pub/scm/linux/kernel/git/arm64/linux.git
-console output: https://syzkaller.appspot.com/x/log.txt?x=148f6add580000
-kernel config:  https://syzkaller.appspot.com/x/.config?x=a58b6b4d667e7a61
-dashboard link: https://syzkaller.appspot.com/bug?extid=5307e3bcacec2ce4c2f0
-compiler:       Debian clang version 22.1.8 (1~deb13u4), Debian LLD 22.1.8
-userspace arch: arm64
-C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=1436344e580000
+On a filesystem whose block bitmap is inconsistent with the directory
+tree, a block already referenced as a directory leaf can still be
+marked free, so ext4_append() can return that same block.  With
+concurrent operations on such a filesystem (as exercised by the
+syzbot reproducer), the block can even be freed between allocations,
+resulting in bh2 aliasing *bh.  dx_move_dirents() then copies the
+block onto itself, corrupting directory entries mid-copy: a rec_len
+field can be overwritten with name bytes, so the subsequent wipe of
+the stale entry memset()s a bogus length, causing the slab-use-
+after-free reported by syzbot.
 
-AI-generated root cause summary:
-When dm_setup_md_queue() fails after add_disk() (for instance during
-bd_link_disk_holder() or dm_sysfs_init()), the error path invokes del_gendisk(),
-which calls blk_mq_exit_queue() -> blk_mq_exit_hctx(), freeing each hardware
-context flush queue and setting hctx->fq = NULL. However, md->type remains
-DM_TYPE_NONE and the mapped device is not torn down. When userspace retries
-table_load on the device, dm_setup_md_queue() and dm_mq_init_request_queue() run
-again, invoking blk_mq_init_allocated_queue() on the existing queue. During
-__blk_mq_realloc_hw_ctxs(), blk_mq_exit_hctx() is called on the existing
-hardware contexts, unconditionally dereferencing hctx->fq->flush_rq (offset
-0x78) when hctx->fq is NULL, causing a kernel null-pointer dereference crash.
+Fix this by checking for bh2 == *bh right after ext4_append() and
+bailing out with -EFSCORRUPTED before any directory block contents
+are modified, reporting the corruption via ext4_error_inode_block().
 
-full analysis:  https://syzkaller.appspot.com/x/ai_root_cause?x=5307e3bcacec2ce4c2f0
-
-IMPORTANT: if you fix the issue, please add the following tag to the commit:
-Reported-by: syzbot+5307e3bcacec2ce4c2f0@syzkaller.appspotmail.com
-
-kobject: kobject_add_internal failed for dm (error: -12 parent: dm-9)
-device-mapper: ioctl: unable to set up device queue for new table.
-Unable to handle kernel paging request at virtual address dfff80000000000f
-KASAN: null-ptr-deref in range [0x0000000000000078-0x000000000000007f]
-Mem abort info:
-  ESR = 0x0000000096000005
-  EC = 0x25: DABT (current EL), IL = 32 bits
-  SET = 0, FnV = 0
-  EA = 0, S1PTW = 0
-  FSC = 0x05: level 1 translation fault
-Data abort info:
-  ISV = 0, ISS = 0x00000005, ISS2 = 0x00000000
-  CM = 0, WnR = 0, TnD = 0, TagAccess = 0
-  GCS = 0, Overlay = 0, DirtyBit = 0
-[dfff80000000000f] address between user and kernel address ranges
-Internal error: Oops: 0000000096000005 [#1]  SMP
-Modules linked in:
-CPU: 0 UID: 0 PID: 2579 Comm: syz.5.600 Not tainted syzkaller #0 PREEMPT 
-Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 09/23/2026
-pstate: 83400005 (Nzcv daif +PAN -UAO +TCO +DIT -SSBS BTYPE=--)
-pc : blk_mq_exit_hctx+0x64/0x498 block/blk-mq.c:3974
-lr : blk_mq_exit_hctx+0x40/0x498 block/blk-mq.c:3973
-sp : ffff800097b275c0
-x29: ffff800097b275d0 x28: 0000000000000000 x27: 1fffe0001ae5652a
-x26: dfff800000000000 x25: ffff0000d72b2950 x24: ffff0000e0621480
-x23: 0000000000000078 x22: ffff0000d22e9400 x21: 0000000000000001
-x20: ffff0000d72b2800 x19: ffff0000ca1f5388 x18: ffff800123625000
-x17: ffff0001ace95387 x16: ffff0000d7a11d94 x15: 0000000000000001
-x14: 00000000004bc250 x13: 0000000000000001 x12: 0000000000000003
-x11: 0000000000000000 x10: ffff0000ca1f53bc x9 : 0000000000000000
-x8 : 000000000000000f x7 : ffff800081826454 x6 : 0000000000000000
-x5 : 0000000000000000 x4 : 0000000000000001 x3 : 0000000000000000
-x2 : ffff0000d72b2800 x1 : ffff0000d7a11d80 x0 : 0000000000000000
-Call trace:
- blk_mq_exit_hctx+0x64/0x498 block/blk-mq.c:3974 (P)
- __blk_mq_realloc_hw_ctxs+0x1f0/0x548 block/blk-mq.c:4612
- blk_mq_realloc_hw_ctxs block/blk-mq.c:4652 [inline]
- blk_mq_init_allocated_queue+0x2dc/0xe9c block/blk-mq.c:4694
- dm_mq_init_request_queue+0x2d8/0x474 drivers/md/dm-rq.c:573
- dm_setup_md_queue+0x134/0x434 drivers/md/dm.c:2611
- table_load+0x3d4/0x764 drivers/md/dm-ioctl.c:1661
- ctl_ioctl drivers/md/dm-ioctl.c:2221 [inline]
- dm_ctl_ioctl+0x884/0xbbc drivers/md/dm-ioctl.c:2243
- vfs_ioctl fs/ioctl.c:51 [inline]
- __do_sys_ioctl fs/ioctl.c:597 [inline]
- __se_sys_ioctl fs/ioctl.c:583 [inline]
- __arm64_sys_ioctl+0x154/0x1cc fs/ioctl.c:583
- __invoke_syscall arch/arm64/kernel/syscall.c:35 [inline]
- invoke_syscall+0x98/0x244 arch/arm64/kernel/syscall.c:49
- el0_svc_common+0xec/0x23c arch/arm64/kernel/syscall.c:121
- do_el0_svc+0x4c/0x5c arch/arm64/kernel/syscall.c:140
- el0_svc+0x60/0x1d8 arch/arm64/kernel/entry-common.c:796
- el0t_64_sync_handler+0x44/0x104 arch/arm64/kernel/entry-common.c:815
- el0t_64_sync+0x198/0x19c arch/arm64/kernel/entry.S:606
-Code: 97cf39bd f9400328 9101e117 d343fee8 (387a6908) 
----[ end trace 0000000000000000 ]---
-----------------
-Code disassembly (best guess):
-   0:	97cf39bd 	bl	0xffffffffff3ce6f4
-   4:	f9400328 	ldr	x8, [x25]
-   8:	9101e117 	add	x23, x8, #0x78
-   c:	d343fee8 	lsr	x8, x23, #3
-* 10:	387a6908 	ldrb	w8, [x8, x26] <-- trapping instruction
-
-
+Reported-by: syzbot+09bec78ee77613a3efdd@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=09bec78ee77613a3efdd
+Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
+Cc: stable@vger.kernel.org
+Signed-off-by: Shuai Liu <847807867@qq.com>
 ---
-If you want syzbot to run the reproducer, reply with:
-#syz test: git://repo/address.git branch-or-commit-hash
-If you attach or paste a git patch, syzbot will apply it before testing.
+ fs/ext4/namei.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 354fc2d22df1..4ef7983d46c6 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1928,6 +1928,13 @@ static struct ext4_dir_entry_2 *do_split(handle_t *handle, struct inode *dir,
+ 		*bh = NULL;
+ 		return ERR_CAST(bh2);
+ 	}
++	if (bh2 == *bh) {
++		ext4_error_inode_block(dir, newblock, -EFSCORRUPTED,
++				       "cannot split aliased directory block");
++		brelse(bh2);
++		*bh = NULL;
++		return ERR_PTR(-EFSCORRUPTED);
++	}
+ 
+ 	BUFFER_TRACE(*bh, "get_write_access");
+ 	err = ext4_journal_get_write_access(handle, dir->i_sb, *bh,
+-- 
+2.43.0
+
