@@ -1,111 +1,51 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793813243;
-	b=kfqN7xW3NiyzT+3rIpyEyGs3xV1OmXEOahACoSJse8dBkDyTzfi8nuztSaB7LnVwFbDX
-	 bHX01V8HJi0eG2N2MiK/djz6+uLeibDzDqNQ6MmucjteO1T2Vn5hex7L9Lsh0OQ60P7m4
-	 5/xs2S0Z0pCyzF9tjAzwwPOMRX6unr+Z7Dyesnp3uyu2ExlxcmzwIHjiyZxKdkUM6MSaY
-	 vSgMFINI9NdP7l1NfdgbjDJOa2KsX1IvkqhDD47qwsp4rS+TRR9M4qYlptJffZYGb0eZK
-	 P8Of2y9OlyYA43EZiA7uMlMG3uCiHhqnX8EyLAIo0RvUMKZgBzuCoM94KpmCRzv3kDA==
+	t=1793813319;
+	b=Kh1Wq7Bov0KJi1pjVtfs02txVSqghoY7s9QwvjnNLBWksbly5QYYolAm3ISCXWr6wBGH
+	 zcG2vYPOmFQPvWbUJsI/zXaMik7s266blZB6JeQWsUnwajm8qtRp5j/B+hjwHyNgrqoMv
+	 yrjJfpIOYPAdVm1niuS0rb26DEjMs/n/fRW4rcGCqKqXxzdSxWSYWFBO4yrviPJQI2T12
+	 xK4sZ5LGSmJzpGgk68xqS6KYB6Hk/7Xd1gzc5zBKbJeLRyY9wgVRctJGvDI38FsfxcZPE
+	 eOP1eN+oRwTdmLNsr2QdBUQFxhbYjG/MZqCZy8HvrWkPgeigPClV27l27tcSbo64PvQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793813243;
-	h=DMARC-Filter:Received:DKIM-Signature:DKIM-Signature:DKIM-Signature:
-	 DKIM-Signature:Received:Received:Received:Date:From:To:Cc:Subject:
-	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
-	 In-Reply-To:X-Spamd-Result:X-Rspamd-Server:X-Rspamd-Action:
-	 X-Spam-Flag:X-Spam-Score:X-Spam-Level:X-Rspamd-Queue-Id;
-	bh=eGXvkssOV2QDvKB3+PMzPZxGJNQsG9ppegtem4X3jAA=;
-	b=MZVE1VXst3syPBaSi6uI/k0Ujf/vNBTB76TtgKjcYdsUYysq595TqaZDd/OkIqlInW7O
-	 /Hmj7g3pXxTBPqezPasDrjv8pfDNuUJ/lIA3Rp2nCsJ0nhEUpDDvMnOleCtfECWhCmITt
-	 cVSuBe0v5i+e+8mT5QeytZ+uVvwRQMZJ4caKoozSMNQby8ruIlnRyE0wmyo9A27uNJNJQ
-	 5eL5jTApueuoGChILbLdBfMCmuv9TYdIMAkjUs/CR2PGNcbel7rrJ3Iot52/ncIyFMSwz
-	 ci25o8/04c+cz7AGj5HE+loLszybzAiCxnE7KiY7KDnKpuXCMKp9giTgf1Z9Jycjt4Q==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793813319;
+	h=Received:DKIM-Signature:From:Subject:Date:Message-Id:MIME-Version:
+	 Content-Type:Content-Transfer-Encoding:X-B4-Tracking:X-Change-ID:
+	 In-Reply-To:References:To:Cc:X-Mailer:X-Developer-Signature:
+	 X-Developer-Key;
+	bh=gjEH2piUuhMtwxK5i7yIAEc83f1M2MXkP9ZzaCRnQBU=;
+	b=pMVz3T4hfzKG8pbwBOBwRUQ5I6YkO4pD7VuqcX4at95zNqcTiZU0UpELdzXgX+tWry9Q
+	 tierox/WtLarjDdwHenvAqG7yQyJZ7q8CnPbR7U8FuCMnWbnespxSKu92vHYSYMZaPF49
+	 IIc56a0te0XoBHhVB8WeMZWkpxXOL3ZguzOJdIALmIenayc2fi4Co2sesWG2JAYNsPbnL
+	 yurHoI83xQX3vy6orbX95NETbqo5EpOcvE9DVbayRwYZP9pxxsRmw5kKcCLmAj0S24F2d
+	 V14fQOcxJ6snOO+GMnvCUNaDrMsTIDi0/IZQcDEryanhyWtjNZNaBrn8x7rpbBoe9MA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=none header.from=suse.cz;
-	spf=pass smtp.mailfrom=suse.cz;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b="j/vl7Tbg";
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=OzKHMJAG;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b="j/vl7Tbg";
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=OzKHMJAG;
-	arc=none smtp.remote-ip=195.135.223.131
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=cVdCjCL1;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5752C606A32E;
-	Wed,  4 Nov 2026 17:27:22 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 5752C606A32E
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3517C606A31B;
+	Wed,  4 Nov 2026 17:28:38 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=j/vl7Tbg;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=OzKHMJAG;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=j/vl7Tbg;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=OzKHMJAG
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 6E9F71F388;
-	Wed,  4 Nov 2026 17:27:20 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1793813240; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=eGXvkssOV2QDvKB3+PMzPZxGJNQsG9ppegtem4X3jAA=;
-	b=j/vl7TbgDG4aWWFGaOi6KJcWm2imBDDVVej95hpofUr1mto03JAa7EDAiBPvn8vMl6B4g1
-	ieLwS8vN3PtDAm9avUFz5zrsdqmZ+cLXj4KdyRigvL0aeOq9zq0hGK+pLdLhkHOvMhEfKp
-	P5QZQ7dsOWlStXXAcrOKrOXdscL7Cdw=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1793813240;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=eGXvkssOV2QDvKB3+PMzPZxGJNQsG9ppegtem4X3jAA=;
-	b=OzKHMJAGopRIcWM8G3UMwMA4uYbEiRqq2m8XPGgSJSAloVqsP2gsoCR6zoMDGkVrijpG1G
-	IHPbJf13ZsffZkBA==
-Authentication-Results: smtp-out2.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b="j/vl7Tbg";
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=OzKHMJAG
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1793813240; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=eGXvkssOV2QDvKB3+PMzPZxGJNQsG9ppegtem4X3jAA=;
-	b=j/vl7TbgDG4aWWFGaOi6KJcWm2imBDDVVej95hpofUr1mto03JAa7EDAiBPvn8vMl6B4g1
-	ieLwS8vN3PtDAm9avUFz5zrsdqmZ+cLXj4KdyRigvL0aeOq9zq0hGK+pLdLhkHOvMhEfKp
-	P5QZQ7dsOWlStXXAcrOKrOXdscL7Cdw=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1793813240;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=eGXvkssOV2QDvKB3+PMzPZxGJNQsG9ppegtem4X3jAA=;
-	b=OzKHMJAGopRIcWM8G3UMwMA4uYbEiRqq2m8XPGgSJSAloVqsP2gsoCR6zoMDGkVrijpG1G
-	IHPbJf13ZsffZkBA==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 4349B134A5;
-	Wed,  4 Nov 2026 17:27:20 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id UjeMB/hq62o8KQAAD6G6ig
-	(envelope-from <jack@suse.cz>); Wed, 04 Nov 2026 17:27:20 +0000
-Received: by quack.suse.cz (Postfix, from userid 1000)
-	id C3902B457; Wed, 04 Nov 2026 18:27:15 +0100 (CET)
-Date: Wed, 4 Nov 2026 18:27:15 +0100
-From: Jan Kara <jack@suse.cz>
-To: Christian Brauner <brauner@kernel.org>
-Cc: linux-fsdevel@vger.kernel.org, Jan Kara <jack@suse.cz>, 
-	Josef Bacik <josef@toxicpanda.com>, Chris Mason <mason@kernel.org>, linux-ext4@vger.kernel.org, 
-	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>, Andreas Dilger <adilger.kernel@dilger.ca>, 
-	Baokun Li <libaokun@linux.alibaba.com>, Ojaswin Mujoo <ojaswin@linux.ibm.com>, 
-	"Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, Namjae Jeon <namjae.jeon@samsung.com>, stable@vger.kernel.org
-Subject: Re: [PATCH RFC 8/9] fat: sync the inode in fat_free_eofblocks()
-Message-ID: <oilqmzo3vpddohxp46x3pjzf3wtoebahirtjqmt3izdw6ua5iq@ghdbk27wuf5f>
-References: <20261029-work-inode-metadata_writeback-v1-0-7d6c678a585d@kernel.org>
- <20261029-work-inode-metadata_writeback-v1-8-7d6c678a585d@kernel.org>
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=cVdCjCL1
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 159391F000C1;
+	Wed,  4 Nov 2026 17:28:23 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1793813318;
+	bh=gjEH2piUuhMtwxK5i7yIAEc83f1M2MXkP9ZzaCRnQBU=;
+	h=From:Subject:Date:In-Reply-To:References:To:Cc;
+	b=cVdCjCL1e/r71WdMYR37Zt/JfRlrKHW7hYZIgKlb+Kfq5/0Yh0QHjoclvPtLk+fin
+	 YvLgjvxb1o8KGGlc0ouDFGIVy7l/F0u8+/o2IaiADydVB3cYg+8utWuIWlMJBZdzLc
+	 /53Gg0Gbq8hzAJ7pJy8kC4ywtg8GeAqY7L8q2t05Q3VVA/15mpyDJc0JlDsOPjtKm0
+	 ICfDugN5L9H7CTh57OX9YNroaBA4oZMjjvn+zt/+ujI0IUGwntNelJKez+5cVCDp/1
+	 /Fk9OLdyb5lc9b0NV9me5V0xQ66Awmj2F7LFQ7pJUpFi9Q1b19Eol8hEhwveYWX8Y+
+	 j2RAv7ggEn+OA==
+From: Christian Brauner <brauner@kernel.org>
+Subject: [PATCH v2 00/51] proc: fix a few old bugs in /proc handlers (Part
+ 1/7)
+Date: Wed, 04 Nov 2026 18:27:17 +0100
+Message-Id: <20261104-work-procfs-bugfixes-v2-0-bbf7d5546809@kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -115,140 +55,278 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20261029-work-inode-metadata_writeback-v1-8-7d6c678a585d@kernel.org>
-X-Spamd-Result: default: False [-11.51 / 50.00];
-	SUSE_INTERNAL_BYPASS(-9.00)[];
-	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	MX_GOOD(-0.01)[];
-	RCVD_TLS_LAST(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	RCVD_COUNT_THREE(0.00)[3];
-	RCPT_COUNT_TWELVE(0.00)[13];
-	MIME_TRACE(0.00)[0:+];
-	ARC_NA(0.00)[];
-	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	FREEMAIL_CC(0.00)[vger.kernel.org,suse.cz,toxicpanda.com,kernel.org,mail.parknet.co.jp,dilger.ca,linux.alibaba.com,linux.ibm.com,gmail.com,samsung.com];
-	DNSWL_BLOCKED(0.00)[2a07:de40:b281:106:10:150:64:167:received];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	TO_DN_SOME(0.00)[];
-	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	TAGGED_RCPT(0.00)[];
-	DKIM_TRACE(0.00)[suse.cz:+];
-	MISSING_XM_UA(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:dkim,imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.com:email]
-X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
-X-Rspamd-Action: no action
-X-Spam-Flag: NO
-X-Spam-Score: -11.51
-X-Spam-Level: 
-X-Rspamd-Queue-Id: 6E9F71F388
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/22OTQ6CMBCFr0K6tqSthYgr72FY0DJAxVAyA6gh3
+ N0W4s7l+/vyVkaADohdk5UhLI6cH4JQp4TZrhpa4K4OmimhcimF5C+PPR/R24a4mdvGvYG4yHQ
+ thFAXXUgWpiPCHoTlvTw0zeYBdoqs2DAVATdYDbaLVqSmBzWNUax0jiaPn/3aIiPq90L9f7FIL
+ nhWaKWgPoPOs1sPOMAz9diyctu2L6vwdQzuAAAA
+X-Change-ID: 20261101-work-procfs-bugfixes-054d00028491
+In-Reply-To: <20261104-work-procfs-v2-0-288f0ce32927@kernel.org>
+References: <20261104-work-procfs-v2-0-288f0ce32927@kernel.org>
+To: linux-fsdevel@vger.kernel.org
+Cc: Linus Torvalds <torvalds@linux-foundation.org>, 
+ Jann Horn <jannh@google.com>, Josef Bacik <josef@toxicpanda.com>, 
+ Chris Mason <mason@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
+ NeilBrown <neil@brown.name>, Eric Dumazet <edumazet@kernel.org>, 
+ Thomas Gleixner <tglx@kernel.org>, Al Viro <viro@zeniv.linux.org.uk>, 
+ Jonathan Corbet <corbet@lwn.net>, Christoph Hellwig <hch@lst.de>, 
+ Greg Kroah-Hartman <gregkh@suse.de>, 
+ Joel Granados <joel.granados@kernel.org>, Kees Cook <kees@kernel.org>, 
+ Jan Kara <jack@suse.cz>, Jan Kara <jack@suse.com>, 
+ linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org, 
+ linux-acpi@vger.kernel.org, linux-kselftest@vger.kernel.org, 
+ linux-s390@vger.kernel.org, linux-scsi@vger.kernel.org, 
+ linux-um@lists.infradead.org, linux-wireless@vger.kernel.org, 
+ linuxppc-dev@lists.ozlabs.org, netdev@vger.kernel.org, 
+ ntfs3@lists.linux.dev, platform-driver-x86@vger.kernel.org, 
+ coreteam@netfilter.org, kexec@lists.infradead.org, 
+ linux-pci@vger.kernel.org, linux-sound@vger.kernel.org, 
+ netfilter-devel@vger.kernel.org, dri-devel@lists.freedesktop.org, 
+ ibm-acpi-devel@lists.sourceforge.net, jfs-discussion@lists.sourceforge.net, 
+ linux-alpha@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-cifs@vger.kernel.org, linux-fbdev@vger.kernel.org, 
+ linux-hwmon@vger.kernel.org, linux-mm@kvack.org, linux-sh@vger.kernel.org, 
+ linux-usb@vger.kernel.org, samba-technical@lists.samba.org, 
+ sparclinux@vger.kernel.org, linux-m68k@lists.linux-m68k.org, 
+ linux-doc@vger.kernel.org, linux-serial@vger.kernel.org, 
+ linux-atm-general@lists.sourceforge.net, Takashi Iwai <tiwai@suse.de>, 
+ linux-input@vger.kernel.org, linux-raid@vger.kernel.org, 
+ linux-ext4@vger.kernel.org, linux-modules@vger.kernel.org, 
+ linux-debuggers@vger.kernel.org, 
+ "Christian Brauner (Amutable)" <brauner@kernel.org>, 
+ Chuck Lever <cel@kernel.org>, stable@vger.kernel.org, 
+ "Rafael J. Wysocki (Intel)" <rafael@kernel.org>, 
+ Chuck Lever <cel@kernel.org>
+X-Mailer: b4 0.17-dev
+X-Developer-Signature: v=1; a=openpgp-sha256; l=12755; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=gmyRMdG+KcFIxcDC/b/LbsSvPn/1UP4r7z8EeefJTHI=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9zvoZ/Lbi45HAjXEZngICNzO2r77RGG7annMue//5S
+ vPIRFafjlIWBjEuBlkxRRaHdpNwueU8FZuNMjVg5rAygQxh4OIUgImsqWZkmB8ls//fK/m2uq02
+ e6ZP5GLmOXZuurw00/Er33PDn7le7WdkWM43v1iERV9nimmWQJvcnN3yDPFFyhtVY/feyotVPvm
+ NFQA=
+X-Developer-Key: i=brauner@kernel.org; a=openpgp;
+ fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-On Thu 29-10-26 14:28:23, Christian Brauner wrote:
-> fat_evict_inode() calls fat_free_eofblocks() for a linked inode to give
-> back the clusters that were fallocated past the initialized size. For an
-> empty file that also resets the start cluster in the directory entry. It
-> truncates the clusters and writes the inode with:
-> 
->   sync_inode_metadata(inode, inode_needs_sync(inode));
-> 
-> Unless the inode is IS_SYNC that is WB_SYNC_NONE writeback. It copies
-> the inode into the directory entry buffer, marks the buffer dirty and
-> sets I_METADATA_WRITEBACK. Then the inode goes away and with it the only
-> thing that would have told a later fsync() that the directory entry
-> still has to be written.
-> 
-> FAT doesn't have that problem. Its buffers are tracked on the FAT inode
-  ^^ exFAT??
+Part 1/7 of "proc: move procfs to what kernfs does", the base of the
+other six parts:
 
-> and fat_file_fsync() writes them out on every fsync() of any file on the
-> filesystem.
-> 
-> So after the next fsync() the clusters are free on disk while the
-> directory entry of the empty file still points at them. If another file
-> reuses them and the machine crashes before the directory entry makes it
-> to disk, the two files share clusters. That's the corruption the comment
-> in fat_free_eofblocks() is about.
+  https://patch.msgid.link/20261104-work-procfs-v2-0-288f0ce32927@kernel.org
 
-Correct, but that does not violate anything AFAICT. fsync(2) promises data
-is reachable (which it is), not that the fs metadata is all consistent.
-For non-journaling filesystem you need fsck for such guarantee. And I know
-I'm a bit obtuse here but the change results in a synchronous buffer write
-on each eviction of inode that has preallocated blocks which will be a
-noticeable performance regression for some usecases. Probably Ogawa should
-decide whether this change is acceptable or whether we play fast and
-loose... Ogawa?
+Moving procfs to what kernfs does touches just about every
+->proc_read(), ->proc_write() and ->proc_ioctl() in the tree. Reviewing
+that turned up bugs that have nothing to do with the conversion and are
+a lot older. They go first so they can go to stable on their own. Four
+selftests come with them.
 
-								Honza
+In procfs itself:
 
-> So wait for the directory entry to reach the disk before the inode goes
-> away.
-> 
-> Reproducer. The image file shows what reached the disk. The flusher is
-> turned off so that it doesn't write the directory entry before fsck.fat
-> looks at the image:
-> 
->   img=/tmp/fat.img
->   truncate -s 64M $img
->   mkfs.vfat $img > /dev/null
->   dev=$(losetup -f --show $img)
->   mount -t vfat $dev /mnt
->   echo 0 > /proc/sys/vm/dirty_writeback_centisecs
->   xfs_io -f -c 'falloc -k 0 1m' -c fsync /mnt/a
->   echo 3 > /proc/sys/vm/drop_caches
->   echo 3 > /proc/sys/vm/drop_caches
->   xfs_io -c fsync /mnt/a
->   fsck.fat -n $img | grep -A1 '^/a'
->   umount /mnt
->   losetup -d $dev
-> 
-> On v7.3-17318-g65ba8f34ec88 in a KASAN and lockdep vng guest this
-> prints:
-> 
->   /a
->     Contains a free cluster (3). Assuming EOF.
-> 
-> With this patch fsck.fat finds nothing wrong with /a.
-> 
-> The stable tag is narrower than the Fixes tag. Before v7.3
-> fat_free_eofblocks() called __fat_write_inode() directly and the fix
-> there is to pass 1 for wait.
-> 
-> Fixes: b13bb33eacb7 ("fat: add fat_fallocate operation")
-> Cc: stable@vger.kernel.org # v7.3
-> Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
-> ---
->  fs/fat/inode.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/fs/fat/inode.c b/fs/fat/inode.c
-> index d85c8fbdcca4..fc571ee2b174 100644
-> --- a/fs/fat/inode.c
-> +++ b/fs/fat/inode.c
-> @@ -675,7 +675,7 @@ static void fat_free_eofblocks(struct inode *inode)
->  		 * any corruption on the next access to the cluster
->  		 * chain for the file.
->  		 */
-> -		err = sync_inode_metadata(inode, inode_needs_sync(inode));
-> +		err = sync_inode_metadata(inode, 1);
->  		if (err) {
->  			fat_msg(inode->i_sb, KERN_WARNING, "Failed to "
->  					"update on disk inode for unused "
-> 
-> -- 
-> 2.53.0
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+- readdir resumed a listing at a counted position, so an entry that came
+  or went in between repeated or skipped one, and it ended a listing
+  early when the entry it was emitting went away. It resumes after the
+  last name now, like kernfs. /proc/sys had the same bug.
+- /proc/sys readdir ended a listing early at an entry that was being
+  unregistered, so getdents64() reported EOF with entries left.
+- /proc/sys copied to and from userspace with the table held, so a read,
+  write or getdents64() that faults for as long as userspace wants kept
+  unregister_sysctl_table() waiting, which addrconf calls under RTNL.
+- proc_sys_make_inode() read the table after it had dropped sysctl_lock.
+- a symlink's entry stayed pinned while readlink() copied it out, so a
+  faulting readlink() held up remove_proc_entry(). ALSA removes its card
+  links with snd_card_mutex held.
+- name resolution walked through regular files, and pktgen lets
+  userspace pick names, so an unprivileged user could hang an entry
+  below another file and get it freed. pktgen refuses a '/' now.
+- proc_register() WARNed on a duplicate name, which pktgen's names can
+  provoke.
+- proc_remove() removed by name, so removing an entry that was already
+  gone could take out a different one.
+- the parent of entries a dying network namespace left in /proc/net was
+  freed silently. procfs warns now.
+- on NOMMU every /proc file could be mapped privately, which reads it
+  with nommu_region_sem held, and /proc/maps takes that lock. Any user
+  could hang the machine.
+- sunrpc queued the pollers of its channel files on a wait queue in the
+  per-namespace cache_detail, which is freed with the namespace. Back to
+  one static queue here, the conversion makes procfs own the queues.
+- vmcore_cleanup() could run twice at once.
+
+In the handlers:
+
+- PCI/proc and isapnp truncated the position to an int, so a pwrite()
+  or pread() at a huge offset went negative and accessed config space
+  far outside the file.
+- dasd looked in front of its buffer on an empty write.
+- toshiba_acpi's brightness and fan write checks could never fail.
+- simdisk read the file name without the lock that protects it, so a
+  reader could copy out memory a concurrent detach had freed.
+- rtas_flash read past its validate message, and rtasd handed out what
+  vmalloc() left in its log buffer.
+- ALSA's info layer let a write past the end of a data entry through
+  unclamped.
+- BusLogic, ips and libipw returned 0 from writes, so stdio writers
+  retry forever.
+- the scsi host files and um's /proc/exitcode parsed writes without
+  NUL-terminating them.
+- ntfs3 tripped the page allocator's warning on a huge label write.
+- esas2r took the lengths of its HBA, SMP and firmware ioctls from
+  userspace unchecked, through a file everyone can open.
+- powerpc's copy_oldmem_page() didn't check ioremap_cache() and only
+  recovered from a machine check for read(), the pseries ofdt parser
+  read past its input, and lparcfg reported a failed hcall as a huge
+  write.
+- alloc_tag removed /proc/allocinfo with the codetag module lock held
+  when a module's tags couldn't be reserved, and a reader of the file
+  takes that lock with the entry pinned, so the module load and the
+  reader waited for each other for good.
+- esas2r copied the kernel addresses of the adapter, its pci_dev and its
+  Scsi_Host out through the 0444 ATTONode.
+- cs46xx stored the chip in the private data of its region files and
+  read it back as the region.
+- isapnp went on talking to whatever device the card had selected, and
+  unlocked a mutex it never took, when isapnp_cfg_begin() refused a
+  logical device number.
+- simdisk freed the gendisk before it removed the entry, so a write in
+  between set the capacity of a freed disk.
+- the pseries ofdt commands leaked a node reference per property
+  command, and lockd handed out the NUL behind "Y\n".
+- lparcfg and psi overwrote the last byte of a write to terminate it,
+  so a write without a trailing newline lost a character.
+- the sparc LED and rtas progress files consumed only the start of a
+  write, so a looping writer sent the rest as a second command.
+- profiling reported success when /proc/profile couldn't be created,
+  and zorro sized its files like a zorro_dev instead of the ConfigDev
+  they serve.
+
+The xt_recent deadlock v1 fixed here goes in through netfilter instead.
+
+The procfs, sysctl, readlink, pktgen, sunrpc, PCI and duplicate name
+bugs reproduce on a KASAN and lockdep kernel in a VM and are gone with
+the series. The rest is build tested.
+
+Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
+---
+Changes in v2:
+- thirteen more fixes that the review of v1 turned up: alloc_tag,
+  esas2r, cs46xx, isapnp, simdisk, pseries ofdt, lockd, lparcfg, psi,
+  the sparc LED, rtas progress, profiling and zorro
+- the NOMMU, crash_dump and lparcfg patches say more about the bug
+- new patch: sysctl readdir ended a listing early when an entry was
+  being unregistered, pre-existing
+- the xt_recent patch is dropped, Cen Zhang's fix for the same lock is
+  on its way through netfilter
+- the readdir churn selftests skip instead of failing without
+  /dev/net/tun, the sysctl removal selftest seeks past the dots first so
+  its fault lands in an entry, the selftests' Makefile, .gitignore and
+  config lines sit in the series that adds each test
+- struct sysctl_dirent loses its unused mode
+- Reviewed-by and Acked-by from Rafael, Takashi and Chuck
+- rebased onto v7.4-rc1
+- Link to v1: https://patch.msgid.link/20261102-work-procfs-bugfixes-v1-0-59422ed3e465@kernel.org
+
+---
+Christian Brauner (51):
+      alloc_tag: don't remove /proc/allocinfo under the codetag module lock
+      scsi: esas2r: don't copy kernel pointers out in EXPRESS_IOCTL_GET_MOD_INFO
+      ALSA: cs46xx: hand the region to the region proc files
+      PNP: isapnp: don't go on when isapnp_cfg_begin() fails
+      xtensa: simdisk: remove the proc entry before the disk
+      powerpc/pseries: put the node that the ofdt property commands look up
+      lockd: don't hand out the terminator of nlm_end_grace
+      powerpc/pseries/lparcfg: don't drop the last byte of a write
+      profiling: report it when /proc/profile can't be created
+      zorro: size the proc files like what they serve
+      sparc: led: consume the whole write
+      powerpc/rtas: consume the whole write to /proc/powerpc/rtas/progress
+      sched/psi: don't drop the last byte of a trigger write
+      proc: sysctl: don't stop readdir at an entry that is being unregistered
+      PCI/proc: don't truncate the position of config space accesses
+      PNP: isapnp: don't read past the end of the buffer on a large pread()
+      s390/dasd: don't look in front of the buffer on an empty write
+      platform/x86: toshiba_acpi: reject malformed brightness and fan writes
+      xtensa: simdisk: don't read the file name without the lock
+      powerpc/rtas_flash: don't read past the validate message
+      powerpc/rtasd: zero the error log buffer
+      ALSA: info: don't write past the end of a data entry
+      scsi: BusLogic: don't return 0 from writes to the proc file
+      scsi: ips: don't return 0 from writes to the proc file
+      wifi: libipw: don't return 0 from writes to debug_level
+      scsi: core: NUL-terminate what is written to the host proc files
+      um: NUL-terminate what is written to /proc/exitcode
+      ntfs3: don't warn when a huge label is written
+      proc: don't walk through a non-directory when resolving a name
+      net: pktgen: reject device names with a '/'
+      proc: don't WARN about a name that is already registered
+      proc: resume readdir after the last name it returned
+      selftests/proc: check a /proc listing while entries come and go
+      proc: let proc_remove() remove the entry it was given
+      proc: warn about entries left in /proc/net of a dying namespace
+      proc: don't let NOMMU map procfs files
+      proc/vmcore: don't let vmcore_cleanup() run twice at once
+      powerpc/crash_dump: check ioremap_cache() in copy_oldmem_page()
+      powerpc/crash_dump: recover from a machine check in copy_oldmem_page()
+      sunrpc: make queue_wait a global wait queue again
+      scsi: esas2r: bound the lengths of the HBA, SMP and firmware ioctls
+      powerpc/pseries: bound the lengths in the ofdt property parser
+      powerpc/pseries/lparcfg: return h_get_ppp()'s status as a long
+      proc: sysctl: resume readdir after the last name it returned
+      selftests/proc: check a sysctl listing while entries come and go
+      proc: sysctl: copy to and from userspace without holding the table
+      proc: sysctl: look at the table under sysctl_lock when creating an inode
+      proc: sysctl: don't hold the tables while readdir copies to userspace
+      selftests/proc: check that faulting sysctl accesses don't hold up removal
+      proc: don't pin a symlink's entry while readlink() copies it out
+      selftests/proc: check that a faulting readlink() doesn't hold up removal
+
+ arch/powerpc/kernel/crash_dump.c                   |   6 +-
+ arch/powerpc/kernel/rtas-proc.c                    |   3 +-
+ arch/powerpc/kernel/rtas_flash.c                   |   2 +-
+ arch/powerpc/kernel/rtasd.c                        |   2 +-
+ arch/powerpc/platforms/pseries/lparcfg.c           |   7 +-
+ arch/powerpc/platforms/pseries/reconfig.c          |  24 +-
+ arch/sparc/kernel/led.c                            |   3 +-
+ arch/um/kernel/exitcode.c                          |   3 +-
+ arch/xtensa/platforms/iss/simdisk.c                |  28 +-
+ drivers/net/wireless/intel/ipw2x00/libipw_module.c |   2 +-
+ drivers/pci/proc.c                                 |  15 +-
+ drivers/platform/x86/toshiba_acpi.c                |   8 +-
+ drivers/pnp/isapnp/core.c                          |  16 +-
+ drivers/pnp/isapnp/proc.c                          |  11 +-
+ drivers/s390/block/dasd.c                          |   2 +-
+ drivers/scsi/BusLogic.c                            |   2 +-
+ drivers/scsi/esas2r/esas2r.h                       |   2 +-
+ drivers/scsi/esas2r/esas2r_ioctl.c                 |  48 ++-
+ drivers/scsi/esas2r/esas2r_main.c                  |   3 +-
+ drivers/scsi/ips.c                                 |   2 +-
+ drivers/scsi/scsi_proc.c                           |   1 +
+ drivers/zorro/proc.c                               |   2 +-
+ fs/lockd/procfs.c                                  |   2 +-
+ fs/ntfs3/super.c                                   |  11 +-
+ fs/proc/generic.c                                  | 174 ++++++---
+ fs/proc/inode.c                                    |  38 +-
+ fs/proc/internal.h                                 |   1 +
+ fs/proc/proc_net.c                                 |   7 +
+ fs/proc/proc_sysctl.c                              | 388 ++++++++++++++-------
+ fs/proc/root.c                                     |   1 +
+ fs/proc/vmcore.c                                   |   5 +
+ include/linux/sunrpc/cache.h                       |   1 -
+ kernel/profile.c                                   |   8 +-
+ kernel/sched/psi.c                                 |   4 +-
+ mm/alloc_tag.c                                     |  27 +-
+ net/core/pktgen.c                                  |   4 +
+ net/sunrpc/cache.c                                 |  12 +-
+ sound/core/info.c                                  |   2 +
+ sound/isa/es18xx.c                                 |   6 +-
+ sound/pci/cs46xx/cs46xx_lib.c                      |   2 +-
+ tools/testing/selftests/proc/.gitignore            |   4 +
+ tools/testing/selftests/proc/Makefile              |   4 +
+ tools/testing/selftests/proc/config                |   9 +
+ tools/testing/selftests/proc/proc-readdir-churn.c  | 240 +++++++++++++
+ .../selftests/proc/proc-remove-slow-readlink.c     | 191 ++++++++++
+ .../selftests/proc/proc-remove-slow-sysctl.c       | 215 ++++++++++++
+ .../selftests/proc/proc-sysctl-readdir-churn.c     | 152 ++++++++
+ 47 files changed, 1420 insertions(+), 280 deletions(-)
+---
+base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
+change-id: 20261101-work-procfs-bugfixes-054d00028491
+
