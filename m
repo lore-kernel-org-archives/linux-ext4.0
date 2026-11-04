@@ -1,56 +1,105 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.130
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793787854;
-	b=S+nUETozCThUXr0Hha33mfbP38vEDKcGaWccIcmGHmCtIGyc0Nst7CqnJuSyxRAMW/c9
-	 6tg4nlO5gQuVm2dNY0HHom/2uEs/mjWvWgJhVhAf/AFIXs+J59D7qRAj6w3EVngq4Npcw
-	 RqD0wHeo1/huE5pOlcwtKdN7fZA2etZrv7Do+8iYVG/02S9jtN4suuEHXa30qB4Q9YfLJ
-	 mkb/G/NAr2J8VVHYnxUE50eTzJYcb/aFMgiNxhxbT938EAmsE4Eu7ge1NeBZwDPQ5X068
-	 Orf184feIMaC0ABAv184AJE7NtPg0dUhZRz1ByJYDm0qRw41qO3EwWPahyfzDRAlw8w==
+	t=1793796243;
+	b=dBGUb6NK7Jzg4SXV4IYmKd3uJu0QG3z4ay15XX5ulyPblddUZfbQ1NR7Zkq+yUOgb3O5
+	 FmhHbYDTz/KByOBJj0yXM9/Pdq9DEyqrDmuso2ScZwVPUmF1YIoVk6IfIauuCFsaipGTb
+	 kqArzI3a/fik/+y+Y+QhNpjrnWTsrrEwDSBEFxItJO1WXDWx0grbNyIXQglhmyj6Y33E6
+	 qjPkWMu4cKumfsds+xAwM2KszrmxJOQSrcom3QoEmHDiGSY3mzVS3/YRzgrX+gZlVHie7
+	 cr7gGANuNNVkxbWS4XPGy6KanX4TXRpqLGZGGBl367Hqwaxx14BaedoNvj7hWFukd8A==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793787854;
-	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
-	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=a0ld13+dhe7e7otguQLcsC3DyOa2dMluo2WhzEh69lU=;
-	b=RgblIltYq7LDq7R/hDdahyZ2Med+FXcObvLZHODMubM5ReYws/12rPFQa1nwiNXvIuLg
-	 4cfJWh2I9vSPA3S0bkC7l4+Fk5dtWtsUToTZhx9zkB97uFbOwNfbT1y3emZbXFyd7/uBU
-	 raz1R3QC0rNOiLOsKtIUFZ0jF51+ZXBE8OHDspspJFZH0c3sOgOqJ1MITPguA1zJTZVYQ
-	 +ybefjZ0jeCAx5e4drrdo9Fgz8d7kk+RWPXJdG+sRoCDM87PS3pXwt5YQZlHkLGRfJ90s
-	 HX2j02D6HQ2YcTup1Kob4Yx73x1OlawNNE6N26Y4f+Y1nFihHQ+gYgTwH0fkHU+Lf2A==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793796243;
+	h=DMARC-Filter:Received:DKIM-Signature:DKIM-Signature:DKIM-Signature:
+	 DKIM-Signature:Received:Received:Received:Date:From:To:Cc:Subject:
+	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
+	 In-Reply-To:X-Spamd-Result:X-Spam-Score:X-Spam-Level:X-Spam-Flag;
+	bh=WwaC4b0cLVSF727gUMsJoTLQTIaBl/Xdkq7vP7dh0BA=;
+	b=AUO6fQLUmm/Q2f/qfk3oBVgHzntVpG6jiImWZVtKitA2IewJtAVUyJUE/Nl7w39SOPzA
+	 cVo6qulyM54ADVx6IwBu6++14LKuzHiCNurPpTXdkdxuTtY3egAX1m4UFU/+cTBexADIP
+	 RnEDGWE/mpPvXbmxN9yVtOZAgbmG+2oRjlfjBqMoVbOCIMGxxuSc3ry1RB7DMgCoZXu5k
+	 vJGKX26jtorVV1iFcQhLxHLzT0pt0mrYnNvBIPrnBS2Ym4U54vmH0IWbwzNVX1QtvSw5p
+	 a66jG1EezgYVU/f8qvTGq1YH9D9y/j3yHdFRo1qa11uhfubxtHNwQry9jgR85L2uQZA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=h2nm3UpV;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	dmarc=none header.from=suse.cz;
+	spf=pass smtp.mailfrom=suse.cz;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=Mhyf3BE6;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=IRmQPJhP;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b="bpOP/wvs";
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=Qsc0Kgxm;
+	arc=none smtp.remote-ip=195.135.223.130
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3B373606A326
-	for <linux-ext4@vger.kernel.org>; Wed,  4 Nov 2026 10:24:14 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 77FB6606A32C;
+	Wed,  4 Nov 2026 12:44:02 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 77FB6606A32C
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=h2nm3UpV
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id DFB4A1F000C1;
-	Wed,  4 Nov 2026 10:24:13 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793787854;
-	bh=a0ld13+dhe7e7otguQLcsC3DyOa2dMluo2WhzEh69lU=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=h2nm3UpVVXRF8jDx62DgorwijIPefEAf9Vo9X3wdzrA6+E0iOHnuw34e/Ml0XUp7H
-	 jwjXKN2V4jDVLbLLXYMT+QLHf9aliefPpPgqJaH8mDOYnPVqFndVqEcky1tEZ6z35A
-	 ZjVwl//zGA8ENBqJDHj+EkQHMju19sLMvbHxYpzFNJIlPuQsbOeiC9KREah0m7/JI3
-	 niWpUy3I87Qq1M69Vp5L0qalfvlPTq6CMCaSkgdPwodXBUfTNfGwMbZBuAPDei7Stz
-	 aPeptnZGFsbKccb97pUZ2uR5ncmGLzQnHqD/dGGWg5gzqAg0se6QUMZ9nKx0WGzHAp
-	 A0hKBPjzk7Ygg==
-Message-ID: <sashiko-outbox-197087@kernel.org>
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH v5] ext4: fix slab-use-after-free in do_split()
-Reply-To: sashiko-reviews@lists.linux.dev
-To: "Shuai Liu" <847807867@qq.com>, linux-ext4@vger.kernel.org
-Cc: tytso@mit.edu
-In-Reply-To: <tencent_4EAEF2024D7BB83D62E41306EED8D2112C08@qq.com>
-References: <sashiko-outbox-197027@kernel.org>
- <tencent_4EAEF2024D7BB83D62E41306EED8D2112C08@qq.com>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Wed, 04 Nov 2026 10:24:13 +0000
+	dkim=pass (1024-bit key, unprotected) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=Mhyf3BE6;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=IRmQPJhP;
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=bpOP/wvs;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=Qsc0Kgxm
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id 6E9BC21FA1;
+	Wed,  4 Nov 2026 12:43:59 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1793796240; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=WwaC4b0cLVSF727gUMsJoTLQTIaBl/Xdkq7vP7dh0BA=;
+	b=Mhyf3BE6NJeb/qk+/NhyS/IRZbTImpwO0Dthehtdt+sqCCqe/AZXy942JUPapgyQLxAgBt
+	wZruvANz5WKkby3Cuxa4nys9QAxt09gRWFpJ3XVWjFcEmbfbF+zpTkS85As7Jg0mZTvZtS
+	MMpbWdAq2AKfBEzazeNLQwSqCsYhFnI=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1793796240;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=WwaC4b0cLVSF727gUMsJoTLQTIaBl/Xdkq7vP7dh0BA=;
+	b=IRmQPJhP/RnsnYsQyZrOKUJQM9c3jFVhocXzoUHrSelbWp/hb4B1S9cmI5X8TTXNRBZwaS
+	KlIqoatvOIt0XJBA==
+Authentication-Results: smtp-out1.suse.de;
+	none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1793796239; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=WwaC4b0cLVSF727gUMsJoTLQTIaBl/Xdkq7vP7dh0BA=;
+	b=bpOP/wvsBq+FbQBilNbHf5zRLhlDuFkRo45IeelOELKNg5xneBtXczvRaI+mLQGxcnb0c4
+	MaLVm2Flc1ArH+0hBPyZjpk5/svInAoCk8lIK+hOYRCNwOjyJrq7SnKddkl7/LhWLRF427
+	ppRGOP6hJqOdv9eTLhWBNEubQQdw0jE=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1793796239;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=WwaC4b0cLVSF727gUMsJoTLQTIaBl/Xdkq7vP7dh0BA=;
+	b=Qsc0Kgxm/wArigy8p0g/R2sQdvI7aJvHA6am9jUhI3UhIPfMgjEMAl8b2SeuzkesXphFWE
+	yl7+LOFUNCsZlzAw==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 4535E134F0;
+	Wed,  4 Nov 2026 12:43:59 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id 67JlCI8o62oafwAAD6G6ig
+	(envelope-from <jack@suse.cz>); Wed, 04 Nov 2026 12:43:59 +0000
+Received: by quack.suse.cz (Postfix, from userid 1000)
+	id CA1C4B3B7; Wed, 04 Nov 2026 13:43:54 +0100 (CET)
+Date: Wed, 4 Nov 2026 13:43:54 +0100
+From: Jan Kara <jack@suse.cz>
+To: Hungyu Lin <dennylin0707@gmail.com>
+Cc: jack@suse.com, ritesh.list@gmail.com, linux-ext4@vger.kernel.org, 
+	linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Subject: Re: [PATCH] ext2: preserve IOMAP_F_DIRTY for extending direct writes
+Message-ID: <jnqgrofg5eh4rvmpqr3wrhyimlux2cwtguj2o5d3tjzdaqq6nc@xsxxjpzmpomu>
+References: <20261029013616.97194-1-dennylin0707@gmail.com>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -59,211 +108,170 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="hhurp2xrs3achqmx"
+Content-Disposition: inline
+In-Reply-To: <20261029013616.97194-1-dennylin0707@gmail.com>
+X-Spamd-Result: default: False [-12.80 / 50.00];
+	SUSE_INTERNAL_BYPASS(-9.00)[];
+	BAYES_HAM(-3.00)[100.00%];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[multipart/mixed,text/plain,text/x-patch];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	ARC_NA(0.00)[];
+	MISSING_XM_UA(0.00)[];
+	TAGGED_RCPT(0.00)[];
+	TO_DN_SOME(0.00)[];
+	MIME_TRACE(0.00)[0:+,1:+,2:+];
+	FREEMAIL_TO(0.00)[gmail.com];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	RCPT_COUNT_FIVE(0.00)[6];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	FREEMAIL_CC(0.00)[suse.com,gmail.com,vger.kernel.org];
+	RCVD_COUNT_THREE(0.00)[3];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,msgid.link:url,imap1.dmz-prg2.suse.org:helo,suse.cz:email];
+	RCVD_TLS_LAST(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	HAS_ATTACHMENT(0.00)[]
+X-Spam-Score: -12.80
+X-Spam-Level: 
+X-Spam-Flag: NO
 
-Thank you for your contribution! Sashiko AI review found 3 potential issue(=
-s) to consider:
-- [Critical] ext4: late alias check in make_indexed_dir() after buffer modi=
-fication
-- [Critical] ext4: unchecked buffer aliasing in ext4_dx_add_entry() index s=
-plit
-- [Critical] ext4: late leaf-to-index alias check in ext4_dx_add_entry()
---
 
-commit eea9bdf87e428c4c24ab845db976b1362da00cdf
-Author: Shuai Liu <847807867@qq.com>
+--hhurp2xrs3achqmx
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-ext4: fix slab-use-after-free in do_split()
+On Thu 29-10-26 01:36:16, Hungyu Lin wrote:
+> ext2_iomap_begin() sets IOMAP_F_DIRTY for writes that may extend i_size,
+> but clears the flag after ext2_get_blocks(). When the write uses an
+> existing mapped block, iomap can then use FUA and skip
+> generic_write_sync(), even though ext2_dio_write_end_io() updates the
+> inode size. An O_DSYNC write can therefore return without persisting
+> the new size.
+> 
+> For example, on a FUA-capable device, a 512-byte O_DIRECT|O_DSYNC write
+> at offset 512 into a fsynced one-byte file returns successfully and
+> extends the in-memory size to 1024, while an immediate read of the
+> on-disk inode still shows size 1. An explicit fsync persists the new
+> size.
+> 
+> Initialize iomap->flags before setting IOMAP_F_DIRTY so that the flag
+> survives and the required metadata synchronization takes place.
+> 
+> Fixes: fb5de4358e1a ("ext2: Move direct-io to use iomap")
+> Cc: stable@vger.kernel.org
+> Signed-off-by: Hungyu Lin <dennylin0707@gmail.com>
 
-This patch adds checks in do_split() to verify that neither the leaf direct=
-ory
-block being split (*bh) nor the newly allocated block (bh2) aliases each ot=
-her
-or any htree index block in frames[0..frame]. If an alias is detected,
-do_split() logs an error and returns -EFSCORRUPTED before modifying directo=
-ry
-entries.
+Thanks for the fix. I've just move the setting of the IOMAP_F_DIRTY bit
+instead of moving the initialization. Functionally this is equivalent and
+the iomap modification is better localized that way (the resulting patch is
+attached).
 
-> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-> index 231a274b814ec..878ed25ca4a2b 100644
-> --- a/fs/ext4/namei.c
-> +++ b/fs/ext4/namei.c
-> @@ -1903,13 +1903,14 @@ static struct ext4_dir_entry_2 *dx_pack_dirents(s=
-truct inode *dir, char *base,
->   * Returns pointer to de in block into which the new entry will be inser=
-ted.
->   */
->  static struct ext4_dir_entry_2 *do_split(handle_t *handle, struct inode =
-*dir,
-> -			struct buffer_head **bh,struct dx_frame *frame,
-> -			struct dx_hash_info *hinfo)
-> +			struct buffer_head **bh, struct dx_frame *frames,
-> +			struct dx_frame *frame, struct dx_hash_info *hinfo)
->  {
->  	unsigned blocksize =3D dir->i_sb->s_blocksize;
->  	unsigned continued;
->  	int count;
->  	struct buffer_head *bh2;
-> +	struct dx_frame *f;
->  	ext4_lblk_t newblock;
->  	u32 hash2;
->  	struct dx_map_entry *map;
-> @@ -1922,12 +1923,42 @@ static struct ext4_dir_entry_2 *do_split(handle_t=
- *handle, struct inode *dir,
->  	if (ext4_has_feature_metadata_csum(dir->i_sb))
->  		csum_size =3D sizeof(struct ext4_dir_entry_tail);
-> =20
-> +	for (f =3D frames; f <=3D frame; f++) {
-> +		if (*bh =3D=3D f->bh) {
-> +			ext4_error_inode_block(dir, (*bh)->b_blocknr,
-> +					       EFSCORRUPTED,
-> +					       "leaf block aliased with index block");
-> +			brelse(*bh);
-> +			*bh =3D NULL;
-> +			return ERR_PTR(-EFSCORRUPTED);
-> +		}
-> +	}
+								Honza
 
-[Severity: Critical]
-Is checking for *bh =3D=3D f->bh inside do_split() too late when called from
-ext4_dx_add_entry()?
+> ---
+>  fs/ext2/inode.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
+> index 12ac4cfe1500..ba23cadb157b 100644
+> --- a/fs/ext2/inode.c
+> +++ b/fs/ext2/inode.c
+> @@ -805,6 +805,7 @@ static int ext2_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+>  	    (first_block << blkbits) < i_size_read(inode))
+>  		create = 0;
+>  
+> +	iomap->flags = 0;
+>  	/*
+>  	 * Writes that span EOF might trigger an IO size update on completion,
+>  	 * so consider them to be dirty for the purposes of O_DSYNC even if
+> @@ -818,7 +819,6 @@ static int ext2_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+>  	if (ret < 0)
+>  		return ret;
+>  
+> -	iomap->flags = 0;
+>  	iomap->offset = (u64)first_block << blkbits;
+>  	iomap->bdev = inode->i_sb->s_bdev;
+>  
+> -- 
+> 2.43.0
+> 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
 
-In ext4_dx_add_entry(), after reading the leaf block bh, add_dirent_to_buf()
-is called before do_split() is ever reached:
+--hhurp2xrs3achqmx
+Content-Type: text/x-patch; charset=us-ascii
+Content-Disposition: attachment;
+	filename="0001-ext2-preserve-IOMAP_F_DIRTY-for-extending-direct-wri.patch"
 
-    bh =3D ext4_read_dirblock(dir, dx_get_block(frame->at), DIRENT_HTREE);
-    if (IS_ERR(bh)) {
-        err =3D PTR_ERR(bh);
-        bh =3D NULL;
-        goto cleanup;
-    }
-    ...
-    err =3D add_dirent_to_buf(handle, fname, dir, inode, NULL, bh);
-    if (err !=3D -ENOSPC)
-        goto cleanup;
+From 6fda7e6fba044590ce5d7bae6eebd437df1f5b92 Mon Sep 17 00:00:00 2001
+From: Hungyu Lin <dennylin0707@gmail.com>
+Date: Thu, 29 Oct 2026 01:36:16 +0000
+Subject: [PATCH] ext2: preserve IOMAP_F_DIRTY for extending direct writes
 
-If bh aliases one of the index buffers in frames[0..frame].bh, dx_probe() h=
-as
-already marked that buffer verified, so __ext4_read_dirblock() returns it
-without running leaf checksum verification. Because an htree root block has
-root->dotdot->rec_len =3D=3D blocksize - 12 (and an internal dx_node has
-node->fake.rec_len =3D=3D blocksize), on a filesystem without metadata_csum,
-ext4_find_dest_de() finds space inside that fake dirent and returns 0 inste=
-ad
-of -ENOSPC.
+ext2_iomap_begin() sets IOMAP_F_DIRTY for writes that may extend i_size,
+but clears the flag after ext2_get_blocks(). When the write uses an
+existing mapped block, iomap can then use FUA and skip
+generic_write_sync(), even though ext2_dio_write_end_io() updates the
+inode size. An O_DSYNC write can therefore return without persisting
+the new size.
 
-ext4_insert_dentry() then writes the new directory entry directly over the
-htree header (for example, overwriting root->info.indirect_levels at offset=
- 30
-of frames[0].bh->b_data with de1->name_len), and ext4_dx_add_entry() jumps =
-to
-cleanup without calling do_split(). In dx_release(), the loop:
+For example, on a FUA-capable device, a 512-byte O_DIRECT|O_DSYNC write
+at offset 512 into a fsynced one-byte file returns successfully and
+extends the in-memory size to 1024, while an immediate read of the
+on-disk inode still shows size 1. An explicit fsync persists the new
+size.
 
-    indirect_levels =3D info->indirect_levels;
-    for (i =3D 0; i <=3D indirect_levels; i++) {
-        if (frames[i].bh =3D=3D NULL)
-            break;
-        brelse(frames[i].bh);
-        frames[i].bh =3D NULL;
-    }
+Move setting of IOMAP_F_DIRTY after the initialization.
 
-can then read past the end of the frames[EXT4_HTREE_LEVEL] stack array when
-all frames are populated, or leak frame buffers if indirect_levels was
-overwritten with a smaller value. Should the leaf-to-index alias check happ=
-en
-in ext4_dx_add_entry() right after ext4_read_dirblock()?
+Fixes: fb5de4358e1a ("ext2: Move direct-io to use iomap")
+Cc: stable@vger.kernel.org
+Signed-off-by: Hungyu Lin <dennylin0707@gmail.com>
+Link: https://patch.msgid.link/20261029013616.97194-1-dennylin0707@gmail.com
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext2/inode.c | 13 ++++++-------
+ 1 file changed, 6 insertions(+), 7 deletions(-)
 
-[ ... ]
+diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
+index 12ac4cfe1500..51250717c70b 100644
+--- a/fs/ext2/inode.c
++++ b/fs/ext2/inode.c
+@@ -805,6 +805,12 @@ static int ext2_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+ 	    (first_block << blkbits) < i_size_read(inode))
+ 		create = 0;
+ 
++	ret = ext2_get_blocks(inode, first_block, max_blocks,
++			&bno, &new, &boundary, create);
++	if (ret < 0)
++		return ret;
++
++	iomap->flags = 0;
+ 	/*
+ 	 * Writes that span EOF might trigger an IO size update on completion,
+ 	 * so consider them to be dirty for the purposes of O_DSYNC even if
+@@ -812,13 +818,6 @@ static int ext2_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+ 	 */
+ 	if ((flags & IOMAP_WRITE) && offset + length > i_size_read(inode))
+ 		iomap->flags |= IOMAP_F_DIRTY;
+-
+-	ret = ext2_get_blocks(inode, first_block, max_blocks,
+-			&bno, &new, &boundary, create);
+-	if (ret < 0)
+-		return ret;
+-
+-	iomap->flags = 0;
+ 	iomap->offset = (u64)first_block << blkbits;
+ 	iomap->bdev = inode->i_sb->s_bdev;
+ 
+-- 
+2.53.0
 
-> @@ -2325,7 +2356,7 @@ static int make_indexed_dir(handle_t *handle, struc=
-t ext4_filename *fname,
->  	if (retval)
->  		goto out_frames;
-> =20
-> -	de =3D do_split(handle,dir, &bh2, frame, &fname->hinfo);
-> +	de =3D do_split(handle, dir, &bh2, frames, frame, &fname->hinfo);
->  	if (IS_ERR(de)) {
->  		retval =3D PTR_ERR(de);
->  		goto out_frames;
 
-[Severity: Critical]
-In make_indexed_dir(), frame->bh is bh (logical block 0) and the buffer pas=
-sed
-to do_split() is bh2, which was allocated earlier in make_indexed_dir() via
-ext4_append():
-
-    bh2 =3D ext4_append(handle, dir, &block);
-    if (IS_ERR(bh2)) {
-        brelse(bh);
-        return PTR_ERR(bh2);
-    }
-    ext4_set_inode_flag(dir, EXT4_INODE_INDEX);
-    data2 =3D bh2->b_data;
-
-    memcpy(data2, de, len);
-    memset(de, 0, len); /* wipe old data */
-
-If block 0 is marked free in a corrupted block bitmap and ext4_append()
-returns bh2 =3D=3D bh, won't make_indexed_dir() perform an overlapping memc=
-py()
-over root->dot and root->dotdot, wipe the copied entries with memset(),
-reinitialize bh->b_data as a dx_root header, and dirty both buffers in the
-journal before do_split() ever checks *bh =3D=3D f->bh?
-
-> @@ -2631,7 +2662,7 @@ static int ext4_dx_add_entry(handle_t *handle, stru=
-ct ext4_filename *fname,
->  			goto journal_error;
->  		}
->  	}
-> -	de =3D do_split(handle, dir, &bh, frame, &fname->hinfo);
-> +	de =3D do_split(handle, dir, &bh, frames, frame, &fname->hinfo);
->  	if (IS_ERR(de)) {
->  		err =3D PTR_ERR(de);
->  		goto cleanup;
-
-[Severity: Critical]
-What happens if the index split right above this do_split() call in
-ext4_dx_add_entry() receives an aliased buffer from ext4_append()?
-
-When dx_get_count(entries) =3D=3D dx_get_limit(entries), ext4_dx_add_entry()
-allocates a new index block:
-
-    bh2 =3D ext4_append(handle, dir, &newblock);
-    if (IS_ERR(bh2)) {
-        err =3D PTR_ERR(bh2);
-        goto cleanup;
-    }
-    node2 =3D (struct dx_node *)(bh2->b_data);
-    entries2 =3D node2->entries;
-    memset(&node2->fake, 0, sizeof(struct fake_dirent));
-
-Nothing checks whether bh2 aliases frames[0..level].bh or the leaf block bh:
-
-1. In the !add_level branch, if bh2 aliases (frame - 1)->bh, the memcpy() i=
-nto
-   entries2 overwrites (frame - 1)->entries, and the subsequent call to
-   dx_insert_block((frame - 1), hash2, newblock) reads the corrupted count =
-and
-   can memmove() out of bounds past the end of (frame - 1)->bh->b_data.
-
-2. In the add_level branch, if bh2 aliases frames[0].bh, the memcpy() from
-   entries (offset 32) to entries2 (offset 8) is an overlapping copy within
-   frames[0].bh->b_data that overwrites dxroot->info.indirect_levels at off=
-set
-   30, increments it, and jumps directly to journal_error / cleanup without
-   reaching do_split(), causing dx_release(frames) to loop out of bounds pa=
-st
-   frames[EXT4_HTREE_LEVEL] or leak frame references.
-
-3. In the !add_level branch when restart =3D=3D 0 and at - entries < icount=
-1, if
-   bh2 aliases the leaf block bh, bh->b_data is overwritten with a dx_node
-   header and index entries, and bh2 is released without swapping into
-   frame->bh, so do_split() then runs on the corrupted leaf buffer without
-   detecting the alias.
-
-Could the alias checks be performed when bh2 is allocated during the index
-split as well?
-
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/tencent_4EAEF2024D7=
-BB83D62E41306EED8D2112C08@qq.com?part=3D1
+--hhurp2xrs3achqmx--
