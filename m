@@ -1,59 +1,110 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793821608;
-	b=g1geCcUG9UmSoCct7NZR64Q9ZO3vhq1TPaMqKiUtgphLHmnZDdI0BPb7gVFr8F6dfGUb
-	 MuLs5PZYKmTzrs6rVBWlhaaMqfqHxBztX+RTFmSsH3Y5CYux4TeILcgg8CsBWUYkoYkKZ
-	 VBoqMKF7WANdmBYO0MpfyUypoGPr/+N4AAQeJ2MG0p3U1uratSUz4Rz5pocs6vb/QM9sm
-	 ZE4bfTYMnauLJ+WxStwq8q7LoOj2xGBigx/KwTLJMBvT3HtqZTsOtbCmT01zJ+pRyO9sw
-	 +1pfflF1ZuXwjTLT/Q20JZFszd0wVwKinpt059SBci7HgzH5wVqTAJU3vvxIvep4ZEQ==
+	t=1793821628;
+	b=yRI6Liarzp3jK275sDuF+hJW7ivNC8t1+fgMtEewuTb7QiMRxDErQdnzNgbarb3kACPd
+	 3ugea0oiLlLmmzA42k5hsUP51NBp/oIlGDbRaMV507WL7exmqWaBos7FjESQjIXGMnHy3
+	 DtOAbc05/7F69p2DHPK1bznfyjc6StHfpj7GmL8vx2WRMRp918AKDfqxRs/w75etSr8lz
+	 pEB8HosXIvVttmtx79r+/575y8rV5h90eRPA9e5QlOaVQ3eiAoYiTlVhz98XNsb+VDWw+
+	 qiKsE1D0zA4VnjQvGY9CsNV5TSItj3PEfczHryCbo7xKuuRhFWDgpzywFFgR8/4GSpg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793821608;
-	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
-	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
-	bh=BimR1D9/wvZGY0reDOYel4C+9wjSglW0Ag8MNWquP3M=;
-	b=kEBrpXpv7IuPkrT4ACnN4DYS48EKijZt9qTOSq5A3rrFCIXy6DSga/QNSeO/uDP3+I90
-	 dLLSa7+DmyaV6UqKd1n1LhXtZF6W1k7gXnPm1Ga8FcZJz9yWHCifehA+Q9JR0YyBkxFve
-	 jyeoc+kC0OEX8HOuF8GnxwoZZHFvWlnkPxVN8GdngurVG+IFrL2yK73qdUbgXEwGjIkNC
-	 g9yuejNSwVYxPB0hbiEw/w1YwudR5kIiGC54Qr/AInnZ0st9urikLvc1F/DCWuCwIyler
-	 WGyoTy97rB2XjyObdaktDN48lLGSzNQ7tO1njNiBegIxT9XUOwoItgh/sgGjlXHW37g==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793821628;
+	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
+	 In-Reply-To:References:MIME-Version:Content-Type:X-Mailer:
+	 X-Developer-Signature:X-Developer-Key:Content-Transfer-Encoding;
+	bh=zft31zEOyoxpoaQra2tyBUnsx6CBcNbPccBHjIcKUVg=;
+	b=jfor4nVauZqrwusaRWFTqlKuJ1C1wi1P2F6gKGuW9Qwnf6pQ+bqd1EuxBllqN6zsq0vV
+	 bCDpIwzRkQ5BR+c0QGrVWowsvOYMDrb8ZjaNKKbwNpOqPanGMt7GFWmjWyp+L5MlnzHHT
+	 J5xSBCwDtZTSqa1obXHya2YirFvbGUYccKogEBYoeWmJXu5Kw4iKjkjLR7QI854SbImMg
+	 5SVJ8OcgWBW3MWtzfCHHCpBVw8ICenM4oC9COVqOTKF+vHaMuk2TVckp4L3MD7WKO9FwL
+	 D7IR08g4DVQ/gH7huBoDfWrB9FZAxUyZR9u4ow/axoWhpZF6MniVjBc9iX+9R81v1DQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=SYMjwR9C;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=RajwCGCh;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BB35E608C9A1;
-	Wed,  4 Nov 2026 19:46:47 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 62715608E3AC;
+	Wed,  4 Nov 2026 19:47:08 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=SYMjwR9C
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A5C321F00A1C;
-	Wed,  4 Nov 2026 19:46:45 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=RajwCGCh
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 18A421F00919;
+	Wed,  4 Nov 2026 19:46:55 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793821607;
-	bh=BimR1D9/wvZGY0reDOYel4C+9wjSglW0Ag8MNWquP3M=;
+	s=k20260515; t=1793821628;
+	bh=zft31zEOyoxpoaQra2tyBUnsx6CBcNbPccBHjIcKUVg=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=SYMjwR9CisNRR4trA29J7KYyt9QQltUoV6GaOZQupCdWwqP7nEenQBuyfJvbd/Y6G
-	 c+d8wNrGK/ym2gUcRUDIR39Q7A+spBR7QqRMpG1m5xpI7GS4v5txkTX1Y7D88y5HuI
-	 ImYXCqFJosDpkrORlHNlK3Vxl/xkCOHMjSg65oGEfSFzOwzh6fWQYonctIPAbQKmDl
-	 lz1o0JzenKjtMcZLg4GGdUEa6Bww5ILNLq3OPjsRnSTiz30hEJQknKv065WnqaGmx0
-	 Ks7S3MzxpObGiRSZDhv+2WnBKRf2AEuIAKyzXOfzT7JldhUl0nPlkfmO7w6syp2tgi
-	 qgbNGRI7x/qng==
-From: Andrey Albershteyn <aalbersh@kernel.org>
-To: ebiggers@kernel.org,
-	hch@lst.de,
-	fsverity@lists.linux.dev
-Cc: Andrey Albershteyn <aalbersh@kernel.org>,
-	linux-xfs@vger.kernel.org,
-	linux-btrfs@vger.kernel.org,
-	linux-f2fs-devel@lists.sourceforge.net,
-	linux-ext4@vger.kernel.org
-Subject: [PATCH 5/5] f2fs: use I_VERITY_BUILDING instead of private flags
-Date: Wed,  4 Nov 2026 20:46:14 +0100
-Message-ID: <20261104194618.103332-6-aalbersh@kernel.org>
-X-Mailer: git-send-email 2.54.0
-In-Reply-To: <20261104194618.103332-1-aalbersh@kernel.org>
-References: <20261104194618.103332-1-aalbersh@kernel.org>
+	b=RajwCGChuwyoqoZXwpUtB63CnfJNCXfYV3MXWhfQVc5Ev6XMozMwlvc6X98vleQyv
+	 f9HzBE4v113NX/e1l78y5ttqcWo69gQcs6Ww+sQGKZ3cLiPEcmIedv9Dr8Fupfzesw
+	 W2qdod9xWoMSOmx1XAyg2z9rNs/8Jv2qrPox1n/Zc4FZI6mKO77lTmc1CJ+0psYuJ3
+	 GAD2h5/aLL7ToIPisurMJ320J6bxgj0LUdPq4xrjzKapKKfnTHEzSVwuWV6kBmMycE
+	 p8oPLiWRZfJASR8Mhh1/kUIyHucEcqRy1EkK1gmQTe3G+tur6Iu40MBhi/iT5cSWMY
+	 VmRs6TTIcG5Ww==
+From: Christian Brauner <brauner@kernel.org>
+To: linux-fsdevel@vger.kernel.org
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+	Jann Horn <jannh@google.com>,
+	Josef Bacik <josef@toxicpanda.com>,
+	Chris Mason <mason@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>,
+	NeilBrown <neil@brown.name>,
+	Eric Dumazet <edumazet@kernel.org>,
+	Thomas Gleixner <tglx@kernel.org>,
+	Al Viro <viro@zeniv.linux.org.uk>,
+	Jonathan Corbet <corbet@lwn.net>,
+	Christoph Hellwig <hch@lst.de>,
+	Greg Kroah-Hartman <gregkh@suse.de>,
+	Joel Granados <joel.granados@kernel.org>,
+	Kees Cook <kees@kernel.org>,
+	Jan Kara <jack@suse.cz>,
+	Jan Kara <jack@suse.com>,
+	linux-kernel@vger.kernel.org,
+	linux-nfs@vger.kernel.org,
+	linux-acpi@vger.kernel.org,
+	linux-kselftest@vger.kernel.org,
+	linux-s390@vger.kernel.org,
+	linux-scsi@vger.kernel.org,
+	linux-um@lists.infradead.org,
+	linux-wireless@vger.kernel.org,
+	linuxppc-dev@lists.ozlabs.org,
+	netdev@vger.kernel.org,
+	ntfs3@lists.linux.dev,
+	platform-driver-x86@vger.kernel.org,
+	coreteam@netfilter.org,
+	kexec@lists.infradead.org,
+	linux-pci@vger.kernel.org,
+	linux-sound@vger.kernel.org,
+	netfilter-devel@vger.kernel.org,
+	dri-devel@lists.freedesktop.org,
+	ibm-acpi-devel@lists.sourceforge.net,
+	jfs-discussion@lists.sourceforge.net,
+	linux-alpha@vger.kernel.org,
+	linux-arm-kernel@lists.infradead.org,
+	linux-cifs@vger.kernel.org,
+	linux-fbdev@vger.kernel.org,
+	linux-hwmon@vger.kernel.org,
+	linux-mm@kvack.org,
+	linux-sh@vger.kernel.org,
+	linux-usb@vger.kernel.org,
+	samba-technical@lists.samba.org,
+	sparclinux@vger.kernel.org,
+	linux-m68k@lists.linux-m68k.org,
+	linux-doc@vger.kernel.org,
+	linux-serial@vger.kernel.org,
+	linux-atm-general@lists.sourceforge.net,
+	Takashi Iwai <tiwai@suse.de>,
+	linux-input@vger.kernel.org,
+	linux-raid@vger.kernel.org,
+	linux-ext4@vger.kernel.org,
+	linux-modules@vger.kernel.org,
+	linux-debuggers@vger.kernel.org,
+	"Christian Brauner (Amutable)" <brauner@kernel.org>,
+	Chuck Lever <cel@kernel.org>
+Subject: [PATCH RESEND v2 19/26] wifi: ipw2x00: let procfs copy in writes to the debug level
+Date: Wed,  4 Nov 2026 20:46:53 +0100
+Message-ID: <20261104-work-procfs-drivers-v2-19-245e54e87116@kernel.org>
+In-Reply-To: <20261104-work-procfs-drivers-v2-0-245e54e87116@kernel.org>
+References: <20261104-work-procfs-drivers-v2-0-245e54e87116@kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -63,159 +114,53 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+X-Mailer: b4 0.17-dev
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1605; i=brauner@kernel.org; h=from:subject:message-id; bh=SZl2laNUZYNGFN2sYGUP5fs3tBGCqMuq/D28k7CZWwo=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS97up6Oev4hMLPxsZ2136FuR12SNXk+zJzkV2eLvcbC +ML1Vevd5SyMIhxMciKKbI4tJuEyy3nqdhslKkBM4eVCWQIAxenAEzkxyZGhh+zNh/MzVMol5A7 Oltna15SsRRnwKr/s7+v+ix/vNn+yDaG/x5P3yxp3xP3fKd4vL9mjb/e893xlTemrnQuFzt//Ms bC34A
+X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 Content-Transfer-Encoding: 8bit
 
-Now that the VFS tracks an inode whose Merkle tree is under construction
-via I_VERITY_BUILDING and handles the concurrent-enable guard in the
-generic fs-verity enable path, drop the inode runtime flags that
-duplicated this state.
+Implement ->proc_write_buf() so procfs copies in what is written before
+it pins the entry, and parse the level from that copy. Writes larger
+than PAGE_SIZE - 1 bytes fail with -EINVAL now, and a buffer that can't
+be read fails with -EFAULT instead of looking like it was written.
 
-Replace f2fs own helper f2fs_verity_in_progress() with
-fsverity_is_building(), and remove the and FI_VERITY_IN_PROGRESS flags.
-It's fine to remove IS_ENABLED() guard as fsverity_is_building() has
-stub.
-
-Signed-off-by: Andrey Albershteyn <aalbersh@kernel.org>
+Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- fs/f2fs/data.c   | 10 +++++-----
- fs/f2fs/f2fs.h   |  7 -------
- fs/f2fs/verity.c | 15 ++++-----------
- 3 files changed, 9 insertions(+), 23 deletions(-)
+ drivers/net/wireless/intel/ipw2x00/libipw_module.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
 
-diff --git a/fs/f2fs/data.c b/fs/f2fs/data.c
-index 28fd8afff5d4..ab6f6f182f97 100644
---- a/fs/f2fs/data.c
-+++ b/fs/f2fs/data.c
-@@ -3356,7 +3356,7 @@ int f2fs_write_single_data_page(struct folio *folio, int *submitted,
- 		goto redirty_out;
- 
- 	if (folio->index < end_index ||
--			f2fs_verity_in_progress(inode) ||
-+			fsverity_is_building(inode) ||
- 			compr_blocks)
- 		goto write;
- 
-@@ -3889,7 +3889,7 @@ void f2fs_write_failed(struct inode *inode, loff_t to)
- 		return;
- 
- 	/* In the fs-verity case, f2fs_end_enable_verity() does the truncate */
--	if (to > i_size && !f2fs_verity_in_progress(inode)) {
-+	if (to > i_size && !fsverity_is_building(inode)) {
- 		f2fs_down_write(&F2FS_I(inode)->i_gc_rwsem[WRITE]);
- 		filemap_invalidate_lock(inode->i_mapping);
- 
-@@ -4205,7 +4205,7 @@ static int f2fs_write_begin(const struct kiocb *iocb,
- 		return 0;
- 
- 	if (!(pos & (PAGE_SIZE - 1)) && (pos + len) >= i_size_read(inode) &&
--	    !f2fs_verity_in_progress(inode)) {
-+	    !fsverity_is_building(inode)) {
- 		folio_zero_segment(folio, len, folio_size(folio));
- 		return 0;
- 	}
-@@ -4279,7 +4279,7 @@ static int f2fs_write_end(const struct kiocb *iocb,
- 		f2fs_update_time(F2FS_I_SB(inode), REQ_TIME);
- 
- 		if (pos + copied > i_size_read(inode) &&
--				!f2fs_verity_in_progress(inode))
-+				!fsverity_is_building(inode))
- 			f2fs_i_size_write(inode, pos + copied);
- 		return copied;
- 	}
-@@ -4294,7 +4294,7 @@ static int f2fs_write_end(const struct kiocb *iocb,
- 		folio_set_f2fs_atomic(folio);
- 
- 	if (pos + copied > i_size_read(inode) &&
--	    !f2fs_verity_in_progress(inode)) {
-+	    !fsverity_is_building(inode)) {
- 		f2fs_i_size_write(inode, pos + copied);
- 		if (f2fs_is_atomic_file(inode))
- 			f2fs_i_size_write(F2FS_I(inode)->cow_inode,
-diff --git a/fs/f2fs/f2fs.h b/fs/f2fs/f2fs.h
-index f7423b3f6e4a..374c861f13b9 100644
---- a/fs/f2fs/f2fs.h
-+++ b/fs/f2fs/f2fs.h
-@@ -925,7 +925,6 @@ enum {
- 	FI_EXTRA_ATTR,		/* indicate file has extra attribute */
- 	FI_PROJ_INHERIT,	/* indicate file inherits projectid */
- 	FI_PIN_FILE,		/* indicate file should not be gced */
--	FI_VERITY_IN_PROGRESS,	/* building fs-verity Merkle tree */
- 	FI_COMPRESSED_FILE,	/* indicate file's data can be compressed */
- 	FI_COMPRESS_CORRUPT,	/* indicate compressed cluster is corrupted */
- 	FI_MMAP_FILE,		/* indicate file was mmapped */
-@@ -3535,12 +3534,6 @@ static inline void clear_inode_flag(struct inode *inode, int flag)
- 	__mark_inode_dirty_flag(inode, flag, false);
+diff --git a/drivers/net/wireless/intel/ipw2x00/libipw_module.c b/drivers/net/wireless/intel/ipw2x00/libipw_module.c
+index 15d9a5efb581..08cc0d7f57c1 100644
+--- a/drivers/net/wireless/intel/ipw2x00/libipw_module.c
++++ b/drivers/net/wireless/intel/ipw2x00/libipw_module.c
+@@ -216,14 +216,13 @@ static int debug_level_proc_show(struct seq_file *m, void *v)
  }
  
--static inline bool f2fs_verity_in_progress(struct inode *inode)
--{
--	return IS_ENABLED(CONFIG_FS_VERITY) &&
--	       is_inode_flag_set(inode, FI_VERITY_IN_PROGRESS);
--}
--
- static inline void set_acl_inode(struct inode *inode, umode_t mode)
+ static ssize_t debug_level_proc_write(struct file *file,
+-		const char __user *buffer, size_t count, loff_t *pos)
++		char *buffer, size_t count, loff_t *pos)
  {
- 	F2FS_I(inode)->i_acl_mode = mode;
-diff --git a/fs/f2fs/verity.c b/fs/f2fs/verity.c
-index 4a2cea4288f9..af3d33c6f26d 100644
---- a/fs/f2fs/verity.c
-+++ b/fs/f2fs/verity.c
-@@ -94,9 +94,6 @@ static int f2fs_begin_enable_verity(struct file *filp)
- 	struct inode *inode = file_inode(filp);
- 	int err;
+ 	char buf[] = "0x00000000\n";
+ 	size_t len = min(sizeof(buf) - 1, count);
+ 	unsigned long val;
  
--	if (f2fs_verity_in_progress(inode))
--		return -EBUSY;
--
- 	if (f2fs_is_atomic_file(inode))
- 		return -EOPNOTSUPP;
+-	if (copy_from_user(buf, buffer, len))
+-		return count;
++	memcpy(buf, buffer, len);
+ 	buf[len] = 0;
+ 	if (sscanf(buf, "%li", &val) != 1)
+ 		printk(KERN_INFO DRV_NAME
+@@ -236,7 +235,7 @@ static ssize_t debug_level_proc_write(struct file *file,
  
-@@ -113,7 +110,6 @@ static int f2fs_begin_enable_verity(struct file *filp)
- 	if (err)
- 		return err;
+ static const struct proc_ops debug_level_proc_ops = {
+ 	.proc_show	= debug_level_proc_show,
+-	.proc_write	= debug_level_proc_write,
++	.proc_write_buf	= debug_level_proc_write,
+ };
+ #endif				/* CONFIG_LIBIPW_DEBUG */
  
--	set_inode_flag(inode, FI_VERITY_IN_PROGRESS);
- 	return 0;
- }
- 
-@@ -143,10 +139,9 @@ static int f2fs_end_enable_verity(struct file *filp, const void *desc,
- 		goto cleanup;
- 
- 	/*
--	 * Write all pages (both data and verity metadata).  Note that this must
--	 * happen before clearing FI_VERITY_IN_PROGRESS; otherwise pages beyond
--	 * i_size won't be written properly.  For crash consistency, this also
--	 * must happen before the verity inode flag gets persisted.
-+	 * Write all pages (both data and verity metadata). For crash
-+	 * consistency, this also must happen before the verity inode flag gets
-+	 * persisted.
- 	 */
- 	err = filemap_write_and_wait(inode->i_mapping);
- 	if (err)
-@@ -164,14 +159,13 @@ static int f2fs_end_enable_verity(struct file *filp, const void *desc,
- 	f2fs_set_inode_flags(inode);
- 	f2fs_mark_inode_dirty_sync(inode, true);
- 
--	clear_inode_flag(inode, FI_VERITY_IN_PROGRESS);
- 	return 0;
- 
- cleanup:
- 	/*
- 	 * Verity failed to be enabled, so clean up by truncating any verity
- 	 * metadata that was written beyond i_size (both from cache and from
--	 * disk) and clearing FI_VERITY_IN_PROGRESS.
-+	 * disk).
- 	 *
- 	 * Taking i_gc_rwsem[WRITE] is needed to stop f2fs garbage collection
- 	 * from re-instantiating cached pages we are truncating (since unlike
-@@ -186,7 +180,6 @@ static int f2fs_end_enable_verity(struct file *filp, const void *desc,
- 		set_sbi_flag(sbi, SBI_NEED_FSCK);
- 	}
- 	f2fs_up_write(&F2FS_I(inode)->i_gc_rwsem[WRITE]);
--	clear_inode_flag(inode, FI_VERITY_IN_PROGRESS);
- 	return err ?: err2;
- }
- 
+
 -- 
-2.54.0
+2.53.0
 
