@@ -1,110 +1,82 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=210.171.160.6
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793814381;
-	b=5MG+YJQ/uiSIWSjn5832Gc5BjqKYg9WlsvLRGUgdDKNF1hl84DFb2hCAnLXBJ90sxHZr
-	 d9e8na6YKC/XxQG0EFlV58L6s30au7D4/VRxsYacxXiqUTQbQ8YIFVW0gGHxPlQP9OU1Z
-	 FtTF3bmt7m9UGoa9ymsKxM6jOzvk9dHPM+EORe9WgjD8byZJ7r0RDsEGjpb/pj/BnR+AG
-	 qcSjLzkvWOxo1wBje/B9dl5MIWfQ+/bgnQgJLgUcIdLqveXWCXPywrAWMs+PtmaH11vDy
-	 ioitRQMnG6EszUF3w+b235RqezPhZZddO9263Hzmgmy4hb+BP7VuOjmdpY6MNkn1fTQ==
+	t=1793814472;
+	b=th/nu1oMyTc3i1GO8zTtG5qRUTrjVbJmXupekghEFGJBEp+IxaLvr0B/3vIXn5BDIfG6
+	 7lqjgmbVfioZXz72lhEVlJvZ4alGX/vkvTMoLWRW3zUoPnWo1jAp0xVz2PIxzsi9ymu+N
+	 vkqvTuN+Xe31AMmwUrqDDsncXdS38jahkMrF1XY/iKrZNqDPyW1ozJ+KmgJ6QSmKCOKkg
+	 Fvuur3n76J9Gb61KAbRG9fAynJv/gPKqQfCriUT03cO4jufEZWx98XqfDEgvIv9jq8CKa
+	 ZEvNf4P7q8HO74FBUSlSwckXvY0Wntapm01c/KN31KusTjesbn7dh8Q6BEEfHLYd5vQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793814381;
-	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
-	 In-Reply-To:References:MIME-Version:Content-Type:X-Mailer:
-	 X-Developer-Signature:X-Developer-Key:Content-Transfer-Encoding;
-	bh=mdnthwMs9LvqnLJy6kPpeiwqrlhi6ADC7izliWiN2IE=;
-	b=E/6EnKvKHE11CYhPPq9/x8sL5n8zZ+0rf37Ey6EqLwXNZJQKSK4WBnK673H4F4WKTgb5
-	 SOxlGN/PmgVcH2lY3TKsoK/j+9DfEwvK0wLVWehG2r5KtfwfDD2KG2ORJ7cKCYWgiVfSz
-	 JC7Oh5HZVnfiiE8lVDRQDkE0rTq0RqHMw9rTGp6aWr4LJ//Ue6+wwsNOLO5d7QFJu5KDq
-	 g3SxGjC41iwsz79QHiYzYd6cV6qAKzzzxLpsNcfSQHuzSGQp3zcc0ToYYsmYiZDbBT3Ia
-	 EjKR8BlZRSuwn2V5EntSvPWAE4E/31hF45IyTC3NuqGb21EJgQa5hu3y5elgnvDwj5A==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793814472;
+	h=DMARC-Filter:Received:DKIM-Signature:DKIM-Signature:Received:
+	 Received:From:To:Cc:Subject:In-Reply-To:References:Date:Message-ID:
+	 User-Agent:MIME-Version:Content-Type;
+	bh=JtCL3jO2QRUdCPRcllSlusVnF+r8L0IiSaXuaLE6SIk=;
+	b=GMu8Oy/iHjKIxYXbMZ87e5KEi860DgQONgblpQJc5s2M5zuzEoj9xlCLQOyr97F8Mg8w
+	 nzu62JSZ9VUuWCLOBFG0v2Gk4mTkFkx6of5RGWZoX+1wiBOHkQgt8DSeCEQ06lTbvVx9E
+	 9lj4EIuvRdARVJ388ToGGSaFLEIr7YGyZ5YDYU6+DUAfJRvg0DtSvNUJgngWKWSWfejoD
+	 czvJyy/C6ci2fqJ3Jfq0nJFM5hyVIzLnQOxgaVMOfIsSes/CxjSFI+SUMUDLJD+DzLHtB
+	 dI73qqVnbsmfrFAjzqN5glzjaAYUHZJ4yQzURVkJZKGAuqFXROjXqVdt/q8WId5Wahw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="IUyU/T8J";
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=pass header.from=mail.parknet.co.jp;
+	spf=pass smtp.mailfrom=parknet.co.jp;
+	dkim=pass header.d=parknet.co.jp header.i=@parknet.co.jp header.a=rsa-sha256 header.s=20250114 header.b=bRy3fU3W;
+	dkim=pass header.d=parknet.co.jp header.i=@parknet.co.jp header.a=ed25519-sha256 header.s=20250114-ed25519 header.b=gNZqXcje;
+	arc=none smtp.remote-ip=210.171.160.6
+Received: from mail.parknet.co.jp (mail.parknet.co.jp [210.171.160.6])
+	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ECDCD606A328;
-	Wed,  4 Nov 2026 17:46:20 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B60C2606A326;
+	Wed,  4 Nov 2026 17:47:49 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org B60C2606A326
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mail.parknet.co.jp
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=parknet.co.jp
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=IUyU/T8J
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1A0831F00919;
-	Wed,  4 Nov 2026 17:46:06 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793814380;
-	bh=mdnthwMs9LvqnLJy6kPpeiwqrlhi6ADC7izliWiN2IE=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=IUyU/T8JanEUeWb8OLvnBOF7mcsDaYX0yn50MMyhywpzR+Xd73lI68b+Z0EjhqK7z
-	 bkEkttde6fJvRPVGGA2MZkA0GbASE8FC1nT+84ODvZFzTbBCjYw8IWtatNsrtMoyrH
-	 KXUF53QFRfDUagwA56DH/VxXp+wT5/pJfjV3gzlKef2KUiN1HSYpnfrnWdn1nbnNKf
-	 O/7xCRN+TNpny8Le4H87j8uBb2tQPjPggOwQvaiPHTFrUkQgsfx/jAR3vQ6vrxrWe7
-	 JaBxG35YdcKRtCdLtOxgMygQkmiRV8AYLKhLlP/iKh/wi1njtDUmOUna6ss0EP8ecg
-	 vvOH1vOWWni9g==
-From: Christian Brauner <brauner@kernel.org>
-To: linux-fsdevel@vger.kernel.org
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-	Jann Horn <jannh@google.com>,
-	Josef Bacik <josef@toxicpanda.com>,
-	Chris Mason <mason@kernel.org>,
-	Jeff Layton <jlayton@kernel.org>,
-	NeilBrown <neil@brown.name>,
-	Eric Dumazet <edumazet@kernel.org>,
-	Thomas Gleixner <tglx@kernel.org>,
-	Al Viro <viro@zeniv.linux.org.uk>,
-	Jonathan Corbet <corbet@lwn.net>,
-	Christoph Hellwig <hch@lst.de>,
-	Greg Kroah-Hartman <gregkh@suse.de>,
-	Joel Granados <joel.granados@kernel.org>,
-	Kees Cook <kees@kernel.org>,
-	Jan Kara <jack@suse.cz>,
-	Jan Kara <jack@suse.com>,
-	linux-kernel@vger.kernel.org,
-	linux-nfs@vger.kernel.org,
-	linux-acpi@vger.kernel.org,
-	linux-kselftest@vger.kernel.org,
-	linux-s390@vger.kernel.org,
-	linux-scsi@vger.kernel.org,
-	linux-um@lists.infradead.org,
-	linux-wireless@vger.kernel.org,
-	linuxppc-dev@lists.ozlabs.org,
-	netdev@vger.kernel.org,
-	ntfs3@lists.linux.dev,
-	platform-driver-x86@vger.kernel.org,
-	coreteam@netfilter.org,
-	kexec@lists.infradead.org,
-	linux-pci@vger.kernel.org,
-	linux-sound@vger.kernel.org,
-	netfilter-devel@vger.kernel.org,
-	dri-devel@lists.freedesktop.org,
-	ibm-acpi-devel@lists.sourceforge.net,
-	jfs-discussion@lists.sourceforge.net,
-	linux-alpha@vger.kernel.org,
-	linux-arm-kernel@lists.infradead.org,
-	linux-cifs@vger.kernel.org,
-	linux-fbdev@vger.kernel.org,
-	linux-hwmon@vger.kernel.org,
-	linux-mm@kvack.org,
-	linux-sh@vger.kernel.org,
-	linux-usb@vger.kernel.org,
-	samba-technical@lists.samba.org,
-	sparclinux@vger.kernel.org,
-	linux-m68k@lists.linux-m68k.org,
-	linux-doc@vger.kernel.org,
-	linux-serial@vger.kernel.org,
-	linux-atm-general@lists.sourceforge.net,
-	Takashi Iwai <tiwai@suse.de>,
-	linux-input@vger.kernel.org,
-	linux-raid@vger.kernel.org,
-	linux-ext4@vger.kernel.org,
-	linux-modules@vger.kernel.org,
-	linux-debuggers@vger.kernel.org,
-	"Christian Brauner (Amutable)" <brauner@kernel.org>,
-	Chuck Lever <cel@kernel.org>
-Subject: [PATCH v2 12/51] powerpc/rtas: consume the whole write to /proc/powerpc/rtas/progress
-Date: Wed,  4 Nov 2026 18:45:55 +0100
-Message-ID: <20261104-work-procfs-bugfixes-v2-12-bbf7d5546809@kernel.org>
-In-Reply-To: <20261104-work-procfs-bugfixes-v2-0-bbf7d5546809@kernel.org>
-References: <20261104-work-procfs-bugfixes-v2-0-bbf7d5546809@kernel.org>
+	dkim=pass (2048-bit key, unprotected) header.d=parknet.co.jp header.i=@parknet.co.jp header.a=rsa-sha256 header.s=20250114 header.b=bRy3fU3W;
+	dkim=pass header.d=parknet.co.jp header.i=@parknet.co.jp header.a=ed25519-sha256 header.s=20250114-ed25519 header.b=gNZqXcje
+Received: from ibmpc.myhome.or.jp (server.parknet.ne.jp [210.171.168.39])
+	by mail.parknet.co.jp (Postfix) with ESMTPSA id CD2EE26F768B;
+	Thu,  5 Nov 2026 02:47:40 +0900 (JST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=parknet.co.jp;
+	s=20250114; t=1793814461;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=JtCL3jO2QRUdCPRcllSlusVnF+r8L0IiSaXuaLE6SIk=;
+	b=bRy3fU3WPpfoxNAX5TCTjlCiMCWP1OZoEEJ0ykYDt89ZfWwaVIajszzmCv/IQ6Ox/sQ1Oq
+	HWn0nbOROstmKBJ1H+rryYpkssHlKpYtxRYsvFp2HuROvAueFt6RC0AM8Q6Tner0+o3QKO
+	ORjCnOVPT9hly1ZyVIfon1r7k3+Ren9ofm/IFWwxM4P4iFeyD+DZXdd9ynOnHqoPedd4ju
+	s0FElWOBk8uvzrTcF5yVuvhixqZLEH8s7M5TFYoJHrIFbjdDtl/PfHZe7+CsB+FWDTUTZe
+	IBAC7d8/NU/MV/NhA2RlGjTO9T/nIhCOIt40GEzkjS2XEEgSj+4Ean3+2KP/eQ==
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=parknet.co.jp;
+	s=20250114-ed25519; t=1793814461;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=JtCL3jO2QRUdCPRcllSlusVnF+r8L0IiSaXuaLE6SIk=;
+	b=gNZqXcjeRAc2PP8/671dhVqqwalROPfHTPkJ9HY6We5ZdHm3+Qt0RKpqn8R9vbOdJFj7sz
+	tDeCTjwSCXEjoaDA==
+Received: from devron.myhome.or.jp (devron.myhome.or.jp [192.168.0.3])
+	by ibmpc.myhome.or.jp (Postfix) with ESMTPS id 51F83E000B0;
+	Thu, 05 Nov 2026 02:47:40 +0900 (JST)
+Received: by devron.myhome.or.jp (Postfix, from userid 1000)
+	id 467642200105; Thu, 05 Nov 2026 02:47:40 +0900 (JST)
+From: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+To: Jan Kara <jack@suse.cz>
+Cc: Christian Brauner <brauner@kernel.org>,  linux-fsdevel@vger.kernel.org,
+  Josef Bacik <josef@toxicpanda.com>,  Chris Mason <mason@kernel.org>,
+  linux-ext4@vger.kernel.org,  Andreas Dilger <adilger.kernel@dilger.ca>,
+  Baokun Li <libaokun@linux.alibaba.com>,  Ojaswin Mujoo
+ <ojaswin@linux.ibm.com>,  "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
+  Namjae Jeon <namjae.jeon@samsung.com>,  stable@vger.kernel.org
+Subject: Re: [PATCH RFC 8/9] fat: sync the inode in fat_free_eofblocks()
+In-Reply-To: <oilqmzo3vpddohxp46x3pjzf3wtoebahirtjqmt3izdw6ua5iq@ghdbk27wuf5f>
+References: <20261029-work-inode-metadata_writeback-v1-0-7d6c678a585d@kernel.org>
+	<20261029-work-inode-metadata_writeback-v1-8-7d6c678a585d@kernel.org>
+	<oilqmzo3vpddohxp46x3pjzf3wtoebahirtjqmt3izdw6ua5iq@ghdbk27wuf5f>
+Date: Thu, 05 Nov 2026 02:47:40 +0900
+Message-ID: <87v76co5dv.fsf@mail.parknet.co.jp>
+User-Agent: Gnus/5.13 (Gnus v5.13)
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -114,45 +86,113 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1217; i=brauner@kernel.org; h=from:subject:message-id; bh=uNEn+pHXbIRRMkqtNF6NnFXDW3eMy9Pk3SJ7wJuNwck=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9zjsreObfmrOX1obn3tw0N6WpU3RvwOStvn2i0U5yp rEGLx+odpSyMIhxMciKKbI4tJuEyy3nqdhslKkBM4eVCWQIAxenAEwk8Agjw1Z5rj/rEq/Xb9Zi nJlScTdg1ruoGZHGhW11TVmdwqnc0xgZOpo+NM6qs41edOyOUPc3kzd2G/9GyxwJqc6SeXR2q9J OfgA=
-X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain
 
-ppc_rtas_progress_write() shows the first 255 bytes of a write and
-returns that many, so a writer that loops until everything is written
-shows the rest as a second message. Return the whole count, the rest is
-ignored.
+Jan Kara <jack@suse.cz> writes:
 
-Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
-Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
----
- arch/powerpc/kernel/rtas-proc.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+> On Thu 29-10-26 14:28:23, Christian Brauner wrote:
+>> fat_evict_inode() calls fat_free_eofblocks() for a linked inode to give
+>> back the clusters that were fallocated past the initialized size. For an
+>> empty file that also resets the start cluster in the directory entry. It
+>> truncates the clusters and writes the inode with:
+>> 
+>>   sync_inode_metadata(inode, inode_needs_sync(inode));
+>> 
+>> Unless the inode is IS_SYNC that is WB_SYNC_NONE writeback. It copies
+>> the inode into the directory entry buffer, marks the buffer dirty and
+>> sets I_METADATA_WRITEBACK. Then the inode goes away and with it the only
+>> thing that would have told a later fsync() that the directory entry
+>> still has to be written.
+>> 
+>> FAT doesn't have that problem. Its buffers are tracked on the FAT inode
+>   ^^ exFAT??
+>
+>> and fat_file_fsync() writes them out on every fsync() of any file on the
+>> filesystem.
+>> 
+>> So after the next fsync() the clusters are free on disk while the
+>> directory entry of the empty file still points at them. If another file
+>> reuses them and the machine crashes before the directory entry makes it
+>> to disk, the two files share clusters. That's the corruption the comment
+>> in fat_free_eofblocks() is about.
+>
+> Correct, but that does not violate anything AFAICT. fsync(2) promises data
+> is reachable (which it is), not that the fs metadata is all
+> consistent.
+>
+> For non-journaling filesystem you need fsck for such guarantee. And I know
+> I'm a bit obtuse here but the change results in a synchronous buffer write
+> on each eviction of inode that has preallocated blocks which will be a
+> noticeable performance regression for some usecases. Probably Ogawa should
+> decide whether this change is acceptable or whether we play fast and
+> loose... Ogawa?
 
-diff --git a/arch/powerpc/kernel/rtas-proc.c b/arch/powerpc/kernel/rtas-proc.c
-index f38df72e64b8..89b165986851 100644
---- a/arch/powerpc/kernel/rtas-proc.c
-+++ b/arch/powerpc/kernel/rtas-proc.c
-@@ -311,6 +311,7 @@ static int ppc_rtas_poweron_show(struct seq_file *m, void *v)
- static ssize_t ppc_rtas_progress_write(struct file *file,
- 		const char __user *buf, size_t count, loff_t *ppos)
- {
-+	size_t len = count;
- 	unsigned long hex;
- 
- 	if (count >= MAX_LINELENGTH)
-@@ -324,7 +325,7 @@ static ssize_t ppc_rtas_progress_write(struct file *file,
- 	hex = simple_strtoul(progress_led, NULL, 10);
- 
- 	rtas_progress ((char *)progress_led, hex);
--	return count;
-+	return len;
- 
- 	/* clear the line */
- 	/* rtas_progress("                   ", 0xffff);*/
+In my understand, the result of this change only affect to crash case
+(FAT has no guarantee about it with non-sync mode). And this doesn't
+lost data actually - lost some free blocks (maybe fsck would be
+recoverable).
+
+So my preference is no force sync.
+
+Thanks.
+
+>> So wait for the directory entry to reach the disk before the inode goes
+>> away.
+>> 
+>> Reproducer. The image file shows what reached the disk. The flusher is
+>> turned off so that it doesn't write the directory entry before fsck.fat
+>> looks at the image:
+>> 
+>>   img=/tmp/fat.img
+>>   truncate -s 64M $img
+>>   mkfs.vfat $img > /dev/null
+>>   dev=$(losetup -f --show $img)
+>>   mount -t vfat $dev /mnt
+>>   echo 0 > /proc/sys/vm/dirty_writeback_centisecs
+>>   xfs_io -f -c 'falloc -k 0 1m' -c fsync /mnt/a
+>>   echo 3 > /proc/sys/vm/drop_caches
+>>   echo 3 > /proc/sys/vm/drop_caches
+>>   xfs_io -c fsync /mnt/a
+>>   fsck.fat -n $img | grep -A1 '^/a'
+>>   umount /mnt
+>>   losetup -d $dev
+>> 
+>> On v7.3-17318-g65ba8f34ec88 in a KASAN and lockdep vng guest this
+>> prints:
+>> 
+>>   /a
+>>     Contains a free cluster (3). Assuming EOF.
+>> 
+>> With this patch fsck.fat finds nothing wrong with /a.
+>> 
+>> The stable tag is narrower than the Fixes tag. Before v7.3
+>> fat_free_eofblocks() called __fat_write_inode() directly and the fix
+>> there is to pass 1 for wait.
+>> 
+>> Fixes: b13bb33eacb7 ("fat: add fat_fallocate operation")
+>> Cc: stable@vger.kernel.org # v7.3
+>> Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
+>> ---
+>>  fs/fat/inode.c | 2 +-
+>>  1 file changed, 1 insertion(+), 1 deletion(-)
+>> 
+>> diff --git a/fs/fat/inode.c b/fs/fat/inode.c
+>> index d85c8fbdcca4..fc571ee2b174 100644
+>> --- a/fs/fat/inode.c
+>> +++ b/fs/fat/inode.c
+>> @@ -675,7 +675,7 @@ static void fat_free_eofblocks(struct inode *inode)
+>>  		 * any corruption on the next access to the cluster
+>>  		 * chain for the file.
+>>  		 */
+>> -		err = sync_inode_metadata(inode, inode_needs_sync(inode));
+>> +		err = sync_inode_metadata(inode, 1);
+>>  		if (err) {
+>>  			fat_msg(inode->i_sb, KERN_WARNING, "Failed to "
+>>  					"update on disk inode for unused "
+>> 
+>> -- 
+>> 2.53.0
+>> 
 
 -- 
-2.53.0
-
+OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
