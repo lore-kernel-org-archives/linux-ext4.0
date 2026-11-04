@@ -1,49 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793813430;
-	b=VvpJDZAsLFsSynD+qInXJ5sh5ZKk4V1we0rlQ8cfmqVdc0uwLY4lnetx5nAN3/CiTgqv
-	 7vPRhaEYAw4dCx/puDLUGN9Ii4ZUh/KsUVA45z0r/di1UyWEimGJYxp6+8x4l4u11pfdg
-	 Jp1Cmmre3/jWoZG2DSE6BH63tRYeNUp8QUE5QG7fjIQBCkNyiIsEzMrDPBZEomDJnA1Z1
-	 VYyUxcM4YFxom1gh7r5AOMAk5XwOJ3p4AnXlwrmqrYzk2W30AxBPQhtwrN0Kngu3DGJXA
-	 1gb/FtcH3yQu5XUwIYwfmVR4hlT7iCiOMNqjW3odav5DtSgcJtmCQUwQ2EkYr5DBUIg==
+	t=1793813443;
+	b=Th5xZuGLLeX64a9hKMF994ajblvrQV7PgRqrGrcn52fYGbB64Fgg8ItJLULZHY0Nptzl
+	 ibyM6OgDzbiZB1YAHwh2NaP/RQv7nJa0Md4eGnrviEsHDMQjNyvjJFY2EDbdyoNzkDLIQ
+	 UxiLiLkziZr671NvtB/fO9nvRufPSkvC9n9KRj8mihQ1GasxQyiZ6nCaq/ppZmXGuCcyG
+	 Dc+ts+ll0mRcBB2r/zj/Qou4AKrwBnnzQzH8vjO5VIhBBfge+nngcZnMw8onVWwovWsg8
+	 4FvtSwZmQk5cO/0NTPMNAeD0prBi58wgK36aqVBDfE7gGnBT8XXg6ePqECxYHJIc2lA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793813430;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793813443;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=gnzz2fT926tAung/y7Xzshf60AQanFXIqjFC5KSqJW4=;
-	b=vwpbMmSzml903IPFA2a5qpxVcL1qG2ffAGrWMvI3zzmqcnZjWlZ+WeWaXA25ZVz7Gf+P
-	 28QjpyCZvg13XJgN/LUe7mMxbASlI6oJS7M2F0f01YLslpczcds/BkuYEgzdqp1wgpavG
-	 1MdtPOltxByLHDF9i4S2KqOpggQM1Yvp9JDDqA3m4N30boHfstK564KxiDQlm8IRX8xaB
-	 ZyY+KE5KW7D0qHxeNMYZQdirM+tOfa8d1v9YVbD8hFhencl5r81Qw8q2Lpt0AGQTmv08g
-	 sb0PdLWQF4HUGTvzAAwRa7AG/8xh++PRD1KNKezmizGwPhkgh5EjKv6wXOxSDXNalPg==
+	bh=axjAzDMxe/T5Kt/VR9558Sdu9PB/HLdF+q053OKTtnM=;
+	b=tkx9AHqYmwHt4gxAunJ6+y3j3zBUZa+tWlxAIryqOoaxkV5kt8f8KXplONjhnkp/pDZx
+	 oMAtpd0NHRdnxUDdZYrceCKThKhGlgdEq6tIarnc3c1axl9BTHOe+rBzHWxIBdCedtlGi
+	 Soun+sMaCQ7QrtF1ykQUY72y1M5XOoSPsxkSUOJMX3IavWzEz1JaeaEj5GIU8Dnl/Hsmx
+	 ycaXEQPtcaNPUopzv9jp4TiWt5mgz65AEpE03o2DKGXHaYp/dDkQ1mG5G1mLdpzPl7d5Y
+	 N0DQjajdn1xBmXT9DKCctgSjQHunXKrFv71oiw+wB+uxUYpgkKHPXuTRc87VMaVhY/w==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=bKrAUcOe;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=BpyBwaL0;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1F19E608361C;
-	Wed,  4 Nov 2026 17:30:29 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 78C69608363D;
+	Wed,  4 Nov 2026 17:30:43 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=bKrAUcOe
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D051B1F00A20;
-	Wed,  4 Nov 2026 17:30:16 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=BpyBwaL0
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 318C11F0093A;
+	Wed,  4 Nov 2026 17:30:29 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793813429;
-	bh=gnzz2fT926tAung/y7Xzshf60AQanFXIqjFC5KSqJW4=;
+	s=k20260515; t=1793813443;
+	bh=axjAzDMxe/T5Kt/VR9558Sdu9PB/HLdF+q053OKTtnM=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=bKrAUcOeVzlg83/euOIHnVFterm+vHdMFNuNi2Dt0LF9VzWRfSHdWlR7H5c2KTzRF
-	 naRK5w+k54/QDDCRMfWgLxdTPqv4FCwBsr1kXOzQqhEOlC8vy1IWJ41ODhEZLno2LS
-	 jjGH8/XSd1jADyBL1p3Hc3Qgb7ui9/GDGzwbwzjY67qrbN3GQL5NP2Jybx4qUpUZX3
-	 CQMNjfOnMG5qtjvL2qoA6KmgJggxXjaC2t2PuKCscK2/RkukWsmgaXtZ0l6oKz5iz+
-	 P64zZ0Jt2cdani8OUoo4/+XjtpVm+osPlwpgz43htAz/C7aUhFTjPEXATp/jT4GDYM
-	 7OqOzge6sGwYQ==
+	b=BpyBwaL0/aYVXoHwq05IXwkJfbiN+sH/NMlrIciQjG65t4BqcyIJFg2nSk8XDCCkV
+	 c7rAC5Gwt0eJ+/2lGcpbp0ALBTDjeOzJXNQqmnuVDle4iduB5dvN2rzhDckY+qtIzb
+	 gs1CNuM6mGLr4omD5X5lb2yIJHjoEFVFY17i90YDIqHEiBZHsPoN/pZZJkVTJ0KPFp
+	 EUeGwANAMrg4AicMXKhoLnEodEFkU0cutq7m4urrRAjYhUQUJ5q8o2+x5TkfWHjCPD
+	 i91uDDI+3s3/ZTdD9a7P2TXIzuGYqpzF7L202zVk0SuzYL1uXQEo7tJ52MN1ssXopq
+	 kuzwiBlPYX93w==
 From: Christian Brauner <brauner@kernel.org>
-Date: Wed, 04 Nov 2026 18:27:25 +0100
-Subject: [PATCH v2 08/51] powerpc/pseries/lparcfg: don't drop the last byte
- of a write
+Date: Wed, 04 Nov 2026 18:27:26 +0100
+Subject: [PATCH v2 09/51] profiling: report it when /proc/profile can't be
+ created
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -55,7 +55,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261104-work-procfs-bugfixes-v2-8-bbf7d5546809@kernel.org>
+Message-Id: <20261104-work-procfs-bugfixes-v2-9-bbf7d5546809@kernel.org>
 References: <20261104-work-procfs-bugfixes-v2-0-bbf7d5546809@kernel.org>
 In-Reply-To: <20261104-work-procfs-bugfixes-v2-0-bbf7d5546809@kernel.org>
 To: linux-fsdevel@vger.kernel.org
@@ -89,50 +89,52 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
  linux-ext4@vger.kernel.org, linux-modules@vger.kernel.org, 
  linux-debuggers@vger.kernel.org, 
  "Christian Brauner (Amutable)" <brauner@kernel.org>, 
- Chuck Lever <cel@kernel.org>, stable@vger.kernel.org
+ Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1293; i=brauner@kernel.org;
- h=from:subject:message-id; bh=N2rHHHUzfsZsGLUBvdMxa3o2qGAAPzh8wsvUFn8S2uA=;
- b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9zmYqts+f6c771jBc691PB/aNiq5rYmuWq7o9SdKKM
- Ga7qdvUUcrCIMbFICumyOLQbhIut5ynYrNRpgbMHFYmkCEMXJwCMJFb8gz/a+f8MlT+0SWxMsTk
- QerGWIU8g/w227Ptd+ManyhO269pzsgwb7VmgtgD7UuXjjF+CvlTU3NkGv8+HhW+PC2DOSyTg2v
- 5AQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1225; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=tYIXM5EjsYRFpz3d9CdZ23LhMvzI2JA5U8qSrxldqzY=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9zmb5c+HYnPYns6fufFrw5b7Y3/kPP5ytKnep0a7Jn
+ RU85ZS3VkcpC4MYF4OsmCKLQ7tJuNxynorNRpkaMHNYmUCGMHBxCsBEDoUzMjw1q1TdWGx2OGny
+ nwfxD9yf9a1xbZhUXGz4leXXTAWLvycZ/tmE5T+0eFcqb8S9dXuWRJTqOn+e0/UWz2+d/yn/trX
+ 0PxsA
 X-Developer-Key: i=brauner@kernel.org; a=openpgp;
  fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-lparcfg_write() terminates its copy of the write by overwriting the
-last byte, so a write without a trailing newline loses its last
-character: "partition_entitled_capacity=5" is parsed as an empty value
-and fails with -EINVAL. Terminate behind the copy instead, and refuse a
-write that fills the whole buffer, which can't be terminated.
+create_proc_profile() returns 0 whether proc_create() worked or not, so
+a write to /sys/kernel/profiling that turned profiling on but didn't
+get the file reports success and there is no file to read the profile
+from. Return -ENOMEM like the other failures of that write do.
 
-Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
-Cc: stable@vger.kernel.org
+Fixes: 22b8ce94708f ("profiling: dynamically enable readprofile at runtime")
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- arch/powerpc/platforms/pseries/lparcfg.c | 5 ++---
- 1 file changed, 2 insertions(+), 3 deletions(-)
+ kernel/profile.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/arch/powerpc/platforms/pseries/lparcfg.c b/arch/powerpc/platforms/pseries/lparcfg.c
-index 3280b7968cab..9882f98c0efb 100644
---- a/arch/powerpc/platforms/pseries/lparcfg.c
-+++ b/arch/powerpc/platforms/pseries/lparcfg.c
-@@ -699,13 +699,12 @@ static ssize_t lparcfg_write(struct file *file, const char __user * buf,
- 	if (!firmware_has_feature(FW_FEATURE_SPLPAR))
- 		return -EINVAL;
+diff --git a/kernel/profile.c b/kernel/profile.c
+index e7defa90a34c..820d5ec909d4 100644
+--- a/kernel/profile.c
++++ b/kernel/profile.c
+@@ -216,15 +216,15 @@ static const struct proc_ops profile_proc_ops = {
+ int __ref create_proc_profile(void)
+ {
+ 	struct proc_dir_entry *entry;
+-	int err = 0;
  
--	if (count == 0 || count > sizeof(kbuf))
-+	if (count == 0 || count >= sizeof(kbuf))
- 		return -EINVAL;
- 
- 	if (copy_from_user(kbuf, buf, count))
- 		return -EFAULT;
--
--	kbuf[count - 1] = '\0';
-+	kbuf[count] = '\0';
- 	tmp = strchr(kbuf, '=');
- 	if (!tmp)
- 		return -EINVAL;
+ 	if (!prof_on)
+ 		return 0;
+ 	entry = proc_create("profile", S_IWUSR | S_IRUGO,
+ 			    NULL, &profile_proc_ops);
+-	if (entry)
+-		proc_set_size(entry, (1 + prof_len) * sizeof(atomic_t));
+-	return err;
++	if (!entry)
++		return -ENOMEM;
++	proc_set_size(entry, (1 + prof_len) * sizeof(atomic_t));
++	return 0;
+ }
+ subsys_initcall(create_proc_profile);
+ #endif /* CONFIG_PROC_FS */
 
 -- 
 2.53.0
