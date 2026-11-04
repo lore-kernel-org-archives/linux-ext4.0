@@ -1,45 +1,45 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793821421;
-	b=qF2rJWoATNmFMlI+JTlIYycQv6S1A2j0ePOzAHZtZVd6LwehJa6EVtSSLO8SKy1M3fG9
-	 8b6EeBO6kOFj2j9ufwv9MTbIwIUX9Jr95f2r9l0Rto0PZqnDpc2y19sC7NuWVYxshXib4
-	 r0m1JqG1xOQwKhBtdZEU5Ok4BzOl9y3M0h9rqutuB4scrsqeEPE6r2GQDRxBlTvtG42ho
-	 zTtbwYswagNg8YngDH73BL9SaiWozsVUpi3ccBfmDeVdKn26aD9YmCTZ6/kNIcRHqsuL9
-	 kKDjqhjrBTyXMAPYhJErz8GwL+AItIuuY8uNLfOzNBOhsYAZmN0Wj0E2Hx+U9EicEGA==
+	t=1793821450;
+	b=E4h4vT+ymu5tY3LUsqgW7GBlJOF6t3Xn4oZrskRIRQBLzB6ZtvonpF2pE6Ih2Xx9Go+J
+	 yL6ffbhreUYb2EFaUX/e/n5hNTGMBX7aR2foK9DNNg1WF9jlKcNo7CdGSU1dsFO03OwEf
+	 gdI366kloKvAtD3pJqka2z4L/zHkoQdV7NZf45wlGYBAyILz7Kmy+ykgAvdOifossOq8l
+	 0+/SrQP+0TakevGQJEIYzsjBtfccb821l9UdxgLOs3VdgnDF6ygiRJDiBOda7a5wVKvsw
+	 DCHQlDgSHsXBFrnCdcipeyXpwh05NPEFes1Csqa9PxW9e5bVkCjDmzptTavAP7yCQzg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793821421;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793821450;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
 	 In-Reply-To:References:MIME-Version:Content-Type:X-Mailer:
 	 X-Developer-Signature:X-Developer-Key:Content-Transfer-Encoding;
-	bh=Q/r9Fhg2Z0/w3CqoKnG0DKCxv08Z9PpiFGMKT+radK4=;
-	b=G+55wjuortLSSQUGMlaX+OmRbgHECp7wihxvitUC5tkjgXxhvuRDVVFt1/3ABgLca94c
-	 Hlsc7TJ3TUT0iwAd5y/0UXbYvenmM/W6qOna6lKqVZC4vJWTlGhPwww4dcrUn4XgD4fXh
-	 eW1jvYxkeln40TGBwgU3MUYzrdAUe2wnGDRvmeRlQKxwDyHMYtja9Hv44iJxCOk5OLnCJ
-	 J5AElrDw+IBYuIo4AFmpCJXtg40LR4sJSdBGz0mk5sEAe7e2FBtOO/MOUNoB6WchJSXEy
-	 n1CaG22wEQMkrX0GCYC99nIW4VdcyhJQJW3FsKDXtz22U8ZYvqZH5pECeVtjldYuT3g==
+	bh=Z72TnyR4FqZWuZXLi7RAB/58/idtKzOn4i9EyTHtGiw=;
+	b=z2eBNT4cKHnr5HwulOH/4j14EhKTES6MzeE/7AmZGxCz6Y/fqyM5PwL7hjEzAuKcborH
+	 ZdpJd/kWC+606LSAfBS6n4sED2U0W63gc6BkAJmUSU0lqXRice5xTZMuemo2o8yjz6Sjm
+	 CDo2fwkAvPYN9V099lR/+/5OJhrxjsOmXLO42kDd9xNOP3b1+kFUqPMOHngqLC/cEtotp
+	 YaHi4C+jy1OQIxUs9IbPSrJQL1jUq9kt3z26b/Bns0Y7mNkiz5CAo5W5s95TSfad/tE0D
+	 rT4c+/oHbMqNIZNoiVbNruoypvaLPIJXCQ+8c3V/5Is7xMO5/LQkrgI5Q0Oe4zHJ7lQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=KZ1raRI6;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=aicfXnWV;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B9FF26070748;
-	Wed,  4 Nov 2026 19:43:40 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 429326070329;
+	Wed,  4 Nov 2026 19:44:10 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=KZ1raRI6
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2C7721F000C1;
-	Wed,  4 Nov 2026 19:43:27 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=aicfXnWV
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id BF0511F00919;
+	Wed,  4 Nov 2026 19:43:57 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793821420;
-	bh=Q/r9Fhg2Z0/w3CqoKnG0DKCxv08Z9PpiFGMKT+radK4=;
+	s=k20260515; t=1793821449;
+	bh=Z72TnyR4FqZWuZXLi7RAB/58/idtKzOn4i9EyTHtGiw=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=KZ1raRI68GhT/XlXjqAtcujYMj6ekVEJnVbT4x9Mzm70KXld0AlBQN8rUNIo5mZiB
-	 v3zJfRoTx9WShvsapVrEfRLIh+JuiUCfmb2ZUX+PNF5aJyawlAjxV+5tufKSc1hVWN
-	 VvPh24+PpQcho7riTX/8XuQc8iS04jARE2V6OzsbbxkTRQ7Vo0aBZoFeGZZv1hLQVS
-	 Hkr6MNWkpqa3975/oQHgz3pITvq9gQ4JYehhDDJQLj/WHKcKawkPFVUPWwmjxCdrYt
-	 4tLwomtdk6B+7RV5x8bRuXG3/mtBiQigiySV/b1v9b2+3q4lMlVQMUvKy0hVdMduzc
-	 enqFVJsBMRBJA==
+	b=aicfXnWVc+2sorHSEArN9gD6s+r89vzM3QCItz87jq7xenbwZcKkxAyhEzMN4zilO
+	 XEmAW5nDi6Qpy1HAR+3dogNdprQDzauusCx/5cNW0SrbZVyC5GFUF34a5Ax3Ufz9Ir
+	 pPUXceddaTjvbGaHwgGMseQ+qlmEYJQbjS+TTvruu0qlgjbpKch86CrjWevskZ10dt
+	 CPwtCbH1BlXfDfr1nCeM9GXk83OUHSgxmRLaA86TuRr7s0NevUTTC4SfMspApoUqNj
+	 2Bq8k9a+tUVTivUfQqiyVO9j0Bzx/5RNz+dYk3t96b4Fnb5fexWFIEeXgiYZ4/X6vz
+	 2jCoIj12+zkWQ==
 From: Christian Brauner <brauner@kernel.org>
 To: linux-fsdevel@vger.kernel.org
 Cc: Linus Torvalds <torvalds@linux-foundation.org>,
@@ -100,9 +100,9 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	linux-debuggers@vger.kernel.org,
 	"Christian Brauner (Amutable)" <brauner@kernel.org>,
 	Chuck Lever <cel@kernel.org>
-Subject: [PATCH RESEND v2 05/26] PCI/proc: let procfs handle the ioctls
-Date: Wed,  4 Nov 2026 20:43:25 +0100
-Message-ID: <20261104-work-procfs-drivers-v2-5-245e54e87116@kernel.org>
+Subject: [PATCH RESEND v2 07/26] md: let procfs own the wait queue of /proc/mdstat
+Date: Wed,  4 Nov 2026 20:43:55 +0100
+Message-ID: <20261104-work-procfs-drivers-v2-7-245e54e87116@kernel.org>
 In-Reply-To: <20261104-work-procfs-drivers-v2-0-245e54e87116@kernel.org>
 References: <20261104-work-procfs-drivers-v2-0-245e54e87116@kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -116,64 +116,111 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2106; i=brauner@kernel.org; h=from:subject:message-id; bh=2F6i7ISm6IP0WfraLShTjEfHw8rrOdRgm90gAFJMkQE=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS97qrM1Vwiw7U2st/BZEXS4y1RZxM3sfk86zgQ1MPQt WzJg3/dHaUsDGJcDLJiiiwO7Sbhcst5KjYbZWrAzGFlAhnCwMUpABPZxsXIcNz/xGT2BwfN+fis PXL3f3M6eWnrx6KbjrqRz9jkwj7pRzAydGzMjXAJ2Pg4UJN1p/usyxfL45+dWzV/cmURT1nhaud 6BgA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3404; i=brauner@kernel.org; h=from:subject:message-id; bh=Nn5OVy8ZnyI1nSFUur3mK5MV0AP1ijE3ArueCKeFRT8=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS97qpelclm2eRivDzv95ei9M8+3HNPnr9QzG/qmrjCP rmm56dyRykLgxgXg6yYIotDu0m43HKeis1GmRowc1iZQIYwcHEKwEQCXzP8L+Ry03raKlfQfVPu 0IPvj5U0WoW+KZ9MOfz5Lev7yvuRzAx/BR75d/79PlNgAlP5pc8HHJqssrPnl5s3P0u6bivP2cv FBgA=
 X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 Content-Transfer-Encoding: 8bit
 
-The PCIIOC_* commands take and return plain values and don't touch
-userspace memory. Implement ->proc_ioctl_buf() and list them with
-nothing to copy. 32-bit tasks go through the same table, so the compat
-hook goes away. Unknown commands fail with -ENOTTY from procfs now
-instead of -EINVAL, and instead of -EPERM under lockdown, since they
-never reach the handler.
+mdstat_poll() sleeps the poller on md_event_waiters and md_exit() has
+to wake it in a loop until nobody is left on the queue, because the
+queue goes away with the module. procfs owns the queue poll() uses
+now, it outlives the module, and a poll of the removed entry reports
+EPOLLERR | EPOLLPRI, so md_new_event() wakes the pollers through
+proc_poll_notify() and the loop and md_unloading go.
+
+md_exit() removes /proc/mdstat last now. A sysfs store on an inactive
+array doesn't hold the module, so it can still reach md_new_event()
+while md_exit() runs, until destroy_workqueue() has waited for the last
+array to go, and a wake-up through a removed entry is a use after free.
+The static queue didn't mind that, the entry does.
 
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- drivers/pci/proc.c | 18 ++++++++++++------
- 1 file changed, 12 insertions(+), 6 deletions(-)
+ drivers/md/md.c | 29 ++++++++---------------------
+ 1 file changed, 8 insertions(+), 21 deletions(-)
 
-diff --git a/drivers/pci/proc.c b/drivers/pci/proc.c
-index a8d7469f222b..6b0cb5bcbea3 100644
---- a/drivers/pci/proc.c
-+++ b/drivers/pci/proc.c
-@@ -192,8 +192,7 @@ struct pci_filp_private {
- };
- #endif /* HAVE_PCI_MMAP */
- 
--static long proc_bus_pci_ioctl(struct file *file, unsigned int cmd,
--			       unsigned long arg)
-+static long proc_bus_pci_ioctl(struct file *file, unsigned int cmd, void *arg)
+diff --git a/drivers/md/md.c b/drivers/md/md.c
+index 64abf1743e41..7560dcf0f5c8 100644
+--- a/drivers/md/md.c
++++ b/drivers/md/md.c
+@@ -351,12 +351,12 @@ static bool check_new_feature = true;
+  *  start array, stop array, error, add device, remove device,
+  *  start build, activate spare
+  */
+-static DECLARE_WAIT_QUEUE_HEAD(md_event_waiters);
++static struct proc_dir_entry *mdstat_entry;
+ static atomic_t md_event_count;
+ void md_new_event(void)
  {
- 	struct pci_dev *dev = pde_data(file_inode(file));
- #ifdef HAVE_PCI_MMAP
-@@ -321,16 +320,23 @@ static int proc_bus_pci_release(struct inode *inode, struct file *file)
+ 	atomic_inc(&md_event_count);
+-	wake_up(&md_event_waiters);
++	proc_poll_notify(mdstat_entry);
  }
- #endif /* HAVE_PCI_MMAP */
+ EXPORT_SYMBOL_GPL(md_new_event);
  
-+/* The commands take and return plain values. */
-+static const struct proc_ioctl_arg proc_bus_pci_ioctl_args[] = {
-+	PROC_IOCTL_ARG(PCIIOC_CONTROLLER, 0, 0),
-+	PROC_IOCTL_ARG(PCIIOC_MMAP_IS_IO, 0, 0),
-+	PROC_IOCTL_ARG(PCIIOC_MMAP_IS_MEM, 0, 0),
-+	PROC_IOCTL_ARG(PCIIOC_WRITE_COMBINE, 0, 0),
-+};
-+
- static const struct proc_ops proc_bus_pci_ops = {
- 	.proc_flags	= PROC_ENTRY_SHORT_WRITES,
- 	.proc_lseek	= proc_bus_pci_lseek,
- 	.proc_read_buf	= proc_bus_pci_read,
- 	.proc_write_buf	= proc_bus_pci_write,
- 	.proc_write_size = PCI_CFG_SPACE_EXP_SIZE,
--	.proc_ioctl	= proc_bus_pci_ioctl,
--#ifdef CONFIG_COMPAT
--	.proc_compat_ioctl = proc_bus_pci_ioctl,
--#endif
-+	.proc_ioctl_buf	= proc_bus_pci_ioctl,
-+	.proc_ioctl_args = proc_bus_pci_ioctl_args,
-+	.proc_nr_ioctl_args = ARRAY_SIZE(proc_bus_pci_ioctl_args),
- #ifdef HAVE_PCI_MMAP
- 	.proc_open	= proc_bus_pci_open,
- 	.proc_release	= proc_bus_pci_release,
+@@ -9176,16 +9176,11 @@ static int md_seq_open(struct inode *inode, struct file *file)
+ 	return 0;
+ }
+ 
+-static int md_unloading;
+ static __poll_t mdstat_poll(struct file *filp, poll_table *wait)
+ {
+ 	struct seq_file *seq = filp->private_data;
+ 	__poll_t mask;
+ 
+-	if (md_unloading)
+-		return EPOLLIN|EPOLLRDNORM|EPOLLERR|EPOLLPRI;
+-	poll_wait(filp, &md_event_waiters, wait);
+-
+ 	/* always allow read */
+ 	mask = EPOLLIN | EPOLLRDNORM;
+ 
+@@ -10765,7 +10760,7 @@ static void md_geninit(void)
+ {
+ 	pr_debug("md: sizeof(mdp_super_t) = %d\n", (int)sizeof(mdp_super_t));
+ 
+-	proc_create("mdstat", S_IRUGO, NULL, &mdstat_proc_ops);
++	mdstat_entry = proc_create("mdstat", S_IRUGO, NULL, &mdstat_proc_ops);
+ }
+ 
+ static int __init md_init(void)
+@@ -11074,25 +11069,12 @@ void md_autostart_arrays(int part)
+ static __exit void md_exit(void)
+ {
+ 	struct mddev *mddev;
+-	int delay = 1;
+ 
+ 	unregister_blkdev(MD_MAJOR,"md");
+ 	unregister_blkdev(mdp_major, "mdp");
+ 	unregister_reboot_notifier(&md_notifier);
+ 	unregister_sysctl_table(raid_table_header);
+ 
+-	/* We cannot unload the modules while some process is
+-	 * waiting for us in select() or poll() - wake them up
+-	 */
+-	md_unloading = 1;
+-	while (waitqueue_active(&md_event_waiters)) {
+-		/* not safe to leave yet */
+-		wake_up(&md_event_waiters);
+-		msleep(delay);
+-		delay += delay;
+-	}
+-	remove_proc_entry("mdstat", NULL);
+-
+ 	spin_lock(&all_mddevs_lock);
+ 	list_for_each_entry(mddev, &all_mddevs, all_mddevs) {
+ 		if (!mddev_get(mddev))
+@@ -11112,6 +11094,11 @@ static __exit void md_exit(void)
+ 	spin_unlock(&all_mddevs_lock);
+ 
+ 	destroy_workqueue(md_misc_wq);
++	/*
++	 * Only now can nothing reach md_new_event() anymore, which wakes the
++	 * pollers of /proc/mdstat through its entry.
++	 */
++	remove_proc_entry("mdstat", NULL);
+ 	md_bitmap_exit();
+ }
+ 
 
 -- 
 2.53.0
