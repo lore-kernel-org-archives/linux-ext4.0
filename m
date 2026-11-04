@@ -1,45 +1,45 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793821659;
-	b=iFUTuhBqXadeIFEcya5/lPHMETQWkRkHO0fUs8ja++sMJN/OQM8u425svc8EZxS2PoOZ
-	 0I6XxVUwwKEInYOPag5C9d3cNaxb/CX1thLQkCA7cyaKUAwL8c3ZDbOg4pTdW1erAsiF7
-	 +28CJofzPa+skbPnLh/qZCRF7Ud9Msn3gb28HV3L7J2F9MAl3+IeKmMKhZmDqqe3edmVI
-	 5bMmb6r23X09+I3Im57stjSQ4D1coYvjNDm6s/FLTMJpwxxNHKpmOZAr9C7Ao3cP3H7Le
-	 5cQsxOuY6Yli8mQniTu6vrgLu+L0wiBGj/VQqAvOv4Qnx1FomPqiovKO6kVG2CtrqBg==
+	t=1793821688;
+	b=nZhvjHihaqUbQXiYX97UuLW5RvQN6PmKqOXG2Kv2rk52fWqtWXQm0JC+YMrR1e5MiK3R
+	 XGalEJQ/tVqFMnfPXm1pWJTOhakzZH2qfCru6wKlLRh8Bo0GC6Lj8hrejsNZlxZKsl7QR
+	 mT0D/8HmJiGgU2MFcwYt5kPqPwf/qwyFlSQ3DE3meGc51/bLAUfCK8lSUVGFPrJEottNK
+	 XCUax6GkMbsqG39EaAIM4oalprL0S6BxGf1RaCCbyJvF3sqcfWAah0e3nOWtdMkf5Y46Y
+	 LKrBtmkllQvncTo4yihcAoLsuB1nAlL9QypZZkjNRgFK5vnxPSXi421i+FSaXUKVX9g==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793821659;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793821688;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
 	 In-Reply-To:References:MIME-Version:Content-Type:X-Mailer:
 	 X-Developer-Signature:X-Developer-Key:Content-Transfer-Encoding;
-	bh=Vfgsd3PUinlq5Gnmk93ZNsjvWtIfYjQstKDgqXFFHmI=;
-	b=fedbxsMnJRHHybrfChPeH9tBuj4WTNvg381ChsraVNfeIc0H0cTcJSpJ16/XNm3me6ig
-	 XqXYSzc6FDs6s12DQOubHkyH27izaY9OKhjTqt7S91aCs86wdc7ajhSV02LRE36ACFJ1E
-	 zid5RIwRixpAjwPmH9J4yli7ydXBgET8oqm8WjkS2Zp881+1wl4YZTJSJguyX5VriEdZc
-	 c1bhcE0E+XtfO9aM+fFRRQPpl6aQncXLYpC3WixQdazGSmbDfa6nDk6W0towpemD0k0ZP
-	 gMDQekvUu44bfa9W7AdkwKvZ0/cY1p7+4iOZXNZDRUmsueT9Od279P97yv+qQZ1xWsQ==
+	bh=ONplUVUaTXxK76De6Vn1Er9qs4C1NOSJXP/cPYa1zD8=;
+	b=vQ8ObSZ41l88RJp1Mw5xjDqdkg01h3AjAyomJ6zh1jO9pnnv/i0/C0lV27pu77cyX2Xw
+	 lmEnY0L97/84iTsQ6ol99b/sOoFTz5QfYAxOdT82cYTmeHOhAzRVvCmrcq0TPVfiWk5ly
+	 5A+ouy0GeilFCLHcjCWsUfmVIYHiGq6Cjk2ru6Kl+6xa17Dq/nE4RWmcpipa1zS1FLra7
+	 IIzJuVvFQ/XnYwsLbGHs787Rh2ROca2YjHYdkVCVhgmClea4jgdUFJogLclSJrnH8H9R1
+	 Fvv1DZAyipy+ih5KJ0LM2YkHZePbyYbL1YItUVqSek1mbdr4bmP+Xe1YsjTKuRc7CYQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gtj+GH2h;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=lkp6RIn6;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AE6726074FB6;
-	Wed,  4 Nov 2026 19:47:38 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 297D0608360B;
+	Wed,  4 Nov 2026 19:48:08 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gtj+GH2h
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 23D2E1F0093A;
-	Wed,  4 Nov 2026 19:47:25 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=lkp6RIn6
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C7FC71F000C1;
+	Wed,  4 Nov 2026 19:47:55 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793821658;
-	bh=Vfgsd3PUinlq5Gnmk93ZNsjvWtIfYjQstKDgqXFFHmI=;
+	s=k20260515; t=1793821687;
+	bh=ONplUVUaTXxK76De6Vn1Er9qs4C1NOSJXP/cPYa1zD8=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=gtj+GH2hqTPplDjhVzhRAWhU8OkVhPJPP0JLMRwTbfdc+nl4HFqaLUtkQ0sGqY9p1
-	 cio3rKWjRbaW0hfoe+iR5yUiUxGlvl6F9N71fZhbqKX3d7khRaPNZmLb3yNj8B0VZt
-	 vYfLltTat3exR0SQB7Uf68Jxi/SRcYyBvdcK5hbQj2/GV68lWs4IX74yTfnWqymq82
-	 M8yspGv/K4UmZRSLladjige3wPn9EOhryHH1PaBstskLXXtn/pAaCO1Kia1pLxX1NY
-	 C6gBdMcfP0MHCUtCGkHA2XBsPT4EAkNI1eiSvXtWEQIDsoCAj2OLDYM0olGMiVe6SX
-	 LvO7OJ7dWJD9w==
+	b=lkp6RIn69wa7QrxD965N76gTH76+Ad2SR2O4p5PIPFHK1xPstYpO5rXkJqMhkQ1Lt
+	 f15stAccZE+S2yUy9VGYtTIgb/gLZoRkrtlXoSacpGUOek+JW4mciApeqg2m5gx7x7
+	 jGcS2vzRcQT4C4Y2PMcgBIOORBdEDw5OW53AWsnhXJof8U2cIcsSBGzLLOhYFg8OY7
+	 xr0CoygIBWv0A8Or/m5mqhRp+z3mn0v/XHAYgjIlNWHV+2hv84NzEvNyWKQmtZ3LQt
+	 Nr81LfNZpAVIjzqW/eNpYRsboymU0WuZFRUFGyiYnkNPIl/SIoK0dzBDYI5+8c0PL1
+	 46Zaq8Svqs2Yw==
 From: Christian Brauner <brauner@kernel.org>
 To: linux-fsdevel@vger.kernel.org
 Cc: Linus Torvalds <torvalds@linux-foundation.org>,
@@ -100,9 +100,9 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	linux-debuggers@vger.kernel.org,
 	"Christian Brauner (Amutable)" <brauner@kernel.org>,
 	Chuck Lever <cel@kernel.org>
-Subject: [PATCH RESEND v2 21/26] Input: let procfs own the wait queue of /proc/bus/input/devices
-Date: Wed,  4 Nov 2026 20:47:23 +0100
-Message-ID: <20261104-work-procfs-drivers-v2-21-245e54e87116@kernel.org>
+Subject: [PATCH RESEND v2 23/26] ALSA: info: let procfs copy in writes
+Date: Wed,  4 Nov 2026 20:47:53 +0100
+Message-ID: <20261104-work-procfs-drivers-v2-23-245e54e87116@kernel.org>
 In-Reply-To: <20261104-work-procfs-drivers-v2-0-245e54e87116@kernel.org>
 References: <20261104-work-procfs-drivers-v2-0-245e54e87116@kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -116,76 +116,142 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2424; i=brauner@kernel.org; h=from:subject:message-id; bh=cAurGI8IRWHsk8N+x2SlkH9/s4vXIqR5KE32d74H9dY=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS97uoVPNHOMiVW7/vlsMd9s7daas+73xSQc6TwtsuLx am89pNudZSyMIhxMciKKbI4tJuEyy3nqdhslKkBM4eVCWQIAxenAEwk6xbDPwufULMS+bvROaer RY/ePlP4dAePp5GonG38y6XNHTtmb2H4n3LmTr9vRD1nY+L127WsJ/1+dr1MjVS/KzLXyCg/wcW ECQA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4905; i=brauner@kernel.org; h=from:subject:message-id; bh=9ArjgwxZmmzVVHcaJKjV9iOUwuFu8vZkTaYAiSu/pJs=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS97urfa8O39IWQ3sMqj7K8++pB6682y+x4pbRQuVd71 /ZZwXuOdZSyMIhxMciKKbI4tJuEyy3nqdhslKkBM4eVCWQIAxenAEzkaD8jw6qXkrMe32mW0Fr4 KjZPsovjwSUF/kq/82FOm+4YrNPjX8Pwz37zUZPZUqvCmfvMVYrnaPSeXD/5c/zt75vbeeakVdv 5MAAA
 X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 Content-Transfer-Encoding: 8bit
 
-input_proc_devices_poll() sleeps the poller on a queue of its own.
-procfs owns the queue poll() uses now, so leave the poll_wait() to it
-and wake its pollers instead.
+Implement ->proc_write_buf() for data and text entries so procfs copies
+in what is written before it pins the entry.
+
+Data entries take writes a page at a time with PROC_ENTRY_SHORT_WRITES.
+They used to get the whole write at once. ->write() of struct
+snd_info_entry_ops gets the kernel copy and opl4, its only user, writes
+it to the sample memory without bouncing it through a vmalloc() buffer
+of its own.
+
+Text entries take up to SND_INFO_TEXT_WRITE_MAX bytes at once like
+before. A single write that is larger fails with -EINVAL from procfs
+instead of -EIO now.
 
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- drivers/input/input.c | 13 +++++++------
- 1 file changed, 7 insertions(+), 6 deletions(-)
+ include/sound/info.h           |  2 +-
+ sound/core/info.c              | 21 ++++++++++++---------
+ sound/drivers/opl4/opl4_proc.c | 11 +----------
+ 3 files changed, 14 insertions(+), 20 deletions(-)
 
-diff --git a/drivers/input/input.c b/drivers/input/input.c
-index d27eecbf4a03..a984810eb80d 100644
---- a/drivers/input/input.c
-+++ b/drivers/input/input.c
-@@ -1082,13 +1082,13 @@ static int input_attach_handler(struct input_dev *dev, struct input_handler *han
- #ifdef CONFIG_PROC_FS
+diff --git a/include/sound/info.h b/include/sound/info.h
+index f216291e5c41..a9344c44e352 100644
+--- a/include/sound/info.h
++++ b/include/sound/info.h
+@@ -42,7 +42,7 @@ struct snd_info_entry_ops {
+ 			struct file *file, char __user *buf,
+ 			size_t count, loff_t pos);
+ 	ssize_t (*write)(struct snd_info_entry *entry, void *file_private_data,
+-			 struct file *file, const char __user *buf,
++			 struct file *file, const char *buf,
+ 			 size_t count, loff_t pos);
+ 	loff_t (*llseek)(struct snd_info_entry *entry,
+ 			 void *file_private_data, struct file *file,
+diff --git a/sound/core/info.c b/sound/core/info.c
+index 42a4f8fb3198..3bfeab1a5a1f 100644
+--- a/sound/core/info.c
++++ b/sound/core/info.c
+@@ -160,7 +160,7 @@ static ssize_t snd_info_entry_read(struct file *file, char __user *buffer,
+ 	return size;
+ }
  
- static struct proc_dir_entry *proc_bus_input_dir;
--static DECLARE_WAIT_QUEUE_HEAD(input_devices_poll_wait);
-+static struct proc_dir_entry *proc_bus_input_devices;
- static int input_devices_state;
- 
- static inline void input_wakeup_procfs_readers(void)
+-static ssize_t snd_info_entry_write(struct file *file, const char __user *buffer,
++static ssize_t snd_info_entry_write(struct file *file, char *buffer,
+ 				    size_t count, loff_t * offset)
  {
- 	input_devices_state++;
--	wake_up(&input_devices_poll_wait);
-+	proc_poll_notify(proc_bus_input_devices);
- }
+ 	struct snd_info_private_data *data = file->private_data;
+@@ -277,9 +277,11 @@ static int snd_info_entry_release(struct inode *inode, struct file *file)
  
- struct input_seq_state {
-@@ -1102,7 +1102,6 @@ static __poll_t input_proc_devices_poll(struct file *file, poll_table *wait)
- 	struct seq_file *seq = file->private_data;
- 	struct input_seq_state *state = seq->private;
- 
--	poll_wait(file, &input_devices_poll_wait, wait);
- 	if (state->input_devices_state != input_devices_state) {
- 		state->input_devices_state = input_devices_state;
- 		return EPOLLIN | EPOLLRDNORM;
-@@ -1284,9 +1283,9 @@ static int __init input_proc_init(void)
- 	if (!proc_bus_input_dir)
- 		return -ENOMEM;
- 
--	entry = proc_create("devices", 0, proc_bus_input_dir,
--			    &input_devices_proc_ops);
--	if (!entry)
-+	proc_bus_input_devices = proc_create("devices", 0, proc_bus_input_dir,
-+					     &input_devices_proc_ops);
-+	if (!proc_bus_input_devices)
- 		goto fail1;
- 
- 	entry = proc_create("handlers", 0, proc_bus_input_dir,
-@@ -1297,6 +1296,7 @@ static int __init input_proc_init(void)
- 	return 0;
- 
-  fail2:	remove_proc_entry("devices", proc_bus_input_dir);
-+	proc_bus_input_devices = NULL;
-  fail1: remove_proc_entry("bus/input", NULL);
- 	return -ENOMEM;
- }
-@@ -1304,6 +1304,7 @@ static int __init input_proc_init(void)
- static void input_proc_exit(void)
+ static const struct proc_ops snd_info_entry_operations =
  {
- 	remove_proc_entry("devices", proc_bus_input_dir);
-+	proc_bus_input_devices = NULL;
- 	remove_proc_entry("handlers", proc_bus_input_dir);
- 	remove_proc_entry("bus/input", NULL);
++	.proc_flags	= PROC_ENTRY_SHORT_WRITES,
+ 	.proc_lseek	= snd_info_entry_llseek,
+ 	.proc_read	= snd_info_entry_read,
+-	.proc_write	= snd_info_entry_write,
++	.proc_write_buf	= snd_info_entry_write,
++	.proc_write_size = PAGE_SIZE,
+ 	.proc_poll	= snd_info_entry_poll,
+ 	.proc_ioctl	= snd_info_entry_ioctl,
+ 	.proc_mmap	= snd_info_entry_mmap,
+@@ -287,11 +289,13 @@ static const struct proc_ops snd_info_entry_operations =
+ 	.proc_release	= snd_info_entry_release,
+ };
+ 
++/* don't handle too large text inputs */
++#define SND_INFO_TEXT_WRITE_MAX	(16 * 1024)
++
+ /*
+  * file ops for text proc files
+  */
+-static ssize_t snd_info_text_entry_write(struct file *file,
+-					 const char __user *buffer,
++static ssize_t snd_info_text_entry_write(struct file *file, char *buffer,
+ 					 size_t count, loff_t *offset)
+ {
+ 	struct seq_file *m = file->private_data;
+@@ -307,8 +311,7 @@ static ssize_t snd_info_text_entry_write(struct file *file,
+ 	if (!valid_pos(pos, count))
+ 		return -EIO;
+ 	next = pos + count;
+-	/* don't handle too large text inputs */
+-	if (next > 16 * 1024)
++	if (next > SND_INFO_TEXT_WRITE_MAX)
+ 		return -EIO;
+ 	guard(mutex)(&entry->access);
+ 	buf = data->wbuffer;
+@@ -325,8 +328,7 @@ static ssize_t snd_info_text_entry_write(struct file *file,
+ 		buf->buffer = nbuf;
+ 		buf->len = PAGE_ALIGN(next);
+ 	}
+-	if (copy_from_user(buf->buffer + pos, buffer, count))
+-		return -EFAULT;
++	memcpy(buf->buffer + pos, buffer, count);
+ 	buf->size = next;
+ 	*offset = next;
+ 	return count;
+@@ -404,7 +406,8 @@ static const struct proc_ops snd_info_text_entry_ops =
+ 	.proc_show	= snd_info_seq_show,
+ 	.proc_open	= snd_info_text_entry_open,
+ 	.proc_release	= snd_info_text_entry_release,
+-	.proc_write	= snd_info_text_entry_write,
++	.proc_write_buf	= snd_info_text_entry_write,
++	.proc_write_size = SND_INFO_TEXT_WRITE_MAX,
+ };
+ 
+ static struct snd_info_entry *create_subdir(struct module *mod,
+diff --git a/sound/drivers/opl4/opl4_proc.c b/sound/drivers/opl4/opl4_proc.c
+index fd0ba4704d9f..bdcae02a4dc2 100644
+--- a/sound/drivers/opl4/opl4_proc.c
++++ b/sound/drivers/opl4/opl4_proc.c
+@@ -54,21 +54,12 @@ static ssize_t snd_opl4_mem_proc_read(struct snd_info_entry *entry,
+ static ssize_t snd_opl4_mem_proc_write(struct snd_info_entry *entry,
+ 				       void *file_private_data,
+ 				       struct file *file,
+-				       const char __user *_buf,
++				       const char *buf,
+ 				       size_t count, loff_t pos)
+ {
+ 	struct snd_opl4 *opl4 = entry->private_data;
+-	char *buf;
+ 
+-	buf = vmalloc(count);
+-	if (!buf)
+-		return -ENOMEM;
+-	if (copy_from_user(buf, _buf, count)) {
+-		vfree(buf);
+-		return -EFAULT;
+-	}
+ 	snd_opl4_write_memory(opl4, buf, pos, count);
+-	vfree(buf);
+ 	return count;
  }
+ 
 
 -- 
 2.53.0
