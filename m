@@ -1,57 +1,57 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793822519;
-	b=Ir4CcxsZm3Im0KVU5zF3c3N1w+47uc8Eg6AA8eNfewOuOXnJ+V+VqRlBpDDkoGeW+N/U
-	 v8bfot3zyl7WLn7lo/GydyFECQoWXQgaJyuEDIBu8dU5ROcBtaXNBeNSPv51XPh3yadkG
-	 imrHNUuda+iQOWu8uixU7h+CxTaOSr0V4Mrr6/DRj5ZqcRNMreE+gOwMRX3zo4q18cfQX
-	 xoAMsrZquKM2u8cCSyJcJM+vnUjEe4d+BXjqGHde2yfJG9Hl/CwOCeWmL+CHqwhLUfPI9
-	 RAPYrw5esGWC5Yw7r59iH8R9coY3pm4Q3Ia4CwwpDMsSLzngoWE6kYjZtu/FZQn2jrg==
+	t=1793822658;
+	b=BAQIS1i9RkmELuYltKeC+VftsjtoN7UUtuSdfoPfhCon7NDAtSQIFKrX/kAj17SmeD1a
+	 LXIcLK+SRfoAfUEoocUJjBxkqm5RzDDK/dFrDg+denOyykUOu8axsa+TGDBsyI8/qcvPX
+	 zRpZWQQznwduH4+X/n5PPhBfze/7M9x1OD8OZhdb+Yd5hes2lDP+jsnZwdnMGf/4bhUG6
+	 VxFkhU1NZ3lnCBnmQefi8V56ZgQk7j3WbB89dsTsdgrt+Ff0jy/2oePMAZnBqS6ysoG9R
+	 YWMCBjPCd/6zBPEi74jhIX+JDXJPp6kT6QhM/CETCblUZ0r1DPKgtPjztp5smLUrCbw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793822519;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793822658;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=d0pXAU8BwWdgY48Orx/+5fZEeMOkq5+VjUHv0hu/kgU=;
-	b=WhZZN8vUoWvaf9fdDW5GAPuN7Rkecn2b94eBQPFEw6iM5BbSCgLy/WLtIHkb8BmaKi/C
-	 KuNt2ikKMs6JiUIoB1YXZxI7D/JtQXTN2+ECrEyUSVzj7p2pCBlDBNnX8WVWBYhI+k2iQ
-	 rHHY4oA/RL5oDaVwE7p4gd9ejblWNv/HJeovo6H6JbEevE/XJRpHm2OuHjvKDtD4Uw/kX
-	 6e5kqLsNxAYhooHz9timdRzEIovqqZy9obEO8NLr60cB3MnIrugM3/UboIdd2MP2x3vOi
-	 YsrFETcs6PwVjxKatmlSyM02KUYvtwx+jcssugj9IHAMQeBuPi/t9ZOeP9laghHqaEQ==
+	bh=N6X/0zuc0HDWroLCKDHvOQ3Qwk/oYmD2m2xs2Jggit8=;
+	b=w9NnB5iyF+mGuqbj/NfORhUYP5OpjXQpMFcdbtzQdEQ/ybUF0AyKRdc/9SkLn3jw1z66
+	 HLfX3rFUsnjyNKx1vRG58PT0beQ9kKwgF1JM+jgkK6mTon7EhqTvSf5TbVuHnTHR7m9qH
+	 DVbKoQ0p2+g3hRiZElRLvufEmGgM/2O/CAXbfrY/rXPiChFvfVkWndz8TZ3gcRisFP/DC
+	 q93/KGwzF/mJBJ4rjmWcyACbY3yV6EJFyeXO/s2u90iCzT/K7HPRdqx8LL/Oy8yM2wjZq
+	 ROS1fYf3FYrgqBbO3tLRfmgdLETbXAh7VGn5y9lclKFZPqx6ZoDHo4iixzvQ7ZbrYxg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=VSu+0E4A;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=aOG30cNt;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 58DBD606E80E
-	for <linux-ext4@vger.kernel.org>; Wed,  4 Nov 2026 20:01:59 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0ADED606D834;
+	Wed,  4 Nov 2026 20:04:18 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=VSu+0E4A
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C11AF1F000C1;
-	Wed,  4 Nov 2026 20:01:58 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=aOG30cNt
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 864AA1F000C1;
+	Wed,  4 Nov 2026 20:04:17 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793822519;
-	bh=d0pXAU8BwWdgY48Orx/+5fZEeMOkq5+VjUHv0hu/kgU=;
+	s=k20260515; t=1793822657;
+	bh=N6X/0zuc0HDWroLCKDHvOQ3Qwk/oYmD2m2xs2Jggit8=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=VSu+0E4AylY+X/HS8eIm5dgdL+RXjYGTOfMhctQT3iE2eH+F951JHlVqQZiN4cM4V
-	 fwSxRhSnv6LQkFyFixrltJb0l+VrTtuFS0ca7+PqhgHgsWIlcTYpmrlnKRfwdKBmUq
-	 IAmDBLkjHkLF36l6zBN/pFcn1PThyCCyoeodCPK5DgAXXjgJalCgZGlGe5bt4d8pyF
-	 JSbGwmWSqhE9FXssZ2lE/mSBbVMtQd6+raLktSiV0xxJpx6ggDYfeuxJUJa/5PTBaZ
-	 VsilIOiNpWEUtrPXFf3Lj8QDBiXt+CgTIhoD/0db89AbxnYx8oKUSmTFC5zSeFJGBR
-	 KubnSaxNsjMNw==
-Message-ID: <sashiko-outbox-197986@kernel.org>
+	b=aOG30cNtRKTSNKgd97MJtxtSPGjWKnxv72pFVT4Gxc2vN5T3NYLIbQkYWMEUN2L2T
+	 VSR00nFx5xuoa1tOaNUKAE99o5CTX8Gx5ByWu5KjxLEDOUusibvGUD0/vzhTTiuU+m
+	 sCL2SdIByoR318Q6Swms+ERtKFfogEazjL4NFFyJMvcBpLjbFmYj99MDXDXmD5OdAm
+	 5qq1gVb92RwV8a1SlXmhwUrFOcBrCUsJyLSc/UsV909beOhRuAw/AD2fD9B8wLnRCC
+	 EnjrfxF4A8TT86F3uL3yshSELeCI2v4uJrOVcKngG9n8VDFWrThoOZ8W3GKHe8Z0GW
+	 AZFqueCcW6teA==
+Message-ID: <sashiko-outbox-197991@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH 4/5] ext4: use I_VERITY_BUILDING instead of private
+Subject: Re: [PATCH 5/5] f2fs: use I_VERITY_BUILDING instead of private
  flags
 Reply-To: sashiko-reviews@lists.linux.dev
-To: "Andrey Albershteyn" <aalbersh@kernel.org>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-In-Reply-To: <20261104194618.103332-5-aalbersh@kernel.org>
+To: "Andrey Albershteyn" <aalbersh@kernel.org>, ebiggers@kernel.org, hch@lst.de, fsverity@lists.linux.dev
+Cc: linux-ext4@vger.kernel.org, dsterba@suse.cz, tytso@mit.edu
+In-Reply-To: <20261104194618.103332-6-aalbersh@kernel.org>
 References: <20261104194618.103332-1-aalbersh@kernel.org>
- <20261104194618.103332-5-aalbersh@kernel.org>
+ <20261104194618.103332-6-aalbersh@kernel.org>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Wed, 04 Nov 2026 20:01:58 +0000
+Date: Wed, 04 Nov 2026 20:04:17 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -61,21 +61,78 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-> Now that the VFS tracks an inode whose Merkle tree is under construction
-> via I_VERITY_BUILDING and handles the concurrent-enable guard in the
-> generic fs-verity enable path, drop the per-filesystem runtime flags that
-> duplicated this state.
->=20
-> Replace ext4 own helper ext4_verity_in_progress() with
-> fsverity_is_building(), and remove the EXT4_STATE_VERITY_IN_PROGRESS
-> flags. The IS_ENABLED() guard is fine to remove now as
-> fsverity_is_building() has stub for disabled fsverity.
->=20
-> Signed-off-by: Andrey Albershteyn <aalbersh@kernel.org>
+Thank you for your contribution! Sashiko AI review found 1 potential issue(=
+s) to consider:
+- [Low] f2fs: unconverted f2fs_verity_in_progress() calls break build in da=
+ta.c
+--
 
-Sashiko has reviewed this patch and found no issues.
+commit 915530af8afaaef004825dfc719049bb96b8cda2
+Author: Andrey Albershteyn via Linux-f2fs-devel <linux-f2fs-devel@lists.sou=
+rceforge.net>
+
+f2fs: use I_VERITY_BUILDING instead of private flags
+
+This commit replaces the f2fs-specific FI_VERITY_IN_PROGRESS flag and
+f2fs_verity_in_progress() helper with the generic fsverity_is_building()
+helper.
+
+> diff --git a/fs/f2fs/f2fs.h b/fs/f2fs/f2fs.h
+> index 4fa4d8042f702..11d1cade11510 100644
+> --- a/fs/f2fs/f2fs.h
+> +++ b/fs/f2fs/f2fs.h
+> @@ -925,7 +925,6 @@ enum {
+>  	FI_EXTRA_ATTR,		/* indicate file has extra attribute */
+>  	FI_PROJ_INHERIT,	/* indicate file inherits projectid */
+>  	FI_PIN_FILE,		/* indicate file should not be gced */
+> -	FI_VERITY_IN_PROGRESS,	/* building fs-verity Merkle tree */
+>  	FI_COMPRESSED_FILE,	/* indicate file's data can be compressed */
+>  	FI_COMPRESS_CORRUPT,	/* indicate compressed cluster is corrupted */
+>  	FI_MMAP_FILE,		/* indicate file was mmapped */
+> @@ -3627,12 +3626,6 @@ static inline void clear_inode_flag(struct inode *=
+inode, int flag)
+>  	__mark_inode_dirty_flag(inode, flag, false);
+>  }
+> =20
+> -static inline bool f2fs_verity_in_progress(struct inode *inode)
+> -{
+> -	return IS_ENABLED(CONFIG_FS_VERITY) &&
+> -	       is_inode_flag_set(inode, FI_VERITY_IN_PROGRESS);
+> -}
+> -
+>  static inline void set_acl_inode(struct inode *inode, umode_t mode)
+>  {
+>  	F2FS_I(inode)->i_acl_mode =3D mode;
+
+[Severity: Low]
+Does removing f2fs_verity_in_progress() break the build in fs/f2fs/data.c?
+
+Two callers in fs/f2fs/data.c still reference f2fs_verity_in_progress()
+after this patch:
+
+fs/f2fs/data.c:f2fs_write_cache_folios() {
+...
+retry:
+		pos =3D folio_pos(folio);
+		end_pos =3D pos + folio_size(folio);
+		isize =3D i_size_read(inode);
+		verity_in_progress =3D f2fs_verity_in_progress(inode);
+...
+}
+
+and:
+
+fs/f2fs/data.c:prepare_large_folio_write_begin() {
+...
+	if (!f2fs_verity_in_progress(inode) &&
+	    !(pos & (PAGE_SIZE - 1)) && (pos + len) >=3D i_size_read(inode)) {
+		size_t zoff =3D ori_off + len;
+...
+}
+
+Should these two call sites also be converted to fsverity_is_building(inode=
+)?
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261104194618.1033=
-32-1-aalbersh@kernel.org?part=3D4
-
+32-1-aalbersh@kernel.org?part=3D5
