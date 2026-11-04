@@ -1,110 +1,112 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.130
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793820435;
-	b=xWhxCiki6OaHOwkl/n/xcBfaC9c/5F0FsmmBpm/G5rPqoKgC0BYqhYaBko/y+ZUty+FB
-	 fndWQHzz3+MoStvvLLYBTaMYlzeyfp8NrTjk0oVbAQQU03/JJojOl32jeFlVjns0dOaOH
-	 n1Ro106woeWZ6AhHwKJXe4KnvDbKpVKQJ2l8pC6gfKQPJ3uE7CIE8qn16BxhfYzI9Nwp+
-	 llQVyatp18GFiZ3USeYtpBLf3C7DvFYJbEuuLwYHMEnEnQuFYjJbpiLBQd0GXTxRr3Ca4
-	 4LBi5HnIGajEv+RW9zawFr3D7fuFCsJG1cT2fbEWfGU9KJ8ICdqgbltqKAIVexmQqbQ==
+	t=1793820453;
+	b=SGyyKVeNPru4Qr2FFLQeM3NCFdMjGQA5niojjBT6Rxv8dq2s2CTgl1n2B3+YNitELZU+
+	 uahT6zvdrkKZGm0RjVGLo8N2QJiLMrfLKoe4PDdeV7WFbPsBKUjyXLeavyqgL3yFrPyeq
+	 wpdhoz28c2bnYNXs4KZWG1/uZ6pG5MinC1wcYTgXHnX6UraY4C1OhuyCXHmtJxpe/z9Ur
+	 UXD8h3QiX/xfWyZG1UDZ5JmDBBtrLnAhUJXS0S3W+YL97b0gxLmrK3dGce91eL8bOUCMj
+	 HnRoGURSEm9iHJ0e1WBaFxJLFhdj4CTyxc6rj7/pAchF6ugF+TuvYjntwreRR1sgj0g==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793820435;
-	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
-	 In-Reply-To:References:MIME-Version:Content-Type:X-Mailer:
-	 X-Developer-Signature:X-Developer-Key:Content-Transfer-Encoding;
-	bh=r5+oZHp7BRrXwItSZJfGO9IDNpMhGDSeaixBJWzgZo8=;
-	b=4pz6gdVR9uZaroG8nEbej1ZP2W+9UonfAMEt8EJTxiDVpeCOtVbjv8RBoAFAjJXcYpmA
-	 GdVQKLRC4jnyuu3in0gTV3DNiC9RN+HZSuwbe69Rv5TJUzgmSNAlByqVfHfxXNzR2pZI+
-	 q5L0prlVivPPlAbS5TPVxosGWKJT+SC7ISsIoogyXYCf0YSTTP8AEfpedPgEyTgqwdonZ
-	 m50JX8EJzTXHJQ50YCl0N75PtAEJmgBJEhIHMCShGhTl+wIhFwk6Ginha7B6SYj9jHCPH
-	 zlEGb9DjeUbckxrZC3d49WbDSsPCQSF4ygyIsQNFADwFVmVpvgEvLyLIswrWgmw+dJw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793820453;
+	h=DMARC-Filter:Received:DKIM-Signature:DKIM-Signature:DKIM-Signature:
+	 DKIM-Signature:Received:Received:Received:Date:From:To:Cc:Subject:
+	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
+	 In-Reply-To:X-Spam-Flag:X-Spam-Level:X-Spamd-Result:X-Spam-Score;
+	bh=1QxqEGu0EagkxxhYEfSH8rs0aIZCS0WxfJhGAHLRUmU=;
+	b=Ab3O0+EMx/1OiBgMFMMXRuEyl6SDwvcHeSWRmb+TjHUhVjf0kdsy80w5oqNjhxELeBmP
+	 jWs3yCZjGz+N14OmxWcnsFEPmRAGxY4Ravir6FzQAkE7JC82OukzlHPWHHLAwnKdtoTCs
+	 xKNW4R9/IFTk//+6JKQEb4z3+IFNAnkXTGt5x9hZ6P5hyl9ygGWzKNZ6MHp+D0Eb4tdxn
+	 xxZKtYRP7G6cjMixQeo2F9dosKqwTd9dFQXPmb0i1lV0nUBoC+pxmVx59uZA9rlfy9JD1
+	 E9T3Ds/epbCm19SNbBOj8zTBEHzyy67g83toJzfV76Cn5BnzGaaBClF5mHLz2Yrmogg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=fZMD0huu;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	dmarc=none header.from=suse.cz;
+	spf=pass smtp.mailfrom=suse.cz;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=y2Z3MDIS;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=4rfZAZNz;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=lwqPcmAx;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=SYKJhWKq;
+	arc=none smtp.remote-ip=195.135.223.130
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CC5A1607264F;
-	Wed,  4 Nov 2026 19:27:14 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9887C6070325;
+	Wed,  4 Nov 2026 19:27:32 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 9887C6070325
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=fZMD0huu
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E0AAB1F00A02;
-	Wed,  4 Nov 2026 19:27:02 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793820434;
-	bh=r5+oZHp7BRrXwItSZJfGO9IDNpMhGDSeaixBJWzgZo8=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=fZMD0huuUQp5LSr9n7+L0WCkQqKPzyWmpwqfqg+XzsqNRlIuKtlf3Iar8GeYyXaoh
-	 Duy1KTIkLZPd4wpyWSeEROyKAch5aD1WchnGy/bdzHJBKTDW5fUbZVdDqnccb3ML1S
-	 ynk82YbCOwpdp9OfHLn4Hk4TAslcNPy+3iNGpY8Onlv8nBJw5pFj50Y4poa5zyKxIw
-	 OVO6zjJj0L1s71YhuEz2nNM9sGb2RL+EkTlUz3tA5wau2YU3GduBQbxH1kPyHOemIX
-	 jzrV1tyP5WTyanlHmpiwciBJbTfxSsr8dPDlHohaL0lhPAdIlgdQvP+X/AxRNITsuF
-	 bSYKsfrnb9SrA==
-From: Christian Brauner <brauner@kernel.org>
-To: linux-fsdevel@vger.kernel.org
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-	Jann Horn <jannh@google.com>,
-	Josef Bacik <josef@toxicpanda.com>,
-	Chris Mason <mason@kernel.org>,
-	Jeff Layton <jlayton@kernel.org>,
-	NeilBrown <neil@brown.name>,
-	Eric Dumazet <edumazet@kernel.org>,
-	Thomas Gleixner <tglx@kernel.org>,
-	Al Viro <viro@zeniv.linux.org.uk>,
-	Jonathan Corbet <corbet@lwn.net>,
-	Christoph Hellwig <hch@lst.de>,
-	Greg Kroah-Hartman <gregkh@suse.de>,
-	Joel Granados <joel.granados@kernel.org>,
-	Kees Cook <kees@kernel.org>,
-	Jan Kara <jack@suse.cz>,
-	Jan Kara <jack@suse.com>,
-	linux-kernel@vger.kernel.org,
-	linux-nfs@vger.kernel.org,
-	linux-acpi@vger.kernel.org,
-	linux-kselftest@vger.kernel.org,
-	linux-s390@vger.kernel.org,
-	linux-scsi@vger.kernel.org,
-	linux-um@lists.infradead.org,
-	linux-wireless@vger.kernel.org,
-	linuxppc-dev@lists.ozlabs.org,
-	netdev@vger.kernel.org,
-	ntfs3@lists.linux.dev,
-	platform-driver-x86@vger.kernel.org,
-	coreteam@netfilter.org,
-	kexec@lists.infradead.org,
-	linux-pci@vger.kernel.org,
-	linux-sound@vger.kernel.org,
-	netfilter-devel@vger.kernel.org,
-	dri-devel@lists.freedesktop.org,
-	ibm-acpi-devel@lists.sourceforge.net,
-	jfs-discussion@lists.sourceforge.net,
-	linux-alpha@vger.kernel.org,
-	linux-arm-kernel@lists.infradead.org,
-	linux-cifs@vger.kernel.org,
-	linux-fbdev@vger.kernel.org,
-	linux-hwmon@vger.kernel.org,
-	linux-mm@kvack.org,
-	linux-sh@vger.kernel.org,
-	linux-usb@vger.kernel.org,
-	samba-technical@lists.samba.org,
-	sparclinux@vger.kernel.org,
-	linux-m68k@lists.linux-m68k.org,
-	linux-doc@vger.kernel.org,
-	linux-serial@vger.kernel.org,
-	linux-atm-general@lists.sourceforge.net,
-	Takashi Iwai <tiwai@suse.de>,
-	linux-input@vger.kernel.org,
-	linux-raid@vger.kernel.org,
-	linux-ext4@vger.kernel.org,
-	linux-modules@vger.kernel.org,
-	linux-debuggers@vger.kernel.org,
-	"Christian Brauner (Amutable)" <brauner@kernel.org>,
-	Chuck Lever <cel@kernel.org>
-Subject: [PATCH RESEND v2 45/51] selftests/proc: check a sysctl listing while entries come and go
-Date: Wed,  4 Nov 2026 20:27:00 +0100
-Message-ID: <20261104-work-procfs-bugfixes-v2-45-021c84d852e0@kernel.org>
-In-Reply-To: <20261104-work-procfs-bugfixes-v2-0-021c84d852e0@kernel.org>
-References: <20261104-work-procfs-bugfixes-v2-0-021c84d852e0@kernel.org>
+	dkim=pass (1024-bit key, unprotected) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=y2Z3MDIS;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=4rfZAZNz;
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=lwqPcmAx;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=SYKJhWKq
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id D15FF21E54;
+	Wed,  4 Nov 2026 19:27:30 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1793820451; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=1QxqEGu0EagkxxhYEfSH8rs0aIZCS0WxfJhGAHLRUmU=;
+	b=y2Z3MDISNYZJM2eEmif55huREQxeSvvI/Tub4XKCNPqH/JzFFZKZt5y1JFhnZyy7X8FfkH
+	TbSbFe8Menpcpp8b2F314j3eomEsPGHee5mJXP1R0iQUcjKE7cdl3kujJXVeZvbIESukn1
+	l9HuHpRDjdk0v2tb/HaNhChlCP+wRXI=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1793820451;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=1QxqEGu0EagkxxhYEfSH8rs0aIZCS0WxfJhGAHLRUmU=;
+	b=4rfZAZNzauFSCkXoWdQvJtxR077iNLgNGbgxaHFRuwVKwNdwJmP3KpiUilqn1HiWpse8PV
+	uqBYZo1inxWEHrAg==
+Authentication-Results: smtp-out1.suse.de;
+	none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1793820450; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=1QxqEGu0EagkxxhYEfSH8rs0aIZCS0WxfJhGAHLRUmU=;
+	b=lwqPcmAxbMdMPSPVASntLIb6Z7DMeg29rBrV5KP1U3aAJtFSQ2Eqbx4h7SzYtDLab/zVl1
+	KFJZS7cXVW+BAnqiDMrGhTlcM0x8Cf2ALr4JsSGFUI77VY5FprRPlyMOBi9oGnTmy9le/7
+	kOzw059PvD7EdxNF+EQU8b59DETvEPQ=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1793820450;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=1QxqEGu0EagkxxhYEfSH8rs0aIZCS0WxfJhGAHLRUmU=;
+	b=SYKJhWKqSXbQfE3UOZAxlCVoETCHaS0gXwKFNW8gSdOj+0MA7m4dANpUkpr+Frk470lqi2
+	UArXpv9nGQ0QKSCg==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id A7C05134A5;
+	Wed,  4 Nov 2026 19:27:30 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id aW4FICKH62p7IQAAD6G6ig
+	(envelope-from <jack@suse.cz>); Wed, 04 Nov 2026 19:27:30 +0000
+Received: by quack.suse.cz (Postfix, from userid 1000)
+	id 2CCB0B494; Wed, 04 Nov 2026 20:27:26 +0100 (CET)
+Date: Wed, 4 Nov 2026 20:27:26 +0100
+From: Jan Kara <jack@suse.cz>
+To: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+Cc: Jan Kara <jack@suse.cz>, Christian Brauner <brauner@kernel.org>, 
+	linux-fsdevel@vger.kernel.org, Josef Bacik <josef@toxicpanda.com>, 
+	Chris Mason <mason@kernel.org>, linux-ext4@vger.kernel.org, 
+	Andreas Dilger <adilger.kernel@dilger.ca>, Baokun Li <libaokun@linux.alibaba.com>, 
+	Ojaswin Mujoo <ojaswin@linux.ibm.com>, "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, 
+	Namjae Jeon <namjae.jeon@samsung.com>, stable@vger.kernel.org
+Subject: Re: [PATCH RFC 8/9] fat: sync the inode in fat_free_eofblocks()
+Message-ID: <3xsybk6czpjtovswdd46bvoug73ojrzshh5hkdjkfszyjl3x5h@j2l7dqxoorhi>
+References: <20261029-work-inode-metadata_writeback-v1-0-7d6c678a585d@kernel.org>
+ <20261029-work-inode-metadata_writeback-v1-8-7d6c678a585d@kernel.org>
+ <oilqmzo3vpddohxp46x3pjzf3wtoebahirtjqmt3izdw6ua5iq@ghdbk27wuf5f>
+ <87v76co5dv.fsf@mail.parknet.co.jp>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -114,211 +116,88 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5901; i=brauner@kernel.org; h=from:subject:message-id; bh=PpkRsqulHaX8LI6MUrkW65va02k7nMeISt9l3ZnWEgo=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9bmK23C5Vd0CJeVXYmud2s9Pn+J3m37HmVpnFi7ow2 bTfWdpXOkpZGMS4GGTFFFkc2k3C5ZbzVGw2ytSAmcPKBDKEgYtTACYyeRLDfw/N+y99eaf/2OCk /PjiV39BNqFbYdWnZD3mCaZ8OpuwbArDb9buj/tfO6Qb3GbVUb7QsZ5hkv1nv0KD0viMIPmMExu SGQE=
-X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <87v76co5dv.fsf@mail.parknet.co.jp>
+X-Spam-Flag: NO
+X-Spam-Level: 
+X-Spamd-Result: default: False [-11.30 / 50.00];
+	SUSE_INTERNAL_BYPASS(-9.00)[];
+	BAYES_HAM(-3.00)[100.00%];
+	SUSPICIOUS_RECIPS(1.50)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	MISSING_XM_UA(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	ARC_NA(0.00)[];
+	RCPT_COUNT_TWELVE(0.00)[13];
+	TAGGED_RCPT(0.00)[];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	TO_DN_SOME(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	FREEMAIL_CC(0.00)[suse.cz,kernel.org,vger.kernel.org,toxicpanda.com,dilger.ca,linux.alibaba.com,linux.ibm.com,gmail.com,samsung.com];
+	RCVD_COUNT_THREE(0.00)[3];
+	FROM_EQ_ENVFROM(0.00)[];
+	RCVD_TLS_LAST(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:email,suse.com:email,imap1.dmz-prg2.suse.org:helo]
+X-Spam-Score: -11.30
 
-List /proc/sys/net/ipv4/conf of a new network namespace in two pieces:
+On Thu 05-11-26 02:47:40, OGAWA Hirofumi wrote:
+> Jan Kara <jack@suse.cz> writes:
+> 
+> > On Thu 29-10-26 14:28:23, Christian Brauner wrote:
+> >> fat_evict_inode() calls fat_free_eofblocks() for a linked inode to give
+> >> back the clusters that were fallocated past the initialized size. For an
+> >> empty file that also resets the start cluster in the directory entry. It
+> >> truncates the clusters and writes the inode with:
+> >> 
+> >>   sync_inode_metadata(inode, inode_needs_sync(inode));
+> >> 
+> >> Unless the inode is IS_SYNC that is WB_SYNC_NONE writeback. It copies
+> >> the inode into the directory entry buffer, marks the buffer dirty and
+> >> sets I_METADATA_WRITEBACK. Then the inode goes away and with it the only
+> >> thing that would have told a later fsync() that the directory entry
+> >> still has to be written.
+> >> 
+> >> FAT doesn't have that problem. Its buffers are tracked on the FAT inode
+> >   ^^ exFAT??
+> >
+> >> and fat_file_fsync() writes them out on every fsync() of any file on the
+> >> filesystem.
+> >> 
+> >> So after the next fsync() the clusters are free on disk while the
+> >> directory entry of the empty file still points at them. If another file
+> >> reuses them and the machine crashes before the directory entry makes it
+> >> to disk, the two files share clusters. That's the corruption the comment
+> >> in fat_free_eofblocks() is about.
+> >
+> > Correct, but that does not violate anything AFAICT. fsync(2) promises data
+> > is reachable (which it is), not that the fs metadata is all
+> > consistent.
+> >
+> > For non-journaling filesystem you need fsck for such guarantee. And I know
+> > I'm a bit obtuse here but the change results in a synchronous buffer write
+> > on each eviction of inode that has preallocated blocks which will be a
+> > noticeable performance regression for some usecases. Probably Ogawa should
+> > decide whether this change is acceptable or whether we play fast and
+> > loose... Ogawa?
+> 
+> In my understand, the result of this change only affect to crash case
+> (FAT has no guarantee about it with non-sync mode). And this doesn't
+> lost data actually - lost some free blocks (maybe fsck would be
+> recoverable).
 
-- with a buffer that holds the dots and "all", register a tun device
-  whose name sorts first, finish the listing: "all" is listed once
+The result won't be lost free blocks but rather reference from inode to
+already freed blocks after a crash (and thus possibility of a block used by
+two inodes). So it is definitely an unpleasant filesystem corruption after
+a crash but as you say there are really no guarantees without fsck...
 
-- with that device registered and a buffer that holds the dots and it,
-  unregister it, finish the listing: "all" is still listed
-
-Both fail without the fix, the first lists "all" twice, the second not
-at all.
-
-Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
----
- tools/testing/selftests/proc/.gitignore            |   1 +
- tools/testing/selftests/proc/Makefile              |   1 +
- .../selftests/proc/proc-sysctl-readdir-churn.c     | 152 +++++++++++++++++++++
- 3 files changed, 154 insertions(+)
-
-diff --git a/tools/testing/selftests/proc/.gitignore b/tools/testing/selftests/proc/.gitignore
-index 8520c7878ea2..5b5e24e39cbd 100644
---- a/tools/testing/selftests/proc/.gitignore
-+++ b/tools/testing/selftests/proc/.gitignore
-@@ -25,4 +25,5 @@
- /self
- /setns-dcache
- /setns-sysvipc
-+/proc-sysctl-readdir-churn
- /thread-self
-diff --git a/tools/testing/selftests/proc/Makefile b/tools/testing/selftests/proc/Makefile
-index e0c0d313f4d0..dae09f333455 100644
---- a/tools/testing/selftests/proc/Makefile
-+++ b/tools/testing/selftests/proc/Makefile
-@@ -30,6 +30,7 @@ TEST_GEN_PROGS += setns-sysvipc
- TEST_GEN_PROGS += thread-self
- TEST_GEN_PROGS += proc-multiple-procfs
- TEST_GEN_PROGS += proc-fsconfig-hidepid
-+TEST_GEN_PROGS += proc-sysctl-readdir-churn
- TEST_GEN_PROGS += proc-pidns
- 
- include ../lib.mk
-diff --git a/tools/testing/selftests/proc/proc-sysctl-readdir-churn.c b/tools/testing/selftests/proc/proc-sysctl-readdir-churn.c
-new file mode 100644
-index 000000000000..b2ad097b464a
---- /dev/null
-+++ b/tools/testing/selftests/proc/proc-sysctl-readdir-churn.c
-@@ -0,0 +1,152 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * A listing of a /proc/sys directory that takes more than one getdents64()
-+ * must not show an entry twice or skip one when an entry is registered or
-+ * unregistered in between. /proc/sys/net/ipv4/conf/<dev> of a tun device
-+ * comes and goes with the device.
-+ */
-+#define _GNU_SOURCE
-+#include <dirent.h>
-+#include <errno.h>
-+#include <fcntl.h>
-+#include <limits.h>
-+#include <linux/if.h>
-+#include <linux/if_tun.h>
-+#include <sched.h>
-+#include <string.h>
-+#include <sys/ioctl.h>
-+#include <sys/syscall.h>
-+#include <unistd.h>
-+
-+#include "../kselftest_harness.h"
-+
-+#define CONF_DIR	"/proc/sys/net/ipv4/conf"
-+#define TUN_NAME	"a0"		/* sorts before "all" */
-+#define TUN_PATH	CONF_DIR "/" TUN_NAME
-+#define SMALL_BUF	80		/* ".", ".." and one short name */
-+#define NAMES		64
-+
-+static int tun_open(const char *name)
-+{
-+	struct ifreq ifr = {};
-+	int fd;
-+
-+	fd = open("/dev/net/tun", O_RDWR | O_CLOEXEC);
-+	if (fd < 0)
-+		return -1;
-+	strncpy(ifr.ifr_name, name, IFNAMSIZ - 1);
-+	ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
-+	if (ioctl(fd, TUNSETIFF, &ifr)) {
-+		close(fd);
-+		return -1;
-+	}
-+	return fd;
-+}
-+
-+/* one getdents64() into @buf, the names appended to @names */
-+static int list(int fd, char *buf, size_t size, char names[][NAME_MAX + 1],
-+		int *n)
-+{
-+	long ret, off;
-+	int got = 0;
-+
-+	ret = syscall(__NR_getdents64, fd, buf, size);
-+	if (ret < 0)
-+		return -errno;
-+	for (off = 0; off < ret;) {
-+		struct dirent64 *d = (void *)(buf + off);
-+
-+		if (*n < NAMES)
-+			strcpy(names[(*n)++], d->d_name);
-+		got++;
-+		off += d->d_reclen;
-+	}
-+	return got;
-+}
-+
-+static int count(char names[][NAME_MAX + 1], int n, const char *name)
-+{
-+	int i, c = 0;
-+
-+	for (i = 0; i < n; i++)
-+		if (!strcmp(names[i], name))
-+			c++;
-+	return c;
-+}
-+
-+FIXTURE(sysctl_readdir) {
-+	int dir;
-+	int n;
-+	char names[NAMES][NAME_MAX + 1];
-+	char buf[65536];
-+};
-+
-+FIXTURE_SETUP(sysctl_readdir)
-+{
-+	int tun;
-+
-+	if (unshare(CLONE_NEWNET))
-+		SKIP(return, "unshare(CLONE_NEWNET): %s", strerror(errno));
-+	tun = open("/dev/net/tun", O_RDWR | O_CLOEXEC);
-+	if (tun < 0)
-+		SKIP(return, "/dev/net/tun: %s", strerror(errno));
-+	close(tun);
-+	self->dir = open(CONF_DIR, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
-+	if (self->dir < 0)
-+		SKIP(return, CONF_DIR ": %s", strerror(errno));
-+	self->n = 0;
-+}
-+
-+FIXTURE_TEARDOWN(sysctl_readdir)
-+{
-+	close(self->dir);
-+}
-+
-+/* a device registered in front of the position doesn't repeat an entry */
-+TEST_F(sysctl_readdir, register_in_front)
-+{
-+	int tun;
-+
-+	/* ".", ".." and "all", "default" doesn't fit */
-+	ASSERT_EQ(list(self->dir, self->buf, SMALL_BUF, self->names, &self->n), 3);
-+	ASSERT_EQ(count(self->names, self->n, "all"), 1);
-+
-+	tun = tun_open(TUN_NAME);
-+	ASSERT_GE(tun, 0);
-+	ASSERT_EQ(access(TUN_PATH, F_OK), 0);
-+
-+	while (list(self->dir, self->buf, sizeof(self->buf), self->names,
-+		    &self->n) > 0)
-+		;
-+	EXPECT_EQ(count(self->names, self->n, "all"), 1);
-+	EXPECT_EQ(count(self->names, self->n, "default"), 1);
-+	EXPECT_EQ(count(self->names, self->n, "lo"), 1);
-+	close(tun);
-+}
-+
-+/* a device unregistered in front of the position doesn't skip an entry */
-+TEST_F(sysctl_readdir, unregister_in_front)
-+{
-+	int tun;
-+
-+	tun = tun_open(TUN_NAME);
-+	ASSERT_GE(tun, 0);
-+	ASSERT_EQ(access(TUN_PATH, F_OK), 0);
-+
-+	/* ".", ".." and the device, "all" doesn't fit */
-+	ASSERT_EQ(list(self->dir, self->buf, SMALL_BUF, self->names, &self->n), 3);
-+	ASSERT_EQ(count(self->names, self->n, TUN_NAME), 1);
-+
-+	/* closing the device unregisters its sysctls under RTNL */
-+	close(tun);
-+	ASSERT_EQ(access(TUN_PATH, F_OK), -1);
-+
-+	while (list(self->dir, self->buf, sizeof(self->buf), self->names,
-+		    &self->n) > 0)
-+		;
-+	EXPECT_EQ(count(self->names, self->n, "all"), 1);
-+	EXPECT_EQ(count(self->names, self->n, "default"), 1);
-+	EXPECT_EQ(count(self->names, self->n, "lo"), 1);
-+}
-+
-+TEST_HARNESS_MAIN
-
+								Honza
 -- 
-2.53.0
-
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
