@@ -1,50 +1,97 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=115.124.30.98
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.214.175
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793759512;
-	b=eSU9yNfQqx/EsLqLwa2KXYk3b+4tExOEQ+uvRVQtc/ZAFS0nNaAPybFE7CUKB7Tdv/33
-	 rKv4p2qTiCtcYuYBsjCGWiBPTFZhyUUYVHIewHXY+rtT6Dvh5Sa4Kjq8Z/9oCr0qEEPBq
-	 j1nntrXkckAG0+Lh6FrAV0QDzHmiPaFh9InMwkqCqvu2fdiWoucCDpCb2dbPljb/2qtdd
-	 L95lVWg1WV/vOwViiVrO0Rox2Ed+SlMgypdTK4uwkTuWWyat3iuycp2L1q9tVlG0UiM6I
-	 3I6+eegRFd4eniTTDfbHwA3PnkGVDkbV/QQnQZaIk61RdCWpuosPWt5q9AnXEOsoF0A==
+	t=1793763352;
+	b=Ujad/9lOuCFxnO1MrVe9YRO02feKxM4Hp3SBDalLmmYcX2HcfPR86mXjRZKfZl5L4Gnb
+	 Yvmsqq9kY9RVIZ7gUo3Z3FvxmhxTY2KqI1vD6mVMxsdKUn34ESozrSVdAw6UrUAlBOuRo
+	 g2ABN0G4BtdJ1TLsdiw/3IW6WvY3wYyFM9g+oZSMA5vMjQeEjlIsuah3MzHJg7M+kv9v+
+	 ObshKxY8IpuPp7zeHvvxH+w+KUjTG62QvNre547siKejurUTadDJ6gcFuk2PNYvTBd1gE
+	 kkA/hHDgOZ+8HRaQmYcoo34TFOUw9HN5xD4U9ily59nMPloadPCmbkl5QZhQhrhMTpw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793759512;
-	h=DMARC-Filter:DKIM-Signature:X-Alimail-AntiSpam:Received:Message-ID:
-	 Date:MIME-Version:User-Agent:Subject:To:Cc:References:
-	 Content-Language:From:In-Reply-To:Content-Type:
+	a=rsa-sha256; c=relaxed/relaxed; t=1793763352;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
+	 From:To:Cc:Subject:Date:Message-ID:X-Mailer:MIME-Version:
 	 Content-Transfer-Encoding;
-	bh=CLjlAhK88hPBCjk1t6tnIG3Isu3g2YYgjIIVTxIgq2I=;
-	b=B9w8PH1ERc9DTu0ANFspInb+kd0HdhcrCWvHU/yVaUsdWw3xGj8BrH7j3dh4fYJbjaTU
-	 K6dkBQa5NFPUCZDvDkOb8KRhpp7cUYfU7HcWtxCZAChTtN//4JygKom/eeS3tNyf9d9tg
-	 JySnpcUgYwEIaVryUmUA/Bddvl/ZPjEWj/8Z+6jDLAa1A905JcUlzcuM4u6tGxARQTX0n
-	 dgSgqIiNQn/GYLagIVy6rbmw1/859RUfpmKV9SsyCAe3WDq2SVoTlHLtK4RRHw80MwAg6
-	 VZ0m1FYD8b4uRHn6HM2S0oyi1X0j1l+mIFNLUZ8PC35F4FclSJBNoQJY4grT7gUGDJg==
+	bh=hAHLejY9oB/8f/CfT1Y6ivnfaaSpI9Ek0JXQqjTj05U=;
+	b=aENJDtZlb3zKwTL5KlE7xlDJVrycHqN1i2K34R1xsT9ehKHIBDvgL83C0xDBmEeZmmIo
+	 UL4xLAz67W9MCHFeXdQQBBT0iQBeyGiRCAtdBOGguH0vFErd2QSaSyzPViOy1Bm37OFGG
+	 r5X9phnIe0/fIklSfZHjRjlTGyUnkDr2ZsCQ7Duq8E/maen5+KT/BKGj9R07y+dehyqGP
+	 dTxTGBzxcgLjthr+5CIsWGPnjrSq4Y5shYKR8K22XXyhgtJ8T+w634IAJXa9HCGabSUBN
+	 zM/wFPrPZGxg8C4SkNccFO+KAYWj9zbqSnaCGCCBCLtREQIZ7wIKHF5M09nQV5uJc8w==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=linux.alibaba.com;
-	spf=pass smtp.mailfrom=linux.alibaba.com;
-	dkim=pass header.d=linux.alibaba.com header.i=@linux.alibaba.com header.a=rsa-sha256 header.s=default header.b=KXX9sqou;
-	arc=none smtp.remote-ip=115.124.30.98
-Received: from out30-98.freemail.mail.aliyun.com (out30-98.freemail.mail.aliyun.com [115.124.30.98])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	dmarc=pass header.from=gmail.com;
+	spf=pass smtp.mailfrom=gmail.com;
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=HLoyn5F0;
+	arc=none smtp.remote-ip=209.85.214.175
+Received: from mail-pl1-f175.google.com (mail-pl1-f175.google.com [209.85.214.175])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7248D606A32D;
-	Wed,  4 Nov 2026 02:31:50 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 7248D606A32D
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E013D606A326
+	for <linux-ext4@vger.kernel.org>; Wed,  4 Nov 2026 03:35:50 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org E013D606A326
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.a=rsa-sha256 header.s=default header.b=KXX9sqou
-DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
-	d=linux.alibaba.com; s=default;
-	t=1793759508; h=Message-ID:Date:MIME-Version:Subject:To:From:Content-Type;
-	bh=CLjlAhK88hPBCjk1t6tnIG3Isu3g2YYgjIIVTxIgq2I=;
-	b=KXX9sqouKslSC5rwUSgsFfkCfpKZi855/Y5CmR1WrJv7M0ZXwvC7HL9DYtMenu7bIQdQgkDckGM9UPmdDIkdRRGWfR+ZUniTC80hZacof7EHUtUEVw4ZejW08RLz6s/OFqQDiqxGU1zDOGGFvOMJvu/MqmYypbRoOIdm2AGeQ6g=
-X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R721e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033045133197;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=11;SR=0;TI=SMTPD_---0XE4LGOC_1793759506;
-Received: from 30.221.132.49(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0XE4LGOC_1793759506 cluster:ay36)
-          by smtp.aliyun-inc.com;
-          Wed, 04 Nov 2026 10:31:47 +0800
-Message-ID: <922240f9-8233-4466-a787-2f7ddba7c490@linux.alibaba.com>
-Date: Wed, 4 Nov 2026 10:31:46 +0800
+	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=HLoyn5F0
+Received: by mail-pl1-f175.google.com with SMTP id d9443c01a7336-2e98798cbddso1134625ad.0
+        for <linux-ext4@vger.kernel.org>; Tue, 03 Nov 2026 19:35:50 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20260707; t=1793763350; x=1794368150; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=hAHLejY9oB/8f/CfT1Y6ivnfaaSpI9Ek0JXQqjTj05U=;
+        b=HLoyn5F0DxNrsAHS8+TfkRmfUbGr6VxTYbCCG9BptYSU79sXh3ZQeB7WHhp/zkC1BP
+         MEZ+rLSLw2ugKprYH8WjTD5pF+7Z8Hz8Gv5fZ621EIF5PM2cLAEwwxLX64HFuJLccRBI
+         dxVePSPgZQPJeTqxTG3UUMjVeROgPoBR65+UD9UOj1/f4wE7/8X/Dn2LnN5pwmLUGopY
+         DuXckwzgYGKHgPvgPu9UQFQ6P8/2nW+DzR40cvf/Da7QGFLwnXEkNku+XfwYFv/Cn3Do
+         BfHZNn92rijfyVqnq3L4TZyTEPStUwvlAakzjtXd4GvoxZ7OYMwcbtxdI9flcSLIq2IJ
+         KFxg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1793763350; x=1794368150;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=hAHLejY9oB/8f/CfT1Y6ivnfaaSpI9Ek0JXQqjTj05U=;
+        b=qiqQk79+VbQ0uYO1+8VCdrvYf4pY59a/zCfjFqEElUoPQzVCYTtRaqTIsmhUPvwkGr
+         /2ngwv+YQiGRRbQl57DJ8Ye5dqzp9+vX3UFqjyQRL+nVRtckikx2DuyV/Ph1NislTS1Z
+         caJTukeFdXXFYW1RlVELNcU/l3wVDZcQrUgChOZywccbMnzoNmqjZULRd/HmJ9Rvd40G
+         z3k9PfS/jA1O51Iq9ZnC+83dZlmHD7eax6bxKgVnJzGvOFVxZky84tXi3Q+fkMhYR6Us
+         HkScZI25aaWqqshjrzqxM7TltBXARkQPphe9NTjGC2Qc71X3lnntXImYLhJQM+7gnsaD
+         oozQ==
+X-Forwarded-Encrypted: i=1; AKwUvByE+ZqVl6RORegNuvhGdpzx3ohimUWVwtYNPMaMDE/8HxsAZleK8kgFdt7Y/KmHbGPznflE49Rd+HR6@vger.kernel.org
+X-Gm-Message-State: APuU4Z/bDfI4pobKiOaCIbs+pP5fAYrfAnJctDIbn74HcZ/YX/kgHHlw
+	bRjHM3Z/zxlqDwpsuEGwTBIul6AICVzPJx2sr0PeyfHY61LabBpPRxzr
+X-Gm-Gg: AYBFou1DCTvAl0ZrZzvZTYMx/RrHn+78s3WvPFDxOlyLx8O5VywQAofygZTfD5Io04d
+	/7qivPS7/Jgj68hS1lTQpMiyS9IWNzbfzoIjEj4LGaMx6hVnhjIQCfB0QKGq77VAj6XYLNmjD5E
+	DH/h3VnudHF3o/wt6EpmONh/sXpYDRK7VX/rVubWufFtVsx7SwJ2fxWXMx0rg4pJHEi98/dB5bg
+	cejWn+cX9FW5abSmdOEwYWv26KFam+mukBmd7gn918tqH+k8nV927PjWDkdaejq8tupZ5TkCGmN
+	4lm0z/n+mZCN5Ip68iaAjxPwHNkdr3lp4pDpBtK6gVRs674KTct745mneGU1PSKmWfiuLxQzNMv
+	Avd4TxL4E9wkFpvd2WvTZT4Z+uSU1apzTc1irN662iz8nFjd8ZeVVfsqCGp0fQhlYs8JC7B2qQR
+	bT0uADB1KTFrJcLjPnK4kMbpGM6JhGmF/efc8qTStl+Leni5em14vSf6K9Krp3T4ODw4kGGoSqM
+	Fag7/7gzOIZ31R/z2B83LRrsovwY73zbf9RZz00WnS8OoDLSFm7F6sctLBerWhOqzGWH2OxNaPK
+	mbGIDBZv5bZqy+xngvRbmMb8h8l+Ly5D7vjDLXPb1xs4WIkel4nsWHCx+m82i7Jr
+X-Received: by 2002:a17:902:c405:b0:2df:8733:f229 with SMTP id d9443c01a7336-2eb3649ebc2mr145706335ad.24.1793763350157;
+        Tue, 03 Nov 2026 19:35:50 -0800 (PST)
+Received: from localhost.localdomain ([14.116.239.40])
+        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2ed08bd50b5sm1555095ad.4.2026.11.03.19.35.46
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Tue, 03 Nov 2026 19:35:49 -0800 (PST)
+From: Jianping Liu <frankljpliu@gmail.com>
+To: tytso@mit.edu,
+	adilger.kernel@dilger.ca,
+	libaokun@linux.alibaba.com,
+	jack@suse.cz,
+	ojaswin@linux.ibm.com,
+	ritesh.list@gmail.com,
+	yi.zhang@huawei.com,
+	frankjpliu@tencent.com,
+	linux-ext4@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+Subject: [PATCH v2] ext4: fix soft lockup while shrinking the extent status cache
+Date: Wed,  4 Nov 2026 11:35:39 +0800
+Message-ID: <20261104033539.3031910-1-frankljpliu@gmail.com>
+X-Mailer: git-send-email 2.43.7
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -54,87 +101,60 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH 1/4] fscrypt: Cap data units at the page size
-To: Eric Biggers <ebiggers@kernel.org>
-Cc: linux-fscrypt@vger.kernel.org, jaegeuk@kernel.org, tytso@mit.edu,
- linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca, jack@suse.cz,
- yi.zhang@huawei.com, ojaswin@linux.ibm.com, ritesh.list@gmail.com,
- linux-kernel@vger.kernel.org
-References: <20261103153132.4154855-1-libaokun@linux.alibaba.com>
- <20261103153132.4154855-2-libaokun@linux.alibaba.com>
- <20261103224006.GC2281@quark>
-Content-Language: en-US
-From: Baokun Li <libaokun@linux.alibaba.com>
-In-Reply-To: <20261103224006.GC2281@quark>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 
-Hi Eric,
+From: Jianping Liu <frankjpliu@tencent.com>
 
-Thank you for your feedback.
+__es_shrink() walks sbi->s_es_list and reclaims extents from each
+inode. On a non-preemptible kernel that walk never gives up the CPU.
 
-On 2026/11/4 06:40, Eric Biggers wrote:
-> On Tue, Nov 03, 2026 at 11:31:29PM +0800, Baokun Li wrote:
->> diff --git a/fs/crypto/fscrypt_private.h b/fs/crypto/fscrypt_private.h
->> index e602c31b3844..0dc158563e71 100644
->> --- a/fs/crypto/fscrypt_private.h
->> +++ b/fs/crypto/fscrypt_private.h
->> @@ -203,7 +203,9 @@ static inline int
->>  fscrypt_policy_v2_du_bits(const struct fscrypt_policy_v2 *policy,
->>  			  const struct inode *inode)
->>  {
->> -	return policy->log2_data_unit_size ?: inode->i_blkbits;
->> +	if (policy->log2_data_unit_size)
->> +		return policy->log2_data_unit_size;
->> +	return min_t(unsigned int, inode->i_blkbits, PAGE_SHIFT);
->>  }
-> 
-> This would make the interpretation of the default value
-> log2_data_unit_size=0 depend on the page size, which (unlike i_blkbits)
-> is not part of the filesystem's on-disk format.
+There is a soft lockup report on our company's machine. The machine
+with millions of active inodes, 256 CPUs, and heavy memory pressure,
+concurrent shrinkers run too long.
 
+i_es_lock is dropped after es_reclaim_extents(), and s_es_lock is not
+taken again until the next inode. When nr_to_scan remains, call
+cond_resched_tasks_rcu_qs() before continuing the scan.
 
-This is indeed a point we struggled with before.
+cond_resched() does not report the RCU quiescent state needed here.
+It is compiled out when CONFIG_PREEMPTION=y. Otherwise it schedules
+through preempt_schedule(), and RCU records that switch as a
+preemption. An RCU-tasks read-side section ends only at a voluntary
+context switch, cond_resched_tasks_rcu_qs(), idle, or return to
+userspace. The helper reports that voluntary quiescent state and still
+lets a non-preemptible kernel reschedule.
 
-The problem is that on a filesystem with LBS enabled, once fscrypt is
-enabled, log2_data_unit_size=0 causes data corruption.  So we default
-to a sub-block data unit size to avoid it.
+Changes from v1:
+- Delete time out logic.
+- Change "cond_resched" to "cond_resched_tasks_rcu_qs".
 
-In the previous discussion it was said that for cross-machine
-compatibility, users would explicitly set a data unit size of 4K or
-smaller.  So this change did not consider cross-machine or cross-page-
-size compatibility.
+Link: https://patchwork.ozlabs.org/project/linux-ext4/patch/20261028061628.1209508-1-frankljpliu@gmail.com/
+Signed-off-by: Jianping Liu <frankjpliu@tencent.com>
+---
+ fs/ext4/extents_status.c | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
 
-> 
-> I think that for a sub-block data unit size to be used, it should need
-> to continue to be explicitly specified.  Otherwise the default would
-> become ambiguous.
-
-This does change the semantics of the default value, and supporting a
-data unit size larger than the page size later would be even worse.
-
-What I had in mind before was to keep the default as min(bs, PS) and
-allow DU > PS only when explicitly specified, which seemed to give
-better compatibility.  Cross-machine or cross-page-size cases seem
-uncommon, and existing machines have probably already avoided them by
-specifying a 4K or smaller DU.
-
-Keeping the existing default semantics and returning an error in the
-LBS case for the user to specify seems feasible.  But then
-test_dummy_encryption and the xfstests cases that use the default would
-need to specify the DU explicitly, otherwise the LBS + encrypt test
-coverage would drop a lot.  That is, in the kernel or the tests we
-always have to set a default DU size.
-
-If you confirm that we should take the route where LBS requires an
-explicit data unit size and the default is rejected, I can adapt the
-kernel and xfstests in v2.  Or should we go back to the more compatible
-DU > page size approach?
-
-Looking forward to hearing your thoughts.
-
-
-Cheers,
-Baokun
+diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+index 018b6146b9d8..62346eaf4350 100644
+--- a/fs/ext4/extents_status.c
++++ b/fs/ext4/extents_status.c
+@@ -1721,6 +1721,16 @@ static int __es_shrink(struct ext4_sb_info *sbi, int nr_to_scan,
+ 
+ 		if (nr_to_scan <= 0)
+ 			goto out;
++
++		/*
++		 * Report a voluntary RCU-tasks quiescent state before continuing.
++		 * cond_resched() is not enough: it is compiled out under
++		 * CONFIG_PREEMPTION, and otherwise switches via preemption, which
++		 * does not end an RCU-tasks read-side section.
++		 * This also lets a non-preemptible kernel reschedule.
++		 */
++		cond_resched_tasks_rcu_qs();
++
+ 		spin_lock(&sbi->s_es_lock);
+ 	}
+ 	spin_unlock(&sbi->s_es_lock);
+-- 
+2.43.7
 
