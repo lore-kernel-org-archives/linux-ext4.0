@@ -1,54 +1,75 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793829471;
-	b=HphBLO1l0eiWRIz62rlud4MyfMiwo6Gc0jJr8KoajSxfMvtLV3Romgpb/cuMBzCKO80p
-	 zGPB8gi/+W+MQt1auIHKrkatjC74DVcw7lpTGG5J2WzGJVrtrs0C0Kxn9/0J0/pJyB8/I
-	 XE5ie7FQNv8PwRo0dCS3yVLL3G7ldoz3Y3TUNU6ENbFerRrRKulZyKWlmZ1yZzzGIaf0a
-	 3lsWXq6C1pS2Lo9AMqclHgccuNxQAQzc8p8NpuURk3tp7pdn8bBhBwa/E7vyfaQto6JHR
-	 PKIFRHeo1Xhwjm/58L126qFvd0H1sJrN+c0zdV2JRuDLazGJlmNLgVZaITTmjOWaQiA==
+	t=1793832370;
+	b=GiPJj/b5IETTgaiAxC956zQaYbDdSyZGCxNYuLZCFetISqeOrO3uXvnnxHK/YH+Y5AdN
+	 4y8iWiN+H2uWkXG5NYIeMWDex1F6hAD7Iiwz8nY+Y/tgL3WlQEzCOoYI9bNEtMBe9C1VJ
+	 Z9NOIQQ9aeTnjEUWkEV93rwBqp+0i4UklS/GTPjExFt6z7o5tIVZHumYX25qS1/VXXXZo
+	 W/t6qH6hbIPDpGauq8KUwS60tWoCyzSZyhrKape3UE6/6HA5ZCLzUWE5ww0+Gbs2PdKIw
+	 bfE8s5rueKgjC9MAVHCQX4l3CO3W0PJYEIeu5pCJ7/8DoJ43V/TWU8KY+Kgw6AoKxOw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793829471;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793832370;
 	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
 	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
-	bh=Pt10OpIafDHO+/s8UZzP68e4Ey+bkeQd5gvZCMNXoJs=;
-	b=xd8+QfgrbqXnP8CMJuyz6x91w7AjusxLpFUUc7nz+LhB6xr/q5OCRwrxc5BW3AGKPNQV
-	 EEr2GYb4jTgPbb6eNMmNPopEj0vZYtCXlMPSBZbSsmxBUhaCtS1XA8vVDL6zpiJYWSaWl
-	 /OTbacpgo174TbLZqNhCb9tqCcp8MLjU4rpd4F09e9kFeyf5c9bFA9E0wfdFB269cZIfw
-	 Fz0QHn/YxGuLc699y6ZoatdK62MEsoOA01pAKNe7aTqP6eMZdUzaYmz9mXHq8EZdKVOhp
-	 pkofeByQuNnKBt4jYqKyPZ4LjCDFwgQTtAoCkzPm2AgSFSGsvS4jbdZAjfZmHGgM/TQ==
+	bh=XBOw8umZc0PSygGL6ZhSsNEhyMPfzoczgqWFX+5YDNY=;
+	b=Re/6Rg9jSD9Xebvi70a84ZeMmu/I2lfDULXQp8gVW/rAcQgEQo7H7Bm2B45i/4cWD2Qz
+	 bA5PiYIc9GvM4LsvRra4bsZTC675SEPOrg8kMw2nb505Tv9nEXMOEXBmWOA2oIxYMgmqJ
+	 +lHWOwBIftcc35KCKzB0hLHvHE/OhEFsHLfPgbhC0Ts/pbORmj97PoUbWtjBounXmDjiB
+	 mQfvZZDBX4X96/9TtFlVhx528WLd9pGG+gUaWMkQQO/cRYvFd1uTPq/NWJKxb2Q0AZYRH
+	 dcHEjS7kMdFBNNoIBuEl1SVfzq//hK+nG7BkfvMxHJqFrp/DW75GAm8UPQXw5VfKfrw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=MAca+erH;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Y+guEyix;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A125D606AB0B;
-	Wed,  4 Nov 2026 21:57:51 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F24D4606A31B;
+	Wed,  4 Nov 2026 22:46:09 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=MAca+erH
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 110E91F00A17;
-	Wed,  4 Nov 2026 21:57:51 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Y+guEyix
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C6C1B1F000C1;
+	Wed,  4 Nov 2026 22:45:57 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793829471;
-	bh=Pt10OpIafDHO+/s8UZzP68e4Ey+bkeQd5gvZCMNXoJs=;
+	s=k20260515; t=1793832369;
+	bh=XBOw8umZc0PSygGL6ZhSsNEhyMPfzoczgqWFX+5YDNY=;
 	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=MAca+erHy9DR7OyreR+xCs9Mb/ZuNFmIA1Px0E9Wf3rP6Bz4Md7LYWALQDukRMQdh
-	 P5pYWT9fx/UHsEJMno83Tf61qCmIeZSI3bKLpodUjU2ty4+MzYeswuyT857wesl9r7
-	 QEWaeuWTjq0lUPDsfeSFMK5ZcCnDTs1q6YqVV8sEIe2bUb7gLV0Ir3bTQlp9CVhUPz
-	 yc+hpzv6ncSncR+9+aWvAnAJxCwiCAL1amJ6wsw9t5bDBUWDSxU4yRwKgXVTyS/3iN
-	 +6xPgugAWGGs1A37hLKpGw285h8qkstXE7CkrflkXghHAyhWwqcqh7GFa+kvdLKtw1
-	 nb4ye4C9X/LqA==
-Date: Wed, 4 Nov 2026 21:57:49 +0000
-From: Eric Biggers <ebiggers@kernel.org>
-To: Andrey Albershteyn <aalbersh@kernel.org>
-Cc: hch@lst.de, fsverity@lists.linux.dev, linux-xfs@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-	linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 0/5] fsverity: lift ioctl() input masking and runtime
- inode flag to VFS
-Message-ID: <20261104215749.GA3648616@google.com>
-References: <20261104194618.103332-1-aalbersh@kernel.org>
+	b=Y+guEyixDVYqpS8g3d4FmlRYq/qp1tQeGL16K2BSxNthPOaRsDL0VFTK+tjHByNf5
+	 UG3G3TR4IbDk5BaZwlgwVySr0HiRvL1WeYdDEujyS+zzG35LMJqu1Pm8BzfQ5Z+w4F
+	 3DGZwBGiTOYlKSVRIgaBstWj6LtjUlnMrGUfTY6AgB7LPx3pVl/0nxTfWzl1eRWVeu
+	 9SzZPPQ7yLUIbBzvzOD5olkzaVc7Od6fJQ93jvoDvEvbyLIezG28vK5PJuGqQJ/Zu+
+	 C/TFnkMniWMHftytXgdebgJiyvQu099dnGFvQXlwnwRKY6VGKt0bkFzVDUexAPr+Sm
+	 GvRbuyQmKti0Q==
+Date: Wed, 4 Nov 2026 23:45:55 +0100
+From: Christian Brauner <brauner@kernel.org>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-fsdevel@vger.kernel.org, Jann Horn <jannh@google.com>, 
+	Josef Bacik <josef@toxicpanda.com>, Chris Mason <mason@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
+	NeilBrown <neil@brown.name>, Eric Dumazet <edumazet@kernel.org>, 
+	Thomas Gleixner <tglx@kernel.org>, Al Viro <viro@zeniv.linux.org.uk>, 
+	Jonathan Corbet <corbet@lwn.net>, Christoph Hellwig <hch@lst.de>, 
+	Greg Kroah-Hartman <gregkh@suse.de>, Joel Granados <joel.granados@kernel.org>, 
+	Kees Cook <kees@kernel.org>, Jan Kara <jack@suse.cz>, Jan Kara <jack@suse.com>, 
+	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org, linux-acpi@vger.kernel.org, 
+	linux-kselftest@vger.kernel.org, linux-s390@vger.kernel.org, linux-scsi@vger.kernel.org, 
+	linux-um@lists.infradead.org, linux-wireless@vger.kernel.org, linuxppc-dev@lists.ozlabs.org, 
+	netdev@vger.kernel.org, ntfs3@lists.linux.dev, platform-driver-x86@vger.kernel.org, 
+	coreteam@netfilter.org, kexec@lists.infradead.org, linux-pci@vger.kernel.org, 
+	linux-sound@vger.kernel.org, netfilter-devel@vger.kernel.org, dri-devel@lists.freedesktop.org, 
+	ibm-acpi-devel@lists.sourceforge.net, jfs-discussion@lists.sourceforge.net, 
+	linux-alpha@vger.kernel.org, linux-arm-kernel@lists.infradead.org, linux-cifs@vger.kernel.org, 
+	linux-fbdev@vger.kernel.org, linux-hwmon@vger.kernel.org, linux-mm@kvack.org, 
+	linux-sh@vger.kernel.org, linux-usb@vger.kernel.org, samba-technical@lists.samba.org, 
+	sparclinux@vger.kernel.org, linux-m68k@lists.linux-m68k.org, linux-doc@vger.kernel.org, 
+	linux-serial@vger.kernel.org, linux-atm-general@lists.sourceforge.net, 
+	Takashi Iwai <tiwai@suse.de>, linux-input@vger.kernel.org, linux-raid@vger.kernel.org, 
+	linux-ext4@vger.kernel.org, linux-modules@vger.kernel.org, linux-debuggers@vger.kernel.org, 
+	Chuck Lever <cel@kernel.org>
+Subject: Re: [PATCH RESEND v2 00/30] proc: convert the fs, kernel and mm
+ entries (Part 5/7)
+Message-ID: <20261104-allein-bepacken-hitzig-5e517d3c129f@brauner>
+References: <20261104-work-procfs-v2-0-b45cd5789ac5@brauner>
+ <20261104-work-procfs-fs-v2-0-319e0f9a8aae@kernel.org>
+ <CAHk-=wj9Y9NcOesBBm+jhPjYa7qO00fD7g7uwX+H-k0-R2difA@mail.gmail.com>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -58,21 +79,20 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=utf-8
 Content-Disposition: inline
-In-Reply-To: <20261104194618.103332-1-aalbersh@kernel.org>
+In-Reply-To: <CAHk-=wj9Y9NcOesBBm+jhPjYa7qO00fD7g7uwX+H-k0-R2difA@mail.gmail.com>
 
-On Wed, Nov 04, 2026 at 08:46:09PM +0100, Andrey Albershteyn wrote:
-> Hi folks,
+On Wed, Nov 04, 2026 at 12:05:08PM -0800, Linus Torvalds wrote:
+> On Wed, 4 Nov 2026 at 11:49, Christian Brauner <brauner@kernel.org> wrote:
+> >
+> > Part 5/7 of "proc: move procfs to what kernfs does", on top of part 2
 > 
-> This patchset lifts two things from filesystems to VFS level:
-> - No-oping FS_VERITY_FL in SET ioctl()
-> - runtime fsverity construction flag
+> Christian - way too many patches, re-sent much too often, cc'd to way
+> too many people.
 > 
-> The first one fixes BTRFS get-modify-set loop with
-> FS_IOC_GETFLAGS/SETFLAGS ioctl()s, as it does return fsverity flag but
-> not mask it out.
+> Nobody is going to read these repeated resends, and all you are doing
+> is clogging up peoples mailboxes.
 
-Changes to 'struct inode' should be Cc'ed to linux-fsdevel as well.
-
-- Eric
+I resent once after I cleaned things up post RFC and I don't plan on
+resending (one failed attempt due to my network dropping).
