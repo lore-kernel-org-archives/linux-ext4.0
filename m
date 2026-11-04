@@ -1,45 +1,45 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793814749;
-	b=saQzSOXvEdlQiwQy35a1bqPFqT9+To5aeAxRjsSHDYKqPcaqNbEAMdbKHiUtu2KMTjVG
-	 inR5xKEAKohFjRjcRVU9YtvFnGBGvlWGAhghJ+F9oznoygBoDMuW0F77RnjgebmXGTSB+
-	 ttvwjoK8Rsaf8WUbPJmtK2FOt5UXS9HKXdr8PIeI4EnmkIipobacT5Xz5xUqh0p5hMqVV
-	 x2paa7PTpiiY5WENupaAFcN4q0CXgoe7f66s5PTorC2FZwc5OpI5pq06Z1j2u85zDfwe/
-	 wA5Vt02yklsBEar55TLDd0lxKIWhlCPA2xHXl/C/RsielDZMYJPX18BYnYywEQ1C2rQ==
+	t=1793814794;
+	b=hvSpFEJ+cVDSMiyKJgcGM+3QVlaPVZy/yJQDD+PlDp0wy7Lb+hprX3hXJVMyZ80YG8PN
+	 2/+XngdU02gZNcPMLHei0XG+mizXLWtVEoN6K4Wf6M16uYQS16Zz4FkqbBEHnxu3D38ij
+	 Q6m89fTxIQ1rjjlisUvE04qi7idceGSDvHjPTgOF1VfAg3PSJHJS95ZrNkeq+onr9LjxE
+	 S7RW3GPuurcW/ohQHhE0Kqv8ZWzu9P/wxmDbcHPcg0bMrZS8qf0jTcVQviWbhsdtlySHr
+	 4jYelCH3Z3NTtHh2H8eRCsQq4ALsIjOAmzFqEOt/+sbgoHKuHHxWfz9OGzAB8PAfmIQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793814749;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793814794;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
 	 In-Reply-To:References:MIME-Version:Content-Type:X-Mailer:
 	 X-Developer-Signature:X-Developer-Key:Content-Transfer-Encoding;
-	bh=yb3WLcVokXU6BuV8DQIS3cnoxrtkXR+HXTNSt4lhnr4=;
-	b=jACivK3iBTjCyct6kDZEtbBF2yJpC0XpMpjfOH+sQIctcqcMDiuN6Fk0vv7Y9U7jpSkD
-	 N6+QyBgnLlJW2xvMST9FKbISP/ram09PSNJFXeHyKnpOveGNZkE0ayAYyrmrqqPkdmj8r
-	 V/JmpPS4AM7n9mHwZUSjsKzIq2TVVbO7AxU+p6pHvrA+3Uv7bV/2CMIcdqGzUPrvoKm6H
-	 K4ejPvDEU824eolS4uIoydji1MnOOlzmRb/17omWQ3QWdolX9VbNucSC1TluMqZKvLLGI
-	 8PDZHPCLqTNXczb0FDVW2qGIII/eYv6q6YpD3lyx4nczHE8XjzNwIz/El/kklWRJXMw==
+	bh=9dtN9D2ek/PODLB9eXKISWT+1DyRVltUAnsYO5R4w7M=;
+	b=ynFESthPs4OUVXxYg0BtYpupVXwtOczV5aHgBn8fgspZViSCntiP+Wn3dGS+dSoLXxxN
+	 6hJp1S23Pvpq9YchfZvQzre/MNhoME2W4I7o342R7S/0RgnOCmzQnxg7WUO3drRC2q+zx
+	 6ACalTax7ifqC9qqX6VPmByVtSM7EgixQlR4+cAhPXIdvbF2b3r1o+iEcg/9Oioppk8s8
+	 UA7MDxKGhYnarIXkRjEOxer6AVEtWSeWAQ/MCLTFjQs3jzDCMNIzqvNz/SrAe3XkUHwXS
+	 AIWjBqeOyK28xkO/3sYqGooNr5J7sQCZ+YXaoQ7SFGKYpC4IuhuO8sCbwWgEnxOmkjQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=mYzQuqq1;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=LcsHmz5f;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8BCAD6070B0B;
-	Wed,  4 Nov 2026 17:52:29 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 41ED3606B0A1;
+	Wed,  4 Nov 2026 17:53:13 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=mYzQuqq1
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5214C1F00919;
-	Wed,  4 Nov 2026 17:52:07 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=LcsHmz5f
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 924261F00919;
+	Wed,  4 Nov 2026 17:52:53 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793814749;
-	bh=yb3WLcVokXU6BuV8DQIS3cnoxrtkXR+HXTNSt4lhnr4=;
+	s=k20260515; t=1793814793;
+	bh=9dtN9D2ek/PODLB9eXKISWT+1DyRVltUAnsYO5R4w7M=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=mYzQuqq14/wTRRzzUwsG17Ab+8tgoUHpySPnl84Mr25NNzcLhEp7Tq87twOltFKtA
-	 dLD4dH0S9ylQ5twpfaifjPBB9F9nLw9N+znijKLYLcOnWkObGODYTAZeChhNq2O2Ca
-	 IQI8NCRh7J2BZ5sI7mVRJjsoRWd+WGQFkSSMno0hv8VCeplcjuV9ER78Y79IneS3ww
-	 A/5asZFiMwgLRWg3CnX7bPRgzhBlLJJ299YG81hHCGwYVIYI6Vtka99WENBzIlbtj9
-	 RDwPxtwzVpVgN2qYy6WEMTlYIhf+ZUrM+RRJ4JaWwLGuxFHxYcI/kP7k045W27PJnL
-	 9gvSnUTnaD3zQ==
+	b=LcsHmz5fK/rq4Bthqez6bEjgj3XEj/c4XKC7cTJTsyy7D8CM7px4kYtiPIzpCal3e
+	 YBnBaglaHwrkG0flLB3F5W7+c/cuVEsjWKHrViqroXNJjS/gLfGejJZpTfdZwQ3hxC
+	 MmTHns7R80U7RN5yvO/p+jAHpSlpp28zonoPL5JONcxOoGjLH7eL2t5N/YO/Ar8kN9
+	 Uv53YRcqkSaZvuCyD2wDiglbNsEmatVgs/O4H1aOlq+Q2Fx7/kPdW3ED163deYMdjW
+	 mzDyj/1PR2eJIDW/uTXVOsrPDnM7bk3qNxgMT69wH0jr1TOdByT+AbZB6eZHAK8Tua
+	 TqbNm9ftkTIoQ==
 From: Christian Brauner <brauner@kernel.org>
 To: linux-fsdevel@vger.kernel.org
 Cc: Linus Torvalds <torvalds@linux-foundation.org>,
@@ -101,9 +101,9 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	"Christian Brauner (Amutable)" <brauner@kernel.org>,
 	Chuck Lever <cel@kernel.org>,
 	stable@vger.kernel.org
-Subject: [PATCH v2 27/51] um: NUL-terminate what is written to /proc/exitcode
-Date: Wed,  4 Nov 2026 18:47:13 +0100
-Message-ID: <20261104-work-procfs-bugfixes-v2-27-bbf7d5546809@kernel.org>
+Subject: [PATCH v2 29/51] proc: don't walk through a non-directory when resolving a name
+Date: Wed,  4 Nov 2026 18:47:15 +0100
+Message-ID: <20261104-work-procfs-bugfixes-v2-29-bbf7d5546809@kernel.org>
 In-Reply-To: <20261104-work-procfs-bugfixes-v2-0-bbf7d5546809@kernel.org>
 References: <20261104-work-procfs-bugfixes-v2-0-bbf7d5546809@kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -117,38 +117,68 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1042; i=brauner@kernel.org; h=from:subject:message-id; bh=wRElBRQ5ywf1BhvCA77KtICLks8yyr6GFoKnZLCCyMo=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9znsQFfC+I/C0Ra1Qv94XtoNfmEzj9zwr/ak74frKN 6dmt7y52lHKwiDGxSArpsji0G4SLrecp2KzUaYGzBxWJpAhDFycAjCRvl6Gf8ru0zvmyVXlJJn5 RX64VRT8c5vVqQOhHe+XJk+QCA1678rI0PD9gNXt6xMOWujrbTe9wyTBv3D/B9HmPSse+sbVn4l X4wAA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2403; i=brauner@kernel.org; h=from:subject:message-id; bh=syoXv99Xi8HZbn/gUZHMWCnjRlLtpR5bAeJLx/CLQI8=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9znvEfdPiys++q6WXg17bqvjo1yRcanm93G/LTAvP+ yo6V5wqOkpZGMS4GGTFFFkc2k3C5ZbzVGw2ytSAmcPKBDKEgYtTACZSps7I8Lk1e9tBje0T0qw2 XN3x9V66cYxZdMKvVWWifA53/z6tv8nwT2XZnUOOz2p0hO4vzbeojJFe8k4sMSUqVEPr/fE7CSI PWQE=
 X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 Content-Transfer-Encoding: 8bit
 
-exitcode_proc_write() copies up to sizeof(buf) bytes of the write into
-buf and hands it to simple_strtol() without terminating it. So
-"echo -n 5" parses whatever the stack held after the '5', and a write of
-seven bytes or more reads past the end of buf. Terminate the copy.
+__xlate_proc_name() walks the components of a name like "a/b/c" and
+takes whatever it finds for "a" and "b" as the directory to go on in.
+It never checks that they actually are directories. So
+proc_create("file/x") hangs x into the subdir tree of the regular file
+"file". Nobody can look x up there, but remove_proc_subtree() on the
+file removes and frees x along with it, behind the back of whoever
+registered x.
 
+pktgen passes the name the writer of "add_device" picks to
+proc_create_data(), and only the part in front of the '@' has to name
+a network device:
+
+  echo "add_device lo@"   > /proc/net/pktgen/kpktgend_0
+  echo "add_device lo@/x" > /proc/net/pktgen/kpktgend_1
+  echo "rem_device_all"   > /proc/net/pktgen/kpktgend_0
+  echo "rem_device_all"   > /proc/net/pktgen/kpktgend_1
+
+The third write frees both entries and the fourth one makes kpktgend_1
+call proc_remove() on the freed second one:
+
+  BUG: KASAN: slab-use-after-free in proc_remove+0x8f/0xa0
+  Read of size 8 at addr ff110001134c8e70 by task kpktgend_1/243
+  Call Trace:
+   proc_remove+0x8f/0xa0
+   pktgen_remove_device.isra.0+0x118/0x500
+   pktgen_rem_all_ifs+0xeb/0x1a0
+   pktgen_thread_worker+0x1b42/0x7280
+
+The files of a network namespace belong to the root of its user
+namespace and these writes don't require a capability. So once pktgen
+is loaded an unprivileged user can do this in namespaces of its own.
+
+Treat a component that isn't a directory like one that doesn't exist.
+All names with a '/' that the tree passes in as literals only walk
+through directories. pktgen is fixed separately to not pass such names
+in the first place.
+
+Reported-by: Chris Mason <mason@kernel.org>
 Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
 Cc: stable@vger.kernel.org
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- arch/um/kernel/exitcode.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ fs/proc/generic.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/arch/um/kernel/exitcode.c b/arch/um/kernel/exitcode.c
-index 43edc2aa57e4..0230354f4812 100644
---- a/arch/um/kernel/exitcode.c
-+++ b/arch/um/kernel/exitcode.c
-@@ -43,9 +43,10 @@ static ssize_t exitcode_proc_write(struct file *file,
- 	size_t size;
- 	int tmp;
- 
--	size = min(count, sizeof(buf));
-+	size = min(count, sizeof(buf) - 1);
- 	if (copy_from_user(buf, buffer, size))
- 		return -EFAULT;
-+	buf[size] = '\0';
- 
- 	tmp = simple_strtol(buf, &end, 0);
- 	if ((*end != '\0') && !isspace(*end))
+diff --git a/fs/proc/generic.c b/fs/proc/generic.c
+index 4c3fcaf68ef4..6ac9c4c13897 100644
+--- a/fs/proc/generic.c
++++ b/fs/proc/generic.c
+@@ -170,7 +170,7 @@ static int __xlate_proc_name(const char *name, struct proc_dir_entry **ret,
+ 	de = *ret ?: &proc_root;
+ 	while ((next = strchr(cp, '/')) != NULL) {
+ 		de = pde_subdir_find(de, cp, next - cp);
+-		if (!de) {
++		if (!de || !S_ISDIR(de->mode)) {
+ 			WARN(1, "name '%s'\n", name);
+ 			return -ENOENT;
+ 		}
 
 -- 
 2.53.0
