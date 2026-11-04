@@ -1,45 +1,45 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793784488;
-	b=OFbDLGEKO5C0VRb0b4uA72Fv0zsf52AzTGbsK41H2ytW09B40uv0gpmGIiCvhFmmhXuS
-	 vbLosMX2EuxrrzsUgCJmrgIuK9yOS8BI53xAAbtuhJcqltCxM0fB7Kgu3mRtAhrQp3YvL
-	 6kdvGqQZ2ToOekE+uWjTeHhBjl0TduCbaIZJHNhTHpjEhJseLYf5apVgiTkjbHc1sbb4z
-	 ebfhXRjE30sx323GYCKzh4tNy8IfJHsLhMrhlRHBp9A7/cKofw3NaNUydlPaw+WfYrhjh
-	 JmqWqOiQzGpx1WdOKKm8B5YMYtjuGYfLF2yDGzDquLfhP62q0KCLbkmP4KXa+rPFPQg==
+	t=1793784532;
+	b=FYe375VTs9ZU55xCoLA0aR7t2Vh0DDFf0zJK3EQlFLcaBI95JXfXdg3p6FozOSzQQsaL
+	 fD5bNC9IJHSpQmd09SOxIpz5Ie2/zflrfolbj0LRUDdjdeyP8daaOCxLzMZLXDWfkdjkN
+	 mPamegF8BfjQbWceO007apINWH4SqpyEt49fiL/Swu2KL3UtU72E/TU9wABtPF+FzjVEB
+	 bEvHKc6Z1leea2lT4PHrhjFQnAVzDKKPrzMae4bTrauCe2Fa2b9WtST/xxWSJj+QN3PV0
+	 3RdHQqV7+nWtcfvdvB7PR9KWXtGItoyeDMLEcDJMQsN6V5JISEaK7amwEKBkOGQUIxw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793784488;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793784532;
 	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
 	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
-	bh=Gr7svhS/YSc9d7laFr7PXJQ2SsJ994DEnu6A9NyzDrI=;
-	b=26LhLGj+Rg1JwdlYr08PYOFu+bzuHxDZewFwZB//M9NJs0u2SE7gyBq+/Y0wHNTB5AlA
-	 Fn1rK53pQ37UZaapzqa+khB3h02wKb3CmPuj3UqFJCN8sitwZFSDryHFRRkNc8jYwHH2V
-	 rBAyo4Hi0dxmo/bw7nYtV275Jm2Fr8jK6jIGVVBGiuPhrIFUUEKTA/R4U5dhc3pDpN4ka
-	 6FAowAkGgXmPylDJm9dE/BUCcyLvsXQvUBnVkrmqJ3ZOden4PHGJAPVTjoajpANIjhlp+
-	 iMU9s6f7k/UsSlZIpXOHcFi7Bg4vL0HxFDMVgMjLmGsgXVTQv/324zM6rzGJ2635wQw==
+	bh=T01zQUJSjbZp4aJnpwJVQI9JvpnXX6u13mZcG0ZeyDQ=;
+	b=r1deBZDCTC5tshI5zm2xU4bDuMKY1BWttM86e2lQThBkcZczwbruFCfxQKa+713rgspW
+	 N2ucBp2Jfke8Qgld2Bs8mT7VvyOsHbOphcAUQxn4w02ydX7NUeC+oCGAPtNsi9VBX9rqm
+	 DTw/p4NIc/XwbJok5mHmPm3rXVSz/iXfzkqjP6Io1aEBsvyXgPcYtfKi19CMLCcX6f4dn
+	 YHhNr6r+DC6qYL74cCp5Oqv+RZBZm1rZumthZyvh0pFMccaNb9MDvs7MoqLsj/OVClH9V
+	 PZ9sNoHf621RzLBh28KqU2GKATc5CX4hKDPAm4kOSprZ7gezj/dhLuSz8jl0Wlt6P7w==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=X1jgy3lG;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=alKTGqUn;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DE458606A31B;
-	Wed,  4 Nov 2026 09:28:07 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 677B7606A31B;
+	Wed,  4 Nov 2026 09:28:52 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=X1jgy3lG
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9E4001F00A17;
-	Wed,  4 Nov 2026 09:27:57 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=alKTGqUn
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8AB561F000C1;
+	Wed,  4 Nov 2026 09:28:41 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793784487;
-	bh=Gr7svhS/YSc9d7laFr7PXJQ2SsJ994DEnu6A9NyzDrI=;
+	s=k20260515; t=1793784532;
+	bh=T01zQUJSjbZp4aJnpwJVQI9JvpnXX6u13mZcG0ZeyDQ=;
 	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=X1jgy3lGK+B8wHnMJmPUlW00+DythG+u8ZdEslw9l+mYGsCluF0yALGaeLj7ksrDg
-	 EcNjCUMoKMdxcyD0WsxPb4Cp4iKUAxNR9okqjQhF+09x5q+3kuYpexwXQlXsHIw+os
-	 TkFeMF2FhQ5UjzAqNfBp6xMNGmn825VDWt1gtK+nxiDDItHSDAD0XUEkYDsawNyiA7
-	 /4Xh7LGcOgeD7u3hApqggi+GDOh8nhBNcBO0pFhjuZykmUExXJEtisP76hRDnMqyNT
-	 NxfQEUBzADkSfaq0PsDOx4woXNhrClwQtQmsRawkfviLN+SXF+cZMarB1vamQDxvXp
-	 LI66cNBmM2ktw==
-Date: Wed, 4 Nov 2026 10:27:55 +0100
+	b=alKTGqUnuzoexCqwA81KPAyGy0rneY6r5MbFqbvV697+Ik/bjfxk9LHef9GM+MQJQ
+	 QlHwwMzWgTBR+V1EVZkBqvL2y+0fpSnZdIRpFx1eImmWwcDpXf+kwZoN+KfbPRIwjh
+	 GLUEX2tS20NdiCJARKDNfWQpLYmSC9HacZQpjtFGF6DQjakJaImqqw+1NVIZp8Jkve
+	 rhjW0cKAwa0rgro+T+KAxTAshgpXhyosdPn/BLM1fw2d0BZ8BRed4fxkWyQdPz2E0I
+	 sRYd32Lzz24ZCjwV4++8ADyzClHdrBNXy/ODBoctV+0gtJXx39Cw7SDphwQ7RfGct5
+	 fVZStrNkhDPHg==
+Date: Wed, 4 Nov 2026 10:28:38 +0100
 From: Christian Brauner <brauner@kernel.org>
 To: sashiko-reviews@lists.linux.dev
 Cc: Linus Torvalds <torvalds@linux-foundation.org>, 
@@ -60,12 +60,12 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	Anna Schumaker <anna@kernel.org>, yukuai@fygo.io, Heiko Carstens <hca@linux.ibm.com>, 
 	Vasily Gorbik <gor@linux.ibm.com>, Alexander Gordeev <agordeev@linux.ibm.com>, 
 	Christian Borntraeger <borntraeger@linux.ibm.com>
-Subject: Re: [PATCH RFC 15/16] proc: let procfs copy ioctl arguments in and
- out
-Message-ID: <20261104-muskel-filmabend-parklandschaft-f02c910a4fb4@brauner>
-References: <20261102-work-procfs-core-v1-0-75df35e4f8b8@kernel.org>
- <20261102-work-procfs-core-v1-15-75df35e4f8b8@kernel.org>
- <sashiko-outbox-195542@kernel.org>
+Subject: Re: [PATCH RFC 11/23] selftests/proc: check that a faulting writer
+ doesn't hold up removal
+Message-ID: <20261104-miterleben-erdaushub-insel-df331d74044d@brauner>
+References: <20261102-work-procfs-drivers-v1-0-a994bd4d3b1a@kernel.org>
+ <20261102-work-procfs-drivers-v1-11-a994bd4d3b1a@kernel.org>
+ <sashiko-outbox-195591@kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -77,16 +77,9 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Content-Disposition: inline
-In-Reply-To: <sashiko-outbox-195542@kernel.org>
+In-Reply-To: <sashiko-outbox-195591@kernel.org>
 
-On Tue, Nov 03, 2026 at 03:01:36PM +0000, sashiko-bot@kernel.org wrote:
-> - [Medium] proc: unguarded zero-length user copies in pde_ioctl_buf()
+On Tue, Nov 03, 2026 at 03:18:48PM +0000, sashiko-bot@kernel.org wrote:
+> - [Medium] selftests/proc: fail and leak scsi_debug host without CONFIG_SCSI_PROC_FS
 
-Hm, a zero-length copy isn't a nop on every arch. Adventurous. It's
-skipped now.
-
-> - [Low] proc: split declaration and initialization of __free() variable in pde_ioctl_buf()
-
-Intentional.
-
--- 
+Fixed.
