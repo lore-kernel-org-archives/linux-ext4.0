@@ -1,49 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793813403;
-	b=dF/fcoCc5QAwae1Z8Zuln1dmiLSIOo5qX96buR09qKIoEctoRpPKa5UqLNfK5AuBYVgj
-	 DG7XfnawhwMHZZ7im5WQEFtzyDqjorp8PtukETTbtpqMm9CD6dA014U/NOmO0oH9hTyrS
-	 1lpV9wTohNSnd9zos03Y2x4GgASomxNePhyc/kZWRgNGrB9dDw5FWe17OEjf/GLta5juE
-	 gOIoIbaL9BHnda3pvOODQul1amCz3KCU2uu434UaRM6f5TmwDLivhlUNV9YjjlCOsoHln
-	 6COBH7CRZ/8vJNf0OBmX+YeSwYMrHcWv3x8Q9/+f74mX8HmA/mV0eiSM1ditZOAiTjw==
+	t=1793813417;
+	b=gfD/6DFNjvtXO3CzdoPYk/Yhrx34a7WH6I8zYXExCVOeZ03BpvGvgfRHfVR3zo07NWrn
+	 bUhqQGFn/i+qftNnPMXf0iHSxU6Bv37N7+lSQn7zKDGmBd+Js1F8wSXdPzjxZhUQ24X9h
+	 CyRigXNadd5djExY0se9oCZlV07jQsv6ymIVi1d6DLxgRsnk7DX2W+A14nGd3p8z7RgBf
+	 4VP0CUFThFqf1sLg0eVlnKfJSHmYNjswPCwN+wLZdSc/3sNtduZjPDmPc6zKE8qyrqdKg
+	 aezBV4JQrMSvFMtjOcfL7Wu+1Jf0ps+/wgmmG4ehgPE7UImEqIVQY3XrHA9tNaBTRDw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793813403;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793813417;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=7dKsu59FtDy8aNyG4WRUkN7aPYhsNBybpSNJpPGyZ1Y=;
-	b=iAOVTJPgBJSfNonnDJ4uFdyNMMd4CMDTynjjUpzLgkHwsCCvclU9gEVS0DzMlOS7PnaS
-	 /eYq7WSqihByPMB53veAoBosK2guQlusSMFl/SCdHoNtLPDgo8t+siESwZ1Pz5vhtm79F
-	 OeEu9juDUbYa7tUKbbmpUzt+p8jKDuRm7Xtbx7+ZAlnQ0QvL7me5aRbp/IKzGGvP1+vdH
-	 kNcuRcqAVhciS1cFU1wZj+9gRBp0ADSSn6HwItMh+SPM/34C7MmagX3CSTsvn1cB0OrGk
-	 w8jmzYQO659dtbjFxT5CogAW5FnguHpPRVzlHcP7iQSd95/48jvkhYvxwLpsOoWc5Kw==
+	bh=Bp2DPgSMAVNPpocNHMMHSMxcgQhQwNKqaFQNAmEUdgU=;
+	b=LrYdNKvw8Ajr9ZccflA4DgKTvoJcBlFTfahxAS8hbD/J4++chd3qo9VQuc3FGBYvLLNS
+	 P+BQqVg5dhbJ4mg2ozWn+TfzPOXELefMnjOm4ivTzubI9gGDRyoNZpKmf5LmihGfKN/gF
+	 9ggfTDPWlgEg3Loaqd9U2YYHH6rH7im5YM+npjuOi4Wv00YnbG2ktDAUc7zqzgTaWBMdB
+	 9rB9Ns9nZV7ZGxZ7G+Q3lnOy61YGCOkuMcQBaHqyDvFmVCLC94n0hnl+HwN3OAQYCNOhm
+	 YL8nGnV3ZtOCp3HKrAPBT4tA2Xry282K0pXktQ9FLCxdtleiK22y/YzPkqB+qJ5p4Ng==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gfbswzaD;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=g5u712B9;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5E95F606A906;
-	Wed,  4 Nov 2026 17:30:03 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B6D69606A92F;
+	Wed,  4 Nov 2026 17:30:16 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gfbswzaD
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E7E771F00919;
-	Wed,  4 Nov 2026 17:29:49 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=g5u712B9
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 70FBE1F000C1;
+	Wed,  4 Nov 2026 17:30:03 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793813402;
-	bh=7dKsu59FtDy8aNyG4WRUkN7aPYhsNBybpSNJpPGyZ1Y=;
+	s=k20260515; t=1793813416;
+	bh=Bp2DPgSMAVNPpocNHMMHSMxcgQhQwNKqaFQNAmEUdgU=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=gfbswzaDVBU7GKHdo96TauMKv1ceaJJyNilcKhGi1iENsVgvyZyYNALew+6JI6AWe
-	 pnCrSRXKJFZI76CSsVO2k0ZfaudiGPDz4H6nanxp+IyJlIS7zpWq7WbGYIpqXvffaY
-	 YPXkZIViE9ginAIsagyAOsm2dADTElAlSFhpb7mW7+aUif42uY6NuovJjFCkr22t+o
-	 8YZgU+wGhNeEvlg8uYowdA2V5/tkllZe4obLrFZwBz6wKkhavF4aJ1MAwudrDBYgmg
-	 iqyQouJN+3c3V4Q9h3e+svUJCBV88Hc0/UG53sSExSaEIpQZoLXQ7yhOlSnC5s6p6e
-	 /vqOf39HCSJtQ==
+	b=g5u712B9uyY/EHBMvMcIJjwX1Q9oNafVwZZdSTe+wWNmne5PBjIRnbjMdNBKEaIP4
+	 4sN1akBTM0upEXPMnrPesATu9t0mv+J9tGR4BfcCUQnJpzUcbcj+IvUqAQlpKvEFAP
+	 maIQiS285xRthBs8kUjqLULi7ZlP9EZaMs6jvYgyfDdyykDtrKuOIUKXiUE5xq8j0K
+	 rnPkE+GVlVCE8ozm0404SgO7RYqyMkzZKzwWo1p+WxGQXY8MTkERhkp4+WNxvZiOYe
+	 CguRECqkxpVtUS2A9kODUDoxnBc90vENA1/MJjeZ4tQ9xNPhj1ug3QG1Rnyknyga3s
+	 5rdxM+QnpKA9g==
 From: Christian Brauner <brauner@kernel.org>
-Date: Wed, 04 Nov 2026 18:27:23 +0100
-Subject: [PATCH v2 06/51] powerpc/pseries: put the node that the ofdt
- property commands look up
+Date: Wed, 04 Nov 2026 18:27:24 +0100
+Subject: [PATCH v2 07/51] lockd: don't hand out the terminator of
+ nlm_end_grace
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -55,7 +55,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261104-work-procfs-bugfixes-v2-6-bbf7d5546809@kernel.org>
+Message-Id: <20261104-work-procfs-bugfixes-v2-7-bbf7d5546809@kernel.org>
 References: <20261104-work-procfs-bugfixes-v2-0-bbf7d5546809@kernel.org>
 In-Reply-To: <20261104-work-procfs-bugfixes-v2-0-bbf7d5546809@kernel.org>
 To: linux-fsdevel@vger.kernel.org
@@ -91,59 +91,38 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
  "Christian Brauner (Amutable)" <brauner@kernel.org>, 
  Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1735; i=brauner@kernel.org;
- h=from:subject:message-id; bh=9GgvRCMv4/Dc1Z942cy3A7/ul6cTW5I084eAKnASIT8=;
- b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9zmZ4quyyZkXDnPt7l06dpyFV4qG0w25zxJ4t0hO4d
- EKlP1YEd5SyMIhxMciKKbI4tJuEyy3nqdhslKkBM4eVCWQIAxenAEykTo6R4ULmC811i1exrd39
- SCDIqSZw/sIzLju3fTqjXqriV5H7NIjhf6qrTt6RLRKL95YYMKbV3Ltr0FNg0RZ8ear5gYvqs+r
- mMQEA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=879; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=tKzHzMLxBoW/zY681xcBM67Jqe2y1s4JEAk9OycZ8F8=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9zma88mPSwzMZES8ZvfsaK7K5NIr2+azZ3b+Xc1Xpm
+ 7Wz/9nbdJSyMIhxMciKKbI4tJuEyy3nqdhslKkBM4eVCWQIAxenAExkbT3DP623G/ymh8nr95bL
+ Sj1ZqVz5I/v5xTDO2LLF07okt9w1Ws/wP0bKWD8yk0Xj8wP2OJmbXq1N7z9lRV6ZFj3BvzE/x+E
+ BNwA=
 X-Developer-Key: i=brauner@kernel.org; a=openpgp;
  fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-parse_node() looks the node up with of_find_node_by_phandle(), which
-returns it with a reference, and do_add_property(),
-do_remove_property() and do_update_property() never put that
-reference. Every property command written to /proc/powerpc/ofdt leaks
-one. Put it when the command is done.
+nlm_end_grace_read() answers with "Y\n" or "N\n" from a three byte
+buffer and hands out all three bytes, the terminating NUL included.
+Leave the NUL out.
 
-Fixes: 610d91511f99 ("[PATCH] powerpc: Add support for changing properties from userspace")
+Fixes: d68e3c4aa416 ("lockd: add a /proc/fs/lockd/nlm_end_grace file")
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- arch/powerpc/platforms/pseries/reconfig.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ fs/lockd/procfs.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/arch/powerpc/platforms/pseries/reconfig.c b/arch/powerpc/platforms/pseries/reconfig.c
-index 18e3f1a036e3..5a0c9c0b6253 100644
---- a/arch/powerpc/platforms/pseries/reconfig.c
-+++ b/arch/powerpc/platforms/pseries/reconfig.c
-@@ -271,8 +271,8 @@ static char *parse_node(char *buf, size_t bufsize, struct device_node **npp)
+diff --git a/fs/lockd/procfs.c b/fs/lockd/procfs.c
+index a01f08c8c2f3..74f7ab77535a 100644
+--- a/fs/lockd/procfs.c
++++ b/fs/lockd/procfs.c
+@@ -57,7 +57,7 @@ nlm_end_grace_read(struct file *file, char __user *buf, size_t size,
+ 	resp[1] = '\n';
+ 	resp[2] = '\0';
  
- static int do_add_property(char *buf, size_t bufsize)
- {
-+	struct device_node *np __free(device_node) = NULL;
- 	struct property *prop = NULL;
--	struct device_node *np;
- 	unsigned char *value;
- 	char *name, *end;
- 	int length;
-@@ -296,7 +296,7 @@ static int do_add_property(char *buf, size_t bufsize)
+-	return simple_read_from_buffer(buf, size, pos, resp, sizeof(resp));
++	return simple_read_from_buffer(buf, size, pos, resp, sizeof(resp) - 1);
+ }
  
- static int do_remove_property(char *buf, size_t bufsize)
- {
--	struct device_node *np;
-+	struct device_node *np __free(device_node) = NULL;
- 	char *tmp;
- 	buf = parse_node(buf, bufsize, &np);
- 
-@@ -315,7 +315,7 @@ static int do_remove_property(char *buf, size_t bufsize)
- 
- static int do_update_property(char *buf, size_t bufsize)
- {
--	struct device_node *np;
-+	struct device_node *np __free(device_node) = NULL;
- 	unsigned char *value;
- 	char *name, *end, *next_prop;
- 	int length;
+ static const struct proc_ops lockd_end_grace_proc_ops = {
 
 -- 
 2.53.0
