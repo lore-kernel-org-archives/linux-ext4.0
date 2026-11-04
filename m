@@ -1,45 +1,45 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793820051;
-	b=XjJ9mkuOaLVYpbqba57I4oGy90vhbz22Gj+BFkYBzGgneIIgydNTYOdxEPD8c1+weuI2
-	 4jCbIuYFxA9CHb1QCwbPH4BxRkRc5ZhFgpHOl3w7ESi20zHGoHSx0KvMbaUsG1+Amc21m
-	 GC7ZmmpX7Mi3Vgj3DOpwVX5qIibnmaCiLjctsHy3PhThosWcbrkE7iJD2J+9Xr19pr2H2
-	 TVIh6Fzhz+PU1c2ZK1hzjOEV1D+oqBZjRX88z1DBnt1R1T2gGz2bs0TA+9KijF9jfnAE5
-	 imBUYhQwyCGLhhUeEgAYNXLUQRnZHJeP7xQP0zy7PxzeIr7izdN0bjbu2jd6WKiZv/Q==
+	t=1793820095;
+	b=PpGNl2JQ+Iyn+xRsPkOFwNGQKgZifn2VdMDrh2lzlqAcBVLJStjcibvYaKVabTOlA0be
+	 4ODPnhfIsS8bRz17dD3M3IfREJ5sPvVCk9pnn65Mt3Z2BCYJgWRqRcmepm9WSiKILKScc
+	 hnd40fvuiOmWbTyzd7798FgqGi3gGBMAznwE/4eNlDBMIWSJIAbSmwb+l/1AaR/Iq1Bu4
+	 PaSsjO1H8qqau96qEzOswi+0U0AYT94GQSY3mma+545hamhH8qxnZ2s36OXT6aT4CQQXf
+	 ZpBb1x2f7Z6CJpq08S0D7kqaQQyWemA4DjfMggz6XJqTZcwAsGqnHLPxO6G4UwEit7g==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793820051;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793820095;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
 	 In-Reply-To:References:MIME-Version:Content-Type:X-Mailer:
 	 X-Developer-Signature:X-Developer-Key:Content-Transfer-Encoding;
-	bh=weMUCFn2uihXk/tOxGBDEw27Pws++kgwJ6Tcia3ltcw=;
-	b=d4TZ9EA5ac/vKq7YzMwa8eBrW/BER6lUvPd/qXpRs8szPRLreuKG1JAUPWRJdFChi/cf
-	 Aatc0JxO6AHqoC0jQ/Chg/Gpvr/VOQL7GpauuA8E7NuWcuYgb0HchmPcOTrw0QQUpIuw6
-	 ZWfCBj2/dzZ0FKPsWpgnBLyEEdDqqQT8ceVob3hB7oRgcgf+mBJyrN0O7i7dYehs8I/h0
-	 hXB27+X4JJ04oEvkclb0xQ6UAdpJSke4Scmd5lQfChE4bc5QRAEsSlXHa+md85mSYTFp0
-	 cOUXe4d/7WKzAja5APBphUbwAAz6wzWrc6eims3VUBw13GIGtMpHLQKYPHAVR7ZZmLA==
+	bh=ih8EKkL3fEFrmnOibnSg6zuDA24U9CpFmMUb1+ThTQI=;
+	b=sMunYd4xJPcP/d89IArdZqMCCE30wexaTGhVntJmaxDeKe2/mTiBynXQH23cxfE7zOIr
+	 a72HO/gry9K229WLZhXaJv1tG0Bbak70k4Tx/7PqFWMvJHUrxiJ9nVhYAjWIoRI2bv8Wa
+	 SpsIuAWGfq8vBbN0d5wJGxnhL/OiWIt70CDiOX2Lk3V8boCl6uLk3csIU9DJ7KAawItCB
+	 0GEq6c/2IQ4ppmQv3Al7b2r2dfLOXfBZYcoq/9isSLPM6bNwC8V50ENxO7B/Orflqe83Q
+	 I1MENUp140WM3v/7UXK93ESgR5BU3CC0uj2N5FNcrPggDtrcHc+Uxi9Uti2+4txNRIQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=HRxCl+Bf;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="NV/pCHTx";
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 30D5E6070314;
-	Wed,  4 Nov 2026 19:20:51 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7D0F0606AB3A;
+	Wed,  4 Nov 2026 19:21:35 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=HRxCl+Bf
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D9ED11F0093A;
-	Wed,  4 Nov 2026 19:20:38 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=NV/pCHTx
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id EEDE71F0093A;
+	Wed,  4 Nov 2026 19:21:22 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793820051;
-	bh=weMUCFn2uihXk/tOxGBDEw27Pws++kgwJ6Tcia3ltcw=;
+	s=k20260515; t=1793820095;
+	bh=ih8EKkL3fEFrmnOibnSg6zuDA24U9CpFmMUb1+ThTQI=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=HRxCl+Bf2TmTIdvOsOeyzhK8jV+Bfm/AfD9cI3ivj92Dd3pOYsACEhtqy21kBrGn/
-	 w5dZIxEHBlkGPyiksDR2eeyKB2QwqkCs8BxVbPOrva8f8+0RyiF4g2ftBS4+38Deq2
-	 ECW+IMt2f5f3W9mcjTW+c3CS4ThGnFOYG1d7M9XEv+5D9eIa8f3cQr1EJ+w9iQ/rUC
-	 XqEw7LR3pXX6IXRIprFLgivWh1G2NDVohugAan8ecdIvDwRxpUYWViMOW6AbNVUMfk
-	 FUYGNVRL6tdh+iW8t1JOxMZYVBhZSDKN5vzmr7c/IALhlwuE9VxTB484IK+SvnVk+v
-	 mX/CkL30zPq5w==
+	b=NV/pCHTxChzVH1ioWmq+QeUT+SBXucwSnRPJOdBi/Q2y75DGHw15YBMqYjqgrtt2O
+	 VyFPPs8v7zjoqFDFOJ5oAl9YXifHpXNyabEPReJZQwa8XXH4iQGv2Qty9h/jandirD
+	 aUMSk23okxfo9KtkbC4/nzn1Iw09lddant5cO9hakE0csEjqm8lPvF90MPEOYpmUAd
+	 IMkDVpUwfqgAQLlAK9nXdyRgIdGxWTHDKSyuqOT48xWUvA/iAJk+qPbBXnzRbF0y+d
+	 wn/gLZpI4BHKSDGznFL2I2ZF9zF+c1mxFQKqQBN2chjmpu2miV52eKF6iZL2Z2lRgn
+	 AL7Cg1xDOYz2Q==
 From: Christian Brauner <brauner@kernel.org>
 To: linux-fsdevel@vger.kernel.org
 Cc: Linus Torvalds <torvalds@linux-foundation.org>,
@@ -101,9 +101,9 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	"Christian Brauner (Amutable)" <brauner@kernel.org>,
 	Chuck Lever <cel@kernel.org>,
 	stable@vger.kernel.org
-Subject: [PATCH RESEND v2 19/51] xtensa: simdisk: don't read the file name without the lock
-Date: Wed,  4 Nov 2026 20:20:36 +0100
-Message-ID: <20261104-work-procfs-bugfixes-v2-19-021c84d852e0@kernel.org>
+Subject: [PATCH RESEND v2 22/51] ALSA: info: don't write past the end of a data entry
+Date: Wed,  4 Nov 2026 20:21:20 +0100
+Message-ID: <20261104-work-procfs-bugfixes-v2-22-021c84d852e0@kernel.org>
 In-Reply-To: <20261104-work-procfs-bugfixes-v2-0-021c84d852e0@kernel.org>
 References: <20261104-work-procfs-bugfixes-v2-0-021c84d852e0@kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -117,61 +117,40 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1811; i=brauner@kernel.org; h=from:subject:message-id; bh=wpJfI2N0Y4TYbGny8B/EWcsaN47/8hdz2WKuRaZg6Os=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9bny056pefW1bw+0G9QWxvIVyC3XrvoZ2bGCV5J46b YcBi0tqRykLgxgXg6yYIotDu0m43HKeis1GmRowc1iZQIYwcHEKwETc3jIyPJ21usJ4wx/59rrj 73oYXwhfmLvodau6v+vZpyZ2wYlGEowMHzItDeUOXp9h3ywj4N1/bRkvB++3BTNNjTf/8um/cn0 /OwA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1329; i=brauner@kernel.org; h=from:subject:message-id; bh=/wIh+WZXKaFyyFYwMjXKmLvFs42DoCHjOzS3J0v96D0=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9bny2zMufh/VIknXNykPasit38Tx6t1dcVkb8Us6vt wpbDDY/7ihlYRDjYpAVU2RxaDcJl1vOU7HZKFMDZg4rE8gQBi5OAZjI8+UM/3Qne19pyPzkZ7uK 4+ps9RZDLa75iTtP5zvl3PvzK0/j/yuGf5bm066vnniBYWL95HgLE52AGfqMMk4eWldmv104x1K Fmw8A
 X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 Content-Transfer-Encoding: 8bit
 
-proc_read_simdisk() looks at dev->filename without holding dev->lock. A
-write to the same file detaches the disk and frees the name under the
-lock, so a concurrent reader can copy out freed memory. Copy the name
-with the lock held.
+snd_info_entry_write() clamps the count to what is left of the entry
+by computing entry->size - pos as a size_t. For a position past the end
+that wraps and the write goes to the driver unclamped, for opl4 into
+sample memory outside of what the entry covers. At the end of the entry
+the driver gets a count of 0 and vmalloc(0) warns. Before the clamp
+moved into the common code the driver ignored such writes. Fail them
+with -ENOSPC instead, like a block device does at the end of the
+device. Returning 0 would make writers that use stdio retry forever.
 
-Fixes: b6c7e873daf7 ("xtensa: ISS: add host file-based simulated disk")
+Fixes: d97e1b78239c ("ALSA: info - Check file position validity in common layer")
+Reviewed-by: Takashi Iwai <tiwai@suse.de>
 Cc: stable@vger.kernel.org
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- arch/xtensa/platforms/iss/simdisk.c | 25 ++++++++++++-------------
- 1 file changed, 12 insertions(+), 13 deletions(-)
+ sound/core/info.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/arch/xtensa/platforms/iss/simdisk.c b/arch/xtensa/platforms/iss/simdisk.c
-index e51edb8cf872..1248d960e5d3 100644
---- a/arch/xtensa/platforms/iss/simdisk.c
-+++ b/arch/xtensa/platforms/iss/simdisk.c
-@@ -238,22 +238,21 @@ static ssize_t proc_read_simdisk(struct file *file, char __user *buf,
- 			size_t size, loff_t *ppos)
- {
- 	struct simdisk *dev = pde_data(file_inode(file));
--	const char *s = dev->filename;
--	if (s) {
--		ssize_t len = strlen(s);
--		char *temp = kmalloc(len + 2, GFP_KERNEL);
-+	ssize_t len;
-+	char *temp;
- 
--		if (!temp)
--			return -ENOMEM;
-+	/* a write sets at most a page, see proc_write_simdisk() */
-+	temp = kmalloc(PAGE_SIZE + 2, GFP_KERNEL);
-+	if (!temp)
-+		return -ENOMEM;
- 
--		len = scnprintf(temp, len + 2, "%s\n", s);
--		len = simple_read_from_buffer(buf, size, ppos,
--					      temp, len);
-+	spin_lock(&dev->lock);
-+	len = scnprintf(temp, PAGE_SIZE + 2, "%s\n", dev->filename ?: "");
-+	spin_unlock(&dev->lock);
- 
--		kfree(temp);
--		return len;
--	}
--	return simple_read_from_buffer(buf, size, ppos, "\n", 1);
-+	len = simple_read_from_buffer(buf, size, ppos, temp, len);
-+	kfree(temp);
-+	return len;
- }
- 
- static ssize_t proc_write_simdisk(struct file *file, const char __user *buf,
+diff --git a/sound/core/info.c b/sound/core/info.c
+index 023b4736aa6d..f608d335b6c9 100644
+--- a/sound/core/info.c
++++ b/sound/core/info.c
+@@ -171,6 +171,8 @@ static ssize_t snd_info_entry_write(struct file *file, const char __user *buffer
+ 	pos = *offset;
+ 	if (!valid_pos(pos, count))
+ 		return -EIO;
++	if (pos >= entry->size)
++		return count ? -ENOSPC : 0;
+ 	if (count > 0) {
+ 		size_t maxsize = entry->size - pos;
+ 		count = min(count, maxsize);
 
 -- 
 2.53.0
