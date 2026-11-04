@@ -1,109 +1,111 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.131
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793813235;
-	b=VT+CHFjcvPEAgNJ6+VqvZusDNtCjBnBGgwpv4f0cJK+pdQN3vof5C7ILJ9reT9wAiQwU
-	 +vO1gnWTBrg3VD5nlPisj15euTKml7sU997i0ReM6UB5HTUA83QaVC02/1xcrLCOwUHDq
-	 RJPC0bS70e1YyHRhKj0ZPeVbmbFlJB3r/fAqO3HeEObW69Y4S/y4uk8xXlgXbVpLwjamN
-	 6RXntyvIwEwdtfdQd72Wu3LmS83BnUpfIJKse+sYCl+a3J+TpZl3jY4O/358SPSuXrj/F
-	 xi+umOGvddyKs17GSj9y8dPToeuEW6MjTUhfgUxGhuDlGxXRIJoM09nkvWS/EoPKQEA==
+	t=1793813243;
+	b=kfqN7xW3NiyzT+3rIpyEyGs3xV1OmXEOahACoSJse8dBkDyTzfi8nuztSaB7LnVwFbDX
+	 bHX01V8HJi0eG2N2MiK/djz6+uLeibDzDqNQ6MmucjteO1T2Vn5hex7L9Lsh0OQ60P7m4
+	 5/xs2S0Z0pCyzF9tjAzwwPOMRX6unr+Z7Dyesnp3uyu2ExlxcmzwIHjiyZxKdkUM6MSaY
+	 vSgMFINI9NdP7l1NfdgbjDJOa2KsX1IvkqhDD47qwsp4rS+TRR9M4qYlptJffZYGb0eZK
+	 P8Of2y9OlyYA43EZiA7uMlMG3uCiHhqnX8EyLAIo0RvUMKZgBzuCoM94KpmCRzv3kDA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793813235;
-	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
-	 MIME-Version:Content-Type:X-Developer-Signature:X-Developer-Key:
-	 Content-Transfer-Encoding;
-	bh=lAdqJZq7DckAfewXRPAVCUONZuQAofOCOPOWHFZTOPQ=;
-	b=fIb3GrfxEMAb3J/TzQgMWEuqnTwJve6bWH10eKuv5MqyXyYRZQr76yC+ok+64mA1ndL0
-	 l3WZzVQYkB6SAS2NIhuuEQ8eH0mfseAieh3DkOHgxfUTSL4b5PVCsljQ8fk5pmILOz7su
-	 JJ8GyKRk8pgO6+W9ZcnFp6m7/lNOozjAJW/hkNfREyU4TmBmTSJkvhvUD+Ei/tJZgLGj6
-	 XOQQEcnhQLa5JCF1y1RcxAv/S10jf5lw/10/4hNdp75bC39qL4LI1Ba+3hrP+gkLZQRbJ
-	 VancSZ4eBI2GoUNnoNMTyiNUwh+Oaxh3yTPHwJxMFBqh0c2OImeH2+TGCiHrg1qgfMg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793813243;
+	h=DMARC-Filter:Received:DKIM-Signature:DKIM-Signature:DKIM-Signature:
+	 DKIM-Signature:Received:Received:Received:Date:From:To:Cc:Subject:
+	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
+	 In-Reply-To:X-Spamd-Result:X-Rspamd-Server:X-Rspamd-Action:
+	 X-Spam-Flag:X-Spam-Score:X-Spam-Level:X-Rspamd-Queue-Id;
+	bh=eGXvkssOV2QDvKB3+PMzPZxGJNQsG9ppegtem4X3jAA=;
+	b=MZVE1VXst3syPBaSi6uI/k0Ujf/vNBTB76TtgKjcYdsUYysq595TqaZDd/OkIqlInW7O
+	 /Hmj7g3pXxTBPqezPasDrjv8pfDNuUJ/lIA3Rp2nCsJ0nhEUpDDvMnOleCtfECWhCmITt
+	 cVSuBe0v5i+e+8mT5QeytZ+uVvwRQMZJ4caKoozSMNQby8ruIlnRyE0wmyo9A27uNJNJQ
+	 5eL5jTApueuoGChILbLdBfMCmuv9TYdIMAkjUs/CR2PGNcbel7rrJ3Iot52/ncIyFMSwz
+	 ci25o8/04c+cz7AGj5HE+loLszybzAiCxnE7KiY7KDnKpuXCMKp9giTgf1Z9Jycjt4Q==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=QnqKLYh2;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	dmarc=none header.from=suse.cz;
+	spf=pass smtp.mailfrom=suse.cz;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b="j/vl7Tbg";
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=OzKHMJAG;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b="j/vl7Tbg";
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=OzKHMJAG;
+	arc=none smtp.remote-ip=195.135.223.131
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D07F6606A31B;
-	Wed,  4 Nov 2026 17:27:14 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5752C606A32E;
+	Wed,  4 Nov 2026 17:27:22 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 5752C606A32E
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=QnqKLYh2
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C4F031F00A02;
-	Wed,  4 Nov 2026 17:26:59 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793813234;
-	bh=lAdqJZq7DckAfewXRPAVCUONZuQAofOCOPOWHFZTOPQ=;
-	h=From:To:Cc:Subject:Date;
-	b=QnqKLYh2fAMD+U5HTXeOnACd1cOBaWr2au0sexyO6Tega8pNFvJ3KwBqyWlewJUso
-	 MIi2fzXRHEQROZC9gLvS1bZZ/9/KcmfDhERzkLaXXdIl+Qf8wPegziV2OdOn/5z79r
-	 3iTqL/OK9DAdbhv97um4MytPwotOejrYkLFgVhoshHzNg842ittp+lNu4zRCpPsoG2
-	 KqhP8Ng8p49cNRXsXj5NGkMfzBM+kKXiniguFgYtTFtMwPvnenK73TWNMd887NGQbI
-	 1pG3OChIWDhqEolCKBiLCVppfrBMevoWgaGWalA6fc1c1Jt43H5RxZZPnk2L1SezgW
-	 Bq+TYnLLsbzyA==
-From: Christian Brauner <brauner@kernel.org>
-To: linux-fsdevel@vger.kernel.org
-Cc: Christian Brauner <brauner@kernel.org>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	Jann Horn <jannh@google.com>,
-	Josef Bacik <josef@toxicpanda.com>,
-	Chris Mason <mason@kernel.org>,
-	Jeff Layton <jlayton@kernel.org>,
-	NeilBrown <neil@brown.name>,
-	Eric Dumazet <edumazet@kernel.org>,
-	Thomas Gleixner <tglx@kernel.org>,
-	Al Viro <viro@zeniv.linux.org.uk>,
-	Jonathan Corbet <corbet@lwn.net>,
-	Christoph Hellwig <hch@lst.de>,
-	Greg Kroah-Hartman <gregkh@suse.de>,
-	Joel Granados <joel.granados@kernel.org>,
-	Kees Cook <kees@kernel.org>,
-	Jan Kara <jack@suse.cz>,
-	Jan Kara <jack@suse.com>,
-	linux-kernel@vger.kernel.org,
-	linux-nfs@vger.kernel.org,
-	linux-acpi@vger.kernel.org,
-	linux-kselftest@vger.kernel.org,
-	linux-s390@vger.kernel.org,
-	linux-scsi@vger.kernel.org,
-	linux-um@lists.infradead.org,
-	linux-wireless@vger.kernel.org,
-	linuxppc-dev@lists.ozlabs.org,
-	netdev@vger.kernel.org,
-	ntfs3@lists.linux.dev,
-	platform-driver-x86@vger.kernel.org,
-	coreteam@netfilter.org,
-	kexec@lists.infradead.org,
-	linux-pci@vger.kernel.org,
-	linux-sound@vger.kernel.org,
-	netfilter-devel@vger.kernel.org,
-	dri-devel@lists.freedesktop.org,
-	ibm-acpi-devel@lists.sourceforge.net,
-	jfs-discussion@lists.sourceforge.net,
-	linux-alpha@vger.kernel.org,
-	linux-arm-kernel@lists.infradead.org,
-	linux-cifs@vger.kernel.org,
-	linux-fbdev@vger.kernel.org,
-	linux-hwmon@vger.kernel.org,
-	linux-mm@kvack.org,
-	linux-sh@vger.kernel.org,
-	linux-usb@vger.kernel.org,
-	samba-technical@lists.samba.org,
-	sparclinux@vger.kernel.org,
-	linux-m68k@lists.linux-m68k.org,
-	linux-doc@vger.kernel.org,
-	linux-serial@vger.kernel.org,
-	linux-atm-general@lists.sourceforge.net,
-	Chuck Lever <chuck.lever@oracle.com>,
-	Takashi Iwai <tiwai@suse.de>,
-	linux-input@vger.kernel.org,
-	linux-raid@vger.kernel.org,
-	linux-ext4@vger.kernel.org,
-	linux-modules@vger.kernel.org,
-	linux-debuggers@vger.kernel.org
-Subject: [PATCH v2 0/7] proc: move procfs to what kernfs does
-Date: Wed,  4 Nov 2026 18:26:54 +0100
-Message-ID: <20261104-trompete-gejagt-raddampfer-9fb5640a6102@brauner>
-X-Mailer: git-send-email 2.53.0
+	dkim=pass (1024-bit key, unprotected) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=j/vl7Tbg;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=OzKHMJAG;
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=j/vl7Tbg;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=OzKHMJAG
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 6E9F71F388;
+	Wed,  4 Nov 2026 17:27:20 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1793813240; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=eGXvkssOV2QDvKB3+PMzPZxGJNQsG9ppegtem4X3jAA=;
+	b=j/vl7TbgDG4aWWFGaOi6KJcWm2imBDDVVej95hpofUr1mto03JAa7EDAiBPvn8vMl6B4g1
+	ieLwS8vN3PtDAm9avUFz5zrsdqmZ+cLXj4KdyRigvL0aeOq9zq0hGK+pLdLhkHOvMhEfKp
+	P5QZQ7dsOWlStXXAcrOKrOXdscL7Cdw=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1793813240;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=eGXvkssOV2QDvKB3+PMzPZxGJNQsG9ppegtem4X3jAA=;
+	b=OzKHMJAGopRIcWM8G3UMwMA4uYbEiRqq2m8XPGgSJSAloVqsP2gsoCR6zoMDGkVrijpG1G
+	IHPbJf13ZsffZkBA==
+Authentication-Results: smtp-out2.suse.de;
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b="j/vl7Tbg";
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=OzKHMJAG
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1793813240; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=eGXvkssOV2QDvKB3+PMzPZxGJNQsG9ppegtem4X3jAA=;
+	b=j/vl7TbgDG4aWWFGaOi6KJcWm2imBDDVVej95hpofUr1mto03JAa7EDAiBPvn8vMl6B4g1
+	ieLwS8vN3PtDAm9avUFz5zrsdqmZ+cLXj4KdyRigvL0aeOq9zq0hGK+pLdLhkHOvMhEfKp
+	P5QZQ7dsOWlStXXAcrOKrOXdscL7Cdw=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1793813240;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=eGXvkssOV2QDvKB3+PMzPZxGJNQsG9ppegtem4X3jAA=;
+	b=OzKHMJAGopRIcWM8G3UMwMA4uYbEiRqq2m8XPGgSJSAloVqsP2gsoCR6zoMDGkVrijpG1G
+	IHPbJf13ZsffZkBA==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 4349B134A5;
+	Wed,  4 Nov 2026 17:27:20 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id UjeMB/hq62o8KQAAD6G6ig
+	(envelope-from <jack@suse.cz>); Wed, 04 Nov 2026 17:27:20 +0000
+Received: by quack.suse.cz (Postfix, from userid 1000)
+	id C3902B457; Wed, 04 Nov 2026 18:27:15 +0100 (CET)
+Date: Wed, 4 Nov 2026 18:27:15 +0100
+From: Jan Kara <jack@suse.cz>
+To: Christian Brauner <brauner@kernel.org>
+Cc: linux-fsdevel@vger.kernel.org, Jan Kara <jack@suse.cz>, 
+	Josef Bacik <josef@toxicpanda.com>, Chris Mason <mason@kernel.org>, linux-ext4@vger.kernel.org, 
+	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>, Andreas Dilger <adilger.kernel@dilger.ca>, 
+	Baokun Li <libaokun@linux.alibaba.com>, Ojaswin Mujoo <ojaswin@linux.ibm.com>, 
+	"Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, Namjae Jeon <namjae.jeon@samsung.com>, stable@vger.kernel.org
+Subject: Re: [PATCH RFC 8/9] fat: sync the inode in fat_free_eofblocks()
+Message-ID: <oilqmzo3vpddohxp46x3pjzf3wtoebahirtjqmt3izdw6ua5iq@ghdbk27wuf5f>
+References: <20261029-work-inode-metadata_writeback-v1-0-7d6c678a585d@kernel.org>
+ <20261029-work-inode-metadata_writeback-v1-8-7d6c678a585d@kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -113,141 +115,140 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-X-Developer-Signature: v=1; a=openpgp-sha256; l=6699; i=brauner@kernel.org; h=from:subject:message-id; bh=vwrWu4QhJtoloSbOepgjr6FTno3vPTd4Ym/VDTikOkw=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9zrofyGH5UuGlf8QM041zGftlZmtyqi7/2jv5suCKX cadvXNTOkpZGMS4GGTFFFkc2k3C5ZbzVGw2ytSAmcPKBDKEgYtTACaSkMjI8PXT/ahLzms2tG95 p/y6Wd4h+MQHNf/VL1dGn7i1utyl/SQjw+WcTXp/Xn+/v4hxooZnZYRWmPKsDU2ur9N2RKRMsj5 7gh0A
-X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20261029-work-inode-metadata_writeback-v1-8-7d6c678a585d@kernel.org>
+X-Spamd-Result: default: False [-11.51 / 50.00];
+	SUSE_INTERNAL_BYPASS(-9.00)[];
+	BAYES_HAM(-3.00)[100.00%];
+	SUSPICIOUS_RECIPS(1.50)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	MX_GOOD(-0.01)[];
+	RCVD_TLS_LAST(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	RCVD_COUNT_THREE(0.00)[3];
+	RCPT_COUNT_TWELVE(0.00)[13];
+	MIME_TRACE(0.00)[0:+];
+	ARC_NA(0.00)[];
+	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	FREEMAIL_CC(0.00)[vger.kernel.org,suse.cz,toxicpanda.com,kernel.org,mail.parknet.co.jp,dilger.ca,linux.alibaba.com,linux.ibm.com,gmail.com,samsung.com];
+	DNSWL_BLOCKED(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	TO_DN_SOME(0.00)[];
+	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	TAGGED_RCPT(0.00)[];
+	DKIM_TRACE(0.00)[suse.cz:+];
+	MISSING_XM_UA(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:dkim,imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.com:email]
+X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
+X-Rspamd-Action: no action
+X-Spam-Flag: NO
+X-Spam-Score: -11.51
+X-Spam-Level: 
+X-Rspamd-Queue-Id: 6E9F71F388
 
-This series aims to get rid of copying to and from userspace while pinning
-procfs entries allowing userspace to delay removal as long as it wants.
+On Thu 29-10-26 14:28:23, Christian Brauner wrote:
+> fat_evict_inode() calls fat_free_eofblocks() for a linked inode to give
+> back the clusters that were fallocated past the initialized size. For an
+> empty file that also resets the start cluster in the directory entry. It
+> truncates the clusters and writes the inode with:
+> 
+>   sync_inode_metadata(inode, inode_needs_sync(inode));
+> 
+> Unless the inode is IS_SYNC that is WB_SYNC_NONE writeback. It copies
+> the inode into the directory entry buffer, marks the buffer dirty and
+> sets I_METADATA_WRITEBACK. Then the inode goes away and with it the only
+> thing that would have told a later fsync() that the directory entry
+> still has to be written.
+> 
+> FAT doesn't have that problem. Its buffers are tracked on the FAT inode
+  ^^ exFAT??
 
-In essence, it aligns procfs with what kernfs is already doing. That
-gets rid of a big attack surface and a whole bug class in one go. The
-bounce buffer will come with some costs but luckily some codepaths (like
-readdir) have been so criminally slow and buggy that massaging them ends
-up speeding things up or at least leaving them on par with mainline even
-with a bounce buffer in the mix.
+> and fat_file_fsync() writes them out on every fsync() of any file on the
+> filesystem.
+> 
+> So after the next fsync() the clusters are free on disk while the
+> directory entry of the empty file still points at them. If another file
+> reuses them and the machine crashes before the directory entry makes it
+> to disk, the two files share clusters. That's the corruption the comment
+> in fat_free_eofblocks() is about.
 
-There was a hackish and very narrow AI solution to a small part of this
-bug class which was sent off-list. In essence, it used a second
-buffering mechanism on top of seqfiles which was really nasty. It also
-didn't address any of the non-seqfile users.
+Correct, but that does not violate anything AFAICT. fsync(2) promises data
+is reachable (which it is), not that the fs metadata is all consistent.
+For non-journaling filesystem you need fsck for such guarantee. And I know
+I'm a bit obtuse here but the change results in a synchronous buffer write
+on each eviction of inode that has preallocated blocks which will be a
+noticeable performance regression for some usecases. Probably Ogawa should
+decide whether this change is acceptable or whether we play fast and
+loose... Ogawa?
 
-If we want to get rid of the this whole bug class we need a bigger
-hammer. That means reworking how procfs handles data. So I tried to work
-through all of that. The series is now in a decent shape (I'm not saying
-"glorious" as there's so so many warts. If they were ironed out it could
-be a lot nicer but that's for another day.).
+								Honza
 
-I understand it's big but I think it is nicer to be able to look at the
-end result since we have some transitory states that are gone at the end
-of the series.
-
-I have polished this a bit more and have sorted out a few more bugs and
-tried to clean up some codepaths given the current constraints. Again, I
-think we could go a lot further there if we wanted to but I think that
-blows this out of proportion and at some point it becomes difficult to
-grasp the scope.
-
-So, remove_proc_entry() waits until every call into the procfs entry has
-returned. Most of those calls copy to or from userspace with the entry
-pinned.
-
-A reader or writer can induce a page fault in that copy take as long as
-it wants. For example, with userfaultfd or by punching holes into a
-memfd over and over. Plus, the callers of remove_proc_entry() like to
-hold locks while they wait. For example, addrconf holds RTNL when it
-removes /proc/net/dev_snmp6/<dev> and xt_hashlimit holds a mutex that
-all network namespaces share.
-
-So every network device with IPv6 gets a /proc/net/dev_snmp6/<dev> that
-everyone can read, and addrconf_ifdown() removes it with RTNL held. So
-any local user can keep RTNL for as long as their read stays stalled.
-Until then no device can be registered, removed or renamed and no
-network namespace can be created or torn down.
-
-If the caller lacks privileges for userfaultfd a FUSE mount in a user
-namespace whose daemon never answers is enough to stall the copy.
-Killing the reader ends it, but until then whoever removes the file sits
-in D state.
-
-xt_hashlimit removes the proc file of a table with hashlimit_mutex
-held. Every rule insert in every network namespace takes that mutex and
-so does network namespace cleanup. cleanup_net() runs on a single
-workqueue with pernet_ops_rwsem held, so a stalled reader also stops
-every later network namespace teardown and every module load that
-registers pernet operations. xt_recent does the same with recent_mutex.
-
-And of course, it's not specific to networking. remove_proc_entry(),
-proc_remove() and remove_proc_subtree() have over 200 callers and plenty
-of them hold locks. For example, a stalled reader of
-/proc/fs/ext4/<dev>/options holds up the unmount of that filesystem with
-s_umount held, and every sync(2) with it. The same goes for PCI
-hot-removal, for freeing IRQ descriptors, which CPU bring-up waits on,
-and for unplugging a USB sound card.
-
-And btw, syzbot has hit removal under locks before (cf. [1]), and the
-xt_recent deadlock fixed in (1) below is another one.
-
-Stalling the kernel in a copy to or from userspace is a well-known
-exploitation primitive. It's why unprivileged userfaultfd can't do it
-by default anymore since v5.11 (d0d4730ac2e4), and FUSE has been used
-the same way.
-
-This series touches just about every ->proc_read(), ->proc_write() and
-->proc_ioctl() in the tree, so I've split it up into seven series. They
-go out as replies to this mail:
-
-Part 1/7: proc: fix a few old bugs in /proc handlers (51 patches)
-
-    Bugs in the handlers and in procfs itself that are a lot older than
-    the conversion and that reviewing it turned up. Most of them are for
-    stable. They come first so they can go there on their own and the
-    conversion doesn't have to bother with that crap.
-
-Part 2/7: proc: let procfs own the data path (23 patches)
-
-    The procfs side. procfs owns the seq_file of an entry, copies in
-    writes, copies out reads and copies ioctl arguments in and out, and
-    only calls into an entry with it pinned. The open files procfs has
-    to know and the wait queue a pollable entry is polled on live in an
-    open node that only those entries get, the entry is pinned around
-    the vm_operations of its mappings, and lockdep checks the pin.
-    proc_create_seq() and friends and the plain seq_file users are
-    switched over here too.
-
-Part 3/7: proc: convert the arch and platform entries (23 patches)
-Part 4/7: proc: convert the driver entries (26 patches)
-Part 5/7: proc: convert the fs, kernel and mm entries (30 patches)
-Part 6/7: proc: convert the net entries and the kfifo samples (13 patches)
-
-Part 7/7: proc: drop the __user methods (6 patches)
-
-    Drops the old methods. kcore, kmsg and the kpage files, which are
-    never removed and keep reading straight into userspace, get
-    file_operations of their own, so nothing in struct proc_ops takes a
-    __user pointer anymore, and the new methods get the names kernfs
-    uses, ->proc_read(), ->proc_write() and ->proc_ioctl(). The last
-    patch takes the poll_table away from ->proc_poll(). This needs all
-    four conversion series.
-
-Parts 1 and 2 are the base. Parts 3 to 6 go on top of part 2 in any
-order and don't depend on each other. Part 7 needs all four.
-
-The series should all indicate cleanly what dependencies they have so b4
-should be able to pull it for review.
-
-With all of it on a KASAN and lockdep kernel the removal selftests of
-every part pass, the proc, pktgen and allocinfo selftests behave like
-without it and the bugs from (1) that reproduce in a VM are gone. Every
-patch builds on its own on x86_64 and i386, and with W=1 on the
-architectures it touches.
-
-[1]: https://lore.kernel.org/r/000000000000f24f4705b6988f3e@google.com
-[2]: https://lore.kernel.org/r/20231109212251.213873-7-johannes@sipsolutions.net
-
----
-Link to v1: https://patch.msgid.link/20261102-defizit-jobaussicht-kurios-7016c6e67442@brauner
-
+> So wait for the directory entry to reach the disk before the inode goes
+> away.
+> 
+> Reproducer. The image file shows what reached the disk. The flusher is
+> turned off so that it doesn't write the directory entry before fsck.fat
+> looks at the image:
+> 
+>   img=/tmp/fat.img
+>   truncate -s 64M $img
+>   mkfs.vfat $img > /dev/null
+>   dev=$(losetup -f --show $img)
+>   mount -t vfat $dev /mnt
+>   echo 0 > /proc/sys/vm/dirty_writeback_centisecs
+>   xfs_io -f -c 'falloc -k 0 1m' -c fsync /mnt/a
+>   echo 3 > /proc/sys/vm/drop_caches
+>   echo 3 > /proc/sys/vm/drop_caches
+>   xfs_io -c fsync /mnt/a
+>   fsck.fat -n $img | grep -A1 '^/a'
+>   umount /mnt
+>   losetup -d $dev
+> 
+> On v7.3-17318-g65ba8f34ec88 in a KASAN and lockdep vng guest this
+> prints:
+> 
+>   /a
+>     Contains a free cluster (3). Assuming EOF.
+> 
+> With this patch fsck.fat finds nothing wrong with /a.
+> 
+> The stable tag is narrower than the Fixes tag. Before v7.3
+> fat_free_eofblocks() called __fat_write_inode() directly and the fix
+> there is to pass 1 for wait.
+> 
+> Fixes: b13bb33eacb7 ("fat: add fat_fallocate operation")
+> Cc: stable@vger.kernel.org # v7.3
+> Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
+> ---
+>  fs/fat/inode.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/fat/inode.c b/fs/fat/inode.c
+> index d85c8fbdcca4..fc571ee2b174 100644
+> --- a/fs/fat/inode.c
+> +++ b/fs/fat/inode.c
+> @@ -675,7 +675,7 @@ static void fat_free_eofblocks(struct inode *inode)
+>  		 * any corruption on the next access to the cluster
+>  		 * chain for the file.
+>  		 */
+> -		err = sync_inode_metadata(inode, inode_needs_sync(inode));
+> +		err = sync_inode_metadata(inode, 1);
+>  		if (err) {
+>  			fat_msg(inode->i_sb, KERN_WARNING, "Failed to "
+>  					"update on disk inode for unused "
+> 
+> -- 
+> 2.53.0
+> 
 -- 
-Christian Brauner <brauner@kernel.org>
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
