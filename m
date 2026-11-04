@@ -1,45 +1,45 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793820874;
-	b=FyMyShm2P2jeBtLQ1dLGkU2JAgFszL/AnnVItW+CUBuB+n0hWPRlrRSozu5M7QZX/iqm
-	 UrzYr6rN4MB3ouyLwHYRPmDc8CPE8l30X/H+JVw0tg6k1HRo6EoYkT2HRw/sL+fnKAbfZ
-	 6+fQuFpxgZntax/9S0Lx4WSv4vIQVjBV2WnbMG1a1UadaeTEXELTInngIXCLOQiiNLDR/
-	 nT61xGaDIruHdFMoLeOJV9ahiQVKckUkCdvBeT7otOpSNerDPz05dHUkN1vxHbKYchTyb
-	 Wrde3W/t4511KWAXabTnioqT8iEVgiJMcvHPwYO9w4u+vdhI7aMwgWoEaYjmllgubPg==
+	t=1793820773;
+	b=HTgZV0MjNz39DXsTZEyJbqGCUcyZcuP8y3WcMCYL7LzqOGyZLPAm7lOT0phGginaIm01
+	 ig65T4n6lKsfIIf7QM4XWZrKlA12EBwTucQSfD7DmvJ4CQL4l7WFhgi7pd22fwA0yDDK1
+	 ldUGpoQx5MyDnpsqZ+wKcjjt/6usthTCMjIs0/OVh+bw0ob4MGqON42w3Xs2eOUeREqlX
+	 fX0/rAZxjIw5I4w0NGXocowa6xOoGcAP7JkWj12YLaOQz2C3NORyjvhYqqxWICBR4AYmd
+	 2qzaf7hErX43bxRUwvJJOYlXePYs74pKv30t+KNoUURNBHu7qE3vroarHk9jjEDmE7w==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793820874;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793820773;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
 	 In-Reply-To:References:MIME-Version:Content-Type:X-Mailer:
 	 X-Developer-Signature:X-Developer-Key:Content-Transfer-Encoding;
-	bh=gk/wy5ylFQ1JuEt9d/OxDdHr3ehnpzDB11cmu682ABs=;
-	b=h4ApRjIc4RA2M+Vu8fNuHc4Dk60Icg2y586zqIeEMy7LhItI52upxiYFOa6LYkBWrDNl
-	 Rta5diSvFlz3SJPgJtD42eR58ZKajQTU0b5Ss3+DwXte8hlS+5OhUKVhGmZjRD/SrTg7T
-	 rp712v67t2+0OJwFJ7HZ3B+3596MYBi5Asq7jODfex0WR3xhAQeAqfvnXcHiI56n0iYXb
-	 hxpgLDNlox5JadYD/+NFqcniPHkSCnLp30WyAia5KNFeHNUbQYocjcTjnThB00xICJ92f
-	 WDeFoXVc46HPxB2ysYvd/6e2UlXQzXUTqxWmQJqv1Tt5QqU8uKpjgnZlGpCOrmkJVyg==
+	bh=TEHVy98izX4fxXB98UXZRCAsXp7Vv98/GN00gGR5FH0=;
+	b=ipEh0rYsQhTFUsRIDUdzsXo8KrI3A553fLeXddiq2o49x9iC4nqz1RiZE7xqRw3YmEv3
+	 jA6VZYnpUR9jgvKDLf6mSI0O6C9LweJEzvh5KVsSm41ieXfJJcKeoyHxB7QwPlkv+NyM9
+	 5mKHlnupDFkgBRL/4I9RxDCTVGBWNhb73LtQzARW4iXEPvlzTx6oLFPpuArwTTaIxPuhk
+	 4zQ004WSb+X4NHXMHSrQvOq2XXbj5QBuK7cLifGS1Vl1XGOZzal/4+EusvrWlhmJRD3W8
+	 W6jNMAMc3pjdnPO/S83Caza+QeoA2yKN8JJ2LA89ATE8A5KBFj3IpRxXrYpVeNwRhOQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=byDXenWy;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=I5QLB5cP;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 53605607A7F7;
-	Wed,  4 Nov 2026 19:34:34 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1179D606D4D5;
+	Wed,  4 Nov 2026 19:32:52 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=byDXenWy
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E35101F00919;
-	Wed,  4 Nov 2026 19:34:21 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=I5QLB5cP
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0BC9D1F00919;
+	Wed,  4 Nov 2026 19:32:40 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793820873;
-	bh=gk/wy5ylFQ1JuEt9d/OxDdHr3ehnpzDB11cmu682ABs=;
+	s=k20260515; t=1793820772;
+	bh=TEHVy98izX4fxXB98UXZRCAsXp7Vv98/GN00gGR5FH0=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=byDXenWydOpv22vMsC8ft/h1gD49RRIpUmsZmKSqbAltMaoSI2lmmZ/SjH7KMU5km
-	 RaCHBDmUB33DWeIHXIsvlT/C8eoj+eA5n1SwJ3dxglPGHaL3hnYyZQh+rr4cde9gOF
-	 pE/Y1B7RMAaotaITwrI9IPI6Ou/2GuUcq3OLz+s3+YHTYUs8Yg7iC76RPE3LKHBoDP
-	 iKW9/1hims3oNI6BZw6x5Va82lVKFrSsBl8VkRe6ftZzmz37C9jeZtEA13zavS6yOK
-	 4Jnpm7W/c3RNB2YVe9XNO2u3vK6DN3MUbxtJ/IE2tdASC75a8zUbEpHjrbdUp0xsOF
-	 UHLtZp3LxQZOw==
+	b=I5QLB5cPRnqisNuC7Gqo3F5XkxxQOdtVGXAFMUWMhX2Z7BYWw49ADkpvPU7MqNxI+
+	 j48ixtJJYVGr31znu8c/7Be9nnUewJ72aON0xf/R4isMFiSrAYisnnndH+E4ED8VQQ
+	 XcfgL+2d4gDdQBsrsE6enNmVb2q9GlukpVqvYJqVvErrOeF7xxKhbqDxo8qTklwVA5
+	 Y30cOxhhLbdaCZP3DnUVtJZjx6p43P/fTZQgcWsWTuUtDrOyubqKAr0fQ8lDQzcJg3
+	 4R05YEMlvwuvN8sRYtajj3sC3E3jrB8F1lxhZNUzV+Nt7eI5ePNgQkrGR4Ab/7mBVU
+	 5ngUzPN2tzJhg==
 From: Christian Brauner <brauner@kernel.org>
 To: linux-fsdevel@vger.kernel.org
 Cc: Linus Torvalds <torvalds@linux-foundation.org>,
@@ -100,9 +100,9 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	linux-debuggers@vger.kernel.org,
 	"Christian Brauner (Amutable)" <brauner@kernel.org>,
 	Chuck Lever <cel@kernel.org>
-Subject: [PATCH RESEND v2 21/23] proc: let lockdep check the pin
-Date: Wed,  4 Nov 2026 20:34:19 +0100
-Message-ID: <20261104-work-procfs-core-v2-21-76ace653a773@kernel.org>
+Subject: [PATCH RESEND v2 14/23] proc: let procfs copy in writes before pinning the entry
+Date: Wed,  4 Nov 2026 20:32:38 +0100
+Message-ID: <20261104-work-procfs-core-v2-14-76ace653a773@kernel.org>
 In-Reply-To: <20261104-work-procfs-core-v2-0-76ace653a773@kernel.org>
 References: <20261104-work-procfs-core-v2-0-76ace653a773@kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -116,410 +116,182 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=15886; i=brauner@kernel.org; h=from:subject:message-id; bh=MS0CHJOg8IP4+NU1GbxdRYjansEKUmXDBMZKO7P+utI=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9bu+S7ll8zER0y4bZJxeadryI569f+DnuSH+rY/Ndj sBpr8TEO0pZGMS4GGTFFFkc2k3C5ZbzVGw2ytSAmcPKBDKEgYtTACbycBfDP10Fv1dJNgmGy+uq JIq4zytOKKzrOZM66diOZfn5kx88vM/I8Hl++s/d1s/s89IupBy5EVvUoOr9WDwxpPFbs4DXD7U VjAA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=6007; i=brauner@kernel.org; h=from:subject:message-id; bh=XY7ojw2MJH5q6cdYnSISI9dPPhcEOijXA7taVvYOt3o=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9bm/kTxWWFrr4tjFsg/6s4/3d3zQzvzzb8u92uexKQ aWHfpMOd5SyMIhxMciKKbI4tJuEyy3nqdhslKkBM4eVCWQIAxenAExk+06GP1wi7B7/1rWYZy25 JqbSIlC9+W/y8g03z9R8S54pVjXRwpiRYZGPccC8jU98amU92Ti0XJqD2prb62ev/Sv9RV1n1mc JZgA=
 X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 Content-Transfer-Encoding: 8bit
 
-remove_proc_entry() waits until every call into the entry has returned,
-and its callers like to hold locks while they wait. A method of the
-entry that takes one of those locks deadlocks with them. xt_recent
-removed its entries with a spinlock held that its seq_file took, and
-ALSA has to remove an entry before it takes info_mutex because its open
-takes it. Both of those were found by reading the code.
+proc_reg_write() pins the entry and calls ->proc_write() which copies
+from userspace itself. A page fault in that copy can take as long as
+the writer wants, just like the copy to userspace of a read, and
+remove_proc_entry() waits for it.
 
-kernfs lets lockdep find them. kernfs_get_active() is a read lock to
-lockdep and kernfs_drain() takes the write side around its wait. So a
-method that takes a lock L while active records class -> L, a removal
-under L records L -> class, and lockdep reports the cycle.
+So do what kernfs does for writes as well. An entry that implements
+->proc_write_buf() gets a NUL-terminated kernel copy of what was
+written. procfs makes that copy before it pins the entry. The copy is
+capped at ->proc_write_size bytes, or at PAGE_SIZE - 1 like
+proc_simple_write() if the entry doesn't care. Larger writes fail with
+-EINVAL. The proc_ops go away with the entry, so procfs remembers the
+limit in the entry when it is registered, like the size of the seq_file
+state, instead of pinning the entry just to look up a number.
 
-Do the same for the pin. use_pde() records a read lock on the entry's
-lockdep map, unuse_pde() releases it and proc_entry_rundown() takes the
-write side around waiting for the last user. The key of the class is
-what the entries of a kind already share, their seq_operations or
-their proc_ops, static objects that lockdep takes as a key. The entries
-that only share a show function, those of proc_create_single() and
-friends, get a key per registration site instead, like every sysfs
-attribute has one: a show function lives in text and lockdep doesn't
-take that as a key. So all /proc/net/dev entries are one class, which
-is right. The same code runs pinned in every network namespace and a
-removal under a lock that its reader takes is a deadlock in any of
-them.
+Entries that take binary data in pieces, like the PCI config space,
+ALSA's data entries or a firmware image, can ask for
+PROC_ENTRY_SHORT_WRITES instead. procfs then copies in the first
+->proc_write_size bytes and the write comes up short.
 
-Nothing in the tree removes an entry of its own kind from one of its
-methods, so there's no need for an escape hatch like
-kernfs_break_active_protection() yet.
+->proc_write_buf() gets the position like ->proc_write() so entries
+that write at an offset keep working.
 
-The map only exists on lockdep kernels.
+Note that procfs copies in the whole write before the entry looks at any
+of it. So a write that is too large or whose buffer can't be read fails
+before the entry's own checks run, permission checks included, even
+where the entry only ever looked at the first few bytes.
+
+An entry that implements ->proc_write_buf() and still has a
+->proc_write() fails to register.
+
+No users yet.
 
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- fs/proc/generic.c       | 46 ++++++++++++++++++++++++++++++++++++----------
- fs/proc/inode.c         | 29 ++++++++++++++++++++++++++---
- fs/proc/internal.h      | 17 ++++++++++++++++-
- fs/proc/proc_net.c      | 28 +++++++++++++++-------------
- include/linux/proc_fs.h | 42 +++++++++++++++++++++++++++++++++---------
- 5 files changed, 126 insertions(+), 36 deletions(-)
+ fs/proc/generic.c       |  8 ++++++++
+ fs/proc/inode.c         | 33 +++++++++++++++++++++++++++++++++
+ fs/proc/internal.h      | 11 +++++++++++
+ include/linux/proc_fs.h | 17 +++++++++++++++++
+ 4 files changed, 69 insertions(+)
 
 diff --git a/fs/proc/generic.c b/fs/proc/generic.c
-index 81a6cb560c75..ca4025ee7aa8 100644
+index 959bf9e33245..4f1f83e9f288 100644
 --- a/fs/proc/generic.c
 +++ b/fs/proc/generic.c
-@@ -541,9 +541,33 @@ static int pde_init_seq_direct(struct proc_dir_entry *pde)
+@@ -466,6 +466,14 @@ static int pde_set_flags(struct proc_dir_entry *pde)
+ 		if (proc_ops->proc_lseek)
+ 			pde->flags |= PROC_ENTRY_proc_lseek;
+ 	}
++	if (proc_ops->proc_write_buf) {
++		if (WARN_ON_ONCE(proc_ops->proc_write))
++			return -EINVAL;
++		pde->flags |= PROC_ENTRY_proc_write_buf;
++		pde->write_size = proc_ops->proc_write_size ?: PAGE_SIZE - 1;
++		if (proc_ops->proc_flags & PROC_ENTRY_SHORT_WRITES)
++			pde->flags |= PROC_ENTRY_SHORT_WRITES;
++	}
  	return 0;
  }
  
-+static void pde_lockdep_init(struct proc_dir_entry *pde,
-+			     struct lock_class_key *key)
-+{
-+#ifdef CONFIG_DEBUG_LOCK_ALLOC
-+	const void *k = key;
-+
-+	if (!pde_lockdep(pde))
-+		return;
-+	/*
-+	 * To lockdep the pin is a read lock that proc_entry_rundown() takes
-+	 * the write side of, see use_pde(). The entries that share
-+	 * seq_operations or proc_ops run the same code pinned, so they share
-+	 * a class, and those are static objects that lockdep takes as its
-+	 * key. The entries that only share a show function get a key per
-+	 * registration site instead, see proc_create_single_data().
-+	 */
-+	if (!k)
-+		k = pde_has_proc_seq_ops(pde) ? (const void *)pde->seq_ops :
-+						pde->proc_ops;
-+	lockdep_init_map(&pde->dep_map, "pde->in_use",
-+			 (struct lock_class_key *)k, 0);
-+#endif
-+}
-+
- /* returns the registered entry, or frees dp and returns NULL on failure */
- struct proc_dir_entry *proc_register(struct proc_dir_entry *dir,
--		struct proc_dir_entry *dp)
-+		struct proc_dir_entry *dp, struct lock_class_key *key)
- {
- 	if (proc_alloc_inum(&dp->low_ino))
- 		goto out_free_entry;
-@@ -558,6 +582,7 @@ struct proc_dir_entry *proc_register(struct proc_dir_entry *dir,
- 	}
- 	if (pde_init_seq_direct(dp))
- 		goto out_free_inum;
-+	pde_lockdep_init(dp, key);
- 
- 	write_lock(&proc_subdir_lock);
- 	dp->parent = dir;
-@@ -660,7 +685,7 @@ struct proc_dir_entry *proc_symlink(const char *name,
- 		ent->data = kmemdup(dest, ent->size + 1, GFP_KERNEL);
- 		if (ent->data) {
- 			ent->proc_iops = &proc_link_inode_operations;
--			ent = proc_register(parent, ent);
-+			ent = proc_register(parent, ent, NULL);
- 		} else {
- 			pde_free(ent);
- 			ent = NULL;
-@@ -686,7 +711,7 @@ struct proc_dir_entry *_proc_mkdir(const char *name, umode_t mode,
- 		if (force_lookup) {
- 			pde_force_lookup(ent);
- 		}
--		ent = proc_register(parent, ent);
-+		ent = proc_register(parent, ent, NULL);
- 	}
- 	return ent;
- }
-@@ -723,7 +748,7 @@ struct proc_dir_entry *proc_create_mount_point(const char *name)
- 		ent->data = NULL;
- 		ent->proc_dir_ops = NULL;
- 		ent->proc_iops = NULL;
--		ent = proc_register(parent, ent);
-+		ent = proc_register(parent, ent, NULL);
- 	}
- 	return ent;
- }
-@@ -759,7 +784,7 @@ struct proc_dir_entry *proc_create_data(const char *name, umode_t mode,
- 	if (!p)
- 		return NULL;
- 	p->proc_ops = proc_ops;
--	return proc_register(parent, p);
-+	return proc_register(parent, p, NULL);
- }
- EXPORT_SYMBOL(proc_create_data);
-  
-@@ -789,13 +814,14 @@ struct proc_dir_entry *proc_create_seq_private(const char *name, umode_t mode,
- 	p->seq_ops = ops;
- 	p->state_size = state_size;
- 	p->flags |= PROC_ENTRY_proc_seq_ops;
--	return proc_register(parent, p);
-+	return proc_register(parent, p, NULL);
- }
- EXPORT_SYMBOL(proc_create_seq_private);
- 
--struct proc_dir_entry *proc_create_single_data(const char *name, umode_t mode,
-+struct proc_dir_entry *__proc_create_single_data(const char *name, umode_t mode,
- 		struct proc_dir_entry *parent,
--		int (*show)(struct seq_file *, void *), void *data)
-+		int (*show)(struct seq_file *, void *), void *data,
-+		struct lock_class_key *key)
- {
- 	struct proc_dir_entry *p;
- 
-@@ -805,9 +831,9 @@ struct proc_dir_entry *proc_create_single_data(const char *name, umode_t mode,
- 	p->proc_ops = &proc_seq_ops;
- 	p->single_show = show;
- 	p->flags |= PROC_ENTRY_proc_show;
--	return proc_register(parent, p);
-+	return proc_register(parent, p, key);
- }
--EXPORT_SYMBOL(proc_create_single_data);
-+EXPORT_SYMBOL(__proc_create_single_data);
- 
- void proc_set_size(struct proc_dir_entry *de, loff_t size)
- {
 diff --git a/fs/proc/inode.c b/fs/proc/inode.c
-index 5e423bcad278..59de4681d845 100644
+index d51ab7548b11..df1caa0f238d 100644
 --- a/fs/proc/inode.c
 +++ b/fs/proc/inode.c
-@@ -199,13 +199,24 @@ const struct super_operations proc_sops = {
- 
- enum {BIAS = -1U<<31};
+@@ -417,11 +417,44 @@ static ssize_t pde_write(struct proc_dir_entry *pde, struct file *file, const ch
+ 	return -EIO;
+ }
  
 +/*
-+ * To lockdep the pin is a read lock and proc_entry_rundown() takes the write
-+ * side, see pde_lockdep_init(). So a method that takes a lock while pinned
-+ * and a removal under that lock are the deadlock lockdep knows how to report.
++ * procfs copies in what is written before it pins the entry. A writer that
++ * faults on its buffer then doesn't hold up remove_proc_entry().
 + */
- static inline int use_pde(struct proc_dir_entry *pde)
- {
--	return likely(atomic_inc_unless_negative(&pde->in_use));
-+	if (unlikely(!atomic_inc_unless_negative(&pde->in_use)))
-+		return 0;
-+	if (pde_lockdep(pde))
-+		rwsem_acquire_read(&pde->dep_map, 0, 1, _RET_IP_);
-+	return 1;
- }
- 
- static void unuse_pde(struct proc_dir_entry *pde)
- {
-+	if (pde_lockdep(pde))
-+		rwsem_release(&pde->dep_map, _RET_IP_);
- 	if (unlikely(atomic_dec_return(&pde->in_use) == BIAS))
- 		wake_up_var(&pde->in_use);
- }
-@@ -362,9 +373,21 @@ static void close_pdeo(struct proc_dir_entry *pde, struct pde_opener *pdeo,
- 
- void proc_entry_rundown(struct proc_dir_entry *de)
- {
--	/* Wait until all existing callers into module are done. */
--	if (atomic_add_return(BIAS, &de->in_use) != BIAS)
-+	/*
-+	 * Wait until all existing callers into module are done. That's the
-+	 * write side of the pin to lockdep, see use_pde().
-+	 */
-+	if (pde_lockdep(de))
-+		rwsem_acquire(&de->dep_map, 0, 0, _RET_IP_);
-+	if (atomic_add_return(BIAS, &de->in_use) != BIAS) {
-+		if (pde_lockdep(de))
-+			lock_contended(&de->dep_map, _RET_IP_);
- 		wait_var_event(&de->in_use, atomic_read(&de->in_use) == BIAS);
-+	}
-+	if (pde_lockdep(de)) {
-+		lock_acquired(&de->dep_map, _RET_IP_);
-+		rwsem_release(&de->dep_map, _RET_IP_);
-+	}
- 
- 	/* ->open->files can't grow from now on. */
- 	if (!de->open)
-diff --git a/fs/proc/internal.h b/fs/proc/internal.h
-index 0b1c0585d6a6..7a197e2920f8 100644
---- a/fs/proc/internal.h
-+++ b/fs/proc/internal.h
-@@ -9,6 +9,7 @@
- #include <linux/proc_ns.h>
- #include <linux/refcount.h>
- #include <linux/spinlock.h>
-+#include <linux/lockdep.h>
- #include <linux/atomic.h>
- #include <linux/binfmts.h>
- #include <linux/sched/coredump.h>
-@@ -67,6 +68,9 @@ struct proc_dir_entry {
- 	umode_t mode;
- 	u16 flags;
- 	u8 namelen;
-+#ifdef CONFIG_DEBUG_LOCK_ALLOC
-+	struct lockdep_map dep_map;	/* the pin as a lock, see use_pde() */
-+#endif
- 	char inline_name[];
- } __randomize_layout;
- 
-@@ -142,6 +146,16 @@ static inline bool pde_is_seq_file(const struct proc_dir_entry *pde)
- 	return pde_has_proc_seq_ops(pde) || pde_has_proc_show(pde);
- }
- 
-+/* Only regular files are pinned, and only their map is initialized. */
-+static inline bool pde_lockdep(const struct proc_dir_entry *pde)
++static ssize_t pde_write_buf(struct proc_dir_entry *pde, struct file *file,
++			     const char __user *ubuf, size_t count, loff_t *ppos)
 +{
-+#ifdef CONFIG_DEBUG_LOCK_ALLOC
-+	return S_ISREG(pde->mode);
-+#else
-+	return false;
-+#endif
++	char *buf __free(kvfree) = NULL;
++	size_t size;
++	ssize_t rv;
++
++	size = pde->write_size;
++	if (count > size) {
++		if (!pde_has_short_writes(pde))
++			return -EINVAL;
++		count = size;
++	}
++	buf = kvmalloc(count + 1, GFP_KERNEL);
++	if (!buf)
++		return -ENOMEM;
++	if (copy_from_user(buf, ubuf, count))
++		return -EFAULT;
++	buf[count] = '\0';
++
++	if (!pde_pin(pde))
++		return -EIO;
++	rv = pde->proc_ops->proc_write_buf(file, buf, count, ppos);
++	pde_unpin(pde);
++	return rv;
 +}
 +
- extern struct kmem_cache *proc_dir_entry_cache;
- void pde_free(struct proc_dir_entry *pde);
- 
-@@ -318,7 +332,8 @@ bool proc_fill_cache(struct file *, struct dir_context *, const char *, unsigned
- struct proc_dir_entry *proc_create_reg(const char *name, umode_t mode,
- 		struct proc_dir_entry **parent, void *data);
- struct proc_dir_entry *proc_register(struct proc_dir_entry *dir,
--		struct proc_dir_entry *dp);
-+		struct proc_dir_entry *dp,
-+		struct lock_class_key *key);
- extern struct dentry *proc_lookup(struct inode *, struct dentry *, unsigned int);
- struct dentry *proc_lookup_de(struct inode *, struct dentry *, struct proc_dir_entry *);
- extern int proc_readdir(struct file *, struct dir_context *);
-diff --git a/fs/proc/proc_net.c b/fs/proc/proc_net.c
-index b78d627b024f..9ddd7c323dfc 100644
---- a/fs/proc/proc_net.c
-+++ b/fs/proc/proc_net.c
-@@ -115,7 +115,7 @@ struct proc_dir_entry *proc_create_net_data(const char *name, umode_t mode,
- 	p->seq_ops = ops;
- 	p->state_size = state_size;
- 	p->flags |= PROC_ENTRY_proc_seq_ops;
--	return proc_register(parent, p);
-+	return proc_register(parent, p, NULL);
- }
- EXPORT_SYMBOL_GPL(proc_create_net_data);
- 
-@@ -162,7 +162,7 @@ struct proc_dir_entry *proc_create_net_data_write(const char *name, umode_t mode
- 	p->state_size = state_size;
- 	p->flags |= PROC_ENTRY_proc_seq_ops;
- 	p->write = write;
--	return proc_register(parent, p);
-+	return proc_register(parent, p, NULL);
- }
- EXPORT_SYMBOL_GPL(proc_create_net_data_write);
- 
-@@ -190,9 +190,10 @@ static const struct proc_ops proc_net_single_ops = {
- 	.proc_release	= single_release_net,
- };
- 
--struct proc_dir_entry *proc_create_net_single(const char *name, umode_t mode,
-+struct proc_dir_entry *__proc_create_net_single(const char *name, umode_t mode,
- 		struct proc_dir_entry *parent,
--		int (*show)(struct seq_file *, void *), void *data)
-+		int (*show)(struct seq_file *, void *), void *data,
-+		struct lock_class_key *key)
+ static ssize_t proc_reg_write(struct file *file, const char __user *buf, size_t count, loff_t *ppos)
  {
- 	struct proc_dir_entry *p;
+ 	struct proc_dir_entry *pde = PDE(file_inode(file));
+ 	ssize_t rv;
  
-@@ -203,9 +204,9 @@ struct proc_dir_entry *proc_create_net_single(const char *name, umode_t mode,
- 	p->proc_ops = &proc_net_single_ops;
- 	p->single_show = show;
- 	p->flags |= PROC_ENTRY_proc_show;
--	return proc_register(parent, p);
-+	return proc_register(parent, p, key);
++	if (pde_has_proc_write_buf(pde))
++		return pde_write_buf(pde, file, buf, count, ppos);
+ 	if (!pde_pin(pde))
+ 		return -EIO;
+ 	rv = pde_write(pde, file, buf, count, ppos);
+diff --git a/fs/proc/internal.h b/fs/proc/internal.h
+index 674e6b4ed21e..da246c5ed4bf 100644
+--- a/fs/proc/internal.h
++++ b/fs/proc/internal.h
+@@ -51,6 +51,7 @@ struct proc_dir_entry {
+ 	proc_write_t write;
+ 	void *data;
+ 	unsigned int state_size;
++	unsigned int write_size;
+ 	unsigned int low_ino;
+ 	nlink_t nlink;
+ 	kuid_t uid;
+@@ -109,6 +110,16 @@ static inline bool pde_has_proc_show(const struct proc_dir_entry *pde)
+ 	return pde->flags & PROC_ENTRY_proc_show;
  }
--EXPORT_SYMBOL_GPL(proc_create_net_single);
-+EXPORT_SYMBOL_GPL(__proc_create_net_single);
  
- /**
-  * proc_create_net_single_write - Create a writable net_ns-specific proc file
-@@ -232,11 +233,12 @@ EXPORT_SYMBOL_GPL(proc_create_net_single);
-  * pde_data() on the file inode.  The network namespace must be accessed by
-  * calling seq_file_single_net() on the seq_file struct.
-  */
--struct proc_dir_entry *proc_create_net_single_write(const char *name, umode_t mode,
--						    struct proc_dir_entry *parent,
--						    int (*show)(struct seq_file *, void *),
--						    proc_write_t write,
--						    void *data)
-+struct proc_dir_entry *__proc_create_net_single_write(const char *name, umode_t mode,
-+						      struct proc_dir_entry *parent,
-+						      int (*show)(struct seq_file *, void *),
-+						      proc_write_t write,
-+						      void *data,
-+						      struct lock_class_key *key)
- {
- 	struct proc_dir_entry *p;
- 
-@@ -248,9 +250,9 @@ struct proc_dir_entry *proc_create_net_single_write(const char *name, umode_t mo
- 	p->single_show = show;
- 	p->flags |= PROC_ENTRY_proc_show;
- 	p->write = write;
--	return proc_register(parent, p);
-+	return proc_register(parent, p, key);
- }
--EXPORT_SYMBOL_GPL(proc_create_net_single_write);
-+EXPORT_SYMBOL_GPL(__proc_create_net_single_write);
- 
- static struct net *get_proc_task_net(struct inode *dir)
++static inline bool pde_has_proc_write_buf(const struct proc_dir_entry *pde)
++{
++	return pde->flags & PROC_ENTRY_proc_write_buf;
++}
++
++static inline bool pde_has_short_writes(const struct proc_dir_entry *pde)
++{
++	return pde->flags & PROC_ENTRY_SHORT_WRITES;
++}
++
+ /* procfs owns the seq_file, see pde_seq_start() */
+ static inline bool pde_is_seq_file(const struct proc_dir_entry *pde)
  {
 diff --git a/include/linux/proc_fs.h b/include/linux/proc_fs.h
-index 5bf039d20990..feb3228cb5af 100644
+index ea55ed85a2d6..c81c93325044 100644
 --- a/include/linux/proc_fs.h
 +++ b/include/linux/proc_fs.h
-@@ -204,9 +204,20 @@ struct proc_dir_entry *proc_create_seq_private(const char *name, umode_t mode,
- 	proc_create_seq_private(name, mode, parent, ops, 0, data)
- #define proc_create_seq(name, mode, parent, ops) \
- 	proc_create_seq_private(name, mode, parent, ops, 0, NULL)
--struct proc_dir_entry *proc_create_single_data(const char *name, umode_t mode,
-+struct proc_dir_entry *__proc_create_single_data(const char *name, umode_t mode,
- 		struct proc_dir_entry *parent,
--		int (*show)(struct seq_file *, void *), void *data);
-+		int (*show)(struct seq_file *, void *), void *data,
-+		struct lock_class_key *key);
-+/*
-+ * The entries a registration site creates share nothing that lockdep takes as
-+ * the key of their class but the show function, which isn't a static object,
-+ * so each site gets a key of its own, like every sysfs attribute has one.
-+ */
-+#define proc_create_single_data(name, mode, parent, show, data)		\
-+({									\
-+	static struct lock_class_key __key;				\
-+	__proc_create_single_data(name, mode, parent, show, data, &__key); \
-+})
- #define proc_create_single(name, mode, parent, show) \
- 	proc_create_single_data(name, mode, parent, show, NULL)
-  
-@@ -238,19 +249,32 @@ struct proc_dir_entry *proc_create_net_data(const char *name, umode_t mode,
- 		unsigned int state_size, void *data);
- #define proc_create_net(name, mode, parent, ops, state_size) \
- 	proc_create_net_data(name, mode, parent, ops, state_size, NULL)
--struct proc_dir_entry *proc_create_net_single(const char *name, umode_t mode,
-+struct proc_dir_entry *__proc_create_net_single(const char *name, umode_t mode,
- 		struct proc_dir_entry *parent,
--		int (*show)(struct seq_file *, void *), void *data);
-+		int (*show)(struct seq_file *, void *), void *data,
-+		struct lock_class_key *key);
-+#define proc_create_net_single(name, mode, parent, show, data)		\
-+({									\
-+	static struct lock_class_key __key;				\
-+	__proc_create_net_single(name, mode, parent, show, data, &__key); \
-+})
- struct proc_dir_entry *proc_create_net_data_write(const char *name, umode_t mode,
- 						  struct proc_dir_entry *parent,
- 						  const struct seq_operations *ops,
- 						  proc_write_t write,
- 						  unsigned int state_size, void *data);
--struct proc_dir_entry *proc_create_net_single_write(const char *name, umode_t mode,
--						    struct proc_dir_entry *parent,
--						    int (*show)(struct seq_file *, void *),
--						    proc_write_t write,
--						    void *data);
-+struct proc_dir_entry *__proc_create_net_single_write(const char *name, umode_t mode,
-+						      struct proc_dir_entry *parent,
-+						      int (*show)(struct seq_file *, void *),
-+						      proc_write_t write,
-+						      void *data,
-+						      struct lock_class_key *key);
-+#define proc_create_net_single_write(name, mode, parent, show, write, data)	\
-+({									\
-+	static struct lock_class_key __key;				\
-+	__proc_create_net_single_write(name, mode, parent, show, write, data, \
-+				       &__key);				\
-+})
- extern struct pid *tgid_pidfd_to_pid(const struct file *file);
+@@ -31,6 +31,13 @@ enum {
+ 	PROC_ENTRY_proc_show		= 1U << 5,
  
- struct bpf_iter_aux_info;
+ 	PROC_ENTRY_FORCE_LOOKUP		= 1U << 7,
++	PROC_ENTRY_proc_write_buf	= 1U << 8,
++
++	/*
++	 * Writes larger than ->proc_write_size come up short instead of
++	 * failing with -EINVAL.
++	 */
++	PROC_ENTRY_SHORT_WRITES		= 1U << 9,
+ };
+ 
+ struct proc_ops {
+@@ -67,6 +74,16 @@ struct proc_ops {
+ 	const struct seq_operations *proc_seq_ops;
+ 	int	(*proc_show)(struct seq_file *, void *);
+ 	unsigned int proc_state_size;
++	/*
++	 * procfs copies what is written into a kernel buffer and calls
++	 * ->proc_write_buf() with it. The buffer is NUL-terminated and holds
++	 * at most ->proc_write_size bytes, PAGE_SIZE - 1 if that's 0. Larger
++	 * writes fail with -EINVAL unless the entry asks for
++	 * PROC_ENTRY_SHORT_WRITES. The position is NULL for a stream, like
++	 * for ->write().
++	 */
++	ssize_t	(*proc_write_buf)(struct file *, char *, size_t, loff_t *);
++	unsigned int proc_write_size;
+ } __randomize_layout;
+ 
+ /* definitions for hide_pid field */
 
 -- 
 2.53.0
