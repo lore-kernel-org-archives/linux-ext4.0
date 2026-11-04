@@ -1,45 +1,45 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793820745;
-	b=IYErfQmkmR3c68LkZQtAordek79Jy8xBTR5qAQA8m5QKUUv0p8/GMtDyO7kCLy6z3WtA
-	 +IR01KFlW2jWWTAz7VaFL7tRh8wmdruRtD0spi1l8OsGdBZy7nAbDNAlJKtN5DtMJaxWl
-	 hc37Of2RTzlTGvhCgMbSLKVx4MTRW3+i7OSJJNAEVKEjHpECRug8ugK3/O/RODm1Lo7pj
-	 7kTHi1odPR7Q2TeF3STrxMkoh2BajgwuwIktONpJBykC7nRb4n+LCc8VR6EyptCLhP5Gb
-	 zzkFdrlIjHUKBNtLDWSxpZ7NDnH4VMGmehSm+PVbKUl3Q3pV5F5nvQBsOU3zbJ5Bh5Q==
+	t=1793820787;
+	b=IDIayWyHz54MRwLkoW1bp1HUSGu1EmRkfkxpvXMvp9PSQ45+M7ann7qizFKjDn0MFh3c
+	 U6DUw7x2jULFAIiVxQRmr1yAAdVlmqTd73wV+fLcr26tYrR7EBv22YDZFvJ/Tk2Iop98l
+	 MqoMmYUvENqi9CRg3O/D1MKm3myR9J7FADgSKVeWX0lo7KOg23anHXnZZkbAo42mnUtOu
+	 6aubsAbce27HNCWHVYrBkjR54+DiRvN0PUADSYdMnw0BcypzJydzvqQfkMaOc9ZpwvQjC
+	 wJYoACy00k+LdDXalh++zT+T47QQNAo58diifTU+TINgWvGA1Bq/Y4J74xiJ+tq9cKA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793820745;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793820787;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
 	 In-Reply-To:References:MIME-Version:Content-Type:X-Mailer:
 	 X-Developer-Signature:X-Developer-Key:Content-Transfer-Encoding;
-	bh=t7CXhIggcklIY3xO5IiO5lA9eZblBCQpzIpV4iqWwIs=;
-	b=XTJ4QzyhH11gO/Gi/aWpW3QOzSGRT0NZOyj0ZrpvA2aX/cB1x1j36Ef+78q7BhS8L52C
-	 J6V5TWF+5s2bdaK/O1Z5dBUn5DNnkHabmdRzcLRUaMMIcSs7Qh1qQf3sUjv/qPqkaZ3Zq
-	 4/Ss2u2Ropit2aRyVwPXtJYyfKzYFbh2D7Vr1j6y6w9yl7a7cVXmYJyN/Hf0q2t2v3Qnz
-	 k6XR3VLLZ/WcM76yFQeJZaZIuUCBxUs61G0ZYJWWpmoDp2Udcd4vsNOzZsD8oI9p3kp1B
-	 y5sCAGbC6hMomA1cpZOV5UHlLJqrU/SLIE7HmtW2y8zwR+RwfJL0F9RhCP0OgEb7vpw==
+	bh=bS0sqLKel+zUDQBuy6UvkvN+2OJYA4B2QiuiWjKQHbI=;
+	b=Ug4LK/OB993BuAgbWfECOE2hbrPRECLhTKKPOhO816Yig9GsCm9sRPNY7RZ8O6CazyGD
+	 7j3Lkl0mG82UrjfXIbFfnyonLmtkTeenfngYE+s4u1m/3Qy2PsKj+XepO9U0D5P2ogE7A
+	 2CO/6eiLbCTbBiuQBSsAk5NwmY4kEdshTOPhl9GinNRMoeS5M8yLSNMGRvsJLGz2Axzav
+	 DHc5WY4APQQq12MmUWyQz9v6cUQLsdef43KVmfNB5cfwUBbh096CpbEAt3ql8+uVt5AcV
+	 uwog6OcTiHmuR89gQuekSUzCYpih8xO7E9VI9zqo/aQJ8uOi5pBjPk3IQunIw+eku8g==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=cTuaWM9d;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=CgsURsVq;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B627C607897F;
-	Wed,  4 Nov 2026 19:32:24 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 56550606D4C7;
+	Wed,  4 Nov 2026 19:33:07 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=cTuaWM9d
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A89F31F00919;
-	Wed,  4 Nov 2026 19:32:12 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=CgsURsVq
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 31CA41F000C1;
+	Wed,  4 Nov 2026 19:32:55 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793820744;
-	bh=t7CXhIggcklIY3xO5IiO5lA9eZblBCQpzIpV4iqWwIs=;
+	s=k20260515; t=1793820787;
+	bh=bS0sqLKel+zUDQBuy6UvkvN+2OJYA4B2QiuiWjKQHbI=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=cTuaWM9d7bmS3BQXsgtTAPR9uVh6iO0s1VUb1qW5xthyjwQ7vxJulOEZ629mv/ktX
-	 8pc572eXrayXIbCxFRUJIEYHlf9ycJZjdr5EilMv+/yNyQNPgE7IbTr67SmbjqGKon
-	 wQxWa1oDi8Z96DmUhmEkZsLKgf7TxOqe0u+yeHEa9M+VTfdbUwRpShdZhtLt7n6wLd
-	 xG8ZPgiEEG146zAmYMMPTfNZP+A5FSPLxTvy8HupirTDlyG6AokYQO4fF7KBnvln4/
-	 BccNNTsARBWlIFPDpemmx+BLFNPVItSM8w4MnywAOEfXW90hS1vRbBdoScA6JM7MiN
-	 65ED+/q2glmuQ==
+	b=CgsURsVq0Jx5eFRo0zL6RwUdX7cUmbxMgnQjR3CMq+yFZIda516yMqyvBv+VJRJGO
+	 CbRCX1z+4jH3yckp40oLZ6lMELKkxDwpzrcg0f9RJ9jEHC/Hsv03D/zH6Lx10+B4Bt
+	 X/wbIOi1D3PUVzGQ6YhnWd3C8dsAQnA/OIxZCUV8kuieU0SPky9t32VZMhyiWmCb2w
+	 dtwzN+2E1HUKcv5yvjwIdFh89CychlyOMck6HVW5unLzvI8CmogFoCE24ieoQJchGw
+	 r1bEuYrplyx6w+yzZtWvOCdITnPyD1zHwGOdEyKGuPARBjL5BWklyjO75BAEBmnPmJ
+	 Ewa8XfzsEzj2w==
 From: Christian Brauner <brauner@kernel.org>
 To: linux-fsdevel@vger.kernel.org
 Cc: Linus Torvalds <torvalds@linux-foundation.org>,
@@ -100,9 +100,9 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	linux-debuggers@vger.kernel.org,
 	"Christian Brauner (Amutable)" <brauner@kernel.org>,
 	Chuck Lever <cel@kernel.org>
-Subject: [PATCH RESEND v2 12/23] seq_file: add seq_preallocate()
-Date: Wed,  4 Nov 2026 20:32:10 +0100
-Message-ID: <20261104-work-procfs-core-v2-12-76ace653a773@kernel.org>
+Subject: [PATCH RESEND v2 15/23] proc: copy in writes to the network namespace entries before pinning
+Date: Wed,  4 Nov 2026 20:32:53 +0100
+Message-ID: <20261104-work-procfs-core-v2-15-76ace653a773@kernel.org>
 In-Reply-To: <20261104-work-procfs-core-v2-0-76ace653a773@kernel.org>
 References: <20261104-work-procfs-core-v2-0-76ace653a773@kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -116,89 +116,97 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2744; i=brauner@kernel.org; h=from:subject:message-id; bh=cArC7PPeLGnNNo4k1qcZwNiSGSA+jlDCNRnIKXcvzj8=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9bq9fUy53Y+meKbNe5Zf78F+aKHlY58q16usqyqJv3 +V2rX5U0FHKwiDGxSArpsji0G4SLrecp2KzUaYGzBxWJpAhDFycAjAR+1yG/3HL357Tm/j6pbNY 7t1vOYdrHYtOvFVkdFthFzlPc30mlyDDP53w+qwZtmFzcn4YvJ2TMYtvgYrB74l+jyOkXn9YOXn VaS4A
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3064; i=brauner@kernel.org; h=from:subject:message-id; bh=AKTwCBJOA0MAIxlMr3DfHwtMd7LDbYNJiozzVu/aJkI=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS9bm+WesP7dEdWSvHufyFWH5UK5YQX9jbJ+M5Paa65f p/d5URwRykLgxgXg6yYIotDu0m43HKeis1GmRowc1iZQIYwcHEKwEReH2Nk2D1/7+NDTTy7PZKz 7f9EHnjy1uDeyosSwXs65NyKfv8S5mL47x5iYCO9wu1y66mHL+5tO8j54rTT+22v5bpDHvKfz6h ezQYA
 X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 Content-Transfer-Encoding: 8bit
 
-single_open_size() allocates the buffer itself because it does the
-single_open() too. A file whose seq_file is opened by somebody else,
-like procfs does now, needs to do that after the fact. Add
-seq_preallocate() for that and use it in single_open_size().
+proc_simple_write() already hands ->write() a kernel copy of what was
+written but makes that copy with the entry pinned. Let procfs make it
+before it pins the entry instead. That covers everything created with
+proc_create_net_data_write() and proc_create_net_single_write(), the
+afs files and the rxrpc stats.
 
-No functional changes.
+So a write to a proc_create_net_single() file without ->write() can
+fail with -EINVAL or -EFAULT now before proc_simple_write() gets to
+refuse it with -EACCES.
 
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- fs/seq_file.c            | 36 ++++++++++++++++++++++++++++--------
- include/linux/seq_file.h |  1 +
- 2 files changed, 29 insertions(+), 8 deletions(-)
+ fs/proc/generic.c  | 15 ++++-----------
+ fs/proc/internal.h |  2 +-
+ fs/proc/proc_net.c |  4 ++--
+ 3 files changed, 7 insertions(+), 14 deletions(-)
 
-diff --git a/fs/seq_file.c b/fs/seq_file.c
-index 456c78719fd0..a4644cdda7e6 100644
---- a/fs/seq_file.c
-+++ b/fs/seq_file.c
-@@ -590,21 +590,41 @@ int single_open(struct file *file, int (*show)(struct seq_file *, void *),
- }
- EXPORT_SYMBOL(single_open);
+diff --git a/fs/proc/generic.c b/fs/proc/generic.c
+index 4f1f83e9f288..5e2ed5a04ec9 100644
+--- a/fs/proc/generic.c
++++ b/fs/proc/generic.c
+@@ -947,26 +947,19 @@ void proc_remove(struct proc_dir_entry *de)
+ EXPORT_SYMBOL(proc_remove);
  
--int single_open_size(struct file *file, int (*show)(struct seq_file *, void *),
--		void *data, size_t size)
-+/**
-+ *	seq_preallocate -	start out with a buffer of @size
-+ *	@m: the seq_file, before it is first read
-+ *	@size: the size of the buffer
-+ *
-+ *	For files whose records don't fit into a page, so that the first read
-+ *	doesn't have to work its way up to the right buffer size.
-+ */
-+int seq_preallocate(struct seq_file *m, size_t size)
+ /*
+- * Pull a user buffer into memory and pass it to the file's write handler if
+- * one is supplied.  The ->write() method is permitted to modify the
+- * kernel-side buffer.
++ * Pass what was written to the file's write handler if one is supplied. The
++ * ->write() method is permitted to modify the buffer.
+  */
+-ssize_t proc_simple_write(struct file *f, const char __user *ubuf, size_t size,
+-			  loff_t *_pos)
++ssize_t proc_simple_write(struct file *f, char *buf, size_t size, loff_t *_pos)
  {
- 	char *buf = seq_buf_alloc(size);
--	int ret;
-+
- 	if (!buf)
- 		return -ENOMEM;
-+	kvfree(m->buf);
-+	m->buf = buf;
-+	m->size = size;
-+	return 0;
-+}
-+EXPORT_SYMBOL(seq_preallocate);
-+
-+int single_open_size(struct file *file, int (*show)(struct seq_file *, void *),
-+		void *data, size_t size)
-+{
-+	int ret;
-+
- 	ret = single_open(file, show, data);
--	if (ret) {
--		kvfree(buf);
-+	if (ret)
- 		return ret;
-+	ret = seq_preallocate(file->private_data, size);
-+	if (ret) {
-+		single_release(file_inode(file), file);
-+		file->private_data = NULL;
- 	}
--	((struct seq_file *)file->private_data)->buf = buf;
--	((struct seq_file *)file->private_data)->size = size;
--	return 0;
-+	return ret;
- }
- EXPORT_SYMBOL(single_open_size);
+ 	struct proc_dir_entry *pde = PDE(file_inode(f));
+-	char *buf;
+ 	int ret;
  
-diff --git a/include/linux/seq_file.h b/include/linux/seq_file.h
-index b813b7e63d89..834daff48b7d 100644
---- a/include/linux/seq_file.h
-+++ b/include/linux/seq_file.h
-@@ -175,6 +175,7 @@ int seq_path_root(struct seq_file *m, const struct path *path,
- void *single_start(struct seq_file *, loff_t *);
- int single_open(struct file *, int (*)(struct seq_file *, void *), void *);
- int single_open_size(struct file *, int (*)(struct seq_file *, void *), void *, size_t);
-+int seq_preallocate(struct seq_file *m, size_t size);
- int single_release(struct inode *, struct file *);
- void *__seq_open_private(struct file *, const struct seq_operations *, int);
- int seq_open_private(struct file *, const struct seq_operations *, int);
+ 	if (!pde->write)
+ 		return -EACCES;
+-	if (size == 0 || size > PAGE_SIZE - 1)
++	if (size == 0)
+ 		return -EINVAL;
+-	buf = memdup_user_nul(ubuf, size);
+-	if (IS_ERR(buf))
+-		return PTR_ERR(buf);
+ 	ret = pde->write(f, buf, size);
+-	kfree(buf);
+ 	return ret == 0 ? size : ret;
+ }
+ 
+diff --git a/fs/proc/internal.h b/fs/proc/internal.h
+index da246c5ed4bf..1d36fe4b1af5 100644
+--- a/fs/proc/internal.h
++++ b/fs/proc/internal.h
+@@ -344,7 +344,7 @@ static inline bool is_empty_pde(const struct proc_dir_entry *pde)
+ {
+ 	return S_ISDIR(pde->mode) && !pde->proc_iops;
+ }
+-extern ssize_t proc_simple_write(struct file *, const char __user *, size_t, loff_t *);
++extern ssize_t proc_simple_write(struct file *, char *, size_t, loff_t *);
+ 
+ /*
+  * inode.c
+diff --git a/fs/proc/proc_net.c b/fs/proc/proc_net.c
+index 9973f846c467..b78d627b024f 100644
+--- a/fs/proc/proc_net.c
++++ b/fs/proc/proc_net.c
+@@ -77,7 +77,7 @@ static int seq_release_net(struct inode *ino, struct file *f)
+ 
+ static const struct proc_ops proc_net_seq_ops = {
+ 	.proc_open	= seq_open_net,
+-	.proc_write	= proc_simple_write,
++	.proc_write_buf	= proc_simple_write,
+ 	.proc_release	= seq_release_net,
+ };
+ 
+@@ -186,7 +186,7 @@ static int single_release_net(struct inode *ino, struct file *f)
+ 
+ static const struct proc_ops proc_net_single_ops = {
+ 	.proc_open	= single_open_net,
+-	.proc_write	= proc_simple_write,
++	.proc_write_buf	= proc_simple_write,
+ 	.proc_release	= single_release_net,
+ };
+ 
 
 -- 
 2.53.0
