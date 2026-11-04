@@ -1,45 +1,45 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793821643;
-	b=Wt7rQ+i01XquR0COuyD15lhYykOFsSHcHjA9K49m73Ll5rec4nOcz5hxWvPIwcsS1e3A
-	 +i+OMefiy1Q//GA6qeYb9VaChZMDxIAQ09vIsZ6vSKJ5WpREzW911EYfwgaqBK99/UQhZ
-	 6g9AjbxYqdRfSSNpDDXsY9gglJIM1a91l7AbVaRnYOLghvWnQILsNqXNY25gW/vLUvZCY
-	 fw7exDMEJJMRmzfb1ch5xiy4F3su5CHD2mPSvy1zNOY6MQDQ8pLpfbis6LM217k4l2xhr
-	 YO8cSHY0HRmzCKNC9KbNZzpAEPkZ3aKNRVm8eAqj9887KuSlg/FlZAtopkwXCaqFahg==
+	t=1793821673;
+	b=zir6aW7Gnf7dmVZcBVwZJlPYcbnaXeAxD84pJ1fTSow8oeNyzVZeo6e3F+Qr3sCLDFUZ
+	 pJVBSsHdQNnBwcLTV/30zQ1CxF7fJssKhYaUBBoBC9BHrRpiqUFIq3RtVdk7UbtYtNjH9
+	 eH5rO6id05PaqBh3R37co/7RPK/VWqVOsDkM60XLLB98FBDjFFlIpJmQbGMUQXuih5LUJ
+	 SckqNXZHti00naKpe+dEzcwBaNX68z+H/6AgMdNQdRCXOq9x6b+HD8Y0uPRBai0AMAZ/7
+	 /UMgzEu/dg0AW46OEUxV0RC5LRLmPPwZvzjf6TAGhZESjk+xwW9rt3aYaapX12n/y5w==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793821643;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793821673;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
 	 In-Reply-To:References:MIME-Version:Content-Type:X-Mailer:
 	 X-Developer-Signature:X-Developer-Key:Content-Transfer-Encoding;
-	bh=pUc3XnniVQ5ZOuyDhOysKqrOAZk7AW9/FnAFYC6PjCY=;
-	b=pmjVPs8sSVQRG2TFBsyHHyQEALKk6d8UAW8tZs8DfEezlfMF/dgvG8lw4AVOidfcpiMB
-	 72vZ6ttnxSEPftpz/GwByp/h/9HworZEzdxrwOrXXMlt9TdolACb2l/WrvLoB/0OlWWdM
-	 7EfGDOv5khYATvhotil7JwdVz6Po+jZce9LurrsMjL1wjrdJwculvIEm1ElQeiZpDCwi3
-	 yaDOWFrkegP3+BsywplTUg6/VrzSSlp1wf28YDK1qTkTEN71VnuwrfxR14oeRSdxuElsn
-	 oN/QO/GxLfZAbwnQeOUkWHmU6jleN8bP89hX+Y4S7HTdTvhw4NhuCk+ucTKrYRdTSxg==
+	bh=o7mJ23mAcDTgScqej0oFhuq1h/6FvdBmFy6u6skOQc0=;
+	b=V8qHMvOAUmVJr3CPGJIgasqnPgj59d2pYXpYFOwUz6dMPXFsf+DCnNutySmFpMxbWm/H
+	 1tbXVWDwneDpiTIkPH7AQUjq9pYb4i/xNK5nKpnMBGaqMxsY7Xw+jBPewj6kkr/eo9A4Q
+	 AsLRkU7BWEYL0us3VoWZ+6Wh+6HrCF3O6g++ZKvWuOqttwVyqVvLt/I8sqoA2UbsL+vmD
+	 jntbAQsklrNDbi2bkPWx4ve+gLT6eb/z01UYgznzQ2cp7ttMvEc4z/0Myzm4+o3ZiWtJv
+	 xHHkDQhnGWo5iQg31ojG5IaOqv0SbPDmb4/7mABGYfLw1n6ar15PYFFAKQdCa98lZOA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=MRau239w;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=dA0DNurZ;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8CECF6074FA2;
-	Wed,  4 Nov 2026 19:47:23 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6A6C2608ED7A;
+	Wed,  4 Nov 2026 19:47:53 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=MRau239w
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id BD6491F000C1;
-	Wed,  4 Nov 2026 19:47:10 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=dA0DNurZ
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 02A231F0093A;
+	Wed,  4 Nov 2026 19:47:40 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793821643;
-	bh=pUc3XnniVQ5ZOuyDhOysKqrOAZk7AW9/FnAFYC6PjCY=;
+	s=k20260515; t=1793821673;
+	bh=o7mJ23mAcDTgScqej0oFhuq1h/6FvdBmFy6u6skOQc0=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=MRau239woFQtdlJcfyIuzdt/Mz7tXpQLHgX2J3HFCxtIoQ7p0t8aEvclvbqPlKOGa
-	 EedaHfHccZGMzhB5vcIwAhuyyQDAPau+H/YAUhBdRbtxFhlJqgcxmK2czVG9y5wP7T
-	 vy2fA02WDdK3VJ+RlZqpZVnSB9uMz9+ib+VE15vj7NVBBxUCWLKrh6ChnabmilIhZU
-	 3Y5JjgpF66wHdUqRob6tq7eO9hwAVhqpVsM3MxH/8UpRQy6y5G6Z47XYSlSWJ2d5uP
-	 6lZJVoMkctk/0jcZI5OX7z1nQPxzj8u8pGN0oIBxSIKKB6fvv2I5CNKbtMZ1A+Sjdx
-	 r3Q7BlsL714Bw==
+	b=dA0DNurZqV4J9DbS0OyTvs1fyzf+tr+GnxjFgcPQAXyozxe/btBqIfQ8qv52kR1XH
+	 FUZ5gMbXt9OK2wJH/Q21p3te0KBNKoQmKmOkjKcIkbKYcHgCrR5Dr4Z5UBlA95Ho1N
+	 RZBF+D4QSJaIxJn6Y8WHPyeYdRN6+YuqVVO7YdSYR1PI9vvy2kuuar+gQyTcmGnjvo
+	 skcmgOf51D6shHyYWUMhtACHkrQpha6C3N03hx/u1Dd1WRqrNEqgG2OeXjq39V1Dp4
+	 i31YqmqhIyZZvJu67ZPvlEjwYe9Ikqs3ZGyd/wpMChb1hwGc5NYBbHFIVrVfRBvnFu
+	 8IfvxRbYh5cdw==
 From: Christian Brauner <brauner@kernel.org>
 To: linux-fsdevel@vger.kernel.org
 Cc: Linus Torvalds <torvalds@linux-foundation.org>,
@@ -99,11 +99,10 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	linux-modules@vger.kernel.org,
 	linux-debuggers@vger.kernel.org,
 	"Christian Brauner (Amutable)" <brauner@kernel.org>,
-	Chuck Lever <cel@kernel.org>,
-	Jiri Slaby <jirislaby@kernel.org>
-Subject: [PATCH RESEND v2 20/26] tty: sysrq: let procfs copy in writes to /proc/sysrq-trigger
-Date: Wed,  4 Nov 2026 20:47:08 +0100
-Message-ID: <20261104-work-procfs-drivers-v2-20-245e54e87116@kernel.org>
+	Chuck Lever <cel@kernel.org>
+Subject: [PATCH RESEND v2 22/26] ALSA: info: let procfs own the seq_file of text entries
+Date: Wed,  4 Nov 2026 20:47:38 +0100
+Message-ID: <20261104-work-procfs-drivers-v2-22-245e54e87116@kernel.org>
 In-Reply-To: <20261104-work-procfs-drivers-v2-0-245e54e87116@kernel.org>
 References: <20261104-work-procfs-drivers-v2-0-245e54e87116@kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -117,55 +116,77 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1564; i=brauner@kernel.org; h=from:subject:message-id; bh=xA04tAm65fsCtMg0xl0tBqqUoHOUL5b4F/HBKwEi4qU=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS97up5wHzVwMj/4s+/qsc0lZwe6RUvWPryURRj4B+1W WLHtl+Y3FHKwiDGxSArpsji0G4SLrecp2KzUaYGzBxWJpAhDFycAjCRvW8Z/srfZV/202bOs6pv bO3FhjJLqzofzqvaU2easvxKpvXzafoMf3jnJ8cnHTZnrf/9WuLLwePxp5qz7/ZoyYesNj+yaqb 8JzYA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2241; i=brauner@kernel.org; h=from:subject:message-id; bh=S+buwBt9DQjjWOReG2bmbtOto+rEgyDiARec22GsvW8=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS97ur7cKp5nuC/vvMVLfsjea7umM/MkrbBKuzcXst5/ n7/szoFO0pZGMS4GGTFFFkc2k3C5ZbzVGw2ytSAmcPKBDKEgYtTACbSPJPhf+m0E+VJ3WHGl58Z 7Hv7Z/9Z1+vuQv7Tv4jdCrXmPr1L1I2RoUv/kNHdZDXZmqY/2/X6um5/m3PpyarXv97kK7nJn/o 2gQ0A
 X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 Content-Transfer-Encoding: 8bit
 
-Implement ->proc_write_buf() so procfs copies in what is written before
-it pins the entry, and handle the keys from that copy. Writes larger
-than PAGE_SIZE - 1 bytes fail with -EINVAL now. They used to trigger the
-first key, or all of them in bulk mode. procfs allocates the copy, which
-is as small as the write, opening the file allocated as much already.
+Declare the show function and let procfs open and free the seq_file.
+->proc_open() only sets up the private data and preallocates the buffer
+now and ->proc_release() no longer releases the seq_file. Reading an
+entry then no longer holds up its removal when the card goes away.
 
-Reviewed-by: Jiri Slaby <jirislaby@kernel.org>
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- drivers/tty/sysrq.c | 9 +++------
- 1 file changed, 3 insertions(+), 6 deletions(-)
+ sound/core/info.c | 19 +++++++++----------
+ 1 file changed, 9 insertions(+), 10 deletions(-)
 
-diff --git a/drivers/tty/sysrq.c b/drivers/tty/sysrq.c
-index f4571d05b496..99363e1b59ed 100644
---- a/drivers/tty/sysrq.c
-+++ b/drivers/tty/sysrq.c
-@@ -1200,17 +1200,14 @@ EXPORT_SYMBOL(unregister_sysrq_key);
-  * However, if the first character is an underscore,
-  * all characters are processed.
-  */
--static ssize_t write_sysrq_trigger(struct file *file, const char __user *buf,
-+static ssize_t write_sysrq_trigger(struct file *file, char *buf,
- 				   size_t count, loff_t *ppos)
- {
- 	bool bulk = false;
- 	size_t i;
- 
- 	for (i = 0; i < count; i++) {
--		char c;
--
--		if (get_user(c, buf + i))
--			return -EFAULT;
-+		char c = buf[i];
- 
- 		if (c == '_')
- 			bulk = true;
-@@ -1225,7 +1222,7 @@ static ssize_t write_sysrq_trigger(struct file *file, const char __user *buf,
+diff --git a/sound/core/info.c b/sound/core/info.c
+index f608d335b6c9..42a4f8fb3198 100644
+--- a/sound/core/info.c
++++ b/sound/core/info.c
+@@ -346,9 +346,11 @@ static int snd_info_seq_show(struct seq_file *seq, void *p)
+ 	return 0;
  }
  
- static const struct proc_ops sysrq_trigger_proc_ops = {
--	.proc_write	= write_sysrq_trigger,
-+	.proc_write_buf	= write_sysrq_trigger,
- 	.proc_lseek	= noop_llseek,
++/* procfs opens the seq_file */
+ static int snd_info_text_entry_open(struct inode *inode, struct file *file)
+ {
+ 	struct snd_info_entry *entry = pde_data(inode);
++	struct seq_file *m = file->private_data;
+ 	struct snd_info_private_data *data;
+ 	int err;
+ 
+@@ -362,13 +364,12 @@ static int snd_info_text_entry_open(struct inode *inode, struct file *file)
+ 		err = -ENOMEM;
+ 		goto error;
+ 	}
+-	if (entry->size)
+-		err = single_open_size(file, snd_info_seq_show, data,
+-				       entry->size);
+-	else
+-		err = single_open(file, snd_info_seq_show, data);
+-	if (err < 0)
+-		goto error;
++	if (entry->size) {
++		err = seq_preallocate(m, entry->size);
++		if (err < 0)
++			goto error;
++	}
++	m->private = data;
+ 	return 0;
+ 
+  error:
+@@ -387,7 +388,6 @@ static int snd_info_text_entry_release(struct inode *inode, struct file *file)
+ 	if (data->wbuffer && entry->c.text.write)
+ 		entry->c.text.write(entry, data->wbuffer);
+ 
+-	single_release(inode, file);
+ 	kfree(data->rbuffer);
+ 	if (data->wbuffer) {
+ 		kvfree(data->wbuffer->buffer);
+@@ -401,11 +401,10 @@ static int snd_info_text_entry_release(struct inode *inode, struct file *file)
+ 
+ static const struct proc_ops snd_info_text_entry_ops =
+ {
++	.proc_show	= snd_info_seq_show,
+ 	.proc_open	= snd_info_text_entry_open,
+ 	.proc_release	= snd_info_text_entry_release,
+ 	.proc_write	= snd_info_text_entry_write,
+-	.proc_lseek	= seq_lseek,
+-	.proc_read	= seq_read,
  };
  
+ static struct snd_info_entry *create_subdir(struct module *mod,
 
 -- 
 2.53.0
