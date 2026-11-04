@@ -1,45 +1,45 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793821465;
-	b=GXdAIiUXx/sWWY/4vaee2izbRzjnlLKR2sWVNvBMjOVs+HI8xjaxfldozzTMLOy1GqQt
-	 FfA6PvYrs7kokLDHyqTv2wqvKTZNYmyUG6kKxUwNmBt6a/5ozLpGrTQwz/3rG6/DLRHx6
-	 xWjng8Y63N1xILgsTkmnJW0qphNu+dg9JwrlAVRtZ7xgmmGSJLrZvbyFrxA8dVbrA1TqK
-	 Kn+V9G51bGeK/ryEZQV+O4yjSd0eMOEyDjSYQ1hmLq6hha9EExp7a/7hHUEJKPlLvgiva
-	 jQUvJZNurA5FBhlBeFW9lKL/fdZLWD8wSqiXScpT5FDjZAZI/Nia8zPsu9r9Idk/KYw==
+	t=1793821495;
+	b=Uab7vZSvSmruw00SzQeaQmDUctoYPkzrN20gcxesBBesNwzJueZv2U0/oduFHm3sG+Iu
+	 wACkbGcWRGY6PkeRtd6QunDVcNOziB/3s4WDrItyD3DxOQbAktT8LkveUQjIjzRFXwnxt
+	 Z0KXd1fYsVdQozzIPzZqLAZfhrws9QuSdzKEzikEzanbjp+2IM1p8+cMJeAGVua5qZOOj
+	 b2ygHLO4O13heALM3k0JpwW4Fpwt04VzHXBNjC0RMNKKpN/8pAYwWW2XqHAYzSZGSQVn8
+	 79uQvc8uqYKXIDOZRY3Q1clIcX1Gf7H/lfAzWkgQ4IaMr2kxt+DKS4PuGc2H9vLKMdQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793821465;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793821495;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:
 	 In-Reply-To:References:MIME-Version:Content-Type:X-Mailer:
 	 X-Developer-Signature:X-Developer-Key:Content-Transfer-Encoding;
-	bh=RGxB3CLuL3hdMOFW6c8rETuQc0/Gu93ks+OA3zHK0Kk=;
-	b=oVlUJnpGXFJn9MtQrKPi9eWnkJniSYMXRaTXWr9KC8X/qH+oMUmi3qtnElybNfqRM2D1
-	 V/OD/klsVoYjgQkpKPUBFLyG9XZrQS406L5LRzi+IlfSTcxeIBBNv9NcFjxgZWIsPXTUq
-	 Sej5g3nX7q3QT35BGfybyLscOGVGJsxqyyq77xzsYi09F0W/Sm6J9v/jXkSYw3DCIfxxJ
-	 eohQGmASHQ880DUMyQyBB55JKmFqoEXXd/WgLtazQyXj8V7CTsURIvUDBPBvVdve+GJVc
-	 b8mYdiKvvTdakzx8JxiBCmAcO0XBD1u6etfmEhsS1jmWcuR5gRTpnUrKKozXBssYE3A==
+	bh=BWMrcMxphM3j3KhJxvOCR+KbGizC6kQdxxuLzJskxVk=;
+	b=jpz6d9q/A868d3CLCuMZOkdLwsfGYd+iU0012/N3EFG45m3YS7EpgcaIuwFCGYjZ8dbC
+	 4piWt80HNB503txclDmygM9QpOS+M/fhaylPdDvB1baJZrlXK+ZeUYVE8Ih/Dw3lHDG3m
+	 yurEJ2yANZrnuwLsHfo19hod2CTHJCh1cesLVvPdvoNgsC5n15bUSuqr5KWQJRkyz2tbC
+	 bM11q5pFNjsTe4p7JzSNuqhPK2ARrtuSJs5g2pFVs4c4taCXRtccIq0kHIOdG95bYrYCP
+	 5g3BaiPQsRSMuvmMoDNzQdIFeYdMlHjlbz0jIvz+tUv74d8bk5FrF8AJBnm43BDZ9Vw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=HynF0hwX;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=fNbNglso;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 13F676073817;
-	Wed,  4 Nov 2026 19:44:24 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EACC6608AA2E;
+	Wed,  4 Nov 2026 19:44:54 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=HynF0hwX
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9144A1F00919;
-	Wed,  4 Nov 2026 19:44:12 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=fNbNglso
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7662A1F00919;
+	Wed,  4 Nov 2026 19:44:42 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793821464;
-	bh=RGxB3CLuL3hdMOFW6c8rETuQc0/Gu93ks+OA3zHK0Kk=;
+	s=k20260515; t=1793821494;
+	bh=BWMrcMxphM3j3KhJxvOCR+KbGizC6kQdxxuLzJskxVk=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=HynF0hwXz2ytbvRQ/tRwwiFgyWz0vIkPCQxUNQGSX/NnDGQ1w68NuKQ3Kbl+MqoQX
-	 8J7oHXHcLTQG2lwNLxQCXX70LF0ZV8X7+sNuxCRB/h6LupRGDVaGgTpLhVB66N3rc6
-	 tI4jBI+gZnk53Jn6xXJOB3T4pShCBRo0303YUYjU36zpeR5Fq1VBCTSBJgs9D7xNoL
-	 nRM7Nf0ZRQUe280MUMB6gTrfEPRIGT2ideQc9QRKVPxb3VQzoUYiRRvvW4mXYoSbZK
-	 CT7o3OoXqIatD6R9YkyrZxRNz94QoWOLCKEAfJ5VkH6HUvCBuSP/1PTuWytCnUt3iX
-	 I33mD4o8jVx+w==
+	b=fNbNglsoaWY3MivB4Krb9ygur7tWm8mUs0cHqsxMJlnZL4hmvUj4NpZPpgqhoir+9
+	 r6P5HeFpIBHXJbSEB1+ztv1etbY3xwg/WTpoGehsLz8jmkAj1RB2DsjnvTrPDDAQR1
+	 sJxSC21gvDIE7uTnl/T371mLEerBpkg/OZ92Zb/0+EEpN1sW+zMoMBLVEVPXdcExqD
+	 GqdrJq5fzzTLTFc7aowd/VBqLgscxEBi2alM3GjBK6H0BCw6YwXohUUphzup2egq9W
+	 Pmz19wJ6NZuK6lPrdMcy2P/XXD4nxOm/SXvk5581ENxcjbB9FyVMTHMEjr9pYUVAlp
+	 GcZdUK6ukGA+w==
 From: Christian Brauner <brauner@kernel.org>
 To: linux-fsdevel@vger.kernel.org
 Cc: Linus Torvalds <torvalds@linux-foundation.org>,
@@ -100,9 +100,9 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	linux-debuggers@vger.kernel.org,
 	"Christian Brauner (Amutable)" <brauner@kernel.org>,
 	Chuck Lever <cel@kernel.org>
-Subject: [PATCH RESEND v2 08/26] s390/dasd: let procfs copy in writes to /proc/dasd/statistics
-Date: Wed,  4 Nov 2026 20:44:10 +0100
-Message-ID: <20261104-work-procfs-drivers-v2-8-245e54e87116@kernel.org>
+Subject: [PATCH RESEND v2 10/26] scsi: let procfs own the seq_file of the host files
+Date: Wed,  4 Nov 2026 20:44:40 +0100
+Message-ID: <20261104-work-procfs-drivers-v2-10-245e54e87116@kernel.org>
 In-Reply-To: <20261104-work-procfs-drivers-v2-0-245e54e87116@kernel.org>
 References: <20261104-work-procfs-drivers-v2-0-245e54e87116@kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -116,77 +116,49 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2121; i=brauner@kernel.org; h=from:subject:message-id; bh=tPoM7KW2jugAI3HBgjDAkvMMKrMKVevq5gq8BMZsIqc=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS97qqZsvLFCqNf+6XMazRbVi3d/ODSoR215t5nK5i4r bYImJcc6yhlYRDjYpAVU2RxaDcJl1vOU7HZKFMDZg4rE8gQBi5OAZjI84cM/wy2X+zn+HlNtd83 kD+IaZPCPqU9hps4WOckbNvx/OehSHlGhlOcc5yPTdmUf3fCaiuLkJ2aUg1lKVZe31ctszCW1p/ gyQMA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1394; i=brauner@kernel.org; h=from:subject:message-id; bh=l1PqfsIz+cqTipGWNtI2ZFkSTs3hYfw6G0B1mtmwjUo=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS97qqfsY95+37HSwsWhLI3/eIN/LJB4/DUJtffcYbse 4MOv6/v6ihlYRDjYpAVU2RxaDcJl1vOU7HZKFMDZg4rE8gQBi5OAZiInzojw0dt25WLcirjIi9n xDf8Nz3LU+uhej0insNI9taHalfRDQz/0+/+X7Hnzkupq83x31NuGk1YKW9296S/iazikQuTstu 7+AA=
 X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 Content-Transfer-Encoding: 8bit
 
-Implement ->proc_write_buf() so procfs copies in what is written before
-it pins the entry, and parse the command from that copy. Commands longer
-than PAGE_SIZE - 1 bytes are rejected now instead of cut at 64k.
+Declare the show function and let procfs open and free the seq_file of
+/proc/scsi/<driver>/<host>. ->proc_open() only preallocates the buffer
+now. Reading the file then no longer holds up its removal when the host
+goes away.
 
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- drivers/s390/block/dasd_proc.c | 17 ++++++-----------
- 1 file changed, 6 insertions(+), 11 deletions(-)
+ drivers/scsi/scsi_proc.c | 8 +++-----
+ 1 file changed, 3 insertions(+), 5 deletions(-)
 
-diff --git a/drivers/s390/block/dasd_proc.c b/drivers/s390/block/dasd_proc.c
-index 86399427f01d..6c3bbb7dfe85 100644
---- a/drivers/s390/block/dasd_proc.c
-+++ b/drivers/s390/block/dasd_proc.c
-@@ -15,7 +15,6 @@
- #include <linux/slab.h>
- #include <linux/string.h>
- #include <linux/seq_file.h>
--#include <linux/vmalloc.h>
- #include <linux/proc_fs.h>
- 
- #include <asm/debug.h>
-@@ -247,17 +246,15 @@ static int dasd_stats_proc_show(struct seq_file *m, void *v)
+diff --git a/drivers/scsi/scsi_proc.c b/drivers/scsi/scsi_proc.c
+index 3e49c4c8704f..59229bf9938e 100644
+--- a/drivers/scsi/scsi_proc.c
++++ b/drivers/scsi/scsi_proc.c
+@@ -94,10 +94,10 @@ static int proc_scsi_show(struct seq_file *m, void *v)
+ 	return shost->hostt->show_info(m, shost);
  }
  
- static ssize_t dasd_stats_proc_write(struct file *file,
--		const char __user *user_buf, size_t user_len, loff_t *pos)
-+		char *buffer, size_t user_len, loff_t *pos)
++/* procfs opens the seq_file */
+ static int proc_scsi_host_open(struct inode *inode, struct file *file)
  {
- #ifdef CONFIG_DASD_PROFILE
--	char *buffer, *str;
-+	char *str;
- 	int rc;
+-	return single_open_size(file, proc_scsi_show, pde_data(inode),
+-				4 * PAGE_SIZE);
++	return seq_preallocate(file->private_data, 4 * PAGE_SIZE);
+ }
  
--	if (user_len > 65536)
--		user_len = 65536;
--	buffer = dasd_get_user_string(user_buf, user_len);
--	if (IS_ERR(buffer))
--		return PTR_ERR(buffer);
-+	/* strip linefeed */
-+	if (user_len && buffer[user_len - 1] == '\n')
-+		buffer[user_len - 1] = 0;
+ static struct scsi_proc_entry *
+@@ -140,10 +140,8 @@ scsi_template_proc_dir(const struct scsi_host_template *sht)
+ EXPORT_SYMBOL_GPL(scsi_template_proc_dir);
  
- 	/* check for valid verbs */
- 	str = skip_spaces(buffer);
-@@ -296,13 +293,11 @@ static ssize_t dasd_stats_proc_write(struct file *file,
- 		pr_info("The statistics have been reset\n");
- 	} else
- 		goto out_parse_error;
--	vfree(buffer);
- 	return user_len;
- out_parse_error:
- 	rc = -EINVAL;
- 	pr_warn("%s is not a supported value for /proc/dasd/statistics\n", str);
- out_error:
--	vfree(buffer);
- 	return rc;
- #else
- 	pr_warn("/proc/dasd/statistics: is not activated in this kernel\n");
-@@ -312,7 +307,7 @@ out_error:
- 
- static const struct proc_ops dasd_stats_proc_ops = {
- 	.proc_show	= dasd_stats_proc_show,
--	.proc_write	= dasd_stats_proc_write,
-+	.proc_write_buf	= dasd_stats_proc_write,
+ static const struct proc_ops proc_scsi_ops = {
++	.proc_show	= proc_scsi_show,
+ 	.proc_open	= proc_scsi_host_open,
+-	.proc_release	= single_release,
+-	.proc_read	= seq_read,
+-	.proc_lseek	= seq_lseek,
+ 	.proc_write	= proc_scsi_host_write
  };
  
- /*
 
 -- 
 2.53.0
