@@ -1,57 +1,90 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.218.53
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793822658;
-	b=BAQIS1i9RkmELuYltKeC+VftsjtoN7UUtuSdfoPfhCon7NDAtSQIFKrX/kAj17SmeD1a
-	 LXIcLK+SRfoAfUEoocUJjBxkqm5RzDDK/dFrDg+denOyykUOu8axsa+TGDBsyI8/qcvPX
-	 zRpZWQQznwduH4+X/n5PPhBfze/7M9x1OD8OZhdb+Yd5hes2lDP+jsnZwdnMGf/4bhUG6
-	 VxFkhU1NZ3lnCBnmQefi8V56ZgQk7j3WbB89dsTsdgrt+Ff0jy/2oePMAZnBqS6ysoG9R
-	 YWMCBjPCd/6zBPEi74jhIX+JDXJPp6kT6QhM/CETCblUZ0r1DPKgtPjztp5smLUrCbw==
+	t=1793822729;
+	b=1bgBS3A9Rlf86w/buIwLXB4k6cnIopW98gd4D12lkNWFfQAtVVbvdyDabDufpFgPKCSH
+	 4yE27YheNvt+y9r7zMk3/BwNOpZsyXVDEkWrZC6b8TYhzw4KPsGWUr79ZS+iz6v50pair
+	 qHU70XgmIosDO1j4E/m4QIWibaQDdUVIIwawf0nq6HCz7stDtAJpq5kWvEyiZ+t/I2Yuo
+	 WgJDoWipjfPa3JBnblwcZqU6ugs37axmtfxPCihYmc3gTN9pAi4W58TVIKN5od06xKzHu
+	 IF62A2SLbOg/TmWRjwxZC7zfiodA5Ji4l/8sFw1WcvIBLYo2AGI5HK4t9z5tKdfRFAg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793822658;
-	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
-	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=N6X/0zuc0HDWroLCKDHvOQ3Qwk/oYmD2m2xs2Jggit8=;
-	b=w9NnB5iyF+mGuqbj/NfORhUYP5OpjXQpMFcdbtzQdEQ/ybUF0AyKRdc/9SkLn3jw1z66
-	 HLfX3rFUsnjyNKx1vRG58PT0beQ9kKwgF1JM+jgkK6mTon7EhqTvSf5TbVuHnTHR7m9qH
-	 DVbKoQ0p2+g3hRiZElRLvufEmGgM/2O/CAXbfrY/rXPiChFvfVkWndz8TZ3gcRisFP/DC
-	 q93/KGwzF/mJBJ4rjmWcyACbY3yV6EJFyeXO/s2u90iCzT/K7HPRdqx8LL/Oy8yM2wjZq
-	 ROS1fYf3FYrgqBbO3tLRfmgdLETbXAh7VGn5y9lclKFZPqx6ZoDHo4iixzvQ7ZbrYxg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793822729;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
+	 Received:X-Forwarded-Encrypted:X-Received:MIME-Version:References:
+	 In-Reply-To:From:Date:X-Gmail-Original-Message-ID:X-Gm-Features:
+	 Message-ID:Subject:To:Cc:Content-Type;
+	bh=LCqiLHf1DIbfKNXx3ccWkvqxBhOdwo3yYkazQxIGarg=;
+	b=J+XrLi/l0x5xWw9K2aKUTaOz5vpVpv43KKXe7ShOiW6wR4ZCquufGnwLGK8bWRvM01at
+	 sx4JSQVpPBD/SKfyCWpNjY2DhLEKhZy8Vc9iVJ6psPyYvC54U5eSB/vThP/cLaNvN8gSG
+	 PUH+ELT8a75BG8oXr6OAGnd67ztctW3wN21A7fGcZF809L/H5MzoSqLEa3BMqJnXD+yOO
+	 dgOJegm/7gDG0uf5P7K/2p63g0aw4dkRIsh1vxcXPFvkg5x1Ujs8OJB6NKQr+IxXsjaaN
+	 ZqZepNa0Ns9CrZdTQThZUF3WDzHhndNngWavBZO/S2gUFiLJktlmO0TkbEYcrTQC9LA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=aOG30cNt;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=none header.from=linux-foundation.org;
+	spf=pass smtp.mailfrom=linuxfoundation.org;
+	dkim=pass header.d=linux-foundation.org header.i=@linux-foundation.org header.a=rsa-sha256 header.s=google header.b=fI2nmlcI;
+	arc=none smtp.remote-ip=209.85.218.53
+Received: from mail-ej1-f53.google.com (mail-ej1-f53.google.com [209.85.218.53])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0ADED606D834;
-	Wed,  4 Nov 2026 20:04:18 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CF3B9606FAD4
+	for <linux-ext4@vger.kernel.org>; Wed,  4 Nov 2026 20:05:28 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org CF3B9606FAD4
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=linux-foundation.org
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linuxfoundation.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=aOG30cNt
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 864AA1F000C1;
-	Wed,  4 Nov 2026 20:04:17 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793822657;
-	bh=N6X/0zuc0HDWroLCKDHvOQ3Qwk/oYmD2m2xs2Jggit8=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=aOG30cNtRKTSNKgd97MJtxtSPGjWKnxv72pFVT4Gxc2vN5T3NYLIbQkYWMEUN2L2T
-	 VSR00nFx5xuoa1tOaNUKAE99o5CTX8Gx5ByWu5KjxLEDOUusibvGUD0/vzhTTiuU+m
-	 sCL2SdIByoR318Q6Swms+ERtKFfogEazjL4NFFyJMvcBpLjbFmYj99MDXDXmD5OdAm
-	 5qq1gVb92RwV8a1SlXmhwUrFOcBrCUsJyLSc/UsV909beOhRuAw/AD2fD9B8wLnRCC
-	 EnjrfxF4A8TT86F3uL3yshSELeCI2v4uJrOVcKngG9n8VDFWrThoOZ8W3GKHe8Z0GW
-	 AZFqueCcW6teA==
-Message-ID: <sashiko-outbox-197991@kernel.org>
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH 5/5] f2fs: use I_VERITY_BUILDING instead of private
- flags
-Reply-To: sashiko-reviews@lists.linux.dev
-To: "Andrey Albershteyn" <aalbersh@kernel.org>, ebiggers@kernel.org, hch@lst.de, fsverity@lists.linux.dev
-Cc: linux-ext4@vger.kernel.org, dsterba@suse.cz, tytso@mit.edu
-In-Reply-To: <20261104194618.103332-6-aalbersh@kernel.org>
-References: <20261104194618.103332-1-aalbersh@kernel.org>
- <20261104194618.103332-6-aalbersh@kernel.org>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Wed, 04 Nov 2026 20:04:17 +0000
+	dkim=pass (1024-bit key, unprotected) header.d=linux-foundation.org header.i=@linux-foundation.org header.a=rsa-sha256 header.s=google header.b=fI2nmlcI
+Received: by mail-ej1-f53.google.com with SMTP id a640c23a62f3a-c418e215671so166827366b.0
+        for <linux-ext4@vger.kernel.org>; Wed, 04 Nov 2026 12:05:28 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=linux-foundation.org; s=google; t=1793822727; x=1794427527; darn=vger.kernel.org;
+        h=content-type:cc:to:subject:message-id:date:from:in-reply-to
+         :references:mime-version:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=LCqiLHf1DIbfKNXx3ccWkvqxBhOdwo3yYkazQxIGarg=;
+        b=fI2nmlcItpwZxqRsmDWssHJaMT2IN8dLg7E1xDQbx0Et/5dAwJ3lC+28bQvSn3TcBy
+         jCCz6aP+hY985kmEWKQ8J3n3DZJgb7Mf7tqsXWxEtttRySDwTo9j3SEkofmGPUukuzUB
+         aTxGLiQfrDGmJiexVo8c15QHheFgr9P51oFII=
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1793822727; x=1794427527;
+        h=content-type:cc:to:subject:message-id:date:from:in-reply-to
+         :references:mime-version:x-gm-gg:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to:content-type;
+        bh=LCqiLHf1DIbfKNXx3ccWkvqxBhOdwo3yYkazQxIGarg=;
+        b=lxPYGOhEIiDEwt+s8/NwPW1yRffRwlBR2b1Vw4uiwIDksskN6zHp7T+XEIw9WdU/Ms
+         aVHC1YF3JatylKB4wCgu/OXIwbj/+a77SZvrwOsM3pniyz7mS0W3n0ardGUzJ36W8QgB
+         y90cPLK4fA7Uw/eZki70V+j3Qp8gR3oVIm48o50dyaZl+mvb2r4DCXsMw6S1JKdOz3kK
+         K2vK+2/dHpzf1S6Rbebet3w77Q+z+bJPaUpIabKafDVt1bPjdNIl+3gZicagYBTggaPv
+         wQdTKz/LoMQrjx7WOVLxJDg09fhWmQUbaPXtqRf7W/uKNdSjQw3jU5yN+jCPguT6+uVD
+         +VbA==
+X-Forwarded-Encrypted: i=1; AKwUvBzn63mdzEy4c80E56Nwx9PWl25KNVpNGFxn9u9P8p6zzHOUe051i6ihV/dCNEHM8/X8DbmQisPYYXpB@vger.kernel.org
+X-Gm-Message-State: APuU4Z9RkRD+fNcbjBlk5Az3PkFSZnfK9qyGYVtps/+xng1Y3JDe0OE4
+	Xy+4Woj+MpRHIZgil4Bk8jTEyQbZcrpOh3kvyBjy8Bk7jfOe7/SDD9opXiu07/ZqVUv9KNZN8q5
+	PH54yW808Zw==
+X-Gm-Gg: AYBFou1pJJ44IjqLR+10RWYN392bIdvK8dzc7CPq4tSHo+1UQKGtO7Qaf6rca2Xshg9
+	RFaUI9i0wEyH0qza/OvCmam57SmE3B+khmuEf0KTvGF5wfqC8C1URgnvW5ZDGL1r1GqhukQqoU5
+	1YbZwB3ObLceSiGOqJzh9/Q8g+CzJMciMdjerTs8gDaUV7A3SCtTZAersc/cunBPv0dmxzPbDzS
+	lyP+UYXWu4XhzaT9gPKsTSnbcwSHLWkvMs3i8YCtQGSYd4iTRRoN/wNbZKWvvo6uT/waztOM83m
+	GcR9RQUDKpvZf45Q98UtPxfhIa6bTu+NNRG5Eq+/uHtbgUu0aFKz6cmlWPvuUTTW0ZFgEDE00La
+	dE0hijESfhnMg3jJo/D7xL/lx3TPIjo4laMPVvH2jFJ1oHlr3bMTBvXoSlSYNGmXMl9rLkOHwoQ
+	GdO3bVCAS3h9+ihsnnhiaYZgiZ4iQ9Mduh4Nes8T074N6HBlfBKZOeaOVVVqQ10f+ENdmGg71n8
+	2NL8yIPvah62dwDUXaO59yE555Qk28Fk2jr2FB3wxLNtCQTVCokz2pe62rHx27mRG8KRU6mDLci
+	t/WTzvki5DopqoVPMUjk7KWtqNMj2YebEvMrMbD2MMXY8LH/XHgLD8r+IWuOv8j5b4ZqcsFW+2D
+	vNw==
+X-Received: by 2002:a17:906:1b0d:b0:c4c:bff4:202a with SMTP id a640c23a62f3a-c4cbff4325dmr831692066b.49.1793822727385;
+        Wed, 04 Nov 2026 12:05:27 -0800 (PST)
+Received: from mail-ej1-f43.google.com (mail-ej1-f43.google.com. [209.85.218.43])
+        by smtp.gmail.com with ESMTPSA id a640c23a62f3a-c4d0e4a76d6sm104586166b.84.2026.11.04.12.05.25
+        for <linux-ext4@vger.kernel.org>
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Wed, 04 Nov 2026 12:05:26 -0800 (PST)
+Received: by mail-ej1-f43.google.com with SMTP id a640c23a62f3a-c4550d8ab15so175921566b.2
+        for <linux-ext4@vger.kernel.org>; Wed, 04 Nov 2026 12:05:25 -0800 (PST)
+X-Forwarded-Encrypted: i=1; AKwUvByF5rYLWOBMcdLdspwCagMxufvaPJyLmDvDs0pr22WsQVLEmSrS42yTcFtM+D+4jDqILmilXLq4EXce@vger.kernel.org
+X-Received: by 2002:a17:907:60c8:b0:c49:a4b1:9cb1 with SMTP id
+ a640c23a62f3a-c4ca795fa50mr1973235866b.3.1793822725121; Wed, 04 Nov 2026
+ 12:05:25 -0800 (PST)
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -60,79 +93,52 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
+MIME-Version: 1.0
+References: <20261104-work-procfs-v2-0-b45cd5789ac5@brauner> <20261104-work-procfs-fs-v2-0-319e0f9a8aae@kernel.org>
+In-Reply-To: <20261104-work-procfs-fs-v2-0-319e0f9a8aae@kernel.org>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Wed, 4 Nov 2026 12:05:08 -0800
+X-Gmail-Original-Message-ID: <CAHk-=wj9Y9NcOesBBm+jhPjYa7qO00fD7g7uwX+H-k0-R2difA@mail.gmail.com>
+X-Gm-Features: AclHuK9j_YIgrwhhpWOlnull6heAULBd4dgTqoOhUQQjFm_MgoIgrL1vgPfefvI
+Message-ID: <CAHk-=wj9Y9NcOesBBm+jhPjYa7qO00fD7g7uwX+H-k0-R2difA@mail.gmail.com>
+Subject: Re: [PATCH RESEND v2 00/30] proc: convert the fs, kernel and mm
+ entries (Part 5/7)
+To: Christian Brauner <brauner@kernel.org>
+Cc: linux-fsdevel@vger.kernel.org, Jann Horn <jannh@google.com>, 
+	Josef Bacik <josef@toxicpanda.com>, Chris Mason <mason@kernel.org>, 
+	Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, Eric Dumazet <edumazet@kernel.org>, 
+	Thomas Gleixner <tglx@kernel.org>, Al Viro <viro@zeniv.linux.org.uk>, 
+	Jonathan Corbet <corbet@lwn.net>, Christoph Hellwig <hch@lst.de>, Greg Kroah-Hartman <gregkh@suse.de>, 
+	Joel Granados <joel.granados@kernel.org>, Kees Cook <kees@kernel.org>, Jan Kara <jack@suse.cz>, 
+	Jan Kara <jack@suse.com>, linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org, 
+	linux-acpi@vger.kernel.org, linux-kselftest@vger.kernel.org, 
+	linux-s390@vger.kernel.org, linux-scsi@vger.kernel.org, 
+	linux-um@lists.infradead.org, linux-wireless@vger.kernel.org, 
+	linuxppc-dev@lists.ozlabs.org, netdev@vger.kernel.org, ntfs3@lists.linux.dev, 
+	platform-driver-x86@vger.kernel.org, coreteam@netfilter.org, 
+	kexec@lists.infradead.org, linux-pci@vger.kernel.org, 
+	linux-sound@vger.kernel.org, netfilter-devel@vger.kernel.org, 
+	dri-devel@lists.freedesktop.org, ibm-acpi-devel@lists.sourceforge.net, 
+	jfs-discussion@lists.sourceforge.net, linux-alpha@vger.kernel.org, 
+	linux-arm-kernel@lists.infradead.org, linux-cifs@vger.kernel.org, 
+	linux-fbdev@vger.kernel.org, linux-hwmon@vger.kernel.org, linux-mm@kvack.org, 
+	linux-sh@vger.kernel.org, linux-usb@vger.kernel.org, 
+	samba-technical@lists.samba.org, sparclinux@vger.kernel.org, 
+	linux-m68k@lists.linux-m68k.org, linux-doc@vger.kernel.org, 
+	linux-serial@vger.kernel.org, linux-atm-general@lists.sourceforge.net, 
+	Takashi Iwai <tiwai@suse.de>, linux-input@vger.kernel.org, linux-raid@vger.kernel.org, 
+	linux-ext4@vger.kernel.org, linux-modules@vger.kernel.org, 
+	linux-debuggers@vger.kernel.org, Chuck Lever <cel@kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 
-Thank you for your contribution! Sashiko AI review found 1 potential issue(=
-s) to consider:
-- [Low] f2fs: unconverted f2fs_verity_in_progress() calls break build in da=
-ta.c
---
+On Wed, 4 Nov 2026 at 11:49, Christian Brauner <brauner@kernel.org> wrote:
+>
+> Part 5/7 of "proc: move procfs to what kernfs does", on top of part 2
 
-commit 915530af8afaaef004825dfc719049bb96b8cda2
-Author: Andrey Albershteyn via Linux-f2fs-devel <linux-f2fs-devel@lists.sou=
-rceforge.net>
+Christian - way too many patches, re-sent much too often, cc'd to way
+too many people.
 
-f2fs: use I_VERITY_BUILDING instead of private flags
+Nobody is going to read these repeated resends, and all you are doing
+is clogging up peoples mailboxes.
 
-This commit replaces the f2fs-specific FI_VERITY_IN_PROGRESS flag and
-f2fs_verity_in_progress() helper with the generic fsverity_is_building()
-helper.
-
-> diff --git a/fs/f2fs/f2fs.h b/fs/f2fs/f2fs.h
-> index 4fa4d8042f702..11d1cade11510 100644
-> --- a/fs/f2fs/f2fs.h
-> +++ b/fs/f2fs/f2fs.h
-> @@ -925,7 +925,6 @@ enum {
->  	FI_EXTRA_ATTR,		/* indicate file has extra attribute */
->  	FI_PROJ_INHERIT,	/* indicate file inherits projectid */
->  	FI_PIN_FILE,		/* indicate file should not be gced */
-> -	FI_VERITY_IN_PROGRESS,	/* building fs-verity Merkle tree */
->  	FI_COMPRESSED_FILE,	/* indicate file's data can be compressed */
->  	FI_COMPRESS_CORRUPT,	/* indicate compressed cluster is corrupted */
->  	FI_MMAP_FILE,		/* indicate file was mmapped */
-> @@ -3627,12 +3626,6 @@ static inline void clear_inode_flag(struct inode *=
-inode, int flag)
->  	__mark_inode_dirty_flag(inode, flag, false);
->  }
-> =20
-> -static inline bool f2fs_verity_in_progress(struct inode *inode)
-> -{
-> -	return IS_ENABLED(CONFIG_FS_VERITY) &&
-> -	       is_inode_flag_set(inode, FI_VERITY_IN_PROGRESS);
-> -}
-> -
->  static inline void set_acl_inode(struct inode *inode, umode_t mode)
->  {
->  	F2FS_I(inode)->i_acl_mode =3D mode;
-
-[Severity: Low]
-Does removing f2fs_verity_in_progress() break the build in fs/f2fs/data.c?
-
-Two callers in fs/f2fs/data.c still reference f2fs_verity_in_progress()
-after this patch:
-
-fs/f2fs/data.c:f2fs_write_cache_folios() {
-...
-retry:
-		pos =3D folio_pos(folio);
-		end_pos =3D pos + folio_size(folio);
-		isize =3D i_size_read(inode);
-		verity_in_progress =3D f2fs_verity_in_progress(inode);
-...
-}
-
-and:
-
-fs/f2fs/data.c:prepare_large_folio_write_begin() {
-...
-	if (!f2fs_verity_in_progress(inode) &&
-	    !(pos & (PAGE_SIZE - 1)) && (pos + len) >=3D i_size_read(inode)) {
-		size_t zoff =3D ori_off + len;
-...
-}
-
-Should these two call sites also be converted to fsverity_is_building(inode=
-)?
-
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261104194618.1033=
-32-1-aalbersh@kernel.org?part=3D5
+             Linus
