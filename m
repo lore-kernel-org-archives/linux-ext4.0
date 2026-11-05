@@ -1,48 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793906932;
-	b=JHpkX9VbkZ0bl1NlaFWDCT6yGltysKgvkSxWXiZIJXn8YcMPsuArz5Wuwf0WcGB2TwLC
-	 2xZUE3fQmEn0lbmUlRayGa46TNJVIVipjp0tgS6aS5wqFxXC0r9cZrHQdnuSK3XBlapEK
-	 XOPc9lmWNWBp1ecxy3iwiEfDiR0vnsqYVsx52JpTMs5tAyCCR9FV4JYL3FHdYGQr4DVFC
-	 Sg+RcbjScc5UgNBIIN3uOrdhvXKrNI4iLpi/f98Bsv6JxAyo0L+T+JOlFA94FMQjmOTxS
-	 zOSiSeJI3k/amYtkay52r7IGyUkfO5vnJ8FOZ3neQbbzXPRP+5gZm9y1XOlpTfA4JyA==
+	t=1793906936;
+	b=ZEJobCguZig757Q0AOSdeEjTDSsL0ABO+BUrkf31hX02Qb7Pd8rf0UEcyxxlo7XSqx3o
+	 WQ52v5hnm8u8xCfN+3+1BaE3+07iPizQ+QGji57BSuOeFzgI7Su8+on34kyGeuQkDfTHk
+	 ia5Bh4yFzelyf1QDMYnPsyIzho/ULaPfFIlVh92U/HWy24ygwH0o7xjESEhv11aSfXy2m
+	 4rJkpXor3H+d+7FvOWOCcZqzRbVPkeQjRKc76ZaHGiDL0x7NIRw3kuVjDihuJwiXcFu4M
+	 86YxkfAR5Xm946GfStmwcjCtFBI/hqy0N2Q253zP54wAb0/9mcjRuCdO0UfeaUSMX5A==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793906932;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793906936;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=VSHZyt2HX6jrf2329Ijyz/9CIcWqtdZcAyFYcq/4Bq8=;
-	b=Y13naW4aVV4A6cNCUSpOKaWlg2RPTdoaT4NHZ3dRFzn/dnG/NQ3n8KOsnqaywYt13daV
-	 40y7AVrCMyiHnV4tpFpI1cjHPftj/A6Wf16PEGEA6Mxp0wpHLYTagXqAZYMqkJo5h7nrd
-	 cSxqopi+UuHEaugF4WcHoDNYGiZPvpsnJjz/Yz5l6ygkvsIeqCE1hBvB+VfbcF489lMnr
-	 HEnAARKXU0d4qt9MIDOL/hf6bvcOUXqrSh3oApYTgWbTwpu++EQxfJZxEqkZEKP94YOqg
-	 BlRyO8MgzhwQ2NB6md86EXCHklOFGFuTIbqTexzCKb1CQJ0Fg7heUEwcnREQlTDpzNw==
+	bh=DrjTmat1J2FdEKELfc0tb5qP5SKO3u8dr9sn5WHr8X8=;
+	b=xxlwv7KnSoUmEqZ97Vr9g73fIsKH6uF8MlpWzslvcg0FROReHSOcGVwPn0txYXOB+RZ3
+	 tCYXI08fw0Swk+jSKXnXfl5pkL1A48+5HKPHMV8L8fHPAQOFA6P0Y2+ZJZHVrbG6X+SGy
+	 hSu6l2V4R8m60fw3iWo5Ir+i4nAmfoqanSR1VQUEEkheFrcfQBgkITNzXzjN5aG1L0IXP
+	 HjI69k8Fiuf0JYgTeyXPb5tY+tS2HU5yaVrklt2qDtvpZO9+w4bkh/fjCn9Bgm/PrBSQI
+	 liUpmxX1uH8GP/aWeRXwyAH/vPXrBcWLKNH1xQZIEXnhbdOBKjOMwcr4zrSyJGOa8pg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="bw/WUc87";
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=JWpGZ4Rl;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 51774606A331;
-	Thu,  5 Nov 2026 19:28:52 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 43DD4606D83B;
+	Thu,  5 Nov 2026 19:28:56 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=bw/WUc87
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 69BD71F00A1A;
-	Thu,  5 Nov 2026 19:28:50 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=JWpGZ4Rl
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7FBED1F00A28;
+	Thu,  5 Nov 2026 19:28:54 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793906932;
-	bh=VSHZyt2HX6jrf2329Ijyz/9CIcWqtdZcAyFYcq/4Bq8=;
+	s=k20260515; t=1793906935;
+	bh=DrjTmat1J2FdEKELfc0tb5qP5SKO3u8dr9sn5WHr8X8=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=bw/WUc87dAK9OgwLDerM/G7Pe9RKageq/S7vyIMIV+dxKfDT/6+AqyOaZ6Fy24Sf5
-	 xZ0+NlTB1ife40KhyEO8/2i3RZt4uYwfQUof6r8FI5lnRq/LcyHfWASkm3/MjWrdRi
-	 BgQ8a/ZYKTrhKL/NQvAtS4X8/cdEouDrtzAKSt2JTd0adgchhl1YlumOBJltoAEeGN
-	 vYbB+LfXceHt3UW6QGLdXHtaAnZDe7rNdeXAjPjeo8fIdhcgFV0G7rwEhhGvDXSfkE
-	 wVgK162apTb1SAAInG0qnJMlwH5s5bUi5ICww4nLneNlWhcy3veuvsSne6hkFWvg7u
-	 jpKMdfeHfDQsw==
-Message-ID: <sashiko-outbox-199865@kernel.org>
+	b=JWpGZ4RlWoj2+o7rDOgbYtLD5GBP94pE2VNBU3WyFn6daNIqMb569ZSjbdA0EeSOr
+	 tAzkET2HaIHRbLQu45I3uimLTu8RZeZWJbIffcQ2/w3JGBj4a++BqBYReMLzdb5Sog
+	 qVScSeuBZeP4+0XkYuqIPKV1z9HgOT23/QBUP6cy8q34hHyhoqKFStqPtFfmyeBPB9
+	 XZe3Tm76jQQVReuVAANs6Njr2e6pTi5vPjaUYZ9qEi/4DpJTujoziNZjE6lkL79ePk
+	 nQQYT+CwPf4q1428aPXyvT5gzbZSHUrL2Gr9aiSU4j1DnnvA0JPFAyBjqU1sPq9vkw
+	 JeDEpGzOxTYeQ==
+Message-ID: <sashiko-outbox-199867@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH RESEND v2 02/51] scsi: esas2r: don't copy kernel
- pointers out in EXPRESS_IOCTL_GET_MOD_INFO
+Subject: Re: [PATCH RESEND v2 04/51] PNP: isapnp: don't go on when
+ isapnp_cfg_begin() fails
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Christian Brauner" <brauner@kernel.org>
 Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.com>, "Josef
@@ -55,12 +55,12 @@ Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.
  Iwai" <tiwai@suse.de>, linux-ext4@vger.kernel.org, "Chuck Lever" <cel@kernel.org>, tytso@mit.edu, "Heiko
  Carstens" <hca@linux.ibm.com>, "Vasily Gorbik" <gor@linux.ibm.com>, "Alexander
  Gordeev" <agordeev@linux.ibm.com>, "Christian Borntraeger" <borntraeger@linux.ibm.com>
-In-Reply-To: <20261104-work-procfs-bugfixes-v2-2-021c84d852e0@kernel.org>
+In-Reply-To: <20261104-work-procfs-bugfixes-v2-4-021c84d852e0@kernel.org>
 References: <20261104-work-procfs-bugfixes-v2-0-021c84d852e0@kernel.org>
- <20261104-work-procfs-bugfixes-v2-2-021c84d852e0@kernel.org>
+ <20261104-work-procfs-bugfixes-v2-4-021c84d852e0@kernel.org>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Thu, 05 Nov 2026 19:28:50 +0000
+Date: Thu, 05 Nov 2026 19:28:54 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -70,14 +70,16 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-> EXPRESS_IOCTL_GET_MOD_INFO fills in the addresses of the adapter, its
-> pci_dev and its Scsi_Host and copies the whole struct back to userspace.
-> Nothing in userspace can do anything with those addresses, and the
-> ioctl is reachable through /proc/scsi/esas2r/ATTONode, which is created
-> with mode 0444. Only pass the host number.
+> isapnp_cfg_begin() refuses a logical device number above 10 and a bad
+> card number with -EINVAL before it takes isapnp_cfg_mutex. The callers
+> that read and write the device's configuration, the proc file included,
+> don't look at that: they go on talking to whatever device the card
+> currently has selected and then unlock a mutex they never took in
+> isapnp_cfg_end(). isapnp_create_device() hands out logical device
+> numbers without a bound, so a card with twelve or more logical devices
+> gets there. Return the error instead.
 >=20
-> Fixes: 26780d9e12ed ("[SCSI] esas2r: ATTO Technology ExpressSAS 6G SAS/SA=
-TA RAID Adapter Driver")
+> Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
 > Cc: stable@vger.kernel.org
 > Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 
@@ -85,5 +87,5 @@ Sashiko has reviewed this patch and found no issues.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261104-work-procf=
-s-bugfixes-v2-0-021c84d852e0@kernel.org?part=3D2
+s-bugfixes-v2-0-021c84d852e0@kernel.org?part=3D4
 
