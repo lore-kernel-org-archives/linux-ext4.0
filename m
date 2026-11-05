@@ -1,48 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793906984;
-	b=Ej8P83s/WdGY0hSbUH5GByOVH0lXYGmc7BNG80TlsVCZJBqExocPxdfb+HVk5lIMBovT
-	 6fBcupEQunDZZbfTWmsQl5tBWpdCgKyySs+IEJwGmq2K78ouYiz6Wv5TwNpWSikB1IGdw
-	 K6+HkqZmezzoFre1nLIpy3QqKXKvUuS5cL6iO8aGN1TCam29E9rZyRlY9/WvhePZX8lp1
-	 yBrsyrySVS6NzzTSSQJ48+L7JIAe3hmkPM8toaBYKI8G8UkI2aDm/Zyrs1CvEOp+un2mx
-	 Aedtcy9QaA7X+EJA9eghoa1LeWVBG3v7X6yEmhRmdjBY8/ELwAxS9on0l3Qqw2c+iEg==
+	t=1793906986;
+	b=NkJ+6H1/7/RUAg/6MPu790HdpNT6RRdqeleoGtr+qBhqkD8QG+26OCYbxdiOEuybgMeu
+	 Ghg0o9d0nkvmRT2MWaBXC5zvwi+8lg+ZurkR3MHBtT2EIPvZTSC4WPJFBZiUErDhvJr8G
+	 gcN52wmKT7JpzxJpktCp9P2YS0W3As8xft+7Ca5RZ+4sYO7ebzv/qGQh/kFnHqsr0culW
+	 808pnFg5I1vF62Kyn/5CPIIKFsn980sxTj4bxo36wB1+BqDxOkBLkUSSu32epZOxM7Geb
+	 RmfogO7rVccXYT5Nb+CJgMTkNe/TqaUWJKknrtcwbWmw/rj0M+93hCF2dzMnZNTGn9Q==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793906984;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793906986;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=FD0zXeI/isP72fw/ayOidXLEWS0eS7g6u0vyIbhFYcI=;
-	b=BgaXxClQfoujgrkUP7245BSnA/DmUOiy7kY+/oAYkm24yvA5ujS/lZKNgeMsApkCzPdD
-	 xTkEri+LE6cLQVzahYJ0G9X0CrJStmUlXJLpb7FpM7iof8BQSWU7z/FUTuJTR85RtBxiw
-	 X3ketqofqwZQT/SJ35rbd8qJOiSbhW/H3JgPTFXPx1AV88nRV6WZ5o+5uYD8i7sBypSw+
-	 0h8vxT0Le899Ev1qY1q2rGOKikEjlk7/oiDocj1HUEn5Wo9u0PJHLeCop9K9gTvhTBT8D
-	 nxfVPFaPBm24VCLRZ8z2s18YJqcfWkF7DyuD0Jjd+Y7qNAWiqFdAtXf1piy8A7H1+Kg==
+	bh=qZX6TqimGj0FPnu/ads2TGWZcJdWF3Hg9sf4zFcOy0g=;
+	b=EXNabSDuRS9KyCleSdCztvnRaLzhmLfjFBmmlKkyY0D/UuorngghkqvBCh2WQnNTIcwp
+	 kZ+PhwwQYv5UwKroM4SH8T0jGTQq7ORFVk1vlguzt1qjxOw061wkb/HlleN9TjZuOkZBc
+	 RXFYeStCftzDQO0VI3E/Qg14u3q31NWaBICUP4HMWWXO/rDpu7jeHyLeWt2NrWbr2MuFt
+	 4SFGiPdJhM042G8vf+P0Ld9/uT8oMZ7EFvOxAQhWJ7u89XydkU5jqndws1HADuRH7YLRg
+	 be04gdz6m4y6zTGVroFflKSsWU0RXzXWmDPBeDhoI+lrhFjCD1tF9aFNe6HL8wR8w/g==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=H1XBvOeH;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ZVanxKXY;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C1783608363F;
-	Thu,  5 Nov 2026 19:29:43 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A565B606D806;
+	Thu,  5 Nov 2026 19:29:45 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=H1XBvOeH
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2966B1F00A20;
-	Thu,  5 Nov 2026 19:29:42 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ZVanxKXY
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2F0D01F00919;
+	Thu,  5 Nov 2026 19:29:44 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793906983;
-	bh=FD0zXeI/isP72fw/ayOidXLEWS0eS7g6u0vyIbhFYcI=;
+	s=k20260515; t=1793906985;
+	bh=qZX6TqimGj0FPnu/ads2TGWZcJdWF3Hg9sf4zFcOy0g=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=H1XBvOeHKHmEnMkDZUHXEyfUtxCM50iTgTdglUxQp7JDN+qlEWTIsqSpbnUlpXjRN
-	 988hcRyCOI8UWFHz/f+qK5LDQHQXayVRQ3262j47Zn0Jqh760jpB+AGIZEjmyhHslx
-	 Qqs2Y14lCac9UjAE5y2LlNmPZovL0mIlxziAqVpEYWF7VcSH/XugirGbUWyl+1JJad
-	 +WoSrpl7AP1ruZ40/ApjycvpY+4AnxyaNTaAT+qJ2l5Ec76Lx2QiGxwb9aykDXG/Bj
-	 ZE2WhLZrYRFfMMBbtAErBrjrpSX00IacUpKBWO3AqMz+Y2+flePrBdhMVItf47L5ux
-	 lY1VLRG53p8sw==
-Message-ID: <sashiko-outbox-199890@kernel.org>
+	b=ZVanxKXYs5ktHoZYv4D/uQQVfoZK40PC7mYX3MUUXNsjdgxlVN2mUV1CZyN0px3sS
+	 anXxwuSYs+8OfnMy1a61hJGPZSr8HsyYjUlLU0R+HHnCLVFbUeJZ4hqEvcD9OSxhNm
+	 b4yUcMf4KwRiwGKBG+O0J1WrPYTgdG7asoElB+ql62bi3qmtvieZQyAcNv0MXUEfLh
+	 DNPU06edIHuWUKftt7sZUQ/o1KlFN2EELj5lVnxD3jwTWFSvVtMFCs/jL4yOLC2wT0
+	 hwh0T0s0JGhXVBidtrd5QVgPIgEG9Rt/BldgHb+FXPeJchUpFRsxIMco2Y7J0eyQf+
+	 Pc1dVZ24TuZ+w==
+Message-ID: <sashiko-outbox-199891@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH RESEND v2 27/51] um: NUL-terminate what is written to
- /proc/exitcode
+Subject: Re: [PATCH RESEND v2 28/51] ntfs3: don't warn when a huge label is
+ written
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Christian Brauner" <brauner@kernel.org>
 Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.com>, "Josef
@@ -55,12 +55,12 @@ Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.
  Iwai" <tiwai@suse.de>, linux-ext4@vger.kernel.org, "Chuck Lever" <cel@kernel.org>, tytso@mit.edu, "Heiko
  Carstens" <hca@linux.ibm.com>, "Vasily Gorbik" <gor@linux.ibm.com>, "Alexander
  Gordeev" <agordeev@linux.ibm.com>, "Christian Borntraeger" <borntraeger@linux.ibm.com>
-In-Reply-To: <20261104-work-procfs-bugfixes-v2-27-021c84d852e0@kernel.org>
+In-Reply-To: <20261104-work-procfs-bugfixes-v2-28-021c84d852e0@kernel.org>
 References: <20261104-work-procfs-bugfixes-v2-0-021c84d852e0@kernel.org>
- <20261104-work-procfs-bugfixes-v2-27-021c84d852e0@kernel.org>
+ <20261104-work-procfs-bugfixes-v2-28-021c84d852e0@kernel.org>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Thu, 05 Nov 2026 19:29:41 +0000
+Date: Thu, 05 Nov 2026 19:29:43 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -70,12 +70,14 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-> exitcode_proc_write() copies up to sizeof(buf) bytes of the write into
-> buf and hands it to simple_strtol() without terminating it. So
-> "echo -n 5" parses whatever the stack held after the '5', and a write of
-> seven bytes or more reads past the end of buf. Terminate the copy.
+> ntfs3_label_write() allocates as many bytes as are written with plain
+> kmalloc(). A write that is larger than what kmalloc() can hand out then
+> trips the page allocator's warning, which panics a panic_on_warn kernel.
+> Use memdup_user(), which fails such an allocation quietly with -ENOMEM
+> like before.
 >=20
-> Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
+> Fixes: 7832e123490a ("fs/ntfs3: Add support /proc/fs/ntfs3/<dev>/volinfo =
+and /proc/fs/ntfs3/<dev>/label")
 > Cc: stable@vger.kernel.org
 > Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 
@@ -83,5 +85,5 @@ Sashiko has reviewed this patch and found no issues.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261104-work-procf=
-s-bugfixes-v2-0-021c84d852e0@kernel.org?part=3D27
+s-bugfixes-v2-0-021c84d852e0@kernel.org?part=3D28
 
