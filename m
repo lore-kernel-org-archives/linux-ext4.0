@@ -1,44 +1,44 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793879806;
-	b=3aMljxicSL4DDXlllKvGkgyRmDrjd5Pt18C1eK04/Vr4BQriad7ZUYCoeFsQ/qH5PzYu
-	 rRggQL0bH1G1AdszZ56hkw2yz5JyeCgjBDSj5/dL7gxmtsrdHZJ9EPCfZULnbe+R9ZOvu
-	 4Xvz+tUfKTHAcojzctn5rJH9AeRbvWst9dAC2Pcut5xfjTt4m95SspFKfI7soO5+tmKLQ
-	 IXkzq5ttqAJtolA9hQwDy8mCIR+k/a5/J+v6qfa3jN1rUenMC6vWzzrwldmrknFaNqOqA
-	 otrbGklPl7ZnwNcTFF5WHM3aeXSLHVRObqal8+1BSX7P947R/rr46gg1G0ETo5n3VxA==
+	t=1793879801;
+	b=A26ROR/C1JTKQdLVN2/dD9iIMhCKya/OrVNCTduv3fqSHx1uPiAHnc1xIR3UXvMcuesE
+	 u0xLWpf357v0uWjUl7zDtZ6CVYwsRbd2BO8K0xrRARDt9d9Pfy7VMvqZ2GVV7CERAzmvE
+	 GSMSQJsjp4/1L32TIUhlbzjeBMg1MVsEzfDvxC4uut7I7+c6+KW0L8zCMRRyqPwYXpY5a
+	 +nzH4+azulNWXBUg9wmddtZHuxF2i//AApGz+A5gCEkbG8+fip067b+t56In6fsL3+WLD
+	 /cAdox6Ia08dDwwpN0TwBLqgcv9UZE5RlR8nOoF5weGN9JuiNWdl/4msmNFV+brfZfA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793879806;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793879801;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
-	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
-	bh=S9Elr35owCGoWrbIbOfwaKZniSZ+EtPctIpo1HzYHSY=;
-	b=Rzm2VIQoBQGDBT0LyhQn/DhR39rzfLXJS8zJassLJEajOEZs/8o4yVj2APcLukcF1BsN
-	 CqLEavwfKvQrglNf5ekFWV22MaCFdtLD3LMWoEncdbyIw+nwP77mLZIVMhd8gEAWn25R0
-	 1ki1u8sxwgV3S3SFPZ9tWHvXoxwZQSNj+4XZ7hVjghIDZAKtafdHFjLSURqxF9zTiV6I+
-	 c+z/1Ay84IhTGTaW0JrxCvK8lDUSdg6ptsLZVZ8sFxLPYid9BHTQQ6O2B0GNluAVOTeKR
-	 x3+SqBYbEAVrxEEGcZnNrRwRuio9O6pyxqhbex7+5t2UuT6AchJLTaWPyl+35hDc2XA==
+	 MIME-Version:Content-Transfer-Encoding;
+	bh=jWfWtiSRF9ohz4K/V0l41cooucJsu+dpibJLDPYDXkg=;
+	b=j6I+xWW+Ku7KPn47zBREYK2OAIgkZS3LfUNnNw6PTjdE2N4V15+gxUEJ9jvo7CZGrFfC
+	 A/A1Eiuwm+hA5P/9FY4ZwDnkS0qc711PK+PTzGu43zj9nTE2CqMEiuCPreY35TfKONfiD
+	 p2cuXOYd3cudzMN0R/oCkYCeyQtQC3qBLJyyVt5JHl+UT8FO5tvfxZWcve5wloPAVphec
+	 nBtwg9D6orczh1N6G+bIqJVbbL674Bxa05RhnmCFrmbGD1AnquvEk/BVCpzECkhe8b1lv
+	 cbk8h7cATln8aYml+JpdjmBMRzzSmVKIxenV0Ao3WMxFDimdvMfLrbrLE1TvSpWbG3w==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=DgBGr1nZ;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=AjaW5H+p;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 73B96606A328;
-	Thu,  5 Nov 2026 11:56:45 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=DgBGr1nZ
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id DE6CC1F000C1;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 884E2606A329;
 	Thu,  5 Nov 2026 11:56:41 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=AjaW5H+p
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2E0671F00919;
+	Thu,  5 Nov 2026 11:56:37 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793879805;
-	bh=S9Elr35owCGoWrbIbOfwaKZniSZ+EtPctIpo1HzYHSY=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=DgBGr1nZDAETi124q1hztIbhXV6KtPoh9zp8Kr1LzjPn5+GbCdwbl6JBBxqprK/nL
-	 KJr5Gvt5nNxIUrG9+7GyDhCjrCFkGGTUDcnSwU/xJc/nJ3S+qjSMYp2DfB7SzP7+WM
-	 lR3RxxVf5C/KduUopuvlnjE9tm2f6zVpmzbGaoMYL7TTAtLyqLGf0b0QbeGQja4ZaX
-	 qeZcTF3eb8UWxGQbqqQt4FIAMPKIdmXwSBputI1wBx0D3XQWUCqF7L0DGnFQ2iaEgl
-	 la51mVTz2YciPEh0TEggsXfjJcEQ+4+TRICemIp9QK/kMTfIRZbpYCAwK0WJepNQci
-	 mSBNyan/kY/Bw==
+	s=k20260515; t=1793879801;
+	bh=jWfWtiSRF9ohz4K/V0l41cooucJsu+dpibJLDPYDXkg=;
+	h=From:To:Cc:Subject:Date;
+	b=AjaW5H+psLSec360G8YGjTp9dQ4N0SAk+L8tN9wncqWl0DTzYxgvn/hGtTXHzfHOs
+	 QNfs7PHT3/n1ieFpBsgAq+Ad8aLbAd4WK+TB+Pdp2yBKncv6QSj8pWA0Nx7FZrgXpb
+	 YnbqSwrkbE/30RIwBExMTH6zdBIzmw3GQCavbq9/sYMGfJtnWUUVWCQPiyP/6kHl+d
+	 IMrAPnfivXIbEqserKVywaSln2M+6CyV4pTEE4+dz9UgqTLiimGPSXO/6IgukbEygT
+	 sgMYiVBS0RzFCI0Zy7T+XSY36pDuEKkKgvhMtvzDV5Qs7HDIfNGOyKUYMSrunQ/KaO
+	 1KL5jt66feBnA==
 From: Andrey Albershteyn <aalbersh@kernel.org>
 To: ebiggers@kernel.org,
 	hch@lst.de,
@@ -54,14 +54,11 @@ Cc: Andrey Albershteyn <aalbersh@kernel.org>,
 	viro@zeniv.linux.org.uk,
 	jaegeuk@kernel.org,
 	chao@kernel.org,
-	tytso@mit.edu,
-	Boris Burkov <boris@bur.io>
-Subject: [PATCH v2 1/5] fsverity: strip FS_VERITY_FL from FS_IOC_SETFLAGS
-Date: Thu,  5 Nov 2026 12:55:26 +0100
-Message-ID: <20261105115532.613467-2-aalbersh@kernel.org>
+	tytso@mit.edu
+Subject: [PATCH v2 0/5] fsverity: lift ioctl() input masking and runtime inode flag to VFS
+Date: Thu,  5 Nov 2026 12:55:25 +0100
+Message-ID: <20261105115532.613467-1-aalbersh@kernel.org>
 X-Mailer: git-send-email 2.54.0
-In-Reply-To: <20261105115532.613467-1-aalbersh@kernel.org>
-References: <20261105115532.613467-1-aalbersh@kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -73,48 +70,53 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-The common use of FS_IOC_GETFLAGS/SETFLAGS is get-modify-set loop.
-Filesystems could return verity status with GETFLAGS, attempting to then
-pass FS_VERITY_FL to SETFLAGS is not allowed.
+Hi folks,
 
-The ext4 and f2fs already treat FS_VERITY_FL in the set path as no-op,
-however, BTRFS returns -EOPNOTSUPP. So, the modification of other flags
-doesn't work on BTRFS for fsverity inodes.
+This patchset lifts two things from filesystems to VFS level:
+- No-oping FS_VERITY_FL in SET ioctl()
+- runtime fsverity construction flag
 
-Fix it for BTRFS and anyone else, the ext4 and f2fs masking becomes
-no-op. The file_get/setattr() path is fine here as this flag is cleared
-right before fileattr_set_prepare(). The future fsverity support in XFS
-would also need it.
+The first one fixes BTRFS get-modify-set loop with
+FS_IOC_GETFLAGS/SETFLAGS ioctl()s, as it does return fsverity flag but
+not mask it out.
 
-Cc: Boris Burkov <boris@bur.io>
-Cc: David Sterba <dsterba@suse.com>
-Fixes: 146054090b08 ("btrfs: initial fsverity support")
-Signed-off-by: Andrey Albershteyn <aalbersh@kernel.org>
----
- fs/file_attr.c | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+Testing, -g verity passes for all fs, except btrfs/277 and
+btrfs+generic/574.
 
-diff --git a/fs/file_attr.c b/fs/file_attr.c
-index 833e03810b24..b43977d5f8e0 100644
---- a/fs/file_attr.c
-+++ b/fs/file_attr.c
-@@ -199,6 +199,16 @@ static int fileattr_set_prepare(struct inode *inode,
- 	if (err)
- 		return err;
- 
-+	/*
-+	 * verity is settable only via FS_IOC_ENABLE_VERITY; never through
-+	 * fileattr
-+	 *
-+	 * Treat it as a no-op so the FS_IOC_GETFLAGS/SETFLAGS round-trip
-+	 * doesn't break for other flags
-+	 */
-+	fa->flags &= ~FS_VERITY_FL;
-+	fa->fsx_xflags &= ~FS_XFLAG_VERITY;
-+
- 	/*
- 	 * Project Quota ID state is only allowed to change from within the init
- 	 * namespace. Enforce that restriction only if we are trying to change
+The btrfs/277 seems to fail due to difference between what kernel
+and userspace versions support (btrfs-progs v7.1 doesn't seem to
+support latest streams v3).
+
+The generic/574 on BTRFS fails only for 1024 block size no matter
+the change (fails on v7.3 too). I haven't checked why.
+
+Changes in v2:
+- Return ret in btrfs_begin_enable_verity()
+- Include linux-fsdevel
+
+Andrey Albershteyn (5):
+  fsverity: strip FS_VERITY_FL from FS_IOC_SETFLAGS
+  fsverity: add I_VERITY_BUILDING inode state flag
+  btrfs: use I_VERITY_BUILDING instead of private flags
+  ext4: use I_VERITY_BUILDING instead of private flags
+  f2fs: use I_VERITY_BUILDING instead of private flags
+
+ fs/btrfs/btrfs_inode.h   |  7 -------
+ fs/btrfs/verity.c        | 14 +++-----------
+ fs/ext4/ext4.h           |  7 -------
+ fs/ext4/file.c           |  2 +-
+ fs/ext4/inode.c          | 17 +++++++++--------
+ fs/ext4/ioctl.c          |  3 +--
+ fs/ext4/verity.c         | 18 +++++-------------
+ fs/f2fs/data.c           | 10 +++++-----
+ fs/f2fs/f2fs.h           |  7 -------
+ fs/f2fs/verity.c         | 15 ++++-----------
+ fs/file_attr.c           | 10 ++++++++++
+ fs/verity/enable.c       | 22 +++++++++++++++++++---
+ include/linux/fs.h       |  6 ++++++
+ include/linux/fsverity.h | 21 +++++++++++++++++++++
+ 14 files changed, 84 insertions(+), 75 deletions(-)
+
 -- 
 2.54.0
 
