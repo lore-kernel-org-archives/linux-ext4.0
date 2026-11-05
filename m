@@ -1,48 +1,47 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793907329;
-	b=IgUPyo5rJJalfO06OdtS5tY+Q5TiPV40m5oSIcojKRXayTFrxYXrDaJCWqbX8ykLB7EE
-	 QveED9b+Uv5RXMybnjYehnqTPIiRFpZFnZU+uD7MEpAUsaWy5xtGCUSwqLzvngDlGaKAr
-	 Nk41soYslYCOJABqlHrBwg/BGEmZ9n4UmjRm/Q71p5vHzEztxwSf5HYESfQMcPJws7wKS
-	 gRFsyyypvykJuQxoKM15U70vLQh3+1qn76JwZsc7moZKpNWlV2QMDNmPU2ogeRwGXcmNN
-	 HIUrXBp9Nf6F11v6GFwmkGOcY25sjxUIZqboScoTeGqBHCg63K/GKhU9DiywDLINyHw==
+	t=1793907340;
+	b=F0Q5SiGRCjnWQKcqULvfuOxu5jRVrx+HmlW+Dn7ih+WkaZjdBKqyVCMbRa9HU3Fw10UN
+	 dbMYn7REr0Rkrk4c/Zuxi9c2EiRo6J9IcOfmtR5YzEhS9xrOyzGnMYMyc4yUuyBfpmRCK
+	 usFV+Sf6RpxpGdG02BVJ4xydPm5+znCDKt4C9q6HqDAyJ8PpNhXbCqbHqWdG1sbHe9aUk
+	 7k6XDltE40Wcwr9PsY1nXpSOnAniQOkACBPu8UqurdhcjJd7P+9UpQ6Fdl3bJ+9lSEmRS
+	 d6N9F+V/xa3W5Th7JFHnsbVhlPvR91YXl6hZq1Y1qyinELZfu6QgCkfEn7Kvvx7tX/Q==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793907329;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793907340;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=6+3rBZSpmL6AwycDiybym7wulbxgrmRFLRhclCECa3Y=;
-	b=4rJD6v6T0gO5LDhE0X1B/u/37MADBakFL/cLDGXqq5/42kzPSm++uS+z1Q/okjXQBwT2
-	 bv9Ocvq2zd4y8cL3EgOSjxd8zWr65EVeOq9ebsQPM6J/Cc752uy9EOnA3tj8tlRZ0M+dr
-	 FfMcEQSPWGSw4IBQiLCvlYZn58oQxLZbaA+5C+nslx4qnwPESKZZZ4klVMek1S3wuTV01
-	 OsOoBa6QMLbS5yofqNqQK3J5r0nn5S29g02TelwuUftdOjhFAleGzSS29dXUNgpCVBBzZ
-	 JmR/EtQbt3D23QnXlTyJNDM/YfXqkwOz8CkRA9FVqubOqIzRmQN34779ZHmDw30Dy9Q==
+	bh=aroUg095/6TmMJBeZjgIoSTvyvzHjk9A05ABR3Cu2L0=;
+	b=UJYN7LLnLwJZvLfW/KYxV8PRtPgy7vB78zPIA8kAzjGoozJC6YSSQ73TWM3agbMdM19g
+	 e1CaPgF8v9n7SGfHa1YdlmM0lm/5e2EW2QJ61Hl/ktSINmETn7gpyU52zm6/hWGzH+F5b
+	 aP57Qaa/i5DUjZGAQCvyAwTACig2uHGf9IUBJiHRCi5JJntJivJXluXKnQIz0CXDp1bxM
+	 9Ba3YMTrvRIrSoPECothAgRo3EzYnaSSIO1RBHwyTt0LY6N4cWOOhBi5XW6mTSVJmzV4Z
+	 TehkJ34VPKt1VtrrnbT8gaxZ4aZ66TA9FfwYRhKDeE69zRPkGUJIu1JrqHHq6E15syA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=AOZbcgp7;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="aCFaxZX/";
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 58CFA608363B;
-	Thu,  5 Nov 2026 19:35:29 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C92BB606F954;
+	Thu,  5 Nov 2026 19:35:39 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=AOZbcgp7
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6B0871F0089E;
-	Thu,  5 Nov 2026 19:35:27 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=aCFaxZX/
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id F18721F0089F;
+	Thu,  5 Nov 2026 19:35:37 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793907329;
-	bh=6+3rBZSpmL6AwycDiybym7wulbxgrmRFLRhclCECa3Y=;
+	s=k20260515; t=1793907339;
+	bh=aroUg095/6TmMJBeZjgIoSTvyvzHjk9A05ABR3Cu2L0=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=AOZbcgp7KiL117k9ZomLZgNAYCqNPQoGYDGu7VInBnlWN2ACci5GdQGHH77Td5fl0
-	 PMqHuG9PSJ1eIcSmO4aE/jRhciTEEC+kaCXQzAkbjSAbEmqIqcFbZPKSNSF+Dz8T5g
-	 YNFTdQpoP5CWmhjRyUKESuR+HN1YN/5/HAbEbhU6EhzWiOxUQMENP1CQBZlkoEyGB/
-	 kvCg4HTLMHqDXXlApPNo3yFstryquziH9LGxCkx8CbvvTATNAM/9L15zEUZlS5NclP
-	 lcEIpX6mHh0IBDkqZ7elF8XDMRhP8BOx6XbMw7DhMmLmu7mHjpMwm0/m66xJ9XieZX
-	 C64c3NTX5BZ5A==
-Message-ID: <sashiko-outbox-199937@kernel.org>
+	b=aCFaxZX/pXJMPefHJpV09W2+w61KUBSGqPrg6CbRySAMTOMm4JaDr3tcTx2cKIuLk
+	 JUa1MBKLWQC0ZETuEO66QAJpJgqhbjOyxojVM6ivSCYHHkGowBxttDYjM2eIGpwnEJ
+	 APEOw5JcwA0jVhqdTOcM8vG9gm6Rdg56kD7z39j9iMGTnOcL8jgcdJyaHFK4JxakLN
+	 DPKfZb5NAMv6q/AFJDp3292ogJxaCXKsP0BD31LNcI437rpmGwZLQz5zNGjx6DHRiH
+	 nhsuxsTVQ4aM+It/sbt2s0keUKgj1g/u2y0gxfWVs6QUw26QAPF72OyrzpNfLCn3PY
+	 1jEvLMm8/QQ/A==
+Message-ID: <sashiko-outbox-199942@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH RESEND v2 07/23] proc: let procfs own the seq_file of
- seq_file entries
+Subject: Re: [PATCH RESEND v2 12/23] seq_file: add seq_preallocate()
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Christian Brauner" <brauner@kernel.org>
 Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.com>, "Josef
@@ -55,12 +54,12 @@ Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.
  Iwai" <tiwai@suse.de>, linux-ext4@vger.kernel.org, "Chuck Lever" <cel@kernel.org>, tytso@mit.edu, "Heiko
  Carstens" <hca@linux.ibm.com>, "Vasily Gorbik" <gor@linux.ibm.com>, "Alexander
  Gordeev" <agordeev@linux.ibm.com>, "Christian Borntraeger" <borntraeger@linux.ibm.com>
-In-Reply-To: <20261104-work-procfs-core-v2-7-76ace653a773@kernel.org>
+In-Reply-To: <20261104-work-procfs-core-v2-12-76ace653a773@kernel.org>
 References: <20261104-work-procfs-core-v2-0-76ace653a773@kernel.org>
- <20261104-work-procfs-core-v2-7-76ace653a773@kernel.org>
+ <20261104-work-procfs-core-v2-12-76ace653a773@kernel.org>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Thu, 05 Nov 2026 19:35:27 +0000
+Date: Thu, 05 Nov 2026 19:35:37 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -70,31 +69,18 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-> remove_proc_entry() waits until every call into the entry has returned.
-> For a seq_file entry that's all of seq_read_iter(), including the copy
-> to userspace. A page fault in that copy can be made to take as long as
-> the reader wants, e.g. with userfaultfd or by punching holes into a
-> memfd over and over. And callers of remove_proc_entry() like to hold
-> locks while they wait. xt_hashlimit holds hashlimit_mutex, which all
-> network namespaces share, and addrconf holds RTNL.
+> single_open_size() allocates the buffer itself because it does the
+> single_open() too. A file whose seq_file is opened by somebody else,
+> like procfs does now, needs to do that after the fact. Add
+> seq_preallocate() for that and use it in single_open_size().
 >=20
-> But the entry's code only runs between ->start() and ->stop() and the
-> copies to userspace happen outside of that. So let procfs own the
-> seq_file the way kernfs does. An entry declares its seq_operations, or
-> just a show function, and the size of its private state in struct
-> proc_ops. procfs then opens the seq_file with seq_operations it builds
-> for the entry when it is registered: the entry's own ->next() and
-> ->show() with a ->start() and ->stop() of procfs around them that pin
-> [ ... ]
+> No functional changes.
 >=20
-> No users yet.
->=20
-> Suggested-by: Jann Horn <jannh@google.com>
 > Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 
 Sashiko has reviewed this patch and found no issues.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261104-work-procf=
-s-core-v2-0-76ace653a773@kernel.org?part=3D7
+s-core-v2-0-76ace653a773@kernel.org?part=3D12
 
