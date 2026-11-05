@@ -1,48 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793907035;
-	b=ipERkEjvF5bX9OayOyGJMjuz0MM/YwXuJ0ge1/GkeNbXwDTS8uAqaBcWvhHGekej3a/+
-	 cRTmMO+54bOKdoriel3ebOEwDMvIzB4AusOfeMXPTCtFhzm3EmEAQIE1AyHRx4xtiQQ8Y
-	 xCbXgJFYQTwlLJQfA7u+LWBmnfvlz4C1Vk/EjCXrKKjsdN9SPAaiNIXs00ySUT6RiDCrm
-	 jjlfa0fj1hcomUCREhQ5oOkvvJ/MNqQF0HUixzVJWqCpDCJJFLzhC2Sqqp4r7YXoXASAV
-	 Hm/s02OHnNX+uDxCOgQ+7UrM65lasEpxaOnBFeB7texLohEwMeCzaT5xCM+rKjsEXdw==
+	t=1793907033;
+	b=SLzSrfrelbArrch2r5R46yKsUKS1grN4HbDsNPKqehPgdHeqquviCxscOKlF2IfX17Wt
+	 PilbEt8GYXawJd46dRTx7wIttvlkPatE0LLYpirTyoxq5QHL+4I80KnRU02p/p6W0yTOv
+	 /U9jpScoRUVVNHopD2dzd4njE5vNse0TZA1gquYBe34JIkBNDL+TigVZsKUbPn93SZ40D
+	 +dfZSH/7wb+XDO3LveJrdiZkIm+9JAfKbLtjkizrY1gvE1Kql4s72B0YV7/D+ScgiYRQr
+	 Muh2eyZOImOBhsaSzzOQagE/XSjpNpGoZrl/DICxlxydQ1RgSrMtuK0478p/cK4PKXQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793907035;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793907033;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=hhNNwe04L4FKYQylx+fx8GowXeOCuwfY4bU4uoMs+Zk=;
-	b=5qZRG8ZhjnST8Dut+8pZwMY9w2VdqAGZiZdERrsnHGqDGBH35NQTTAJuy2ZjCqKu8j4D
-	 4Hd90cm0+Rgi0eQYllv8zz+EMxLSsXxJEM470HMoyAYdvBD0IDAFTlSQamb9Cmhzoehu6
-	 hmua4rIQYDBYUgvpJuUavRH7ODZWFEXGprO8nfX4+0+C4bDC/l18jNF5p0XBxvf6vAqcu
-	 sefLh+7LJEP/ohdiszh4MopvBc2+qrYWIampZH6DNBXDv0EzDyEpeNJ4V5Z5i+ymHQW/u
-	 tIXbZE+5AN6HJ+4rZ7EaaVwTkcXAxDlJ5VFciL09tvQo49fr6WFBVLoyWbPwYbd8Uqg==
+	bh=GA0+/owkDdniY30l313rN8euuBjyhEchmg5u4LglfRs=;
+	b=haT0/IgouyeLGanopHzx/H2TPQ7aPPB/JVu3xbJ6ypWtUx/cWeHbNhGYJjdtLy2WScRS
+	 BChJIY1/sfk1uSZ6GDfNcsACQhwdgNtVTp+KZJQAjscwu4AKVXLFFKx080LqHYYT3Lzib
+	 zaae7AAaTlmC+5AMYSjDEUUfgxAzUScAD+s7sazkfnUYM43RUS3iEm1qawDQ00va+PpuO
+	 tlNigNl0tt9ky67Sgxau5znI+oUT7+9qt9Fzo+plFMUGW6fYmccVj1500OIlZ5Ut8Gm6l
+	 DDxNk9kGbBudMzLABc/aH/Mk9C6lAy73/8g/pWlq35NmhPEMcZeGTN4T+dS4TLabojA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="H5d/fGZi";
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ckZU7d4Q;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 962A1606D804;
-	Thu,  5 Nov 2026 19:30:35 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3B654606C8A4;
+	Thu,  5 Nov 2026 19:30:32 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=H5d/fGZi
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id BCA2F1F000C1;
-	Thu,  5 Nov 2026 19:30:33 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ckZU7d4Q
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 472581F000C1;
+	Thu,  5 Nov 2026 19:30:31 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793907035;
-	bh=hhNNwe04L4FKYQylx+fx8GowXeOCuwfY4bU4uoMs+Zk=;
+	s=k20260515; t=1793907032;
+	bh=GA0+/owkDdniY30l313rN8euuBjyhEchmg5u4LglfRs=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=H5d/fGZie/GoRN7MHtK+vOB/Ap1IgYNrnS7OIFVYrIl3BAh2twEoWoV2v1D1ANr82
-	 Z88cSeALKxyTaNGZMcx6eAjOqVsj7JMMVVHDzaMXh9vzmIx4JwInJVfr9Glo3L+Jbr
-	 EcyVSXsNPriCocoRBtla7Tbb+aIbDHKYiN5X3R3O6c36//3BOWw3M4U+PaEq112AWQ
-	 9c6EaQ95R7dZEkoNxWPFXpR5y//vT+nN/V5TXpwOF2BZ/cJsAVeFgDgQAnT/m8f7XF
-	 3V3fQRCNlNmMpcBNkB0tSssvWsyXhfdHIwU6LUOeywmgh0K3F4lJUnYbrVCAdczb3x
-	 LI5cY1vDJVFeA==
-Message-ID: <sashiko-outbox-199914@kernel.org>
+	b=ckZU7d4QUH1rI3q+4mXcCPdzjI6S3s0l6AJ0++PpkI/VthC4KY9jc1TUbXEy7w09a
+	 QS42jHvzTWmhpuR4sNrCVakO0luPXYf1Pep1PJq3hRlnM+G5j7LV9MiNuMbPYmYvh8
+	 szoCOMpIPlXI4pmYgqd4WZv3emt2hKmkx/g4Acbw06/hy66OKKSy4eyXseR+7sXoS4
+	 h0IZpdjtLDWYruhg3kAkHHame5PmfbBbyj3BLPwhrZvYj7hO9dMH7e37xj2nGdqfxY
+	 8c7pfm36HFDGPa1muEyl/868i4Nqv0yBIOEge1rhlL08kefXVk1eQWlAc5aoAoUcje
+	 mrqw0O6Z+CNMQ==
+Message-ID: <sashiko-outbox-199913@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH RESEND v2 51/51] selftests/proc: check that a faulting
- readlink() doesn't hold up removal
+Subject: Re: [PATCH RESEND v2 50/51] proc: don't pin a symlink's entry while
+ readlink() copies it out
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Christian Brauner" <brauner@kernel.org>
 Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.com>, "Josef
@@ -55,12 +55,12 @@ Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.
  Iwai" <tiwai@suse.de>, linux-ext4@vger.kernel.org, "Chuck Lever" <cel@kernel.org>, tytso@mit.edu, "Heiko
  Carstens" <hca@linux.ibm.com>, "Vasily Gorbik" <gor@linux.ibm.com>, "Alexander
  Gordeev" <agordeev@linux.ibm.com>, "Christian Borntraeger" <borntraeger@linux.ibm.com>
-In-Reply-To: <20261104-work-procfs-bugfixes-v2-51-021c84d852e0@kernel.org>
+In-Reply-To: <20261104-work-procfs-bugfixes-v2-50-021c84d852e0@kernel.org>
 References: <20261104-work-procfs-bugfixes-v2-0-021c84d852e0@kernel.org>
- <20261104-work-procfs-bugfixes-v2-51-021c84d852e0@kernel.org>
+ <20261104-work-procfs-bugfixes-v2-50-021c84d852e0@kernel.org>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Thu, 05 Nov 2026 19:30:32 +0000
+Date: Thu, 05 Nov 2026 19:30:30 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -70,23 +70,28 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-> Add the symlink case:
+> proc_get_link() pins the entry with use_pde() and the delayed call
+> unpins it. vfs_readlink() copies the link to userspace in between. So a
+> page fault in that copy holds up remove_proc_entry() just like the
+> copies of reads and writes do, and the callers hold locks while they
+> wait. /proc/asound/<id> is removed with snd_card_mutex and info_mutex
+> held when a card changes its id.
 >=20
-> - readlink() /proc/asound/<id> of a dummy card into a buffer backed by
->   userfaultfd
+> The pin doesn't keep anything alive. proc_symlink() copies the target
+> and pde_free() frees it with the entry, and the inode holds a reference
+> to the entry. What the pin does is keep a removed symlink from being
+> followed. So check ->in_use instead and drop the delayed call. That
+> also takes an atomic pair off every traversal of /proc/net and
+> /proc/mounts.
 >=20
-> - change the card's id through sysfs while the reader faults, which
->   removes the symlink with snd_card_mutex and info_mutex held
->=20
-> - expect that to finish without waiting for the reader
->=20
-> Skipped without snd-dummy.
->=20
+> Fixes: 7e0e953bb0cf ("procfs: fix race between symlink removals and trave=
+rsals")
+> Cc: stable@vger.kernel.org
 > Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 
 Sashiko has reviewed this patch and found no issues.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261104-work-procf=
-s-bugfixes-v2-0-021c84d852e0@kernel.org?part=3D51
+s-bugfixes-v2-0-021c84d852e0@kernel.org?part=3D50
 
