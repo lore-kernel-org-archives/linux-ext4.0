@@ -1,48 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793908706;
-	b=k9KzX4p/6MU9C9MDHtvLANA01UpTADmYFTJvIx4AHSr/rjx0VfZ1O+0zOsgjChsJKkAR
-	 sCiiEWoXLxX5AEOf9c2Hz4HdbKOwA4i0Jejt0Dy/ei/kOePANV6EQTcqAcdkS8FWg0S2i
-	 IPsGXW5CBNblkprguQOJVOrnQ0AbHoBPJwcAfE+nH48iH1G0Wpd2P4ytefupcqCo3EP80
-	 pUvADs4WMb2XpSn5NeoUsaP/zZwBZPjWR6r0fGiXQlJuc597qEtBgUPug+4ee/qMKeZSz
-	 6gc94lQRYmwFSdSet1koysBHqOUcyCXz92Y/4fe8doOofhLVQjj4CH4M9mJLWsqKdMA==
+	t=1793908713;
+	b=SE76yDFeFmcU3Z00DkNgowPzbP2kMT2yzq7ZgR1d+7q4+DhffvmK8+a+OuQk0yZX2yZN
+	 HHSidSmCaqCxOWdYXyLD6/u7ACthnU0dFRKGHq5DLNlrzgX8b1XAVAZE5yN/7K13HgZBJ
+	 /U38Y4zEPKri4YHcrOwh2vBMwbcV2LY3rKlRgqS402arSp3/SsWEO9c0HbdbfM+L01FO4
+	 xno9EFHgusqDjhha60ElCXY5/zTOl3PCgR+8w0CezQlZR1BCRVtQzEXmxwLJ6A5JxTR6Z
+	 qqYKwKkjxLxtn7bO3Y69IAp+CTSnk/HP0+nZyDWk5kcubS3QoZaJO5kJpEZ9hUYu7OA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793908706;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793908713;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=QCq+/Fw8y7pYoOo2Vq9cjoQwmb2wvkDQOJQ13WVM94g=;
-	b=CQxe1QtSKOaXL9cwrP/mFz0wswT7eZMGZyNxJSgDJH7EsTskO4eHVHPpEMrcCqSl1xOL
-	 CgiW/xNm1KKckgSlH904Wf43oa75bZzMKt/iRKLpIpimRw14NBL0fhITe5VhgD7y3ne3h
-	 jGanJweXNMzZc/DNn4WowipOenMpPuDRuo4uAbK+helEc7l7kj3Y8AQUGlRI3ti3Pr+0p
-	 7GD7jdqBJ/xLhR8SFX2NHYruJArLz3fQlXA6VqH47Ln/WM/mvIbYcXGg+mCw8Iw7fsPxS
-	 QoesTWhAHmIYuAJHrWNKw/JX1AKwugXF1GJ10iIyw6oP8wCy9NFC+pTFj7DWZhQsQvg==
+	bh=Fu3D7KbVL0XALbxpOg/99/chjuCyMPlpg1MAOjhFXPQ=;
+	b=FF9OZbLJ+Fbxd7Sr1/d5bssCEKGY7JIcJJxslU6AcC607iX5qtROUi+QHx/c5gpHTApP
+	 JT2dlpMmFhpP0WW0jMCbxE61IfpNs7MrwDzZIYk1zzhF88iUutc/uPM1DRjOi54mwXC7w
+	 onpRPRarIBZoMHrcGe5rrDtRSwZ7geVxCb/ofCE8I2sq1OHdgYKCl+8kjz7Obo/v/mn7Y
+	 jDHI5utHqGyqZUNB1B77m7He3HYyuFMlHTvw4yCU1Nw813g04uIdLxVKQNsIaCoHtu9T4
+	 ASlcSVp/7Sm+LyX7Ztz8qRc26Zm8f9Uxs+NaMBC7aWoEJUCNU/d2J745zv/OB6ueuCQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="i/CYgvco";
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=OumfSaDw;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 12176606A6EB;
-	Thu,  5 Nov 2026 19:58:25 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 32F46606A33E;
+	Thu,  5 Nov 2026 19:58:33 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=i/CYgvco
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2B6241F008A1;
-	Thu,  5 Nov 2026 19:58:24 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=OumfSaDw
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2CA431F008A1;
+	Thu,  5 Nov 2026 19:58:30 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793908705;
-	bh=QCq+/Fw8y7pYoOo2Vq9cjoQwmb2wvkDQOJQ13WVM94g=;
+	s=k20260515; t=1793908713;
+	bh=Fu3D7KbVL0XALbxpOg/99/chjuCyMPlpg1MAOjhFXPQ=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=i/CYgvcoLrin2CTkYgx1vi8xFWzEuHmls5KosmtGQNdgSh85S9e4TB4IJC4eocMTL
-	 Ry67D7wOzIW8YL2JZzYC6aH0P/NGwi3UIy4d//bHBH0TkYaOuZmlG/oeY3JUaqz2Op
-	 S5FnuLuvQCwDKLXxJgeF4xsPIadF/qLWyf2YOU5FHq3Bb7qDVswvT3kN4m/IQO8Dov
-	 6q1EdR54MnceiWzoM8LUTSHx7pr1Sd7eleF7HBY0F1fhrsAnS+mEjp42ZLzCbflK30
-	 uAWYCeiyI2OnT/oCV11AVAdnPCpeiQDiVnRdPxM24JpNKbhLnIDBuxuEmZhiT+G5n4
-	 8xxH9tRkRDezA==
-Message-ID: <sashiko-outbox-200061@kernel.org>
+	b=OumfSaDwTNZBpGJOWzIaiT6pjsiHCqCuEdUaz66yitHN1nNu5txd4yS9N4qziqeuA
+	 jKo6oOvNVnrmW1Ld/SRNRJlyIoYW+xi575vQWaVzSfKh4Q6aHkYPJ0bu4ianMe/ryp
+	 FY85+WivxPFkJEXo69NxZ98f5CWKvFEwF7vR5O7X1Ds9ii4+w6KQI6rHKutuqKTC/5
+	 PJGugGwCCkbyMgPLbKXpkZegV1ou950ZWOzXqy4ZhzEAo//gqm2NGT/LmV6GGVGIFw
+	 GkRGt05JBCoUhdhRlgBNsfNUA/ok0dXb29KIdwCOoyz5PlaaZL7x/S1TIIAEL/3HQI
+	 uTDOX6NycFX8g==
+Message-ID: <sashiko-outbox-200064@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH RESEND v2 27/30] mm/swapfile: let procfs own the
- seq_file of /proc/swaps
+Subject: Re: [PATCH RESEND v2 30/30] selftests/proc: check that unloading
+ configs doesn't wait for a reader
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Christian Brauner" <brauner@kernel.org>
 Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.com>, "Josef
@@ -55,12 +55,12 @@ Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.
  Iwai" <tiwai@suse.de>, linux-ext4@vger.kernel.org, "Chuck Lever" <cel@kernel.org>, tytso@mit.edu, "Heiko
  Carstens" <hca@linux.ibm.com>, "Vasily Gorbik" <gor@linux.ibm.com>, "Alexander
  Gordeev" <agordeev@linux.ibm.com>, "Christian Borntraeger" <borntraeger@linux.ibm.com>
-In-Reply-To: <20261104-work-procfs-fs-v2-27-319e0f9a8aae@kernel.org>
+In-Reply-To: <20261104-work-procfs-fs-v2-30-319e0f9a8aae@kernel.org>
 References: <20261104-work-procfs-fs-v2-0-319e0f9a8aae@kernel.org>
- <20261104-work-procfs-fs-v2-27-319e0f9a8aae@kernel.org>
+ <20261104-work-procfs-fs-v2-30-319e0f9a8aae@kernel.org>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Thu, 05 Nov 2026 19:58:23 +0000
+Date: Thu, 05 Nov 2026 19:58:29 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -70,8 +70,21 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-> Declare the seq_operations and let procfs open and free the seq_file.
-> ->proc_open() only records the event count for ->proc_poll() now.
+> Read /proc/config.gz into a buffer whose first page is backed by
+> userfaultfd and unload configs.ko while procfs copies what was read to
+> userspace:
+>=20
+> - removing the entry doesn't wait for the reader
+>=20
+> - the reader still gets the page that was read before the removal, and
+>   nothing more
+>=20
+> - and the next read fails with -EIO
+>=20
+> The test loads configs.ko if it isn't there, skips if configs is built
+> in or can't be unloaded, and loads it again afterwards. It needs
+> CONFIG_IKCONFIG=3Dm. kselftest-merge keeps the =3Dy that other fragments
+> ask for, so it skips there.
 >=20
 > Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 
@@ -79,5 +92,5 @@ Sashiko has reviewed this patch and found no issues.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261104-work-procf=
-s-fs-v2-0-319e0f9a8aae@kernel.org?part=3D27
+s-fs-v2-0-319e0f9a8aae@kernel.org?part=3D30
 
