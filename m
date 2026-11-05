@@ -1,69 +1,55 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793890430;
-	b=yfz3EKgPFuaAIPO5SXbUF014SOVr3z2NY/PRn+EFTqt8ejR9mLDVY1gvcgjI+qZcGUkq
-	 DlXLIOK2WBrd7qr9cqUTjoT0ki+kEmabd9Vn68+fPenKGUi29tS1FonivW66Iw7zEqYsX
-	 dKPrYSVQu8FvtrQXyeb1KgdyGmG6kFMFZGcfp1uUwglOeP5232mJJnjw1q+IO6EidOtNA
-	 rXYQhVCbjvC3jzHAJAfytg8SXZ8qFl4qnior36BASQmwCqvmNya/gnco+D2wm0pM2W5BV
-	 uFCKFPx/M4RUS1OSDZ1N1lJVcu0Bk06gh5n3cPIXKNtxxbTA0MRtToa6P7y47Wppuow==
+	t=1793894312;
+	b=09NcGbOIuicvZuEudk8F38vq84/5jDQqFxV+6nSGDV/l61cZBEpAIGQSWRAZF1JInTRE
+	 QhPLnqAbVYay6jFVWn3lBfBf482XHb26H5Iai3rARY68rLKwow9FmzBEI2g0PgFAYyQ45
+	 fhKImWPT2dCjoYC8Hg7BCxE9umSE4QU7PMcEhfuCbnIvJd16t6iy3uGg80pM2pK2Bng6U
+	 xpFTGMndKYQSlKls4R5E05+D1tCw7rqCneAdgD32cBH9fILHz2ZJ2l4PiKGmyDNQojnkv
+	 6JKaU+vm10L7u/OANpMX90Ng4Rf/NGEyEuFgC6kP5yjhqzs1ebqJhCT1726Z5oVsokg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793890430;
-	h=Received:DKIM-Signature:From:To:Cc:In-Reply-To:References:Subject:
-	 Message-Id:Date:MIME-Version:Content-Type:Content-Transfer-Encoding:
-	 X-Mailer;
-	bh=wPbepQK0nXa3d+APg5PI/tkZrq+GYAAdAwwH4WGsWbY=;
-	b=Y9+CFhj/b9FpS8EFwqIkfFgVs2IS8hDWQM9YpoY0Z4ncz4HffuEPytODbAb6LEe8rG6k
-	 2igOMz2gN8SZ2+XkD9p5xLOJzkQYF4lhTH3dhlBqwNey9q3M9JhyQjN/IjlS1hPS3lnLF
-	 CJulxa93RyfFMkOuRh5UWmdXNxLzAdv2hs3o6XOqRdvR4ngU6IuMc7zL4IOzk0tgQrWPv
-	 +M8cT2gaPLybbYd683MKdFqzV/ZJxdTwhaaSiqIvqAt+UoU9XRwsVNkwQpLjZLdfwbk/Q
-	 10ATbX/sE0c+7O/Wtco2Czwf7vtf1qaXy/bDrPc6qo1rcZF5JGfq8QO9RObm5iYAzYA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793894312;
+	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
+	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
+	bh=i+lq90zCibYqB9fmuWdxuSZ+QlYYjTfSKMhMvi5hyFk=;
+	b=Laejq8rsYS+oxKXcJLix6zN/toApPbTxgu325Q+12CP1hFCoTkXb3lBlF02b9rJSu7rX
+	 hoJiJUQfO9U2R4+dUitlCxroW3+PCz542CL6QpGGSjTQ0+1kDciQH4VNEOg/TDInKEWoB
+	 KCRx6KetmSY1MPDVXJxPoSyy1GDej6GN3S7PawUTSY46sEyiZcOLWIKss6JOus29MkuU+
+	 fmPnXgPq58QLLUmQmSvw90HfOLmJQOyszOUlgVsp3/IhDuxSQvmmqImh9vQUZH6zMxdAD
+	 WeHmOvTkz66FwqL35K3UI8H7wB7ECKsCGBS9Z6zAYS/unI90nn4ZOKJeBthPMLtCYWQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Ut5GHx1c;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=knNThq29;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 68478606A31B;
-	Thu,  5 Nov 2026 14:53:50 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9691B606A32E
+	for <linux-ext4@vger.kernel.org>; Thu,  5 Nov 2026 15:58:32 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Ut5GHx1c
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D97821F000C1;
-	Thu,  5 Nov 2026 14:53:43 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=knNThq29
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4EB3E1F00919;
+	Thu,  5 Nov 2026 15:58:32 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793890430;
-	bh=wPbepQK0nXa3d+APg5PI/tkZrq+GYAAdAwwH4WGsWbY=;
-	h=From:To:Cc:In-Reply-To:References:Subject:Date;
-	b=Ut5GHx1crAV6ebP6MePvr8MXk/GyT0+FpLEitkajin2i4CdPw+Yrtsn4y98BfiUN1
-	 N5M8uMplNy3HVs3tsDHiskLMCirCzDYJLH1YChJ873MiyF54lHZDXJpdC921S8r6UY
-	 u3+OiCEt9QofdI3ELaU45FuLyS3AQsq9EKyKjBS49hNruPLkniq7Sn1gwN1Ijsp3ZE
-	 k3HoSzSpTSJjYII5amdBqdc518vEianS+2iHu1aqzoSAlTADTeS/jb2r7Ox+BW6Q76
-	 +A2NlXx48M50dddQdU7vSVLAFFZAmWxj3xeXuHK9T8tzNWep7+oKoJ4AB3z4vN9UXm
-	 Pyt/6mjIDSpWA==
-From: Christian Brauner <brauner@kernel.org>
-To: Joanne Koong <joannelkoong@gmail.com>
-Cc: linux-fsdevel@vger.kernel.org, Christoph Hellwig <hch@lst.de>, 
- "Darrick J . Wong" <djwong@kernel.org>, changfengnan@bytedance.com, 
- kbusch@kernel.org, Matthew Wilcox <willy@infradead.org>, 
- Jan Kara <jack@suse.cz>, Jonathan Corbet <corbet@lwn.net>, 
- David Sterba <dsterba@suse.com>, Gao Xiang <xiang@kernel.org>, 
- Namjae Jeon <linkinjeon@kernel.org>, Theodore Ts'o <tytso@mit.edu>, 
- Jaegeuk Kim <jaegeuk@kernel.org>, Miklos Szeredi <miklos@szeredi.hu>, 
- Andreas Gruenbacher <agruenba@redhat.com>, 
- Mikulas Patocka <mikulas@artax.karlin.mff.cuni.cz>, 
- Hyunchul Lee <hyc.lee@gmail.com>, 
- Konstantin Komarov <almaz.alexandrovich@paragon-software.com>, 
- Carlos Maiolino <cem@kernel.org>, Damien Le Moal <dlemoal@kernel.org>, 
- libaokun@linux.alibaba.com, bfoster@redhat.com, linux-ext4@vger.kernel.org, 
- linux-xfs@vger.kernel.org, Viacheslav Dubeyko <slava@dubeyko.com>, 
- Ryusuke Konishi <konishi.ryusuke@gmail.com>, linux-nilfs@vger.kernel.org, 
- fuse-devel@lists.linux.dev, Zhang Yi <yi.zhang@huawei.com>
-In-Reply-To: <20261027215326.2693300-1-joannelkoong@gmail.com>
-References: <20261027215326.2693300-1-joannelkoong@gmail.com>
-Subject: Re: [PATCH 0/5] iomap: remaining patches for iomap_iter_next
- conversion
-Message-Id: <20261105-tiefbau-gesurft-apokalypse-d83b3a572db4@brauner>
-Date: Thu, 05 Nov 2026 15:53:41 +0100
+	s=k20260515; t=1793894312;
+	bh=i+lq90zCibYqB9fmuWdxuSZ+QlYYjTfSKMhMvi5hyFk=;
+	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
+	b=knNThq29r5PCKXosWlGJiA4wMexk6O5QNOo4p7HZkmcfQkMnMUVYYWu09+mXP5Bmy
+	 8vB4MBeKB4RzJbnI2iWns7taA3MXmDbdj0kN2/iB3YTJ5vrhJVnk0Zp27vzTKZSgdK
+	 q9nV317YmoYmoUgKTQ2ifN5YPGQAbFLzvYt9tIHyuGP4XM4lm4B02QT4orPkL2EK/n
+	 +Nq+rtA2SRD1IxPHv0acC/tR5DsZOxIX5l9WDax+GoBjt/cHL71+EzKPmB5oFXesv5
+	 gWf59cpYMKvJtPh256kuTreeKxa8UPGoZaUHQLAFuC0+RCEtcOXMCmODund208RVYu
+	 OAHvtSoa5XL4g==
+Message-ID: <sashiko-outbox-199389@kernel.org>
+From: sashiko-bot@kernel.org
+Subject: Re: [PATCH] jbd2: document the h_invalid handle flag
+Reply-To: sashiko-reviews@lists.linux.dev
+To: "Amit Patole" <amit.patole@gmail.com>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+In-Reply-To: <20261105-kdoc-jbd2-h_invalid-v1-1-4bc224f7d0a2@gmail.com>
+References: <20261105-kdoc-jbd2-h_invalid-v1-1-4bc224f7d0a2@gmail.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+Date: Thu, 05 Nov 2026 15:58:31 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -72,51 +58,31 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-X-Mailer: b4 0.17-dev-ce4c1
 
-On Tue, 27 Oct 2026 14:53:21 -0700, Joanne Koong wrote:
-> This is a resend of the last 3 patches from the "iomap: convert to in-iter
-> iomap_next() model" patch series [1].
-> 
-> Those 3 patches are rebased on top of current mainline (commit 83f32c773255
-> ("Merge tag 'erofs-for-7.4-rc1-2' ...")) in Linus's tree. They require two new
-> preparatory patches (patches 1 and 2 in this series), which are trivial
-> ->iomap_next() conversions of the nilfs2 and fuse iomap code that was added
-> during this merge window. There were conflicts with "iomap: pass
-> iomap_iter_next_fn directly instead of struct iomap_ops" (patch 4 in this
-> series) during the rebase. These are resolved in the patch, which now also
-> converts the iomap users added this merge window (ext4 iomap buffered I/O,
-> exfat swap activation, nilfs2, and fuse ext_map). Jan's Acked-by and
-> Christoph's Reviewed-by on it predate these changes.
-> 
-> [...]
+> Commit 61e2a90a910c ("ext4: enable scoped NOFS when starting a handle
+> in nojournal mode") added the h_invalid bit to struct
+> jbd2_journal_handle but did not add it to the kernel-doc comment above
+> the structure, so kernel-doc now warns:
+>=20
+>   include/linux/jbd2.h:523 struct member 'h_invalid' not described in
+>   'jbd2_journal_handle'
+>=20
+> Describe the new flag. It is set by ext4_get_nojournal() on a handle
+> that is not attached to any journal and is tested by
+> ext4_handle_valid().
+>=20
+> The warning was found by running scripts/kernel-doc over the headers
+> pulled into the htmldocs build. An AI coding assistant (Claude Opus
+> 5.5) was used to locate the warning and draft this change; it was
+> verified with scripts/kernel-doc (no warnings left) and checkpatch.
+>=20
+> Fixes: 61e2a90a910c ("ext4: enable scoped NOFS when starting a handle in =
+nojournal mode")
+> Signed-off-by: Amit Patole <amit.patole@gmail.com>
 
-Applied to the vfs.fixes branch of the vfs/vfs.git tree.
-Patches in the vfs.fixes branch should appear in linux-next soon.
+Sashiko has reviewed this patch and found no issues.
 
-Please report any outstanding bugs that were missed during review in a
-new review to the original patch series allowing us to drop it.
-
-It's encouraged to provide Acked-bys and Reviewed-bys even though the
-patch has now been applied. If possible patch trailers will be updated.
-
-Note that commit hashes shown below are subject to change due to rebase,
-trailer updates or similar. If in doubt, please check the listed branch.
-
-tree:   https://git.kernel.org/pub/scm/linux/kernel/git/vfs/vfs.git
-branch: vfs.fixes
-
-[1/5] nilfs2: convert iomap ops to ->iomap_next()
-      https://git.kernel.org/vfs/vfs/c/a210eb87cd3d
-[2/5] fuse: convert ext_map iomap ops to ->iomap_next()
-      https://git.kernel.org/vfs/vfs/c/f6c38b3d56c2
-[3/5] iomap: remove ->iomap_begin()/->iomap_end() legacy path
-      https://git.kernel.org/vfs/vfs/c/82f677376a90
-[4/5] iomap: pass iomap_iter_next_fn directly instead of struct iomap_ops
-      https://git.kernel.org/vfs/vfs/c/9e8fc16dc6b4
-[5/5] Documentation: iomap: update docs to reflect iomap_iter_next model
-      https://git.kernel.org/vfs/vfs/c/5612225809c7
+--=20
+Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261105-kdoc-jbd2-=
+h_invalid-v1-1-4bc224f7d0a2@gmail.com?part=3D1
 
