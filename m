@@ -1,48 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793894540;
-	b=yXUSYmPOCb1zSrDSPQctTB5/9jo3RTG+dZ/WvTy0vOSnrMszye/w7aSNqtNJ2iiC33eB
-	 NkP/7ke827ssKRUvyU6I15cEeIzNozNvH4Yn8acp9h/aEyxgWqA6J0sdDjxaC9pFxFJQa
-	 X59Ipigc8DALMvFjfMAxxTeaRtYdmqr/dKDe6RH9JUGu5hOnvH6BmQ8npwdRVFaBj161i
-	 yCcySH0DqaB+JfsX4ZJQ5BITWkz/5Va6uLQNN5j0qNHC+gjIFrHecqROwjof1ChetfaaK
-	 vtr7MgUhD093x3VrjRDinUCrmvi16G2QHlbxjab1Z6mZPyw2YCWO431exx5hV9dScOw==
+	t=1793894546;
+	b=hTxBLHFX1wfTOKt2C02nVBxHI9BYLtGs9mFGwL8wNlVGP+Kul7qd96j3rQS62Lk7WGeq
+	 1Ck7r62gRQEZYDEgd80mTMx8rwWvyvhyUBOllwkZTambU9j2H0sI1b7G85X3RBYRmH/XI
+	 bx2AjYlZ0WxcpRweRbB25BtnT+NOn5KGCykFcgh+a350meNpKzNxcvAuFbQ1qcCoRvqxn
+	 aoBBfPS9q124WlervDdtgH37RAFVaph4ynxFX499OyJ2lM626ytF7H0RHoosnnHPNr/+W
+	 UFLYfgis/x6TVN3N2tUMvXtHN7Ti4wWmOY73uwltrYvobTM1xzXzPu4+B32YmDT497A==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793894540;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793894546;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=rAfjjAdZhlk/UOEZOV+gThG9bjemn9ArP1oc727YZec=;
-	b=ikVSHM6gK1uzNbXSzj5r0kwn5bSHBchafrmCiF19Iue+FTMMVk4LwU5omQZx3iGPesU1
-	 gQyMiDGLSs83IuSgDN/yZtod8xiGwRVoIbvFq1Mxlb1FW/RxqzB7RfFKE9XRO7BNvYBRQ
-	 e10YdExCks51cTGKVfZy0n52VNEY2tfqxZ8fRu6o3tNc9Spt2lVzSqSDzap3QaHQ06PjV
-	 L1cnqzNGQ8azEMSk9sUuToptp9Nsi323AXHuiwPAosaOHLsP61PFK7R+dHcgDkSN6ohx1
-	 jtsBa6+h7SoSSVHGSlPDt7G6Kdasce48ZQd5/bverybnI7JI0gOxjhTqnJ5Nj6HfiPQ==
+	bh=b2Zql0BOJ6GNf1ExnXOzQ7P6x9P0MEjoge6xF3wstrA=;
+	b=RDMEyxTZCIWJXere2pwN+0eVlvAiBW6UMFgh4477s8M8hq7RMO0gKOphI1a5r1+A4XHY
+	 7C1jqn1kwhh3EoPQ+6M9sV0ANTfxw/LFUm+PY4QhEmc2dO+fsM2dA2v3zKTc7zBpF5wQ5
+	 s7WlekAOtY8917hYhT/UCZ35R1sYcvEwunTGb3IaSv+fkMBv9jhaAzeoGSXzYJToD7TIU
+	 0fkC31t4QEjLzNEEL8kU26AxYDumsiBf+qnxsr8fNyiMRocN7g4AMRCPZ8giJRYQJPugq
+	 2oHGauHFvFEAAOdQT3xUOLaONnAp69EX7dL9fR4MyHi9Z+rBXdH9ftI0n3/sW656H2g==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ofzVeMYt;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="jMldzfp/";
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8E2C2606F95F;
-	Thu,  5 Nov 2026 16:02:20 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E0E7A6070785;
+	Thu,  5 Nov 2026 16:02:25 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ofzVeMYt
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3DF461F000C1;
-	Thu,  5 Nov 2026 16:02:15 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=jMldzfp/
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C15011F0093A;
+	Thu,  5 Nov 2026 16:02:20 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793894540;
-	bh=rAfjjAdZhlk/UOEZOV+gThG9bjemn9ArP1oc727YZec=;
+	s=k20260515; t=1793894545;
+	bh=b2Zql0BOJ6GNf1ExnXOzQ7P6x9P0MEjoge6xF3wstrA=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=ofzVeMYtgWjC8kZsxmDi3++pCZp7GaqLknfMcb6bV8T7ZoWb0B5ydNM8bwudjaS0m
-	 x31nDh9kiTBvQjaCb6CWg0oDE6XGywh/P0JomfSnwCFOisIuRc49j21d27b5tOVaYz
-	 dA/g4hL48neW3s4Qkki3NrBy5fArsI2QVMyT+XiPffB61tCrpOrFw6mpBXSMmmPTSP
-	 PvsuAsY3tDBdXQODnMIabDPg6xzC8PP5/ro+pe6lWJtBZjRQ7Ef1v0B2QN+EATTyAe
-	 QXIbkrBC2RVdPd2wb7bAMfhZ+J56qGh11LonBeCwLp2wzWfFiNxNDm8aSWLIOwMgYB
-	 fAF7cpNir0mIg==
+	b=jMldzfp/VXU78etT1bunKnkj39/IRguCK/YLG2YLvs1J27INd9C9BFxsE70+e1T9z
+	 3KsChF9N3k9UAPjc+bZqJkkRucSvEQnzfZa/DsxkWiJYywmheZdYs4ziCFO+xVBmXa
+	 GujjzUSYIi2coW+PQh3PwRUQdMj1STQMtdxvibdL3XhvTAv1cOoPmU4ea1diEjxSr2
+	 jEyvc7P43/lWzSrIe6w9siqvI/zUYSxkJPYD2232uNPRgZKhdc7oB3xHs/Cg5pXija
+	 sA4ErXTqw4fgYD/A+YfZmgNDuFQSzWZL89tDsM1IGQQ4oXaO7LC/p06SvqH59VJNnJ
+	 mG0lBEdCd0MOQ==
 From: Mark Brown <broonie@kernel.org>
-Date: Thu, 05 Nov 2026 16:00:32 +0000
-Subject: [PATCH v2 5/9] firmware: cs_dsp: Give the control cache KUnit
+Date: Thu, 05 Nov 2026 16:00:33 +0000
+Subject: [PATCH v2 6/9] firmware: cs_dsp: Give the wmfw block error KUnit
  cases distinct names
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -55,7 +55,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261105-kunit-param-names-v2-5-765b3d5275d2@kernel.org>
+Message-Id: <20261105-kunit-param-names-v2-6-765b3d5275d2@kernel.org>
 References: <20261105-kunit-param-names-v2-0-765b3d5275d2@kernel.org>
 In-Reply-To: <20261105-kunit-param-names-v2-0-765b3d5275d2@kernel.org>
 To: Simon Trimmer <simont@opensource.cirrus.com>, 
@@ -77,222 +77,136 @@ Cc: patches@opensource.cirrus.com, linux-kernel@vger.kernel.org,
  linux-doc@vger.kernel.org, linux-ext4@vger.kernel.org, 
  linux-sound@vger.kernel.org, Mark Brown <broonie@kernel.org>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=12287; i=broonie@kernel.org;
- h=from:subject:message-id; bh=KB0L8KILb3TD2LIIhg4IYnlI0ANjLj2EznOjG7QhLxI=;
- b=owGbwMvMwCWm/754w+YLFp2Mp9WSGLLerEidNtnr6pVHWy/N1pV1Pz/xk1Tt4oy+22c1BYIq7
- Kq+N5hZd5SyMIhxMciKKbLEZXG/rC95vYbv4MI2mDmsTCBDGLg4BWAiGuKMDBMWm6t8+PVB2zhu
- /9ZH5u1h8QecLhbcsnqVdORO5TXWv1EM/6Oir6U0mK+4+1VRXtDJzGlC3XmTatO+Goa+K//fz1D
- kYgMA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=6898; i=broonie@kernel.org;
+ h=from:subject:message-id; bh=98pCo3T2yVlCTpQMqxhJrOE+JeR9FAR8IosLCvLVJug=;
+ b=owGbwMvMwCWm/754w+YLFp2Mp9WSGLLerEitU20t/fU9cPOqnTUbPt13LOEXftGyZXHF2SrXm
+ m0Ts1TKO0pZGMS4GGTFFFnisrhf1pe8XsN3cGEbzBxWJpAhDFycAjCRjZ0M/0MXNjpOdHlZnepc
+ mu4v8uGAziQjs5SpVabyou8PrHq1eQUjw6QNizo0pyV+cfPOt55fNqPY6PraF7wJrdMl90Ve18r
+ iZAEA
 X-Developer-Key: i=broonie@kernel.org; a=openpgp;
  fpr=3F2568AAC26998F9E813A1C5C3F436CA30F5D8EB
 
-The cs_dsp_ctl_cache suites run cs_dsp_ctl_cache_init(),
-cs_dsp_ctl_cache_writethrough() and
-cs_dsp_ctl_cache_writethrough_unchanged() against several sets of
-parameters by listing each function several times with
-KUNIT_CASE_PARAM(), which names the case after the function. The
-resulting cases all share a name, so they cannot be told apart in the
-results.
+The wmfw error suites run wmfw_too_short_for_block_header(),
+wmfw_too_short_for_block_payload() and wmfw_block_payload_len_garbage()
+both with valid and with invalid block types by listing each twice with
+KUNIT_CASE_PARAM(), which names the case after the function. The two
+cases for each function share a name, so they cannot be told apart in
+the results.
 
 Use KUNIT_CASE_PARAM_UNIQUE() for these entries so that each case is
 also named for the parameter generator it is run with, for example
-cs_dsp_ctl_cache_init-all_pop_varying_len_gen_params.
+wmfw_too_short_for_block_header-wmfw_invalid_block_types_gen_params.
 
 Reviewed-by: Richard Fitzgerald <rf@opensource.cirrus.com>
 Signed-off-by: Mark Brown <broonie@kernel.org>
 ---
- .../cirrus/test/cs_dsp_test_control_cache.c        | 143 +++++++++++----------
- 1 file changed, 72 insertions(+), 71 deletions(-)
+ .../firmware/cirrus/test/cs_dsp_test_wmfw_error.c  | 72 ++++++++++++++--------
+ 1 file changed, 48 insertions(+), 24 deletions(-)
 
-diff --git a/drivers/firmware/cirrus/test/cs_dsp_test_control_cache.c b/drivers/firmware/cirrus/test/cs_dsp_test_control_cache.c
-index b03cd7c37f6e..0a072063dfa7 100644
---- a/drivers/firmware/cirrus/test/cs_dsp_test_control_cache.c
-+++ b/drivers/firmware/cirrus/test/cs_dsp_test_control_cache.c
-@@ -2987,12 +2987,12 @@ KUNIT_ARRAY_PARAM(all_pop_nonvol_write_only_length,
- 		  cs_dsp_ctl_all_param_desc);
+diff --git a/drivers/firmware/cirrus/test/cs_dsp_test_wmfw_error.c b/drivers/firmware/cirrus/test/cs_dsp_test_wmfw_error.c
+index b07978d90fa9..44f9c8d71326 100644
+--- a/drivers/firmware/cirrus/test/cs_dsp_test_wmfw_error.c
++++ b/drivers/firmware/cirrus/test/cs_dsp_test_wmfw_error.c
+@@ -1219,12 +1219,18 @@ static struct kunit_case cs_dsp_wmfw_err_test_cases_v0[] = {
+ 	KUNIT_CASE(wmfw_err_bad_header_length),
+ 	KUNIT_CASE(wmfw_err_bad_core_type),
  
- static struct kunit_case cs_dsp_ctl_cache_test_cases_v1[] = {
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_init, all_pop_varying_len_gen_params),
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_init, all_pop_varying_offset_gen_params),
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_init, all_pop_varying_xy_gen_params),
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_init, all_pop_z_gen_params),
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_init, all_pop_varying_alg_gen_params),
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_init, all_pop_nonvol_readable_flags_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_init, all_pop_varying_len_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_init, all_pop_varying_offset_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_init, all_pop_varying_xy_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_init, all_pop_z_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_init, all_pop_varying_alg_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_init, all_pop_nonvol_readable_flags_gen_params),
+-	KUNIT_CASE_PARAM(wmfw_too_short_for_block_header, wmfw_valid_block_types_adsp2_gen_params),
+-	KUNIT_CASE_PARAM(wmfw_too_short_for_block_header, wmfw_invalid_block_types_gen_params),
+-	KUNIT_CASE_PARAM(wmfw_too_short_for_block_payload, wmfw_valid_block_types_adsp2_gen_params),
+-	KUNIT_CASE_PARAM(wmfw_too_short_for_block_payload, wmfw_invalid_block_types_gen_params),
+-	KUNIT_CASE_PARAM(wmfw_block_payload_len_garbage, wmfw_valid_block_types_adsp2_gen_params),
+-	KUNIT_CASE_PARAM(wmfw_block_payload_len_garbage, wmfw_invalid_block_types_gen_params),
++	KUNIT_CASE_PARAM_UNIQUE(wmfw_too_short_for_block_header,
++				wmfw_valid_block_types_adsp2_gen_params),
++	KUNIT_CASE_PARAM_UNIQUE(wmfw_too_short_for_block_header,
++				wmfw_invalid_block_types_gen_params),
++	KUNIT_CASE_PARAM_UNIQUE(wmfw_too_short_for_block_payload,
++				wmfw_valid_block_types_adsp2_gen_params),
++	KUNIT_CASE_PARAM_UNIQUE(wmfw_too_short_for_block_payload,
++				wmfw_invalid_block_types_gen_params),
++	KUNIT_CASE_PARAM_UNIQUE(wmfw_block_payload_len_garbage,
++				wmfw_valid_block_types_adsp2_gen_params),
++	KUNIT_CASE_PARAM_UNIQUE(wmfw_block_payload_len_garbage,
++				wmfw_invalid_block_types_gen_params),
  
- 	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_init_write_only,
- 			 all_pop_nonvol_write_only_length_gen_params),
-@@ -3019,25 +3019,25 @@ static struct kunit_case cs_dsp_ctl_cache_test_cases_v1[] = {
- 	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_read_running_zero_flags,
- 			 all_pop_varying_len_gen_params),
+ 	{ } /* terminator */
+ };
+@@ -1236,12 +1242,18 @@ static struct kunit_case cs_dsp_wmfw_err_test_cases_v1[] = {
+ 	KUNIT_CASE(wmfw_err_bad_header_length),
+ 	KUNIT_CASE(wmfw_err_bad_core_type),
  
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_writethrough, all_pop_varying_len_gen_params),
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_writethrough, all_pop_varying_offset_gen_params),
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_writethrough, all_pop_varying_xy_gen_params),
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_writethrough, all_pop_z_gen_params),
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_writethrough, all_pop_varying_alg_gen_params),
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_writethrough, all_pop_nonvol_writeable_flags_gen_params),
--
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_writethrough_unchanged,
--			 all_pop_varying_len_gen_params),
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_writethrough_unchanged,
--			 all_pop_varying_offset_gen_params),
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_writethrough_unchanged,
--			 all_pop_varying_xy_gen_params),
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_writethrough_unchanged,
--			 all_pop_z_gen_params),
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_writethrough_unchanged,
--			 all_pop_varying_alg_gen_params),
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_writethrough_unchanged,
--			 all_pop_nonvol_writeable_flags_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_writethrough, all_pop_varying_len_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_writethrough, all_pop_varying_offset_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_writethrough, all_pop_varying_xy_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_writethrough, all_pop_z_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_writethrough, all_pop_varying_alg_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_writethrough,
-+				all_pop_nonvol_writeable_flags_gen_params),
-+
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_writethrough_unchanged,
-+				all_pop_varying_len_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_writethrough_unchanged,
-+				all_pop_varying_offset_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_writethrough_unchanged,
-+				all_pop_varying_xy_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_writethrough_unchanged, all_pop_z_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_writethrough_unchanged,
-+				all_pop_varying_alg_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_writethrough_unchanged,
-+				all_pop_nonvol_writeable_flags_gen_params),
+-	KUNIT_CASE_PARAM(wmfw_too_short_for_block_header, wmfw_valid_block_types_adsp2_gen_params),
+-	KUNIT_CASE_PARAM(wmfw_too_short_for_block_header, wmfw_invalid_block_types_gen_params),
+-	KUNIT_CASE_PARAM(wmfw_too_short_for_block_payload, wmfw_valid_block_types_adsp2_gen_params),
+-	KUNIT_CASE_PARAM(wmfw_too_short_for_block_payload, wmfw_invalid_block_types_gen_params),
+-	KUNIT_CASE_PARAM(wmfw_block_payload_len_garbage, wmfw_valid_block_types_adsp2_gen_params),
+-	KUNIT_CASE_PARAM(wmfw_block_payload_len_garbage, wmfw_invalid_block_types_gen_params),
++	KUNIT_CASE_PARAM_UNIQUE(wmfw_too_short_for_block_header,
++				wmfw_valid_block_types_adsp2_gen_params),
++	KUNIT_CASE_PARAM_UNIQUE(wmfw_too_short_for_block_header,
++				wmfw_invalid_block_types_gen_params),
++	KUNIT_CASE_PARAM_UNIQUE(wmfw_too_short_for_block_payload,
++				wmfw_valid_block_types_adsp2_gen_params),
++	KUNIT_CASE_PARAM_UNIQUE(wmfw_too_short_for_block_payload,
++				wmfw_invalid_block_types_gen_params),
++	KUNIT_CASE_PARAM_UNIQUE(wmfw_block_payload_len_garbage,
++				wmfw_valid_block_types_adsp2_gen_params),
++	KUNIT_CASE_PARAM_UNIQUE(wmfw_block_payload_len_garbage,
++				wmfw_invalid_block_types_gen_params),
  
- 	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_write_unchanged_not_started,
- 			 all_pop_nonvol_writeable_flags_gen_params),
-@@ -3075,12 +3075,12 @@ static struct kunit_case cs_dsp_ctl_cache_test_cases_v1[] = {
- static struct kunit_case cs_dsp_ctl_cache_test_cases_v2[] = {
- 	KUNIT_CASE(cs_dsp_ctl_v2_cache_alloc),
+ 	KUNIT_CASE(wmfw_too_short_for_alg_header),
+ 	KUNIT_CASE(wmfw_v1_alg_name_unterminated),
+@@ -1258,12 +1270,18 @@ static struct kunit_case cs_dsp_wmfw_err_test_cases_v2[] = {
+ 	KUNIT_CASE(wmfw_err_bad_header_length),
+ 	KUNIT_CASE(wmfw_err_bad_core_type),
  
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_init, all_pop_varying_len_gen_params),
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_init, all_pop_varying_offset_gen_params),
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_init, all_pop_varying_xy_gen_params),
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_init, all_pop_z_gen_params),
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_init, all_pop_varying_alg_gen_params),
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_init, all_pop_nonvol_readable_flags_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_init, all_pop_varying_len_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_init, all_pop_varying_offset_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_init, all_pop_varying_xy_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_init, all_pop_z_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_init, all_pop_varying_alg_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_init, all_pop_nonvol_readable_flags_gen_params),
+-	KUNIT_CASE_PARAM(wmfw_too_short_for_block_header, wmfw_valid_block_types_adsp2_gen_params),
+-	KUNIT_CASE_PARAM(wmfw_too_short_for_block_header, wmfw_invalid_block_types_gen_params),
+-	KUNIT_CASE_PARAM(wmfw_too_short_for_block_payload, wmfw_valid_block_types_adsp2_gen_params),
+-	KUNIT_CASE_PARAM(wmfw_too_short_for_block_payload, wmfw_invalid_block_types_gen_params),
+-	KUNIT_CASE_PARAM(wmfw_block_payload_len_garbage, wmfw_valid_block_types_adsp2_gen_params),
+-	KUNIT_CASE_PARAM(wmfw_block_payload_len_garbage, wmfw_invalid_block_types_gen_params),
++	KUNIT_CASE_PARAM_UNIQUE(wmfw_too_short_for_block_header,
++				wmfw_valid_block_types_adsp2_gen_params),
++	KUNIT_CASE_PARAM_UNIQUE(wmfw_too_short_for_block_header,
++				wmfw_invalid_block_types_gen_params),
++	KUNIT_CASE_PARAM_UNIQUE(wmfw_too_short_for_block_payload,
++				wmfw_valid_block_types_adsp2_gen_params),
++	KUNIT_CASE_PARAM_UNIQUE(wmfw_too_short_for_block_payload,
++				wmfw_invalid_block_types_gen_params),
++	KUNIT_CASE_PARAM_UNIQUE(wmfw_block_payload_len_garbage,
++				wmfw_valid_block_types_adsp2_gen_params),
++	KUNIT_CASE_PARAM_UNIQUE(wmfw_block_payload_len_garbage,
++				wmfw_invalid_block_types_gen_params),
  
- 	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_init_write_only,
- 			 all_pop_nonvol_write_only_length_gen_params),
-@@ -3108,25 +3108,25 @@ static struct kunit_case cs_dsp_ctl_cache_test_cases_v2[] = {
- 	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_read_running_zero_flags,
- 			 all_pop_varying_len_gen_params),
+ 	KUNIT_CASE(wmfw_too_short_for_alg_header),
+ 	KUNIT_CASE(wmfw_v2_alg_name_exceeds_block),
+@@ -1284,12 +1302,18 @@ static struct kunit_case cs_dsp_wmfw_err_test_cases_v3[] = {
+ 	KUNIT_CASE(wmfw_err_bad_header_length),
+ 	KUNIT_CASE(wmfw_err_bad_core_type),
  
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_writethrough, all_pop_varying_len_gen_params),
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_writethrough, all_pop_varying_offset_gen_params),
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_writethrough, all_pop_varying_xy_gen_params),
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_writethrough, all_pop_z_gen_params),
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_writethrough, all_pop_varying_alg_gen_params),
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_writethrough, all_pop_nonvol_writeable_flags_gen_params),
--
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_writethrough_unchanged,
--			 all_pop_varying_len_gen_params),
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_writethrough_unchanged,
--			 all_pop_varying_offset_gen_params),
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_writethrough_unchanged,
--			 all_pop_varying_xy_gen_params),
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_writethrough_unchanged,
--			 all_pop_z_gen_params),
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_writethrough_unchanged,
--			 all_pop_varying_alg_gen_params),
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_writethrough_unchanged,
--			 all_pop_nonvol_writeable_flags_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_writethrough, all_pop_varying_len_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_writethrough, all_pop_varying_offset_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_writethrough, all_pop_varying_xy_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_writethrough, all_pop_z_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_writethrough, all_pop_varying_alg_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_writethrough,
-+				all_pop_nonvol_writeable_flags_gen_params),
-+
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_writethrough_unchanged,
-+				all_pop_varying_len_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_writethrough_unchanged,
-+				all_pop_varying_offset_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_writethrough_unchanged,
-+				all_pop_varying_xy_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_writethrough_unchanged, all_pop_z_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_writethrough_unchanged,
-+				all_pop_varying_alg_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_writethrough_unchanged,
-+				all_pop_nonvol_writeable_flags_gen_params),
+-	KUNIT_CASE_PARAM(wmfw_too_short_for_block_header, wmfw_valid_block_types_halo_gen_params),
+-	KUNIT_CASE_PARAM(wmfw_too_short_for_block_header, wmfw_invalid_block_types_gen_params),
+-	KUNIT_CASE_PARAM(wmfw_too_short_for_block_payload, wmfw_valid_block_types_halo_gen_params),
+-	KUNIT_CASE_PARAM(wmfw_too_short_for_block_payload, wmfw_invalid_block_types_gen_params),
+-	KUNIT_CASE_PARAM(wmfw_block_payload_len_garbage, wmfw_valid_block_types_halo_gen_params),
+-	KUNIT_CASE_PARAM(wmfw_block_payload_len_garbage, wmfw_invalid_block_types_gen_params),
++	KUNIT_CASE_PARAM_UNIQUE(wmfw_too_short_for_block_header,
++				wmfw_valid_block_types_halo_gen_params),
++	KUNIT_CASE_PARAM_UNIQUE(wmfw_too_short_for_block_header,
++				wmfw_invalid_block_types_gen_params),
++	KUNIT_CASE_PARAM_UNIQUE(wmfw_too_short_for_block_payload,
++				wmfw_valid_block_types_halo_gen_params),
++	KUNIT_CASE_PARAM_UNIQUE(wmfw_too_short_for_block_payload,
++				wmfw_invalid_block_types_gen_params),
++	KUNIT_CASE_PARAM_UNIQUE(wmfw_block_payload_len_garbage,
++				wmfw_valid_block_types_halo_gen_params),
++	KUNIT_CASE_PARAM_UNIQUE(wmfw_block_payload_len_garbage,
++				wmfw_invalid_block_types_gen_params),
  
- 	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_write_unchanged_not_started,
- 			 all_pop_nonvol_writeable_flags_gen_params),
-@@ -3164,11 +3164,11 @@ static struct kunit_case cs_dsp_ctl_cache_test_cases_v2[] = {
- static struct kunit_case cs_dsp_ctl_cache_test_cases_v3[] = {
- 	KUNIT_CASE(cs_dsp_ctl_v2_cache_alloc),
- 
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_init, all_pop_varying_len_gen_params),
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_init, all_pop_varying_offset_gen_params),
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_init, all_pop_varying_xy_gen_params),
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_init, all_pop_varying_alg_gen_params),
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_init, all_pop_nonvol_readable_flags_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_init, all_pop_varying_len_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_init, all_pop_varying_offset_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_init, all_pop_varying_xy_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_init, all_pop_varying_alg_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_init, all_pop_nonvol_readable_flags_gen_params),
- 
- 	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_init_write_only,
- 			 all_pop_nonvol_write_only_length_gen_params),
-@@ -3194,22 +3194,23 @@ static struct kunit_case cs_dsp_ctl_cache_test_cases_v3[] = {
- 	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_read_running,
- 			 all_pop_nonvol_readable_nonzero_flags_gen_params),
- 
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_writethrough, all_pop_varying_len_gen_params),
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_writethrough, all_pop_varying_offset_gen_params),
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_writethrough, all_pop_varying_xy_gen_params),
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_writethrough, all_pop_varying_alg_gen_params),
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_writethrough, all_pop_nonvol_writeable_flags_gen_params),
--
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_writethrough_unchanged,
--			 all_pop_varying_len_gen_params),
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_writethrough_unchanged,
--			 all_pop_varying_offset_gen_params),
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_writethrough_unchanged,
--			 all_pop_varying_xy_gen_params),
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_writethrough_unchanged,
--			 all_pop_varying_alg_gen_params),
--	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_writethrough_unchanged,
--			 all_pop_nonvol_writeable_flags_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_writethrough, all_pop_varying_len_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_writethrough, all_pop_varying_offset_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_writethrough, all_pop_varying_xy_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_writethrough, all_pop_varying_alg_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_writethrough,
-+				all_pop_nonvol_writeable_flags_gen_params),
-+
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_writethrough_unchanged,
-+				all_pop_varying_len_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_writethrough_unchanged,
-+				all_pop_varying_offset_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_writethrough_unchanged,
-+				all_pop_varying_xy_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_writethrough_unchanged,
-+				all_pop_varying_alg_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs_dsp_ctl_cache_writethrough_unchanged,
-+				all_pop_nonvol_writeable_flags_gen_params),
- 
- 	KUNIT_CASE_PARAM(cs_dsp_ctl_cache_write_unchanged_not_started,
- 			 all_pop_nonvol_writeable_flags_gen_params),
+ 	KUNIT_CASE(wmfw_too_short_for_alg_header),
+ 	KUNIT_CASE(wmfw_v2_alg_name_exceeds_block),
 
 -- 
 2.47.3
