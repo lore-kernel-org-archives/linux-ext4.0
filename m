@@ -1,57 +1,57 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793880228;
-	b=m26eA91EGpKKJ5X8TeGV3P84KhCZ/lwU25L8fmOSJNhsSybHEwhMKNrFj96nmU9N6q4V
-	 QkRHZFHTNEeR4nftluIXw6cit/BQ2QEm1ZSaJRHGFM21Jlwfu3m7mpvvUQU0GjhAkHKOV
-	 uLWnGylGXJQ9gDBpTlcLuBcEfMB86fTT9BQ4J7X+tlLlFQAI2LUzLaCwuz81NOXgY3mJa
-	 KHTWn8oV8+OqTFHBWnCUsX0+75CIM+/BPIIdl45WItjXMdxlFHI09Yl1PksE8l9qjNErL
-	 6gPXzCgkIbWzJprIwKVR0cq/F0CEN78QRo3RKqpQVJ+ykUfIuAAYRkRliY0wQQBNv8w==
+	t=1793880233;
+	b=xrbjmI9/YS204/e1pMghLdgOk/OVi/1YT1IOwF1SOEEILxSBE3Glv5qT3jzh6mtMbItU
+	 a0JAYVoKvNaPYgDhwhpQd2CkUVKUPZ1HHmNrPLs6Vhm/xYNnTGB74sFQ3LMQalNhoamWT
+	 9MnMVkdbcLT7f30zKS7q8bBEmClrvUGmPKOfZ2pzhUuXc4eYsKQIOy61Wfg2cLIHDdeGQ
+	 wlyqIfDA6znUyrUfUfpJJw3oqPbMThVklxtKR4sTWQrJbhO9ogj0mg+U9tBbntwZbTZ9O
+	 mxQ1435u3kDhqD3SGTkm5u492CVIvUjX6b+mtdjQyKN2snEqi5qWSSsbSnNcIbryAow==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793880228;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793880233;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=k/wi11Q8Kbwq/8dtX7S4+c84XHKcQGErwPRnzMyAsJw=;
-	b=NrtsCkhWpj2YJ+LDIb89/9+zRZYPTtyumIIv73I/DqZKeZ6QYVzuCan/MIGsYveL2qom
-	 221L/pLLQR4ybnkfowLzmuRoiH92b6Byr1ftdvcthKxYy+wU6ZlTAOgsVic9cszzooOfN
-	 dGy6k4ETtjzdT3o8jQUSN8hxe6LqIRNHvEmOYM+EqGyDdKU4S3jUmk7msTOlujVG8R64A
-	 rDk3G1Lw84FhqBoPMajUxQ2lP8kg00p1W8t6h24dZF5+Whmk7w2QjiaVl/PAJB/9/sN56
-	 2uaus9Tw+SwIsD7YTOvrRVvTMEKH3OSizF5OIT3OLDy8CNWxvsh1qHnQxI5WgSzuaFA==
+	bh=HF/8SKBuUEL3ztk7Xy2RdRhyZwmvfJNmYpPnOYSmWak=;
+	b=E9357GbssUEGeoDtEhIbMIez/0ZtRu8loxnIep7H6UzFbZiuMYxicC0LvL8/KpSS8Ob4
+	 vbuy4BKGaP6v023WQ02YNrMzPbDxxWsvA4KGPxQ26PthpiRbnWddtg1p7eHsX1iyz41kW
+	 zyddkKWnXGh9rmdKVgLrMHqB14PHag2kPhupq3xzSo2fg+7UWu7BHUmpb9ueSKtl1O9uV
+	 WeVuX580Wn24ykA7lLqvsouDl+Z/pBx0TNWNyKTRubpy/wxKueJFLf2Hj3honSp3QFyYY
+	 pz7PIvLFJlM3RHW9Uo0oRc4Ut3JRbdlurmS28b5R6Z456Q6/dIHc9L7nYvZqpxiwLmg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Ik2wl13d;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ilwp2xhg;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B5521606A332
-	for <linux-ext4@vger.kernel.org>; Thu,  5 Nov 2026 12:03:47 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3F849606A329
+	for <linux-ext4@vger.kernel.org>; Thu,  5 Nov 2026 12:03:53 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Ik2wl13d
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 328FC1F000C1;
-	Thu,  5 Nov 2026 12:03:47 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ilwp2xhg
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id E1EEC1F00919;
+	Thu,  5 Nov 2026 12:03:52 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793880227;
-	bh=k/wi11Q8Kbwq/8dtX7S4+c84XHKcQGErwPRnzMyAsJw=;
+	s=k20260515; t=1793880233;
+	bh=HF/8SKBuUEL3ztk7Xy2RdRhyZwmvfJNmYpPnOYSmWak=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=Ik2wl13d/USMdBZVuezajsFt0QoQiThbp/4So/UbVqw3aBzjyZVGsJ5iB322vMNOL
-	 SBOaQTTeKxYY4lqvnSswK5TP13TRs91b9oq6Pt6utI1p4Yct8kpqCnic3vMDhrn5kA
-	 CP9Ha4p/3DUoEthF6FzDCkyE3yzf8FTbSU3Uir5z9ASiPR7wvmbavsR8IS3osWsuNZ
-	 +1gHRJ6mlKmLjihpLPzO8PqHGqFZAGyvrcNKpQE+pse2I11AakQ/Fs9eLGG289BFEh
-	 qzI3oJwu6ZzOeLqBGS18M8Poe0i6VyfXDyYkurMJu2mFwDEwt0gBU8N/QIgiNbcdvJ
-	 3Q5nbeNg3mi5A==
-Message-ID: <sashiko-outbox-198986@kernel.org>
+	b=ilwp2xhg2yB74zKjJ0GrHJFkqagzcVYDPbbR6u7rV5wIwJDzCmR+Hl8FS1EmJ0BU0
+	 34c5OgwaCmZyL/Gdmx2CPwz3AmOzqOT0bUcsqq53xgGUzMaxq1f7zDV3wQ0dR9sFQL
+	 md+xhMg5ub6Ug57zZZtrR24hU/KOSdbwKn3BdIFjrEWVK5rCvjmr5IGrh0N5Ybp7lF
+	 ru2xN5kLjRQ72kfVazgFAzKpgRdjA/tTMRQddxtVzX59x0LLzsDOlseynzEmpBkv8z
+	 NTOkco3alm1veiE/jhOra2fyUWox6RzLGuPRJPFrKyZb6uiYs4PJZlCvRKQ0kmytji
+	 v9MNaKMlc76Yg==
+Message-ID: <sashiko-outbox-198987@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [f2fs-dev] [PATCH v2 1/5] fsverity: strip FS_VERITY_FL from
- FS_IOC_SETFLAGS
+Subject: Re: [PATCH v2 3/5] btrfs: use I_VERITY_BUILDING instead of private
+ flags
 Reply-To: sashiko-reviews@lists.linux.dev
-To: "Andrey Albershteyn via Linux-f2fs-devel" <linux-f2fs-devel@lists.sourceforge.net>
+To: "Andrey Albershteyn" <aalbersh@kernel.org>
 Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-In-Reply-To: <20261105115532.613467-2-aalbersh@kernel.org>
+In-Reply-To: <20261105115532.613467-4-aalbersh@kernel.org>
 References: <20261105115532.613467-1-aalbersh@kernel.org>
- <20261105115532.613467-2-aalbersh@kernel.org>
+ <20261105115532.613467-4-aalbersh@kernel.org>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Thu, 05 Nov 2026 12:03:46 +0000
+Date: Thu, 05 Nov 2026 12:03:52 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -61,27 +61,19 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-> The common use of FS_IOC_GETFLAGS/SETFLAGS is get-modify-set loop.
-> Filesystems could return verity status with GETFLAGS, attempting to then
-> pass FS_VERITY_FL to SETFLAGS is not allowed.
+> Now that the VFS tracks an inode whose Merkle tree is under construction
+> via I_VERITY_BUILDING and handles the concurrent-enable guard in the
+> generic fs-verity enable path, drop the inode runtime flags that
+> duplicated this.
 >=20
-> The ext4 and f2fs already treat FS_VERITY_FL in the set path as no-op,
-> however, BTRFS returns -EOPNOTSUPP. So, the modification of other flags
-> doesn't work on BTRFS for fsverity inodes.
+> btrfs only used BTRFS_INODE_VERITY_IN_PROGRESS internally, so remove it
+> outright.
 >=20
-> Fix it for BTRFS and anyone else, the ext4 and f2fs masking becomes
-> no-op. The file_get/setattr() path is fine here as this flag is cleared
-> right before fileattr_set_prepare(). The future fsverity support in XFS
-> would also need it.
->=20
-> Cc: Boris Burkov <boris@bur.io>
-> Cc: David Sterba <dsterba@suse.com>
-> Fixes: 146054090b08 ("btrfs: initial fsverity support")
 > Signed-off-by: Andrey Albershteyn <aalbersh@kernel.org>
 
 Sashiko has reviewed this patch and found no issues.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261105115532.6134=
-67-1-aalbersh@kernel.org?part=3D1
+67-1-aalbersh@kernel.org?part=3D3
 
