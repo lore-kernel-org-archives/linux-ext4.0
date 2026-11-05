@@ -1,50 +1,108 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=115.124.30.112
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.130
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793896658;
-	b=FamRppQ/3qlT+FWyP61mFTzXrMnudfF3Ox2GkE4ORFtsFqL/vSqm6dqCvsMu4VPMEROy
-	 kuJdHAkixHInKEPYQmvcp1bim0METkHwlyg9a4w5VkWp0vIv0SaLfh9qUgQsrUXvfot+P
-	 /MWumTlAA4SPPOIysaTomarOS1eBi57XlK03Eamq9t70ZIyNLFzRelVvoNRQ0KD+n6Vkj
-	 YT0GpRuqqaid9Y0oankaDVJmn8e44ZuEGRZE6vV0d1mFzqjdkGRbejISC9qF1SCyzJ6MA
-	 B3g1L9hXKaf8vYMGHpPyE7bXHngRHZNZEg0l7k25fuNuOJ/6y4OEyNBNxPXXHPfoLOg==
+	t=1793903407;
+	b=nc7Kek4wKJ438pzsLrDrc4NYiW+iNNfnFXv8G+zivArwDmkEAQsiC7IE2eRQ0Tz0zzHj
+	 p4ivHbzr8SbgbK7n3KVPbmsaowzZJerWbJY85inmL+gwSz/eoYQKB0ZTxh9A+K0ViZLHB
+	 sXEmmAfh/9TdB0kxkRVh0fZZCCkrVFBEzgGxqZ590W7CvW2GBheoZcxLGkey6xuKCVPPB
+	 6ioxmsHGrD1W2t/1I9E3bff/XXCY2MQ06aa1mjdqAOD/JHiJosE51ILiaPY4saA8EGhOJ
+	 nqzagSI+V5FxZbWImprWvmE8W1qa4GETqJZcJ9LJ2Hkn7QXNbkHQ9NIPevoCIX3/x7Q==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793896658;
-	h=DMARC-Filter:DKIM-Signature:X-Alimail-AntiSpam:Received:Message-ID:
-	 Date:MIME-Version:User-Agent:Subject:To:Cc:References:
-	 Content-Language:From:In-Reply-To:Content-Type:
-	 Content-Transfer-Encoding;
-	bh=csElEp+VhdZG2jnq1WLbmjmoJ99uEQ9BCkuzOTjKEJ4=;
-	b=ozXfonuAKUbDZJIijbQYUsuRwiIdsFa9vZeYpHOyqUAx2c/EPZh3dD12aCj4vFbnkSs5
-	 tspuEBKcsL1EzSbo26eSlwiaZgrsZ8QQoDBjkPYS29+cVvGtTfjJR3y7J+Hf7lX7MLGmH
-	 V8sjN5ULkUR+/HLSU+yBkx04fNkOSGKEJ83M1FEMZ8Bn1MO8WXM9tO9qwY2fMFWbXNld8
-	 aZTCm130IWH3Ftc2v0+4qHUPzQ1JkEF26xE57kHSg7o6NFLRGBe8BG52KUIjkBa8p2fSp
-	 DttpxO1OsH2WPO2oCxWPb4brckrffnUNxaQ7ecBhZIptchnqo6tHeTZlWFrBcW4iT2g==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793903407;
+	h=DMARC-Filter:Received:DKIM-Signature:DKIM-Signature:DKIM-Signature:
+	 DKIM-Signature:Received:Received:Received:Date:From:To:Cc:Subject:
+	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
+	 In-Reply-To:X-Spam-Flag:X-Spam-Level:X-Spamd-Result:X-Spam-Score;
+	bh=dKAVEUZfk/rWKWdFpJ2rZqQA7SNePVsYzwAVLNjYZck=;
+	b=1dClCLmyVfXsrUq7TiWQT0geHcW2zDG3HPd6c8Gc6R5lAXp8/5Usmb3rYJJ58Ah6Dqhn
+	 iBBMF8B71IVQW84tPET1GXSpar9zWpoIVXnPaX91Ufv/18YRSGZV1Q/mmD22oEjjvqoBp
+	 BGpU1XKMYWXCDZQr+NxFu+Dmc62Hwj0ucz3H2P2qSrndy+pefFkfu/rngo8UGByvfOsO/
+	 lCM22oHKQ1PSwbR8j2qbvUJHU8QG/5xCwje914K9ZXMieIhDPssIqsgZlVX2Rn6xXFHft
+	 t9PkRC2tShv2nGz0K5tRW45oS9lTddaW7aSjEBomk/w5z1CvJqnDzicOiiDEkZORszw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=linux.alibaba.com;
-	spf=pass smtp.mailfrom=linux.alibaba.com;
-	dkim=pass header.d=linux.alibaba.com header.i=@linux.alibaba.com header.a=rsa-sha256 header.s=default header.b=OADZb1yX;
-	arc=none smtp.remote-ip=115.124.30.112
-Received: from out30-112.freemail.mail.aliyun.com (out30-112.freemail.mail.aliyun.com [115.124.30.112])
+	dmarc=none header.from=suse.cz;
+	spf=pass smtp.mailfrom=suse.cz;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=ZvNcjhdf;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=r27LTYuL;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=zwAbWFKE;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=wANjwfZk;
+	arc=none smtp.remote-ip=195.135.223.130
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 91D5D606CBCD;
-	Thu,  5 Nov 2026 16:37:35 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 91D5D606CBCD
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 37AC0606A32D;
+	Thu,  5 Nov 2026 18:30:05 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 37AC0606A32D
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.a=rsa-sha256 header.s=default header.b=OADZb1yX
-DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
-	d=linux.alibaba.com; s=default;
-	t=1793896652; h=Message-ID:Date:MIME-Version:Subject:To:From:Content-Type;
-	bh=csElEp+VhdZG2jnq1WLbmjmoJ99uEQ9BCkuzOTjKEJ4=;
-	b=OADZb1yX25qqRO0W23iOHaPjIk7pHhc5AzDX9N/3sKfGr8PQBpcQ+cZUewCLD55eGxTxHsVf6mVeLGBTW43a7Fg1kr2jh1ZVqqXwEMkNw6ZoZi1ohqUYQEKDwxDMkBXOUHqqNCvuqtdJaodJNzL6jQM4keQ0bVas/8oAYhel0rs=
-X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R811e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033037033178;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=11;SR=0;TI=SMTPD_---0XE98I-._1793896650;
-Received: from 30.42.176.22(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0XE98I-._1793896650 cluster:ay36)
-          by smtp.aliyun-inc.com;
-          Fri, 06 Nov 2026 00:37:31 +0800
-Message-ID: <ae6f5ba2-8afc-43db-8d0a-f82d0163702d@linux.alibaba.com>
-Date: Fri, 6 Nov 2026 00:37:30 +0800
+	dkim=pass (1024-bit key, unprotected) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=ZvNcjhdf;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=r27LTYuL;
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=zwAbWFKE;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=wANjwfZk
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id 04EC421F91;
+	Thu,  5 Nov 2026 18:30:03 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1793903404; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=dKAVEUZfk/rWKWdFpJ2rZqQA7SNePVsYzwAVLNjYZck=;
+	b=ZvNcjhdfrU5LGt8mvgauc05n6wOXrd1+1eC4mHnmw8h5ZjE3Fn9r+pSBTr0jFI+xokFrsj
+	Os84xtP6ACgRJ9ALub7zBiuHTZpGqfA9qlO7rFk59x4X/7uCkwibR1Ke9WZ2+NF2+w1kJu
+	szLZaXHN9deh7RlTRCZGFMG32Eoee4Q=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1793903404;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=dKAVEUZfk/rWKWdFpJ2rZqQA7SNePVsYzwAVLNjYZck=;
+	b=r27LTYuLApuUZfuzQ6+fx6km1uDQ0FeC3rUoztkaJUrQzyKBY2qngAKGl1d4L6xnpemcX6
+	xXblI7LGBqHSxoBQ==
+Authentication-Results: smtp-out1.suse.de;
+	none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1793903403; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=dKAVEUZfk/rWKWdFpJ2rZqQA7SNePVsYzwAVLNjYZck=;
+	b=zwAbWFKELyEKdGdXvEYyP5tO7oUnDv8gC1yBYgRyLdyfNJ5U4ECHbXeH0TYKv4x7saofup
+	4wD5kr+s1fgQnrK/MegCRLY7JBb04qisZMn58hITZNbM7pZIGPRdqCzEWJLaQJXnrJ1Pwa
+	CKf/ifUyGclcQx9USz7ua53xHXwDab0=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1793903403;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=dKAVEUZfk/rWKWdFpJ2rZqQA7SNePVsYzwAVLNjYZck=;
+	b=wANjwfZkAy8hG8vOHw6ygHEucy82GZZG3TndWS2/FRkMlhY7B70k8g85GmyQDj/cTxBq9q
+	uwnvL9d+gCVBd9BQ==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id A6DA1133F6;
+	Thu,  5 Nov 2026 18:30:02 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id koUGHyrL7Gr1IQAAD6G6ig
+	(envelope-from <jack@suse.cz>); Thu, 05 Nov 2026 18:30:02 +0000
+Received: by quack.suse.cz (Postfix, from userid 1000)
+	id 325C8B820; Thu, 05 Nov 2026 19:30:02 +0100 (CET)
+Date: Thu, 5 Nov 2026 19:30:02 +0100
+From: Jan Kara <jack@suse.cz>
+To: Jianping Liu <frankljpliu@gmail.com>
+Cc: tytso@mit.edu, adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, 
+	jack@suse.cz, ojaswin@linux.ibm.com, ritesh.list@gmail.com, 
+	yi.zhang@huawei.com, frankjpliu@tencent.com, linux-ext4@vger.kernel.org, 
+	linux-kernel@vger.kernel.org
+Subject: Re: [PATCH v2] ext4: fix soft lockup while shrinking the extent
+ status cache
+Message-ID: <rszreimkiwsu3yrksfrjvalosmvhsybnfrabups7dv2jfmrkdc@qvzzx3sw67rp>
+References: <20261104033539.3031910-1-frankljpliu@gmail.com>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -54,99 +112,101 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH 1/4] fscrypt: Cap data units at the page size
-To: Eric Biggers <ebiggers@kernel.org>
-Cc: linux-fscrypt@vger.kernel.org, jaegeuk@kernel.org, tytso@mit.edu,
- linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca, jack@suse.cz,
- yi.zhang@huawei.com, ojaswin@linux.ibm.com, ritesh.list@gmail.com,
- linux-kernel@vger.kernel.org
-References: <20261103153132.4154855-1-libaokun@linux.alibaba.com>
- <20261103153132.4154855-2-libaokun@linux.alibaba.com>
- <20261103224006.GC2281@quark>
- <922240f9-8233-4466-a787-2f7ddba7c490@linux.alibaba.com>
- <20261104195127.GA1971@quark>
-Content-Language: en-US
-From: Baokun Li <libaokun@linux.alibaba.com>
-In-Reply-To: <20261104195127.GA1971@quark>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20261104033539.3031910-1-frankljpliu@gmail.com>
+X-Spam-Flag: NO
+X-Spam-Level: 
+X-Spamd-Result: default: False [-11.30 / 50.00];
+	SUSE_INTERNAL_BYPASS(-9.00)[];
+	BAYES_HAM(-3.00)[100.00%];
+	SUSPICIOUS_RECIPS(1.50)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	TAGGED_RCPT(0.00)[];
+	ARC_NA(0.00)[];
+	FREEMAIL_TO(0.00)[gmail.com];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	MISSING_XM_UA(0.00)[];
+	RCPT_COUNT_SEVEN(0.00)[11];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	TO_DN_SOME(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	FREEMAIL_CC(0.00)[mit.edu,dilger.ca,linux.alibaba.com,suse.cz,linux.ibm.com,gmail.com,huawei.com,tencent.com,vger.kernel.org];
+	RCVD_COUNT_THREE(0.00)[3];
+	FROM_EQ_ENVFROM(0.00)[];
+	RCVD_TLS_LAST(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,suse.cz:email,suse.com:email,tencent.com:email]
+X-Spam-Score: -11.30
 
-On 2026/11/5 03:51, Eric Biggers wrote:
-> On Wed, Nov 04, 2026 at 10:31:46AM +0800, Baokun Li wrote:
->> What I had in mind before was to keep the default as min(bs, PS) and
->> allow DU > PS only when explicitly specified, which seemed to give
->> better compatibility.  Cross-machine or cross-page-size cases seem
->> uncommon, and existing machines have probably already avoided them by
->> specifying a 4K or smaller DU.
->>
->> Keeping the existing default semantics and returning an error in the
->> LBS case for the user to specify seems feasible.  But then
->> test_dummy_encryption and the xfstests cases that use the default would
->> need to specify the DU explicitly, otherwise the LBS + encrypt test
->> coverage would drop a lot.  That is, in the kernel or the tests we
->> always have to set a default DU size.
->>
->> If you confirm that we should take the route where LBS requires an
->> explicit data unit size and the default is rejected, I can adapt the
->> kernel and xfstests in v2.  Or should we go back to the more compatible
->> DU > page size approach?
+On Wed 04-11-26 11:35:39, Jianping Liu wrote:
+> From: Jianping Liu <frankjpliu@tencent.com>
 > 
-> It will indeed be annoying to have to explicitly specify the data unit
-> size, but I don't see a better solution for now, given the complexity of
-> supporting data unit sizes larger than the page size.  I think making
-> the on-disk format needing PAGE_SIZE to interpret is a no-go.
+> __es_shrink() walks sbi->s_es_list and reclaims extents from each
+> inode. On a non-preemptible kernel that walk never gives up the CPU.
 > 
+> There is a soft lockup report on our company's machine. The machine
+> with millions of active inodes, 256 CPUs, and heavy memory pressure,
+> concurrent shrinkers run too long.
+> 
+> i_es_lock is dropped after es_reclaim_extents(), and s_es_lock is not
+> taken again until the next inode. When nr_to_scan remains, call
+> cond_resched_tasks_rcu_qs() before continuing the scan.
+> 
+> cond_resched() does not report the RCU quiescent state needed here.
+> It is compiled out when CONFIG_PREEMPTION=y. Otherwise it schedules
+> through preempt_schedule(), and RCU records that switch as a
+> preemption. An RCU-tasks read-side section ends only at a voluntary
+> context switch, cond_resched_tasks_rcu_qs(), idle, or return to
+> userspace. The helper reports that voluntary quiescent state and still
+> lets a non-preemptible kernel reschedule.
+> 
+> Changes from v1:
+> - Delete time out logic.
+> - Change "cond_resched" to "cond_resched_tasks_rcu_qs".
 
-Agreed.
+These three lines belong below the ---. Otherwise feel free to add:
 
-> I suppose that in theory, how FS_IOC_SET_ENCRYPTION_POLICY handles
-> log2_data_unit_size=0 could be changed: it could start actually writing
-> log2_data_unit_size=12 to disk (rather than writing 0 which means the
-> filesystem block size).  I think that can still lead to problems,
-> though.  For one FS_IOC_GET_ENCRYPTION_POLICY would return something
-> different from what was set.
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-I also considered making the default explicit, e.g. 4096, when the
-bs > PS.  GET_ENCRYPTION_POLICY would then report 4096 instead of
-the 0 that was set, which I think is fine provided we log it:
-an unset field means "use the kernel default", and this just pins
-down what that default is.  This works for v2.
-
-I dropped it over test_dummy_encryption: mount options are parsed
-before the block size is known, and the policy is const once it is,
-so only invasive changes would work.
-
-But the dummy policy is recreated on every mount and never persisted,
-so there is no on-disk policy to stay compatible with.  The template
-can just use SECTOR_SHIFT (simplest); alternatively, refuse it on such
-a fs, or support an explicit du_size through a helper shared by the fs
-(most complex).
+								Honza
 
 > 
-> Regarding xfstests, take a look at how common/verity adds $FSV_BLOCKSIZE
-> to all 'fsverity enable' commands by default, to select some Merkle tree
-> block size that the filesystem supports.  Something similar could be
-> done with fscrypt.  Yes, this won't work with v1 encryption policies,
-> but v1 policies are obsolete.  Most of the xfstests that use v1 policies
-> should just be updated to use v2 instead.  The btrfs folks were working
-> on that earlier, since they're not planning to support v1 at all.
+> Link: https://patchwork.ozlabs.org/project/linux-ext4/patch/20261028061628.1209508-1-frankljpliu@gmail.com/
+> Signed-off-by: Jianping Liu <frankjpliu@tencent.com>
+> ---
+>  fs/ext4/extents_status.c | 10 ++++++++++
+>  1 file changed, 10 insertions(+)
 > 
-
-Agreed on rejecting v1.  The xfstests cases that need it will have to
-be skipped or converted to v2; I can do that if nobody else is on it.
-
-So, to enable this by default when bs > PS:
-
-  1. reject v1, and convert the xfstests cases;
-  2. in fscrypt_ioctl_set_policy(), make the default 4096 explicit
-     and log it;
-  3. for dummy, either use SECTOR_SHIFT, refuse it on such a
-     fs and skip the tests, or support an explicit du_size?
-
-Looking forward to hearing your thoughts.
-
-
-Cheers,
-Baokun
-
+> diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+> index 018b6146b9d8..62346eaf4350 100644
+> --- a/fs/ext4/extents_status.c
+> +++ b/fs/ext4/extents_status.c
+> @@ -1721,6 +1721,16 @@ static int __es_shrink(struct ext4_sb_info *sbi, int nr_to_scan,
+>  
+>  		if (nr_to_scan <= 0)
+>  			goto out;
+> +
+> +		/*
+> +		 * Report a voluntary RCU-tasks quiescent state before continuing.
+> +		 * cond_resched() is not enough: it is compiled out under
+> +		 * CONFIG_PREEMPTION, and otherwise switches via preemption, which
+> +		 * does not end an RCU-tasks read-side section.
+> +		 * This also lets a non-preemptible kernel reschedule.
+> +		 */
+> +		cond_resched_tasks_rcu_qs();
+> +
+>  		spin_lock(&sbi->s_es_lock);
+>  	}
+>  	spin_unlock(&sbi->s_es_lock);
+> -- 
+> 2.43.7
+> 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
