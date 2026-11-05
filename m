@@ -1,50 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793894513;
-	b=16ab9pmczjvQ4MqZeAF4SQ4MSFwAEAuNpsC0bpOChfCAglywy8yufF+W45t50RpF1j/a
-	 +A73pjlH0mlpGHBhIF2tTo3UNnVXhwr9OGV/gnJ7VbYvOushLtcbxmLGhP5atkn5Hjbt5
-	 nXYggtJW0irZJ38W+fKdNBmv7qdmEjtxluyeHQsTZ+pP0FSyKwM8tXbHMfRgHuUjQAj+y
-	 hPs5tqoiRRV3SRPtBFVd0VOvRLnQc2erA40NVLgucTzlZ9SIg0G+KQIkh4bJVfJaS3SA6
-	 MIawVlvDiAF5KFF/omdyU39hkwXToBp939CMRPmfXpHqa1T5Q5yFJ12TsxgLf54wjnA==
+	t=1793894519;
+	b=R4XBkUh9FJyu9fDVBd49d5M0wAXmyPePRyCsu3xE/8bRLhyCFf0VPkfSBjXjgQJKJI9z
+	 J9EZPtcb74k3cVJR2uax7tQ1lOXIi5Yo7mY0UOVPiuCoRFXFqjUye9Wab7ytB1gGl1sBP
+	 7QbmLnDemHnQwN6kPFFnKolX6VdT9R0epKaKWD6Rf9KkPmbnsojCs9SIPJVcv+TuKt2K/
+	 dZjaO/GpTGsG3S0gADhYiThvyH+EQ7QzNRqOczoc+y3943BRbCZEvAM8A8ARhE3mjsbJg
+	 i2JVqHy3HdnwPqKzMxL8WUtWXO5k8DuxSxFDP6kHnFXZetDE/2hd1FA+dhvT79e1iiw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793894513;
-	h=Received:DKIM-Signature:From:Subject:Date:Message-Id:MIME-Version:
-	 Content-Type:Content-Transfer-Encoding:X-B4-Tracking:X-Change-ID:To:
-	 Cc:X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=4VelVPMVxE7skvZV+t/dDAKOEE6lwzzBgv28kRT0Ubk=;
-	b=hRnJVr3boxWjnqxTexiU01Swesb02o+XVjm9hF/ToX5UpZG44DXnllhrJv04T+rFEQwB
-	 Ts/Lu40Lbsh/aWY/FPk9eoTCErSxbV1Ai+GthuXI6tE8pgBmcgytNvk8d+MXzJ8UoaNzH
-	 AcR+pYQQhKmsB2wU5+zK1hvD68gph5siiB2k71V2b38Y4sFr7jWs+tf5pHCL52kFMIL6K
-	 SA5OnAuvHLcaQ1NfO3QmKNkZypjPMIMJSrcZPp+ki0C7TIGMsXwrM19VcO9AAJ/DUWDVJ
-	 u4PO5YStTrknw1BkPmgw+HjUBL64rE1Qxj/g2knQdVo9lUobI8EbcvXHk8oTe4EVKow==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793894519;
+	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
+	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
+	 X-Mailer:X-Developer-Signature:X-Developer-Key;
+	bh=fjDdszMVs81WfmQnHrLL+P9wJPJjtqNw6pklNU9jV6Y=;
+	b=gAaXoxH3PgnsWon1ZlB1EELVmEQdgF+Grpsd2zUBjRMKYV9B/S0zeiDEllsL4owbfBs9
+	 EV4yxxN7SH3MfcYIkoTSIvZNL4SrWF5fshwbl1VumtMUVWwauEfvrA4ueNEBd3QZ6mtWU
+	 kPVJww/dmvOOCPFmBAqbV6om5N6i9ZmjftJiwafQ7k+C+cAN9lM4Wjgm/cLRbIabSWToA
+	 2xuB4sLJeKrjBhV20XzBYM8s9ENmAxzP/0ZAoR/SyB+mk/hu99sdUV8o39pPkFoVhJi02
+	 NRrUcBEo4uIg10TBJR38daTH1QeaOCsR/t8GwphRNRrlQe0uRbQW4LQUPKHyIuHw7Yg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=DQOm1YJH;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=jArn30cg;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 60DB6606B45C;
-	Thu,  5 Nov 2026 16:01:53 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CBCE8606CF8B;
+	Thu,  5 Nov 2026 16:01:58 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=DQOm1YJH
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4A1C01F000C1;
-	Thu,  5 Nov 2026 16:01:48 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=jArn30cg
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A77191F00919;
+	Thu,  5 Nov 2026 16:01:53 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793894513;
-	bh=4VelVPMVxE7skvZV+t/dDAKOEE6lwzzBgv28kRT0Ubk=;
-	h=From:Subject:Date:To:Cc;
-	b=DQOm1YJHfPm0v/dLeX+XAQitvcUgNmsRePnWyLGO6bQ1h7mTPBBwMcAFJ/zylkp6x
-	 JRSvS6x2PxHBQsNb/u8MQKHzOvOm8IIek6H13FQEo5WnomxQtacBL6ZdOTagLV0Us/
-	 8MEjtRHH8GOha7MIaWgrfOnrRSZEDiFYtGzXlfovCOTmzacIhMIFTKXndgH0SaTFOd
-	 l0Bc059PPlKXuS0nuonAXvjDjQjQPb8+m+axQDqp25tJl/70i8yHj7ucErATfhcqvI
-	 1XnJskLP2DXG6TQtrW6C81etXnTtmeAvYcpVQl/e/P8igcYBQaSam4mqrQuYm1C0dr
-	 /ZBkyLilhWMLw==
+	s=k20260515; t=1793894518;
+	bh=fjDdszMVs81WfmQnHrLL+P9wJPJjtqNw6pklNU9jV6Y=;
+	h=From:Date:Subject:References:In-Reply-To:To:Cc;
+	b=jArn30cgFbYuW1oS3XLv8iVk8SbtmYtPxCDlAk/8fnDYiIQGg1ZTMubF42rHt9UEq
+	 B/a6pdIJc2ptE7OaDMb9x6CZHq7VX5ABL/0wJ0ry+wEtChmCWkkxq0LvHlRNnBuHRc
+	 QVaX5t9ggNe6imVRCH09ebRjNwxj7Gg/kk6NwunJXH/J4Fpk9V7dA8ZlPMOm0f7Rxo
+	 PMAvkJA6rvT0jznVDpqt91NR5NQ5DK2CdepPREYc+FZ3TM30r+OUt5iG7hje4wd4pq
+	 poJrsu/d18U5C8fYs97887u6mc9tt2vi6pJJRkZrUeCE2fhAPYlOUORThUWY8eLXL5
+	 J6Ypff8H6GQ/w==
 From: Mark Brown <broonie@kernel.org>
-Subject: [PATCH v2 0/9] kunit: Add KUNIT_CASE_PARAM_UNIQUE() and
- KUNIT_CASE_PARAM_WITH_INIT_UNIQUE()
-Date: Thu, 05 Nov 2026 16:00:27 +0000
-Message-Id: <20261105-kunit-param-names-v2-0-765b3d5275d2@kernel.org>
+Date: Thu, 05 Nov 2026 16:00:28 +0000
+Subject: [PATCH v2 1/9] firmware: cs_dsp: Run the wmfw payload error tests
+ with invalid block types
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -56,11 +55,9 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAB2o7GoC/22Nyw6CMBBFf4XM2jFteURd+R+GRVtGqEhLpkA0h
- H8XMO5cnuTcc2eIxI4iXJIZmCYXXfArqEMCttG+JnTVyqCEKqSQCtvRuwF7zbpDrzuKWBXWyCw
- XNrUE665nurvX3ryVX46jeZAdttBmNC4Ogd/76SQ379dP//QniQIzoxTZ3Jxyc762xJ6ex8A1l
- MuyfADbwZgBxQAAAA==
-X-Change-ID: 20261012-kunit-param-names-d6cb1450c3ce
+Message-Id: <20261105-kunit-param-names-v2-1-765b3d5275d2@kernel.org>
+References: <20261105-kunit-param-names-v2-0-765b3d5275d2@kernel.org>
+In-Reply-To: <20261105-kunit-param-names-v2-0-765b3d5275d2@kernel.org>
 To: Simon Trimmer <simont@opensource.cirrus.com>, 
  Charles Keepax <ckeepax@opensource.cirrus.com>, 
  Richard Fitzgerald <rf@opensource.cirrus.com>, 
@@ -80,76 +77,87 @@ Cc: patches@opensource.cirrus.com, linux-kernel@vger.kernel.org,
  linux-doc@vger.kernel.org, linux-ext4@vger.kernel.org, 
  linux-sound@vger.kernel.org, Mark Brown <broonie@kernel.org>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3315; i=broonie@kernel.org;
- h=from:subject:message-id; bh=wulIPaLUroDjaKiDD9mihUIfKXwA5W+VsQnKLwr9e6M=;
- b=owGbwMvMwCWm/754w+YLFp2Mp9WSGLLerEjtOnFs5eQDOeGt5QlfmR8tmV/9tUD6/J6wz7rvb
- 6+qDPIt7ChlYRDjYpAVU2SJy+J+WV/yeg3fwYVtMHNYmUCGMHBxCsBE1P4wMtzhSdCSeT1fZMaz
- 5oO+Zc+69+ySqBI22Wh4nrFCPJujYQIjww7WzdYBaoKuviYqwh/rLBOm2PKnuchINEQcUxYQXMH
- MBwA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4903; i=broonie@kernel.org;
+ h=from:subject:message-id; bh=1aFpe4ztBHh/M8Z74WkS1UJya7pbV7Rw8UKRm0TQvb8=;
+ b=owGbwMvMwCWm/754w+YLFp2Mp9WSGLLerEi1m7FXdqmWr/haFW7Xb6tEzMunV2Xo2e17oiTk0
+ /Ulovx2RykLgxgXg6yYIktcFvfL+pLXa/gOLmyDmcPKBDKEgYtTACbCZ8bIcLDJ2VpXnfGBOmON
+ 3M6f0197vs54I5iw/rS51dH1ciFL1zMy7NNy/DTHfdHnqL2fO59rdy26nGJ5gcP1xKW3d6QerNH
+ oZwIA
 X-Developer-Key: i=broonie@kernel.org; a=openpgp;
  fpr=3F2568AAC26998F9E813A1C5C3F436CA30F5D8EB
 
-KUNIT_CASE_PARAM() and KUNIT_CASE_PARAM_WITH_INIT() name the test case
-after the test function. Several suites reuse one test function with
-more than one parameter generator or param_init() function, listing it
-once per set of parameters, which leads to multiple tests being created
-with the same name. Same-named cases cannot be told apart in the results
-and cannot be selected individually with kunit.filter_glob=, so kunit.py
---run_isolated=test boots a kernel for every entry and each kernel runs
-all of the same-named cases.
+Each of the wmfw error suites lists the truncated block header, truncated
+block payload and garbage payload length tests twice, once with valid
+block types and once with invalid block types. For the payload and
+garbage length tests the second entry names wmfw_too_short_for_block_header
+rather than the test on the preceding line, so the block header test is
+run four times with invalid block types while the other two are only ever
+run with valid ones.
 
-We could fix this by having the KUNIT_CASE_PARAM() macros always include
-the parameter name but this would not only rename all existing users but
-also result in some awkwardly named tests. Instead introduce some new
-macros for use in cases where we need to disambiguate.
+Point the second entries at the intended tests so that
+wmfw_too_short_for_block_payload() and wmfw_block_payload_len_garbage()
+are also run with invalid block types, as the header test already is.
 
-Add KUNIT_CASE_PARAM_UNIQUE() and KUNIT_CASE_PARAM_WITH_INIT_UNIQUE()
-which behave identically to the existing macros but include the name of
-the parameter generator or the param_init() function in the name of
-the case, giving names such as sha1_test-sha1_gen_params. The
-param_init() function is used for the WITH_INIT variant since currently
-all the tests which register parameter arrays from param_init() all
-share the generic kunit_array_gen_params() generator.
-
-The series also includes a fix for what looks like a cut'n'paste
-issue in the cs_dsp code that overlaps with the main set of changes.
-Most of the affected tests are in ASoC, though there are some ext4 tests
-too.
-
+Fixes: feb5fb0615f3 ("firmware: cs_dsp: Add KUnit testing of wmfw error cases")
+Reviewed-by: Richard Fitzgerald <rf@opensource.cirrus.com>
 Signed-off-by: Mark Brown <broonie@kernel.org>
 ---
-Changes in v2:
-- Rebase onto v7.4-rc1.
-- Link to v1: https://patch.msgid.link/20261013-kunit-param-names-v1-0-4b22ec5b85b9@kernel.org
+ drivers/firmware/cirrus/test/cs_dsp_test_wmfw_error.c | 16 ++++++++--------
+ 1 file changed, 8 insertions(+), 8 deletions(-)
 
----
-Mark Brown (9):
-      firmware: cs_dsp: Run the wmfw payload error tests with invalid block types
-      kunit: Add KUNIT_CASE_PARAM_UNIQUE() and KUNIT_CASE_PARAM_WITH_INIT_UNIQUE()
-      ext4: Give the extents KUnit cases distinct names
-      firmware: cs_dsp: Give the control read/write KUnit cases distinct names
-      firmware: cs_dsp: Give the control cache KUnit cases distinct names
-      firmware: cs_dsp: Give the wmfw block error KUnit cases distinct names
-      firmware: cs_dsp: Give the bin file KUnit cases distinct names
-      ASoC: cs35l56: Give the speaker ID pad config KUnit cases distinct names
-      ASoC: wm_adsp: Give the firmware search order KUnit cases distinct names
+diff --git a/drivers/firmware/cirrus/test/cs_dsp_test_wmfw_error.c b/drivers/firmware/cirrus/test/cs_dsp_test_wmfw_error.c
+index e7bf5dc474f5..b07978d90fa9 100644
+--- a/drivers/firmware/cirrus/test/cs_dsp_test_wmfw_error.c
++++ b/drivers/firmware/cirrus/test/cs_dsp_test_wmfw_error.c
+@@ -1222,9 +1222,9 @@ static struct kunit_case cs_dsp_wmfw_err_test_cases_v0[] = {
+ 	KUNIT_CASE_PARAM(wmfw_too_short_for_block_header, wmfw_valid_block_types_adsp2_gen_params),
+ 	KUNIT_CASE_PARAM(wmfw_too_short_for_block_header, wmfw_invalid_block_types_gen_params),
+ 	KUNIT_CASE_PARAM(wmfw_too_short_for_block_payload, wmfw_valid_block_types_adsp2_gen_params),
+-	KUNIT_CASE_PARAM(wmfw_too_short_for_block_header, wmfw_invalid_block_types_gen_params),
++	KUNIT_CASE_PARAM(wmfw_too_short_for_block_payload, wmfw_invalid_block_types_gen_params),
+ 	KUNIT_CASE_PARAM(wmfw_block_payload_len_garbage, wmfw_valid_block_types_adsp2_gen_params),
+-	KUNIT_CASE_PARAM(wmfw_too_short_for_block_header, wmfw_invalid_block_types_gen_params),
++	KUNIT_CASE_PARAM(wmfw_block_payload_len_garbage, wmfw_invalid_block_types_gen_params),
+ 
+ 	{ } /* terminator */
+ };
+@@ -1239,9 +1239,9 @@ static struct kunit_case cs_dsp_wmfw_err_test_cases_v1[] = {
+ 	KUNIT_CASE_PARAM(wmfw_too_short_for_block_header, wmfw_valid_block_types_adsp2_gen_params),
+ 	KUNIT_CASE_PARAM(wmfw_too_short_for_block_header, wmfw_invalid_block_types_gen_params),
+ 	KUNIT_CASE_PARAM(wmfw_too_short_for_block_payload, wmfw_valid_block_types_adsp2_gen_params),
+-	KUNIT_CASE_PARAM(wmfw_too_short_for_block_header, wmfw_invalid_block_types_gen_params),
++	KUNIT_CASE_PARAM(wmfw_too_short_for_block_payload, wmfw_invalid_block_types_gen_params),
+ 	KUNIT_CASE_PARAM(wmfw_block_payload_len_garbage, wmfw_valid_block_types_adsp2_gen_params),
+-	KUNIT_CASE_PARAM(wmfw_too_short_for_block_header, wmfw_invalid_block_types_gen_params),
++	KUNIT_CASE_PARAM(wmfw_block_payload_len_garbage, wmfw_invalid_block_types_gen_params),
+ 
+ 	KUNIT_CASE(wmfw_too_short_for_alg_header),
+ 	KUNIT_CASE(wmfw_v1_alg_name_unterminated),
+@@ -1261,9 +1261,9 @@ static struct kunit_case cs_dsp_wmfw_err_test_cases_v2[] = {
+ 	KUNIT_CASE_PARAM(wmfw_too_short_for_block_header, wmfw_valid_block_types_adsp2_gen_params),
+ 	KUNIT_CASE_PARAM(wmfw_too_short_for_block_header, wmfw_invalid_block_types_gen_params),
+ 	KUNIT_CASE_PARAM(wmfw_too_short_for_block_payload, wmfw_valid_block_types_adsp2_gen_params),
+-	KUNIT_CASE_PARAM(wmfw_too_short_for_block_header, wmfw_invalid_block_types_gen_params),
++	KUNIT_CASE_PARAM(wmfw_too_short_for_block_payload, wmfw_invalid_block_types_gen_params),
+ 	KUNIT_CASE_PARAM(wmfw_block_payload_len_garbage, wmfw_valid_block_types_adsp2_gen_params),
+-	KUNIT_CASE_PARAM(wmfw_too_short_for_block_header, wmfw_invalid_block_types_gen_params),
++	KUNIT_CASE_PARAM(wmfw_block_payload_len_garbage, wmfw_invalid_block_types_gen_params),
+ 
+ 	KUNIT_CASE(wmfw_too_short_for_alg_header),
+ 	KUNIT_CASE(wmfw_v2_alg_name_exceeds_block),
+@@ -1287,9 +1287,9 @@ static struct kunit_case cs_dsp_wmfw_err_test_cases_v3[] = {
+ 	KUNIT_CASE_PARAM(wmfw_too_short_for_block_header, wmfw_valid_block_types_halo_gen_params),
+ 	KUNIT_CASE_PARAM(wmfw_too_short_for_block_header, wmfw_invalid_block_types_gen_params),
+ 	KUNIT_CASE_PARAM(wmfw_too_short_for_block_payload, wmfw_valid_block_types_halo_gen_params),
+-	KUNIT_CASE_PARAM(wmfw_too_short_for_block_header, wmfw_invalid_block_types_gen_params),
++	KUNIT_CASE_PARAM(wmfw_too_short_for_block_payload, wmfw_invalid_block_types_gen_params),
+ 	KUNIT_CASE_PARAM(wmfw_block_payload_len_garbage, wmfw_valid_block_types_halo_gen_params),
+-	KUNIT_CASE_PARAM(wmfw_too_short_for_block_header, wmfw_invalid_block_types_gen_params),
++	KUNIT_CASE_PARAM(wmfw_block_payload_len_garbage, wmfw_invalid_block_types_gen_params),
+ 
+ 	KUNIT_CASE(wmfw_too_short_for_alg_header),
+ 	KUNIT_CASE(wmfw_v2_alg_name_exceeds_block),
 
- Documentation/dev-tools/kunit/usage.rst            |   9 +
- drivers/firmware/cirrus/test/cs_dsp_test_bin.c     | 222 ++++++++++-----------
- .../cirrus/test/cs_dsp_test_control_cache.c        | 143 ++++++-------
- .../firmware/cirrus/test/cs_dsp_test_control_rw.c  |  50 ++---
- .../firmware/cirrus/test/cs_dsp_test_wmfw_error.c  |  72 ++++---
- fs/ext4/extents-test.c                             |  12 +-
- include/kunit/test.h                               |  41 ++++
- sound/soc/codecs/cs35l56-shared-test.c             |   8 +-
- sound/soc/codecs/wm_adsp_fw_find_test.c            |  24 +--
- 9 files changed, 329 insertions(+), 252 deletions(-)
----
-base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
-base-tree: git://git.kernel.org/pub/scm/linux/kernel/git/rafael/linux-pm master
-change-id: 20261012-kunit-param-names-d6cb1450c3ce
-
-Best regards,
---  
-Mark Brown <broonie@kernel.org>
+-- 
+2.47.3
 
