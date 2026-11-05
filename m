@@ -1,86 +1,54 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=162.62.58.211
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=95.215.58.122
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793844716;
-	b=z7pnqXBoqU43G+DQaMJG50G1zn90hS9S6VsVGRHnKEzqAbXGleWWwpjD3xdnM6DzYkp8
-	 7I9fXGBWjft2e2J+7TkyYjLD/x1mKMBmbdl6TOJjdmR/u+fTeRvQ8n54HLGZfK1ArivxE
-	 mROOc1n/73rpM2pAoZ0swGZqrlQFVKcJo0csiv+tEQLEsOl6dUCBfSUr9vYB3op7dNFSr
-	 EDolOvEvU8qU44BPZER1HaIK8iMRX2mBF785Ey1MFFWhooyd+GqeMEbkHZch7tRYW8t24
-	 I87sgaiU8WoWNMKB0VkAqrC38rIe8rPrqSu07a5quY3325lJE8Bh97wX7WaEBiFVLOA==
+	t=1793844847;
+	b=fONqZ2Ac9E9q22iWqi4W6d4w5V91dI7QealXDGs0wNvZsLyTjQwD+dDBA1jmKp7hhlTg
+	 koFoT/depegOSrd1AIP3w6mJ46LSSq+dkdYagrGDBA+tcNgRBIaj4H7Ad6dnGLbIOtxFf
+	 OBteu6Vp7guy20n7GZ1TxTODr1xlPAxxmjcnW8K/NiVwt5+U3Gp/Q+oJNqfoK6Z46m73t
+	 SN4x/QmhGQ9PcSzBNKjnMI7OyNmYO/LB3ygnS5wtHbX8OY3zTZlOvpwzdH9wThxC0bvfE
+	 ZJQ0RYCxhdpsj+gru6CLE0d7bbN21PrTnwaLwZETxphC4KUAJ9Ksi2a2flZRI2QLkew==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793844716;
-	h=DMARC-Filter:DKIM-Signature:Received:X-QQ-mid:Message-ID:
-	 X-QQ-XMAILINFO:X-QQ-XMRINFO:From:To:Cc:Subject:Date:X-OQ-MSGID:
-	 X-Mailer:In-Reply-To:References:MIME-Version:
-	 Content-Transfer-Encoding;
-	bh=qyG1gsYQ3BoyLlEsOpf8qDvLw6xue201jPWCtX5Rs0g=;
-	b=Rqejk41scYorjEjwcZIbcXYC7K/yjcrC/GoZNUuM2yMB8gNeU29QhiprQmGAYAnJfRVr
-	 wEe5rJx+z00rLYYqCyKISru8HnrdWQTJrBjWQkpd2/fx2uJjSxuGRiIoupSedK2LaSj/I
-	 byvBvDW+b/K7py3+iuY4zkR5WqqeM34LusVEwIDsEBwPVZYyKC3VmFfAObvOX3zBpyxuN
-	 O9ojyxlr7WdtQ92mj5y9pAE968Umimhr9Fk8BjLg+kmE05H/PCM+t8AidWo7xtWH1y2Ko
-	 DwrBoYD/2u0kS7YTg3wN0GvZdYcVRsjplWK3qoOfLIQnuDcQJ2vI4E1eMQj16/OIXMw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793844847;
+	h=DMARC-Filter:X-Envelope-To:DKIM-Signature:X-Envelope-To:Received:
+	 X-Mizu-Trace-ID:X-Migadu-Flow:Message-ID:Date:MIME-Version:User-Agent:
+	 Subject:To:Cc:References:Content-Language:From:In-Reply-To:
+	 Content-Type:Content-Transfer-Encoding;
+	bh=tXeq94tKXH8bHOz1amsH5XRU51n2PYOOTkgxfF1PjyI=;
+	b=TEH0ssJybX+rESaQFF6leGjKJ1BlZfAXnCRhKb29KcIuKAh0VLTihDM2UDdyeYFiQFsj
+	 uezibDtOJzkRkCUiKmurF4DxZQb1946A4mVRUwyaQlvkFgNQvuB0CJO3YYx81Y23US48d
+	 CJLGPDcmJaBPJj+MhZC/K61yMpcTaW2iibgB4jeNpxXtiFjYCW04CxRyAPuglVovynmtG
+	 /y3prKqdQUrtZIOASM797Ht/1euLxzHbyZwG//SiSxiPwBSsv/T8nFbzHyawtBmxQF2F4
+	 t7wIADJfMG4zOki0RihkDFssQoQQv90DJQIroTd8NyNJeQf48YcdXnPxGXBa/rA7cag==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=qq.com;
-	spf=pass smtp.mailfrom=qq.com;
-	dkim=pass header.d=qq.com header.i=@qq.com header.a=rsa-sha256 header.s=s201512 header.b=FYgcBFeq;
-	arc=none smtp.remote-ip=162.62.58.211
-Received: from out162-62-58-211.mail.qq.com (out162-62-58-211.mail.qq.com [162.62.58.211])
-	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
+	dmarc=pass header.from=linux.dev;
+	spf=pass smtp.mailfrom=linux.dev;
+	dkim=pass header.d=linux.dev header.i=@linux.dev header.a=rsa-sha256 header.s=key1 header.b=j2sTp789;
+	arc=none smtp.remote-ip=95.215.58.122
+Received: from mta1.migadu.com (out-122.mta1.migadu.com [95.215.58.122])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ED384606A326;
-	Thu,  5 Nov 2026 02:11:53 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org ED384606A326
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=qq.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7C62F606D804
+	for <linux-ext4@vger.kernel.org>; Thu,  5 Nov 2026 02:14:06 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 7C62F606D804
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.dev
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=qq.com header.i=@qq.com header.a=rsa-sha256 header.s=s201512 header.b=FYgcBFeq
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=qq.com; s=s201512;
-	t=1793844709; bh=qyG1gsYQ3BoyLlEsOpf8qDvLw6xue201jPWCtX5Rs0g=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=FYgcBFeqc616ZCpk5YQ9sGcXrA6su83ZWG7JZrjCx7x6ldafH5PTBuqkAQlKrVi+M
-	 v6+BJRWdygNZmYNOX7WopP8FtyVG/JRhRaWDFZtMRIVCkidjNLBViucm7Qo9t4l131
-	 vy+p7A/9DdZ/rPDs3nt/tpHNJO5n0gr7iCJg1b6c=
-Received: from shuai-VMware-Virtual-Platform.. ([218.28.192.28])
-	by newxmesmtplogicsvrsza63-0.qq.com (NewEsmtp) with SMTP
-	id 2EEAE2FE; Thu, 05 Nov 2026 10:11:46 +0800
-X-QQ-mid: xmsmtpt1793844706tdxlufj9z
-Message-ID: <tencent_BA3A8C65555EB74908B7404C6562DC5D5705@qq.com>
-X-QQ-XMAILINFO: OVFdYp27KdlJOTWDMjKzocYQeCxfvFDkjUJDdDoSrhs0rYcK2r0L+dloyQ1+Qc
-	 w6Jo/T9NOOTqWCDwkRDohLWpkPVSYaQt6KrKJiJQQS8x+JbjFmL73EKAvKhypgndcvrEmDYhaaO9
-	 DehNywBSsPV8F7RUGvMxy7RPQD+n3yOKvaxe0F1y+6VNXZWxgMzFjh5C6xM+ItiPElCjXkxopKTC
-	 xi3+EO65+4n1dsEzXUyOcMHTybwpPL61FxhLIIah6HR5LzoV5uvdIV2JlkQqEtEx1Szp/eB4vJho
-	 ky8jX9H/MUkVFfAGRDT6Co8bg4qbJ4YHHrTknchG/a6ndvDE6losHwceASOKLTyYdz1P76rAWr0v
-	 8XhJHdVM+9rYmeFSW8U1XHSuVyFd6oIgES1ff896NE9pfrrKR6gi9hHv1xru8JYOoD9ce6iNVIHG
-	 ffHuTdYpDKUi0PuMJcRaK6wdv8Fw4keUKp0no3l6q3SaeQOQaYMCFSaHKrV+kTIDb0ACtSb1sI/9
-	 ujT+NZPIN3luY75vR8GH1esos5c8cJP5Dzfvsdr9acmxfZcll72o9lq7ryW94l2WVmeQe68NAHCV
-	 fCY9R/UAVq1+xD3qyyMscvTPV0uQDmEwoXXDg9TxH8aLPK0+pE0c0SVvX5BMn0ll1yHcxVAhOQrX
-	 mYEsQzUSfvkpbbuowOkZ5cy5VhCb+7FbEYDg2XQMSalWw07N5bMxreO1QgZz/ADdTNBZKwPasZKD
-	 +f6XhCys+ghxuwGb4V28qAah7Npm3AvNJCtdvZ6GRljrs9+eFcMS4OHbUk5c1h+dxqfw4AMdS4/h
-	 fZiuzAO0A8PUVg4ISORHGsu5L9yL1mSOoOGoKZsLHeb2YkAY0IHv4pcICi+fcFLGAFjuOWNFbaVD
-	 PxdlxxRr5Zvgd/5kN6mQop/EEaImPaQXTUHcYUGAaB9X6nUSON8YoVs8cKvoq5cYUWT1EymthNtH
-	 6BECUyUEnRGXYUOuixoaOh9+VKgIP8FRr6C+Wh7xQ2R3kefaXOTbzWDnEayhgUptpmZWl1M07tgm
-	 TESjI1RvNma7iMahbrSsd1B24AE0Sr4Qt5bP6fHxzunXs1cqYa7hzlwKgo3eecnws5kWsC51B4Ea
-	 k+NY1RvMKuTH743HuAhtNVXc2wYRuk4mQuCUUMqWQKMJ3JyHVjPKUP0nUp3w==
-X-QQ-XMRINFO: MSVp+SPm3vtSI1QTLgDHQqIV1w2oNKDqfg==
-From: Shuai Liu <847807867@qq.com>
-To: linux-ext4@vger.kernel.org
-Cc: tytso@mit.edu,
-	adilger.kernel@dilger.ca,
-	libaokun@linux.alibaba.com,
-	jack@suse.cz,
-	ojaswin@linux.ibm.com,
-	ritesh.list@gmail.com,
-	yi.zhang@huawei.com,
-	linux-kernel@vger.kernel.org,
-	syzbot+09bec78ee77613a3efdd@syzkaller.appspotmail.com,
-	sashiko-bot@kernel.org,
-	Shuai Liu <847807867@qq.com>,
-	stable@vger.kernel.org
-Subject: [PATCH v8] ext4: fix slab-use-after-free in do_split()
-Date: Thu,  5 Nov 2026 10:11:46 +0800
-X-OQ-MSGID: <20261105021146.1039041-1-847807867@qq.com>
-X-Mailer: git-send-email 2.43.0
-In-Reply-To: <sashiko-outbox-198398@kernel.org>
-References: <sashiko-outbox-198398@kernel.org>
+	dkim=pass (1024-bit key, unprotected) header.d=linux.dev header.i=@linux.dev header.a=rsa-sha256 header.s=key1 header.b=j2sTp789
+X-Envelope-To: linux-ext4@vger.kernel.org
+DKIM-Signature: a=rsa-sha256; bh=l5hRS8qgzR0WOCPLF0tQbQ+of37lp1oZsgw+XUQqwhg=;
+ c=simple/simple; d=linux.dev;
+ h=from:to:subject:date:message-id:mime-version:content-type; s=key1;
+ t=1793844844; v=1; x=1794449644;
+ b=j2sTp789TAzH4+lGZ7lYWfaDwj4tzc9cwnz9VymVYz+93eIx1j2P1wIewQP0NcIfVbJQKLyf
+ 0DO8NIIghKzDouBSBnDym1wAnQyGpqJsD9irj2dQSZrGObeDZJB96QtjMGxheDIwPErfv1cfpzT
+ zdnAQ3fG/Xx2Ge3hDWonFfXo=
+X-Envelope-To: linux-ext4@vger.kernel.org
+Received: by smtp.migadu.com with ESMTPS id 7ce234fbb2517b84;
+	Thu, 05 Nov 2026 02:14:03 +0000
+X-Mizu-Trace-ID: 7ce234fbb2517b84
+X-Migadu-Flow: FLOW_OUT
+Message-ID: <fc4939cc-84ec-4c5c-88a7-658ca800377d@linux.dev>
+Date: Thu, 5 Nov 2026 10:15:13 +0800
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -90,226 +58,189 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH RESEND v2 01/51] alloc_tag: don't remove /proc/allocinfo
+ under the codetag module lock
+To: Christian Brauner <brauner@kernel.org>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+ Jann Horn <jannh@google.com>, Josef Bacik <josef@toxicpanda.com>,
+ Chris Mason <mason@kernel.org>, Jeff Layton <jlayton@kernel.org>,
+ NeilBrown <neil@brown.name>, Eric Dumazet <edumazet@kernel.org>,
+ Thomas Gleixner <tglx@kernel.org>, Al Viro <viro@zeniv.linux.org.uk>,
+ Jonathan Corbet <corbet@lwn.net>, Christoph Hellwig <hch@lst.de>,
+ Greg Kroah-Hartman <gregkh@suse.de>, Joel Granados
+ <joel.granados@kernel.org>, Kees Cook <kees@kernel.org>,
+ Jan Kara <jack@suse.cz>, Jan Kara <jack@suse.com>,
+ linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+ linux-acpi@vger.kernel.org, linux-kselftest@vger.kernel.org,
+ linux-s390@vger.kernel.org, linux-scsi@vger.kernel.org,
+ linux-um@lists.infradead.org, linux-wireless@vger.kernel.org,
+ linuxppc-dev@lists.ozlabs.org, netdev@vger.kernel.org,
+ ntfs3@lists.linux.dev, platform-driver-x86@vger.kernel.org,
+ coreteam@netfilter.org, kexec@lists.infradead.org,
+ linux-pci@vger.kernel.org, linux-sound@vger.kernel.org,
+ netfilter-devel@vger.kernel.org, dri-devel@lists.freedesktop.org,
+ ibm-acpi-devel@lists.sourceforge.net, jfs-discussion@lists.sourceforge.net,
+ linux-alpha@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
+ linux-cifs@vger.kernel.org, linux-fbdev@vger.kernel.org,
+ linux-hwmon@vger.kernel.org, linux-mm@kvack.org, linux-sh@vger.kernel.org,
+ linux-usb@vger.kernel.org, samba-technical@lists.samba.org,
+ sparclinux@vger.kernel.org, linux-m68k@lists.linux-m68k.org,
+ linux-doc@vger.kernel.org, linux-serial@vger.kernel.org,
+ linux-atm-general@lists.sourceforge.net, Takashi Iwai <tiwai@suse.de>,
+ linux-input@vger.kernel.org, linux-raid@vger.kernel.org,
+ linux-ext4@vger.kernel.org, linux-modules@vger.kernel.org,
+ linux-debuggers@vger.kernel.org, Chuck Lever <cel@kernel.org>,
+ stable@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+ Suren Baghdasaryan <surenb@google.com>
+References: <20261104-work-procfs-bugfixes-v2-0-021c84d852e0@kernel.org>
+ <20261104-work-procfs-bugfixes-v2-1-021c84d852e0@kernel.org>
+Content-Language: en-US
+From: Hao Ge <hao.ge@linux.dev>
+In-Reply-To: <20261104-work-procfs-bugfixes-v2-1-021c84d852e0@kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
 
-do_split() allocates a new directory block with ext4_append() to hold
-the second half of the entries of the leaf block being split, then
-dx_move_dirents() copies entries from the old block (*bh) into the new
-one (bh2).  Nothing verifies that the newly allocated block differs
-from the block being split.
+Cc Suren
 
-On a filesystem whose block bitmap is inconsistent with the directory
-tree, a block already referenced as a directory leaf or as an htree
-index block can still be marked free, so ext4_append() can return that
-same block.  With concurrent operations on such a filesystem (as
-exercised by the syzbot reproducer), the block can even be freed
-between allocations, resulting in bh2 aliasing *bh.  dx_move_dirents()
-then copies the block onto itself, corrupting directory entries
-mid-copy: a rec_len field can be overwritten with name bytes, so the
-subsequent wipe of the stale entry memset()s a bogus length, causing
-the slab-use-after-free reported by syzbot.
+Hi Christian
 
-The same aliasing applies to the htree index blocks.  If the leaf
-block or a newly allocated block aliases an index frame, the index
-header can be overwritten before do_split() runs (add_dirent_to_buf()
-inserting into an aliased leaf, make_indexed_dir() moving the dirents
-into an aliased new block, the index split in ext4_dx_add_entry()
-copying entries into an aliased buffer), letting dx_insert_block()
-memmove() out of bounds with a corrupted count and dx_release() loop
-past the frames[] array (or leak frames) with a corrupted
-indirect_levels.
+On 2026/11/5 03:06, Christian Brauner wrote:
+> codetag_alloc_module_section() takes the codetag type's mod_lock for
+> writing and calls reserve_module_tags() with it held. When that can't
+> reserve the tags, because the section's alignment doesn't fit, because
+> there are too many tags for the page flag bits or because the memory
+> for them can't be allocated, it shuts memory allocation profiling down
+> and removes /proc/allocinfo, still with mod_lock held.
+> 
+> remove_proc_entry() waits until every reader of the entry has let go of
+> it, and a reader of /proc/allocinfo takes mod_lock for reading in
+> allocinfo_start() while it holds the entry. So a module load that hits
+> one of those paths while /proc/allocinfo is being read waits for the
+> reader and the reader waits for the module load, for good.
+> 
+> Let a work item remove the entry in that case. The profiling is shut
+> down right away like before, the file just goes a moment later.
+> 
+> Fixes: 4835f747d3ed ("alloc_tag: support for page allocation tag compression")
+> Cc: stable@vger.kernel.org
+> Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 
-Fix this by checking for these aliases before any directory block
-contents are modified, and bailing out with -EFSCORRUPTED, reporting
-the corruption via ext4_error_inode_block():
+Thanks.
 
-  - make_indexed_dir(): after ext4_append(), before moving the
-    dirents out of the root block
-  - ext4_dx_add_entry(): after reading the leaf block and after
-    ext4_append() in the index split, before the entries are copied
-  - do_split(): for *bh and bh2 against all frames[0..level]
+is this a problem you have hit in practice?
+Sashiko discovered this issue earlier and reported it as follows:
 
-Reported-by: syzbot+09bec78ee77613a3efdd@syzkaller.appspotmail.com
-Closes: https://syzkaller.appspot.com/bug?extid=09bec78ee77613a3efdd
-Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
-Cc: stable@vger.kernel.org
-Signed-off-by: Shuai Liu <847807867@qq.com>
-Changes in v8:
-  - Add an index-to-index alias check in dx_probe(). The existing tree cycle
-    check compares only logical block numbers, so on a corrupted filesystem
-    where two distinct logical index blocks map to the same physical block,
-    frames[] can be populated with identical buffer_heads (the same physical
-    block can pass the limit, count and checksum checks at both levels since
-    dx_root and dx_node entries live at different offsets). Writing a child
-    frame's dx_node entries in place then overwrites the root dx_root_info
-    (including indirect_levels) and the root dx_countlimit, and dx_release()
-    reading the corrupted indirect_levels can walk past the end of the
-    frames[] array and brelse() stack garbage. Check each newly read index
-    block against all ancestor frames' buffer_heads, which also removes a
-    double brelse() of an aliased buffer_head on the dx_probe() failure
-    path. (Sashiko)
+> diff --git a/mm/alloc_tag.c b/mm/alloc_tag.c
+> index 2070e682fe106..112a014d4b890 100644
+> --- a/mm/alloc_tag.c
+> +++ b/mm/alloc_tag.c
+> @@ -950,10 +950,12 @@ static void *reserve_module_tags(struct module *mod, unsigned long size,
+>  		int grow_res;
+>  
+>  		module_tags.size = offset + size;
+> -		if (mem_alloc_profiling_enabled() && !tags_addressable()) {
+> +		if (!tags_addressable()) {
+>  			shutdown_mem_profiling(true);
+This is a pre-existing issue, but does this shutdown_mem_profiling(true) call
+introduce an AB-BA deadlock between /proc/allocinfo file readers (pde->in_use)
+and module loading (cttype->mod_lock)?
+A user reading /proc/allocinfo acquires the procfs in_use reference in
+use_pde(), then blocks on down_read(&alloc_tag_cttype->mod_lock) in
+allocinfo_start().
+Concurrently, if a module loads and tags_addressable() fails,
+codetag_alloc_module_section() holds down_write(&cttype->mod_lock) and calls
+shutdown_mem_profiling(true), which removes the proc entry. This removal waits
+indefinitely for the in_use reference to drop to zero, hanging both procfs
+reads and module loading.
+> -			pr_warn("With module %s there are too many tags to fit in %d page flag bits. Memory allocation profiling is disabled!\n",
+> -				mod->name, NR_UNUSED_PAGEFLAG_BITS);
+> +			pr_warn_once("With module %s there are too many tags to fit in %d page flag bits. Memory allocation profiling is disabled!\n",
+> +				     mod->name, NR_UNUSED_PAGEFLAG_BITS);
+> +			release_module_tags(mod, false);
+> +			return ERR_PTR(-EAGAIN);
+>  		}
+>  
+>  		grow_res = vm_module_tags_populate();
 
----
- fs/ext4/namei.c | 79 ++++++++++++++++++++++++++++++++++++++++++++++---
- 1 file changed, 75 insertions(+), 4 deletions(-)
+I previously sent a patch with a comparable idea, though Sashiko remained unconvinced.
 
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 354fc2d22df1..fb1ea835cd20 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -914,6 +914,17 @@ dx_probe(struct ext4_filename *fname, struct inode *dir,
- 			goto fail;
- 		}
- 
-+		for (i = 0; i < level; i++) {
-+			if (frame_in[i].bh == frame->bh) {
-+				ext4_warning_inode(dir,
-+					"dx entry: index block %u aliases ancestor index block",
-+					block);
-+				brelse(frame->bh);
-+				frame->bh = NULL;
-+				goto fail;
-+			}
-+		}
-+
- 		entries = ((struct dx_node *) frame->bh->b_data)->entries;
- 
- 		if (dx_get_limit(entries) != dx_node_limit(dir)) {
-@@ -1903,13 +1914,14 @@ static struct ext4_dir_entry_2 *dx_pack_dirents(struct inode *dir, char *base,
-  * Returns pointer to de in block into which the new entry will be inserted.
-  */
- static struct ext4_dir_entry_2 *do_split(handle_t *handle, struct inode *dir,
--			struct buffer_head **bh,struct dx_frame *frame,
--			struct dx_hash_info *hinfo)
-+			struct buffer_head **bh, struct dx_frame *frames,
-+			struct dx_frame *frame, struct dx_hash_info *hinfo)
- {
- 	unsigned blocksize = dir->i_sb->s_blocksize;
- 	unsigned continued;
- 	int count;
- 	struct buffer_head *bh2;
-+	struct dx_frame *f;
- 	ext4_lblk_t newblock;
- 	u32 hash2;
- 	struct dx_map_entry *map;
-@@ -1922,12 +1934,42 @@ static struct ext4_dir_entry_2 *do_split(handle_t *handle, struct inode *dir,
- 	if (ext4_has_feature_metadata_csum(dir->i_sb))
- 		csum_size = sizeof(struct ext4_dir_entry_tail);
- 
-+	for (f = frames; f <= frame; f++) {
-+		if (*bh == f->bh) {
-+			ext4_error_inode_block(dir, (*bh)->b_blocknr,
-+					       EFSCORRUPTED,
-+					       "leaf block aliased with index block");
-+			brelse(*bh);
-+			*bh = NULL;
-+			return ERR_PTR(-EFSCORRUPTED);
-+		}
-+	}
-+
- 	bh2 = ext4_append(handle, dir, &newblock);
- 	if (IS_ERR(bh2)) {
- 		brelse(*bh);
- 		*bh = NULL;
- 		return ERR_CAST(bh2);
- 	}
-+	if (bh2 == *bh) {
-+		ext4_error_inode_block(dir, (*bh)->b_blocknr, EFSCORRUPTED,
-+				       "cannot split aliased directory block");
-+		brelse(bh2);
-+		brelse(*bh);
-+		*bh = NULL;
-+		return ERR_PTR(-EFSCORRUPTED);
-+	}
-+	for (f = frames; f <= frame; f++) {
-+		if (bh2 == f->bh) {
-+			ext4_error_inode_block(dir, bh2->b_blocknr,
-+					       EFSCORRUPTED,
-+					       "leaf block aliased with index block");
-+			brelse(bh2);
-+			brelse(*bh);
-+			*bh = NULL;
-+			return ERR_PTR(-EFSCORRUPTED);
-+		}
-+	}
- 
- 	BUFFER_TRACE(*bh, "get_write_access");
- 	err = ext4_journal_get_write_access(handle, dir->i_sb, *bh,
-@@ -2257,6 +2299,13 @@ static int make_indexed_dir(handle_t *handle, struct ext4_filename *fname,
- 		brelse(bh);
- 		return PTR_ERR(bh2);
- 	}
-+	if (bh2 == bh) {
-+		ext4_error_inode_block(dir, bh->b_blocknr, EFSCORRUPTED,
-+				       "cannot index aliased directory block");
-+		brelse(bh2);
-+		brelse(bh);
-+		return -EFSCORRUPTED;
-+	}
- 	ext4_set_inode_flag(dir, EXT4_INODE_INDEX);
- 	data2 = bh2->b_data;
- 
-@@ -2325,7 +2374,7 @@ static int make_indexed_dir(handle_t *handle, struct ext4_filename *fname,
- 	if (retval)
- 		goto out_frames;
- 
--	de = do_split(handle,dir, &bh2, frame, &fname->hinfo);
-+	de = do_split(handle, dir, &bh2, frames, frame, &fname->hinfo);
- 	if (IS_ERR(de)) {
- 		retval = PTR_ERR(de);
- 		goto out_frames;
-@@ -2476,6 +2525,7 @@ static int ext4_dx_add_entry(handle_t *handle, struct ext4_filename *fname,
- 			     struct inode *dir, struct inode *inode)
- {
- 	struct dx_frame frames[EXT4_HTREE_LEVEL], *frame;
-+	struct dx_frame *f;
- 	struct dx_entry *entries, *at;
- 	struct buffer_head *bh;
- 	struct super_block *sb = dir->i_sb;
-@@ -2496,6 +2546,15 @@ static int ext4_dx_add_entry(handle_t *handle, struct ext4_filename *fname,
- 		bh = NULL;
- 		goto cleanup;
- 	}
-+	for (f = frames; f <= frame; f++) {
-+		if (bh == f->bh) {
-+			ext4_error_inode_block(dir, bh->b_blocknr,
-+					       EFSCORRUPTED,
-+					       "leaf block aliased with index block");
-+			err = -EFSCORRUPTED;
-+			goto cleanup;
-+		}
-+	}
- 
- 	BUFFER_TRACE(bh, "get_write_access");
- 	err = ext4_journal_get_write_access(handle, sb, bh, EXT4_JTR_NONE);
-@@ -2549,6 +2608,18 @@ static int ext4_dx_add_entry(handle_t *handle, struct ext4_filename *fname,
- 			err = PTR_ERR(bh2);
- 			goto cleanup;
- 		}
-+		for (f = frames; f < frames + levels; f++) {
-+			if (bh2 == f->bh)
-+				break;
-+		}
-+		if (f < frames + levels || bh2 == bh) {
-+			ext4_error_inode_block(dir, bh2->b_blocknr,
-+					       EFSCORRUPTED,
-+					       "cannot split aliased index block");
-+			brelse(bh2);
-+			err = -EFSCORRUPTED;
-+			goto cleanup;
-+		}
- 		node2 = (struct dx_node *)(bh2->b_data);
- 		entries2 = node2->entries;
- 		memset(&node2->fake, 0, sizeof(struct fake_dirent));
-@@ -2631,7 +2702,7 @@ static int ext4_dx_add_entry(handle_t *handle, struct ext4_filename *fname,
- 			goto journal_error;
- 		}
- 	}
--	de = do_split(handle, dir, &bh, frame, &fname->hinfo);
-+	de = do_split(handle, dir, &bh, frames, frame, &fname->hinfo);
- 	if (IS_ERR(de)) {
- 		err = PTR_ERR(de);
- 		goto cleanup;
--- 
-2.43.0
+[patch]: https://lore.kernel.org/all/20260817062726.106511-3-hao.ge@linux.dev/
 
+[Sashiko's objections]: https://sashiko.dev/#/patchset/20260817062726.106511-1-hao.ge@linux.dev
+
+Could this patch perhaps wait for mine? No worries if this is inconvenient.
+
+Best regards                                                                                                                                                                                                                                                                  
+Hao
+
+> ---
+>  mm/alloc_tag.c | 27 ++++++++++++++++++++++++---
+>  1 file changed, 24 insertions(+), 3 deletions(-)
+> 
+> diff --git a/mm/alloc_tag.c b/mm/alloc_tag.c
+> index 82e2c3448dcf..7d7ad6704953 100644
+> --- a/mm/alloc_tag.c
+> +++ b/mm/alloc_tag.c
+> @@ -15,6 +15,7 @@
+>  #include <linux/seq_file.h>
+>  #include <linux/string_choices.h>
+>  #include <linux/vmalloc.h>
+> +#include <linux/workqueue.h>
+>  #include <linux/kmemleak.h>
+>  #include <uapi/linux/alloc_tag.h>
+>  
+> @@ -604,6 +605,26 @@ static void shutdown_mem_profiling(bool remove_file)
+>  	mem_profiling_support = false;
+>  }
+>  
+> +static void remove_allocinfo_file(struct work_struct *work)
+> +{
+> +	remove_proc_entry(ALLOCINFO_FILE_NAME, NULL);
+> +}
+> +static DECLARE_WORK(remove_allocinfo_work, remove_allocinfo_file);
+> +
+> +/*
+> + * A module's tags are reserved with the codetag module lock held for
+> + * writing, and a reader of /proc/allocinfo takes that lock with the entry
+> + * pinned. Removing the entry there would wait for that reader for good, so
+> + * let a work item do it.
+> + */
+> +static void shutdown_mem_profiling_async(void)
+> +{
+> +	if (!mem_profiling_support)
+> +		return;
+> +	shutdown_mem_profiling(false);
+> +	schedule_work(&remove_allocinfo_work);
+> +}
+> +
+>  void __init alloc_tag_sec_init(void)
+>  {
+>  	struct alloc_tag *last_codetag;
+> @@ -855,7 +876,7 @@ static void *reserve_module_tags(struct module *mod, unsigned long size,
+>  		align = 1;
+>  
+>  	if (!ensure_alignment(align, &prepend)) {
+> -		shutdown_mem_profiling(true);
+> +		shutdown_mem_profiling_async();
+>  		pr_err("%s: alignment %lu is incompatible with allocation tag indexing. Memory allocation profiling is disabled!\n",
+>  			mod->name, align);
+>  		return ERR_PTR(-EINVAL);
+> @@ -905,14 +926,14 @@ unlock:
+>  
+>  		module_tags.size = offset + size;
+>  		if (mem_alloc_profiling_enabled() && !tags_addressable()) {
+> -			shutdown_mem_profiling(true);
+> +			shutdown_mem_profiling_async();
+>  			pr_warn("With module %s there are too many tags to fit in %d page flag bits. Memory allocation profiling is disabled!\n",
+>  				mod->name, NR_UNUSED_PAGEFLAG_BITS);
+>  		}
+>  
+>  		grow_res = vm_module_tags_populate();
+>  		if (grow_res) {
+> -			shutdown_mem_profiling(true);
+> +			shutdown_mem_profiling_async();
+>  			pr_err("Failed to allocate memory for allocation tags in the module %s. Memory allocation profiling is disabled!\n",
+>  			       mod->name);
+>  			return ERR_PTR(grow_res);
+> 
