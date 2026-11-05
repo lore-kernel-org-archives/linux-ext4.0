@@ -1,48 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793906936;
-	b=ZEJobCguZig757Q0AOSdeEjTDSsL0ABO+BUrkf31hX02Qb7Pd8rf0UEcyxxlo7XSqx3o
-	 WQ52v5hnm8u8xCfN+3+1BaE3+07iPizQ+QGji57BSuOeFzgI7Su8+on34kyGeuQkDfTHk
-	 ia5Bh4yFzelyf1QDMYnPsyIzho/ULaPfFIlVh92U/HWy24ygwH0o7xjESEhv11aSfXy2m
-	 4rJkpXor3H+d+7FvOWOCcZqzRbVPkeQjRKc76ZaHGiDL0x7NIRw3kuVjDihuJwiXcFu4M
-	 86YxkfAR5Xm946GfStmwcjCtFBI/hqy0N2Q253zP54wAb0/9mcjRuCdO0UfeaUSMX5A==
+	t=1793906938;
+	b=H/cXtXJ6QloI8XX8nnX6tJu6lHxbBUX3/CBnB2f0HsmoTdWnWs2WZzMQFY49J7st87V9
+	 hlmsJan/xogMv1/TBsjEXZTWiqRTxxO8fM8dn8E00/XeV4Pwvwoc8dlJJZqMOEGfY9HtK
+	 EE1mL1nHP8xtGEvhFHJH8we5WjL0fU+fP1YK7sB2erRk1VY0ZSvLm4KEshMz319WaVxaR
+	 i5ivNacLp/Yok60zwypAPQrQs5PmJ9sGu0ARxDLIE7jdQB9BWn4zFFFuLCiPPciRwZmQl
+	 03mC8kJnBjVHcCUYWfU5VtRfo+ZICt9CkOF9ge7koGjOv1MY1B5bFnUWf2cUzEyKhxA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793906936;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793906938;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=DrjTmat1J2FdEKELfc0tb5qP5SKO3u8dr9sn5WHr8X8=;
-	b=xxlwv7KnSoUmEqZ97Vr9g73fIsKH6uF8MlpWzslvcg0FROReHSOcGVwPn0txYXOB+RZ3
-	 tCYXI08fw0Swk+jSKXnXfl5pkL1A48+5HKPHMV8L8fHPAQOFA6P0Y2+ZJZHVrbG6X+SGy
-	 hSu6l2V4R8m60fw3iWo5Ir+i4nAmfoqanSR1VQUEEkheFrcfQBgkITNzXzjN5aG1L0IXP
-	 HjI69k8Fiuf0JYgTeyXPb5tY+tS2HU5yaVrklt2qDtvpZO9+w4bkh/fjCn9Bgm/PrBSQI
-	 liUpmxX1uH8GP/aWeRXwyAH/vPXrBcWLKNH1xQZIEXnhbdOBKjOMwcr4zrSyJGOa8pg==
+	bh=8+PUUisCWtmjpXGFSnEzEH85bwtBLwjRqMOjM3Vmjmk=;
+	b=p3Dtm35iJVnkx5GuDvL13D46J87WzRNDyjcphm6KwhqIa+GZsA67Z0QOduE+UjcuSwUA
+	 yNlrLslFP1VkH9MYIQ+1t29jI84CTkrBqsFgsBmbqodMlTHjhL2AKMDJucapdKb4mBHVS
+	 aAse8y5tqZCf7zHYd+SR4Ak1qtQMy2FLI3/aN/FlB8s9pDXt6xptFUI6RDH3Qqvc+HVUr
+	 kU3zyufnOA0josi7IZFSj+OH+pxcYxib7x2y/VDfZBvfNRhHlM6Wm4iTayfd1oDl5db2Z
+	 HZr88XRO89pF5X5yG/JvO+U5uKXS5fJt57NMsvKTPnYMq4k+JPtgq1zKmF+uYd2Cvpg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=JWpGZ4Rl;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=JGXjVaZA;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 43DD4606D83B;
-	Thu,  5 Nov 2026 19:28:56 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 18AE2606D819;
+	Thu,  5 Nov 2026 19:28:58 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=JWpGZ4Rl
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7FBED1F00A28;
-	Thu,  5 Nov 2026 19:28:54 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=JGXjVaZA
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 680F41F0093A;
+	Thu,  5 Nov 2026 19:28:56 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793906935;
-	bh=DrjTmat1J2FdEKELfc0tb5qP5SKO3u8dr9sn5WHr8X8=;
+	s=k20260515; t=1793906938;
+	bh=8+PUUisCWtmjpXGFSnEzEH85bwtBLwjRqMOjM3Vmjmk=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=JWpGZ4RlWoj2+o7rDOgbYtLD5GBP94pE2VNBU3WyFn6daNIqMb569ZSjbdA0EeSOr
-	 tAzkET2HaIHRbLQu45I3uimLTu8RZeZWJbIffcQ2/w3JGBj4a++BqBYReMLzdb5Sog
-	 qVScSeuBZeP4+0XkYuqIPKV1z9HgOT23/QBUP6cy8q34hHyhoqKFStqPtFfmyeBPB9
-	 XZe3Tm76jQQVReuVAANs6Njr2e6pTi5vPjaUYZ9qEi/4DpJTujoziNZjE6lkL79ePk
-	 nQQYT+CwPf4q1428aPXyvT5gzbZSHUrL2Gr9aiSU4j1DnnvA0JPFAyBjqU1sPq9vkw
-	 JeDEpGzOxTYeQ==
-Message-ID: <sashiko-outbox-199867@kernel.org>
+	b=JGXjVaZAK0CFDggQJdQ+YxBvHhKA1VCtqeH0C7UlBLv6f9VG7skZu2dEAbXlkszW+
+	 sJTw0vxxWmvEmoZ//n7adNnR8rVGdWKpWloXAc/ZnMiIcC1Z7LfAxfJ1lZKXvGWlIS
+	 PhuWRh2l7d+X+aiKaVkZ1til7ZTDouBvsGp4ZrUVot4KXntqybtMcWLZq8dMoH9KMN
+	 yQdRKjUGTGwZGlm1bL3/t2/RiEaT3aD77Fgz7S3aVXIsJYSEDz2AoydnPR6UJrVtty
+	 1L9zuHgLTxVXIrW2mhh+h+95gf4FNjVSdlwVAZRJPDPN2gARWlGlHNxwoYxHNUqah+
+	 h0Hn80dmMBTsA==
+Message-ID: <sashiko-outbox-199868@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH RESEND v2 04/51] PNP: isapnp: don't go on when
- isapnp_cfg_begin() fails
+Subject: Re: [PATCH RESEND v2 05/51] xtensa: simdisk: remove the proc entry
+ before the disk
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Christian Brauner" <brauner@kernel.org>
 Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.com>, "Josef
@@ -55,12 +55,12 @@ Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.
  Iwai" <tiwai@suse.de>, linux-ext4@vger.kernel.org, "Chuck Lever" <cel@kernel.org>, tytso@mit.edu, "Heiko
  Carstens" <hca@linux.ibm.com>, "Vasily Gorbik" <gor@linux.ibm.com>, "Alexander
  Gordeev" <agordeev@linux.ibm.com>, "Christian Borntraeger" <borntraeger@linux.ibm.com>
-In-Reply-To: <20261104-work-procfs-bugfixes-v2-4-021c84d852e0@kernel.org>
+In-Reply-To: <20261104-work-procfs-bugfixes-v2-5-021c84d852e0@kernel.org>
 References: <20261104-work-procfs-bugfixes-v2-0-021c84d852e0@kernel.org>
- <20261104-work-procfs-bugfixes-v2-4-021c84d852e0@kernel.org>
+ <20261104-work-procfs-bugfixes-v2-5-021c84d852e0@kernel.org>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Thu, 05 Nov 2026 19:28:54 +0000
+Date: Thu, 05 Nov 2026 19:28:56 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -70,16 +70,13 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-> isapnp_cfg_begin() refuses a logical device number above 10 and a bad
-> card number with -EINVAL before it takes isapnp_cfg_mutex. The callers
-> that read and write the device's configuration, the proc file included,
-> don't look at that: they go on talking to whatever device the card
-> currently has selected and then unlock a mutex they never took in
-> isapnp_cfg_end(). isapnp_create_device() hands out logical device
-> numbers without a bound, so a card with twelve or more logical devices
-> gets there. Return the error instead.
+> simdisk_teardown() frees the gendisk and only then removes
+> /proc/simdisk/<n>. A write to that entry in between attaches the file
+> that was written to the disk, and simdisk_attach() sets the capacity of
+> the gendisk that is gone. Remove the entry first, remove_proc_entry()
+> waits for a writer that is in the middle of that.
 >=20
-> Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
+> Fixes: b6c7e873daf7 ("xtensa: ISS: add host file-based simulated disk")
 > Cc: stable@vger.kernel.org
 > Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 
@@ -87,5 +84,5 @@ Sashiko has reviewed this patch and found no issues.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261104-work-procf=
-s-bugfixes-v2-0-021c84d852e0@kernel.org?part=3D4
+s-bugfixes-v2-0-021c84d852e0@kernel.org?part=3D5
 
