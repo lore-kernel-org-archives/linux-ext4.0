@@ -1,48 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793908693;
-	b=uGAAdxGIQdco+vQAMIU2YNkuFt5al6x2Sqqb+k835sGPPIgc8nYWakNsQ5HFFBZtyLxw
-	 nB6C7L9EG7FW3ps91P+mxBfg/rMwbaIhH/t5T5bfgDO/AXtKld9kbsV00Bw6u9yRuB1r4
-	 mDnV1aaquyCG/o/4DEY5WLDv/2/Png5NeYTXxPjxHQaf984Hz3Ml27BExfeEF6lLmMnDx
-	 eRvPLcMzatVxkzY4LZvkac+q9ekBkhzYmgF75ggkRGU949jAmaNAgEJmUUtsx6yBmUCJu
-	 B9g5PwvUxjqIJ7cm7tGEiXBGG/Rz6tPne78BvlPFx7r6B5AAN2O6bVXQPrndV5kM2RQ==
+	t=1793908695;
+	b=haviqegFBxZGRqSntz78HtzJFUYop/CBjXKNz8zfavn9/zkTpk3nRl0pv2M3J3wfdAPN
+	 Gc2CS9MsEb/Z1CtywNGIdFN5Gt3Vm6/RTGwvp0K77RL2Lb7uXEk8KuXxk1fXy71/JuaIf
+	 k6TVG+haGNNVMntjdC6S8iweQeVx10rLea5DcJQnWGJ31vbjwvhnmQxUIIbk14FNesafb
+	 zjBVp5RRo/7fvJ6iwIVJXbgtzTFP2+yGL/tg7wNsz3Vk5EX1DLdGv4nQr1UAzkZHj8dia
+	 RQ/+9+cp9AZCiPutFb2zksugHYYfs2zzEeGxstsI9+3oXte/UB5AV2ZHNG2c37SJNdw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793908693;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793908695;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=YYAZKkMFX6DHW8NngSlh8ql7fjU785sF7HqECiCsMnE=;
-	b=pHlv3m25lqq8atCn70ThvGWyCSAfo7kPRBXKWAmlOujv0m4jthhc2hTtHzUeEBIdb3Os
-	 1v2bRicF+ZMVP7jDYPei4I8AXbVElaxif79/Z2D0072ZNmzy57pSWEqKU8oBJkvroN/IT
-	 0nZaj9kGQzxlEo+HFlJyaFjskaNU+3wV9QNz7MX2GQC9kq3dcNnyec6wu0N85/OKrkj1P
-	 yA36ZowE90uqObBwgi+XpjtYM3CeTQRPqvv6ymz34iDWp79bk1LFj4NUh79r2BeBOb8Og
-	 aECgp5KU/k7LNi5iH1p5GTkXeP1feVtdAfJDfAyNbTlj99BU7Q0QMJhN1gcBraiWt7w==
+	bh=ya5aipYlG9tbmAZIPBPshAgEJ4z8MYbt6drf9ARpCk8=;
+	b=yuRUjS5/4sgWwfQpIWfyoPBRKryGpfwzsUncS3WJROpy/FuO2ZQTJI45PBMJcO8BnA4o
+	 o6Nc5EVB5PqXncA6G7Ax2gKHbwGfD8P0dmMBqPVXjkf0UtyZBE0Ycng5d8mAC+pySwmsI
+	 BvJrTtdnC2FCNIhRtUm7H4KTVlIMHLS0tGUGRR86ZrkomPBRe5scQwIpww52jQdmyXLYp
+	 lPPcIaTUjtn7qgymYd+o9zwIu2xnKyXoIkfGws2TY32YGfOcez3CfKqgZ5d7i1HmhdXvc
+	 jxypKzKTgSyiVLb6LvkRmHjnxGrLsR5pqN9sFWycNHCvgQ3p2JkpYK6tnazWBFqL6Ww==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ghRyAMem;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=MphOF8R5;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 16317606A6DA;
-	Thu,  5 Nov 2026 19:58:13 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F26F2606B066;
+	Thu,  5 Nov 2026 19:58:14 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ghRyAMem
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8AF031F0089F;
-	Thu,  5 Nov 2026 19:58:11 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=MphOF8R5
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 65D021F008A1;
+	Thu,  5 Nov 2026 19:58:13 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793908692;
-	bh=YYAZKkMFX6DHW8NngSlh8ql7fjU785sF7HqECiCsMnE=;
+	s=k20260515; t=1793908694;
+	bh=ya5aipYlG9tbmAZIPBPshAgEJ4z8MYbt6drf9ARpCk8=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=ghRyAMemqCpDi7g7rwz8fZ2fD4rQ64uE3KXgrCCHOvgfk5ulfB39FlQp35/h4yLvz
-	 dJdBvRlAWS/PTN7GeRmMV78w7VqDHy1yw1SgfdLtFs5/ro8pCEevp9I5o2mEV4hsre
-	 QbUCFmiC0JedW6U3cu7OBk36CzsUKVdpFd8AlKrLBUaNINm0Rq05xkuO59vGhcKc2W
-	 MbZC6M0cbvo1WoSsE5wbuIKHahbDptO0PVuWiY8t7K6A87m6Vc4FyueopwrwYcHZaN
-	 KqSAWANwgQUzptp7Pyc6sWx7RRBy4Y1o0Tz3+nWkyqFbUtHlNjL5USIuJJe5DNfQ2k
-	 Q92b2uhcE9aIg==
-Message-ID: <sashiko-outbox-200055@kernel.org>
+	b=MphOF8R5xAqSxDTABFr+KD9GxM/X1ZjHavkYr28Wi0W5NixBsux8BGwG8FVQ8gQxC
+	 n0muH1BId/zm/GOJnc/IV91Vn2LL18FZoHW1z8r2xjbv+ub23j3wP8j/eluc9yIIJh
+	 v3yfOr3HIHpd1Np8RpuZrW/wTEaJcppbwgvfZ90pMtj6JOZp5MmFL7iUaIZJapelnv
+	 6stnGSu2Sp1ZXD/Yv5+g9S7t3B2JVDiXGepncfr5zUghYMee39n5xqg1V0xSTssuth
+	 o8G5wrUf5Yu2JmwQx0TX74oO+WThyTMhYg0XmBz4L77yCzdKvfTWX2IlW1D0iPWFpt
+	 PRKQgQI8gnTVg==
+Message-ID: <sashiko-outbox-200056@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH RESEND v2 21/30] kallsyms: let procfs own the seq_file
- of /proc/kallsyms
+Subject: Re: [PATCH RESEND v2 22/30] module: procfs: let procfs own the
+ seq_file of /proc/modules
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Christian Brauner" <brauner@kernel.org>
 Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.com>, "Josef
@@ -55,12 +55,12 @@ Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.
  Iwai" <tiwai@suse.de>, linux-ext4@vger.kernel.org, "Chuck Lever" <cel@kernel.org>, tytso@mit.edu, "Heiko
  Carstens" <hca@linux.ibm.com>, "Vasily Gorbik" <gor@linux.ibm.com>, "Alexander
  Gordeev" <agordeev@linux.ibm.com>, "Christian Borntraeger" <borntraeger@linux.ibm.com>
-In-Reply-To: <20261104-work-procfs-fs-v2-21-319e0f9a8aae@kernel.org>
+In-Reply-To: <20261104-work-procfs-fs-v2-22-319e0f9a8aae@kernel.org>
 References: <20261104-work-procfs-fs-v2-0-319e0f9a8aae@kernel.org>
- <20261104-work-procfs-fs-v2-21-319e0f9a8aae@kernel.org>
+ <20261104-work-procfs-fs-v2-22-319e0f9a8aae@kernel.org>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Thu, 05 Nov 2026 19:58:11 +0000
+Date: Thu, 05 Nov 2026 19:58:13 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -70,9 +70,8 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-> Declare the seq_operations and the size of the iterator and let procfs
-> open and free the seq_file. ->proc_open() only initializes the iterator
-> now.
+> Declare the seq_operations and let procfs open and free the seq_file.
+> ->proc_open() only decides whether to hide the addresses now.
 >=20
 > Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 
@@ -80,5 +79,5 @@ Sashiko has reviewed this patch and found no issues.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261104-work-procf=
-s-fs-v2-0-319e0f9a8aae@kernel.org?part=3D21
+s-fs-v2-0-319e0f9a8aae@kernel.org?part=3D22
 
