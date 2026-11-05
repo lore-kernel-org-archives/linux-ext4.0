@@ -1,49 +1,50 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=115.124.30.112
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793894562;
-	b=aHt3/C6X+V7runF5iWa8oxJ6jCbCAZo/qZkLRWJJgnK12cukufN1c6E9CxtC+fiQRiFU
-	 BEGOqZB07VR5QvHzKsvmdQjjREvqdSVLnPFmqhZGbmw1HS83ZzHufAAIDohPOtV9CpkCH
-	 vzlH+aOFs4wgClVLrZ5qUbdfxkKlhOVRKGWrIvZxXPaPXmFL+rHV0CKTczTE9dKc+MBk+
-	 L2TbsIDx2320gNg5K84U2QowlgDpcVbLFty8HjOUOe3q/VEbQgwYHzfaq9cjPBaoePI9b
-	 wrh0NRQmKwqiASI6wRAAT47AMjag1Tl5MAx/ATGGvIt5pEh3wtuVPicLct9QCPuJNeg==
+	t=1793896658;
+	b=FamRppQ/3qlT+FWyP61mFTzXrMnudfF3Ox2GkE4ORFtsFqL/vSqm6dqCvsMu4VPMEROy
+	 kuJdHAkixHInKEPYQmvcp1bim0METkHwlyg9a4w5VkWp0vIv0SaLfh9qUgQsrUXvfot+P
+	 /MWumTlAA4SPPOIysaTomarOS1eBi57XlK03Eamq9t70ZIyNLFzRelVvoNRQ0KD+n6Vkj
+	 YT0GpRuqqaid9Y0oankaDVJmn8e44ZuEGRZE6vV0d1mFzqjdkGRbejISC9qF1SCyzJ6MA
+	 B3g1L9hXKaf8vYMGHpPyE7bXHngRHZNZEg0l7k25fuNuOJ/6y4OEyNBNxPXXHPfoLOg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793894562;
-	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
-	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
-	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=8McZG53fBcXV4teIFZd2EGhPvVQUYCcatV8Mq/vETdw=;
-	b=xmRbogp2/P66ZwCVBlfjbUBfu4Lq+v0tXBVl1GBpYzzYOIGhWkqLhpqRBM5xSVJqZR0Z
-	 LF5L1fAgdIL8puv6GayZ6u7CkWufD5YJVYd2mDpsJSJnpb26DR+ANH5CLQWc3HEPqU3tr
-	 ANkqt0x6iupiGmCJ1rBJjjUKy+HM41DMMn938z/mi2khjeJEoSHTkWKwzd0LMKPGnNaRC
-	 5Lv92wyLNhem9Ek+QI0QbAoyfAtNG839qsgrP4icxDxEBEmWwBA+b5GVpPpLdA4b0vshp
-	 GyTRabKBtWMZh7ZYu0uThperQtne5kFjd1T/Vl28IuQIstueif6jLKpxSX+suaSiLFw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793896658;
+	h=DMARC-Filter:DKIM-Signature:X-Alimail-AntiSpam:Received:Message-ID:
+	 Date:MIME-Version:User-Agent:Subject:To:Cc:References:
+	 Content-Language:From:In-Reply-To:Content-Type:
+	 Content-Transfer-Encoding;
+	bh=csElEp+VhdZG2jnq1WLbmjmoJ99uEQ9BCkuzOTjKEJ4=;
+	b=ozXfonuAKUbDZJIijbQYUsuRwiIdsFa9vZeYpHOyqUAx2c/EPZh3dD12aCj4vFbnkSs5
+	 tspuEBKcsL1EzSbo26eSlwiaZgrsZ8QQoDBjkPYS29+cVvGtTfjJR3y7J+Hf7lX7MLGmH
+	 V8sjN5ULkUR+/HLSU+yBkx04fNkOSGKEJ83M1FEMZ8Bn1MO8WXM9tO9qwY2fMFWbXNld8
+	 aZTCm130IWH3Ftc2v0+4qHUPzQ1JkEF26xE57kHSg7o6NFLRGBe8BG52KUIjkBa8p2fSp
+	 DttpxO1OsH2WPO2oCxWPb4brckrffnUNxaQ7ecBhZIptchnqo6tHeTZlWFrBcW4iT2g==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=X63+5jyR;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	dmarc=pass header.from=linux.alibaba.com;
+	spf=pass smtp.mailfrom=linux.alibaba.com;
+	dkim=pass header.d=linux.alibaba.com header.i=@linux.alibaba.com header.a=rsa-sha256 header.s=default header.b=OADZb1yX;
+	arc=none smtp.remote-ip=115.124.30.112
+Received: from out30-112.freemail.mail.aliyun.com (out30-112.freemail.mail.aliyun.com [115.124.30.112])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D3A3760707B5;
-	Thu,  5 Nov 2026 16:02:41 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 91D5D606CBCD;
+	Thu,  5 Nov 2026 16:37:35 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 91D5D606CBCD
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=X63+5jyR
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C79051F0093A;
-	Thu,  5 Nov 2026 16:02:36 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793894561;
-	bh=8McZG53fBcXV4teIFZd2EGhPvVQUYCcatV8Mq/vETdw=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=X63+5jyRGQ50JFwEm4cXlywyif5nS1uoR2B9TuBo71uFu50EFQFpM65gJ5cHmLl9Y
-	 8DOOUqPyyIbR/nbCT51zCV97i7HSlNSMZU19a8Dp2+swnrLxWx5X5I8Ee3kcxTYN+f
-	 5gf3j85DpGVH915jaURtVblqeQI4ppL7d8OxRmnLyL9jS9CmbRCgMdQ4sidAM0cdeu
-	 rdGsOXYdPUwzz67o/2FuPnmcFVEtO5OkOpSvRmuXjoqRWVVNg04OHiYdFYU//+cifS
-	 mKkn1SJxnZbdeyexR7MYrTpoTTlI2nys1lYDjesSurdIUai7aazJLza4N6eQ4z3ta6
-	 dh16aR3ttJBUw==
-From: Mark Brown <broonie@kernel.org>
-Date: Thu, 05 Nov 2026 16:00:36 +0000
-Subject: [PATCH v2 9/9] ASoC: wm_adsp: Give the firmware search order KUnit
- cases distinct names
+	dkim=pass (1024-bit key, unprotected) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.a=rsa-sha256 header.s=default header.b=OADZb1yX
+DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
+	d=linux.alibaba.com; s=default;
+	t=1793896652; h=Message-ID:Date:MIME-Version:Subject:To:From:Content-Type;
+	bh=csElEp+VhdZG2jnq1WLbmjmoJ99uEQ9BCkuzOTjKEJ4=;
+	b=OADZb1yX25qqRO0W23iOHaPjIk7pHhc5AzDX9N/3sKfGr8PQBpcQ+cZUewCLD55eGxTxHsVf6mVeLGBTW43a7Fg1kr2jh1ZVqqXwEMkNw6ZoZi1ohqUYQEKDwxDMkBXOUHqqNCvuqtdJaodJNzL6jQM4keQ0bVas/8oAYhel0rs=
+X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R811e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033037033178;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=11;SR=0;TI=SMTPD_---0XE98I-._1793896650;
+Received: from 30.42.176.22(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0XE98I-._1793896650 cluster:ay36)
+          by smtp.aliyun-inc.com;
+          Fri, 06 Nov 2026 00:37:31 +0800
+Message-ID: <ae6f5ba2-8afc-43db-8d0a-f82d0163702d@linux.alibaba.com>
+Date: Fri, 6 Nov 2026 00:37:30 +0800
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -53,96 +54,99 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH 1/4] fscrypt: Cap data units at the page size
+To: Eric Biggers <ebiggers@kernel.org>
+Cc: linux-fscrypt@vger.kernel.org, jaegeuk@kernel.org, tytso@mit.edu,
+ linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca, jack@suse.cz,
+ yi.zhang@huawei.com, ojaswin@linux.ibm.com, ritesh.list@gmail.com,
+ linux-kernel@vger.kernel.org
+References: <20261103153132.4154855-1-libaokun@linux.alibaba.com>
+ <20261103153132.4154855-2-libaokun@linux.alibaba.com>
+ <20261103224006.GC2281@quark>
+ <922240f9-8233-4466-a787-2f7ddba7c490@linux.alibaba.com>
+ <20261104195127.GA1971@quark>
+Content-Language: en-US
+From: Baokun Li <libaokun@linux.alibaba.com>
+In-Reply-To: <20261104195127.GA1971@quark>
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261105-kunit-param-names-v2-9-765b3d5275d2@kernel.org>
-References: <20261105-kunit-param-names-v2-0-765b3d5275d2@kernel.org>
-In-Reply-To: <20261105-kunit-param-names-v2-0-765b3d5275d2@kernel.org>
-To: Simon Trimmer <simont@opensource.cirrus.com>, 
- Charles Keepax <ckeepax@opensource.cirrus.com>, 
- Richard Fitzgerald <rf@opensource.cirrus.com>, 
- Brendan Higgins <brendan.higgins@linux.dev>, David Gow <david@davidgow.net>, 
- Rae Moar <raemoar63@gmail.com>, Jonathan Corbet <corbet@lwn.net>, 
- Shuah Khan <skhan@linuxfoundation.org>, 
- Randy Dunlap <rdunlap@infradead.org>, Theodore Ts'o <tytso@mit.edu>, 
- Andreas Dilger <adilger.kernel@dilger.ca>, 
- Baokun Li <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>, 
- Ojaswin Mujoo <ojaswin@linux.ibm.com>, 
- "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, 
- Zhang Yi <yi.zhang@huawei.com>, David Rhodes <david.rhodes@cirrus.com>, 
- Liam Girdwood <lgirdwood@gmail.com>, Jaroslav Kysela <perex@perex.cz>, 
- Takashi Iwai <tiwai@suse.com>
-Cc: patches@opensource.cirrus.com, linux-kernel@vger.kernel.org, 
- linux-kselftest@vger.kernel.org, kunit-dev@googlegroups.com, 
- linux-doc@vger.kernel.org, linux-ext4@vger.kernel.org, 
- linux-sound@vger.kernel.org, Mark Brown <broonie@kernel.org>
-X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2541; i=broonie@kernel.org;
- h=from:subject:message-id; bh=DtzMeLR01OBhOU9ryO1Ct2VWOckyOBJFtfrKliPQ+gk=;
- b=owGbwMvMwCWm/754w+YLFp2Mp9WSGLLerEgNEtrzd7b5VLPTrtEq01e7rpuheJVnU9H9TsGKN
- 2++7pi2raOUhUGMi0FWTJElLov7ZX3J6zV8Bxe2wcxhZQIZwsDFKQATucDMyPDlgdJZy4YrU7P/
- LJ6w25pjdY6rq5rKnfnc0ho8n9sbsxsZGX5PPXc3oX3H3g3tvxzSZzbozwzkLT93JPTn/6h7aqe
- 7e/gA
-X-Developer-Key: i=broonie@kernel.org; a=openpgp;
- fpr=3F2568AAC26998F9E813A1C5C3F436CA30F5D8EB
 
-The wm-adsp-fw-find suite runs wm_adsp_fw_find_test_search_order()
-against six different sets of parameters by listing it six times with
-KUNIT_CASE_PARAM(), which names each case after the function. All six
-cases are therefore called wm_adsp_fw_find_test_search_order, which
-makes the results ambiguous.
+On 2026/11/5 03:51, Eric Biggers wrote:
+> On Wed, Nov 04, 2026 at 10:31:46AM +0800, Baokun Li wrote:
+>> What I had in mind before was to keep the default as min(bs, PS) and
+>> allow DU > PS only when explicitly specified, which seemed to give
+>> better compatibility.  Cross-machine or cross-page-size cases seem
+>> uncommon, and existing machines have probably already avoided them by
+>> specifying a 4K or smaller DU.
+>>
+>> Keeping the existing default semantics and returning an error in the
+>> LBS case for the user to specify seems feasible.  But then
+>> test_dummy_encryption and the xfstests cases that use the default would
+>> need to specify the DU explicitly, otherwise the LBS + encrypt test
+>> coverage would drop a lot.  That is, in the kernel or the tests we
+>> always have to set a default DU size.
+>>
+>> If you confirm that we should take the route where LBS requires an
+>> explicit data unit size and the default is rejected, I can adapt the
+>> kernel and xfstests in v2.  Or should we go back to the more compatible
+>> DU > page size approach?
+> 
+> It will indeed be annoying to have to explicitly specify the data unit
+> size, but I don't see a better solution for now, given the complexity of
+> supporting data unit sizes larger than the page size.  I think making
+> the on-disk format needing PAGE_SIZE to interpret is a no-go.
+> 
 
-Use KUNIT_CASE_PARAM_UNIQUE() for these entries so that each case is
-also named for the parameter generator it is run with, for example
-wm_adsp_fw_find_test_search_order-wm_adsp_fw_find_full_search_gen_params.
+Agreed.
 
-Reviewed-by: Richard Fitzgerald <rf@opensource.cirrus.com>
-Signed-off-by: Mark Brown <broonie@kernel.org>
----
- sound/soc/codecs/wm_adsp_fw_find_test.c | 24 ++++++++++++------------
- 1 file changed, 12 insertions(+), 12 deletions(-)
+> I suppose that in theory, how FS_IOC_SET_ENCRYPTION_POLICY handles
+> log2_data_unit_size=0 could be changed: it could start actually writing
+> log2_data_unit_size=12 to disk (rather than writing 0 which means the
+> filesystem block size).  I think that can still lead to problems,
+> though.  For one FS_IOC_GET_ENCRYPTION_POLICY would return something
+> different from what was set.
 
-diff --git a/sound/soc/codecs/wm_adsp_fw_find_test.c b/sound/soc/codecs/wm_adsp_fw_find_test.c
-index ae686dc4fa94..0b2b7db3f9f9 100644
---- a/sound/soc/codecs/wm_adsp_fw_find_test.c
-+++ b/sound/soc/codecs/wm_adsp_fw_find_test.c
-@@ -1219,23 +1219,23 @@ KUNIT_ARRAY_PARAM(wm_adsp_fw_find_pick,
- 		  wm_adsp_fw_find_test_param_desc);
- 
- static struct kunit_case wm_adsp_fw_find_test_cases[] = {
--	KUNIT_CASE_PARAM(wm_adsp_fw_find_test_search_order,
--			 wm_adsp_fw_find_full_search_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(wm_adsp_fw_find_test_search_order,
-+				wm_adsp_fw_find_full_search_gen_params),
- 
--	KUNIT_CASE_PARAM(wm_adsp_fw_find_test_search_order,
--			 wm_adsp_fw_find_system_alsaname_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(wm_adsp_fw_find_test_search_order,
-+				wm_adsp_fw_find_system_alsaname_gen_params),
- 
--	KUNIT_CASE_PARAM(wm_adsp_fw_find_test_search_order,
--			 wm_adsp_fw_find_system_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(wm_adsp_fw_find_test_search_order,
-+				wm_adsp_fw_find_system_gen_params),
- 
--	KUNIT_CASE_PARAM(wm_adsp_fw_find_test_search_order,
--			 wm_adsp_fw_find_alsaname_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(wm_adsp_fw_find_test_search_order,
-+				wm_adsp_fw_find_alsaname_gen_params),
- 
--	KUNIT_CASE_PARAM(wm_adsp_fw_find_test_search_order,
--			 wm_adsp_fw_find_noqual_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(wm_adsp_fw_find_test_search_order,
-+				wm_adsp_fw_find_noqual_gen_params),
- 
--	KUNIT_CASE_PARAM(wm_adsp_fw_find_test_search_order,
--			 wm_adsp_fw_find_normalization_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(wm_adsp_fw_find_test_search_order,
-+				wm_adsp_fw_find_normalization_gen_params),
- 
- 	KUNIT_CASE_PARAM(wm_adsp_fw_find_test_pick_file,
- 			 wm_adsp_fw_find_pick_gen_params),
+I also considered making the default explicit, e.g. 4096, when the
+bs > PS.  GET_ENCRYPTION_POLICY would then report 4096 instead of
+the 0 that was set, which I think is fine provided we log it:
+an unset field means "use the kernel default", and this just pins
+down what that default is.  This works for v2.
 
--- 
-2.47.3
+I dropped it over test_dummy_encryption: mount options are parsed
+before the block size is known, and the policy is const once it is,
+so only invasive changes would work.
+
+But the dummy policy is recreated on every mount and never persisted,
+so there is no on-disk policy to stay compatible with.  The template
+can just use SECTOR_SHIFT (simplest); alternatively, refuse it on such
+a fs, or support an explicit du_size through a helper shared by the fs
+(most complex).
+
+> 
+> Regarding xfstests, take a look at how common/verity adds $FSV_BLOCKSIZE
+> to all 'fsverity enable' commands by default, to select some Merkle tree
+> block size that the filesystem supports.  Something similar could be
+> done with fscrypt.  Yes, this won't work with v1 encryption policies,
+> but v1 policies are obsolete.  Most of the xfstests that use v1 policies
+> should just be updated to use v2 instead.  The btrfs folks were working
+> on that earlier, since they're not planning to support v1 at all.
+> 
+
+Agreed on rejecting v1.  The xfstests cases that need it will have to
+be skipped or converted to v2; I can do that if nobody else is on it.
+
+So, to enable this by default when bs > PS:
+
+  1. reject v1, and convert the xfstests cases;
+  2. in fscrypt_ioctl_set_policy(), make the default 4096 explicit
+     and log it;
+  3. for dummy, either use SECTOR_SHIFT, refuse it on such a
+     fs and skip the tests, or support an explicit du_size?
+
+Looking forward to hearing your thoughts.
+
+
+Cheers,
+Baokun
 
