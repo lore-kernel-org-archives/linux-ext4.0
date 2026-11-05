@@ -1,54 +1,86 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.167.200
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=162.62.57.64
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793834247;
-	b=cbMiLn8PdFj2HLxT6SyTeWoodGb2f9q+IAYxNCCviPoJGWAY4stxmg9fpSIgvqlHq2MY
-	 CYLkhbh+EQUbTfFZUQzvadd1VdELF/kIrxIl1lkKIZCbMYjIGbjWXZ5gq3pfsuLmdLk06
-	 g10IHxczh/Rkv0VtIeAl2KCQNkDif/6n0qyJ8Fnh30M0kP1zY/VAek3KBlSzuE65FZF8S
-	 wCpI1dOp9r6h/wpVXzzQ7AA4GtZqi8dVIZCUzkEpEeiSH5mJ4Zb+v+Q8Zn4DNaCSJxgoC
-	 IbHtQAqkCM1omFGjMnsCKjE3AfT8MKX1kMNujY5wOUgNJMMI13JFuiynB2k4ioJUjtQ==
+	t=1793839113;
+	b=sgEFXrmrtL+3XQVqJhQ7a9bJl519sAB/tuMqFqXGH/E6ODw7fiRcM5nN7in1Vl0velqs
+	 88Mp2KgiZjuFasoFmdPcdF7XRr7j3eruKsAeRojLRYzf2srvoy0l+KVgqfA2qjr3n5AaQ
+	 7mgrHU3+TU9WbrmRdsr4EtIbvHtHizTHQDrpoK/4rfPdMjxQUgFlkbQ1uNvj9i0kyBlQq
+	 nNnPT46QoFAzNefSxL+NP968dlm7d3Mb5jGsBrgMBXDvidL/MwhhN7cw6hZd6MvIywxYp
+	 +imuvfYlZDGIQjDPSOiLgN//aBseS0m+gudo1UdcpDi6m5rWQWL7kJ9w0xz9uIRnsYQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793834247;
-	h=DMARC-Filter:Received:X-Google-DKIM-Signature:X-Forwarded-Encrypted:
-	 X-Gm-Message-State:MIME-Version:X-Received:Date:
-	 X-Google-Appengine-App-Id:X-Google-Appengine-App-Id-Alias:Message-ID:
-	 Subject:From:To:Content-Type;
-	bh=EUNPXgVS4+pPl4o6fy0hi9HXzpCvpznpRLhaacvk77s=;
-	b=D5ZDtLV9PCA350f4INJLlOBI6OQrrVJzXMJz5kNk/EgTeVl3mU7SgI0Fl5y46feofPew
-	 J2MaHdolSLg1pZElywNAQzSuUwEpiQvFaZLQ2CuyIlw0wO7UGuKdpOjwQFq542D6J0gHz
-	 kRo9qW6nH59wiHXqUw0LfIzrX5koMm0VSH0NWeva8mU9rTD7JUnbZkVOeCO4kKBwkUJDd
-	 jsY6PJnbq3GgMrNuFvLZycJ4DLsoYr1kOWQb0H5Ic5n8N7XPlJuEOQEbS/4u47+KWWICY
-	 Z1hcS99DCarb+xKJp1uO029sc05JgThWLiOusA8sVathDVVELJrPazQuxd5qJtbBmzw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793839113;
+	h=DMARC-Filter:DKIM-Signature:Received:X-QQ-mid:Message-ID:
+	 X-QQ-XMAILINFO:X-QQ-XMRINFO:From:To:Cc:Subject:Date:X-OQ-MSGID:
+	 X-Mailer:In-Reply-To:References:MIME-Version:
+	 Content-Transfer-Encoding;
+	bh=mHu2Zp+OIHYsTxDxzUotJkKv0NMf1tqUvXZaUeyrli0=;
+	b=OaiQWRzFkqBPUcTuMpPGFunoblIm57aJq96djyl1f4yuhn7/Umook93Bwmc8Zvg6MTou
+	 bp2nOTI2u4UP3eXeC1QH3jWHmTZ+cEIev/03+RIiF0jcSSP+waSvAmZXTbnvDWw1kV9jC
+	 Zth6If8HVjjWRiIAVo0JakIcoNp4clilW1T2sBPgMoDll4ePBIsH1KbNtULBAiMPFxV34
+	 FgeIpvmP2rQlGSvyS7vOU79QQrvHQY2VHVT0y/b8xQfO+7EZZJM2JcADF5PD6pNWvdE3q
+	 kYjyJcyxCU4vpGfIXn/19+R9v8YdxgZy1LMKoH5fczA+Al7QyB2NRHaDzvp6RH2d6Zw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=fail header.from=syzkaller.appspotmail.com;
-	spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com;
-	arc=none smtp.remote-ip=209.85.167.200
-Received: from mail-oi1-f200.google.com (mail-oi1-f200.google.com [209.85.167.200])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	dmarc=pass header.from=qq.com;
+	spf=pass smtp.mailfrom=qq.com;
+	dkim=pass header.d=qq.com header.i=@qq.com header.a=rsa-sha256 header.s=s201512 header.b=CIL4B5I0;
+	arc=none smtp.remote-ip=162.62.57.64
+Received: from out162-62-57-64.mail.qq.com (out162-62-57-64.mail.qq.com [162.62.57.64])
+	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2381D606A328
-	for <linux-ext4@vger.kernel.org>; Wed,  4 Nov 2026 23:17:26 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 2381D606A328
-Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
-Received: by mail-oi1-f200.google.com with SMTP id 5614622812f47-4f9b643ae53so933929b6e.3
-        for <linux-ext4@vger.kernel.org>; Wed, 04 Nov 2026 15:17:26 -0800 (PST)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1793834246; x=1794439046;
-        h=content-type:to:from:subject:message-id:date:mime-version
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=EUNPXgVS4+pPl4o6fy0hi9HXzpCvpznpRLhaacvk77s=;
-        b=vrpXxtni8kdGEow9gJdzEIsX5sMVSGm/3MVU97RvWnqY7/yW3ldnyavn8l6wbkS3Ni
-         fiatCIsraNoxYPYlVkosm+vS20KizJd2XqPqzc7McQNoo33v66lkMHw4nB9PHIC0D5tV
-         Of6IXdNOHXW0Y6INtWCrTK67/NrIGY70hCMs9QWYzGqT7yRc1rLH7eDV3+BM7sOdQ7fj
-         X6vcEbCQJIgJMDk9VmkpK2zv8qFr/z6swT0STCXdxY3KfkDtcfUtWHe8kMdRklia62hy
-         xbQyogH6Che2Gb9F+p1IlFcD/T9yt5ulgWnK98SVLOhEVUaX8cwefVERhhBBGbidhYut
-         qCGA==
-X-Forwarded-Encrypted: i=1; AKwUvBx4+AoqEO6nGYesuWL+KVo8+5391FQ8kGvkAMi8LCAnAzAeGC9AEyFLwhUwdvaJ6jQUE8W0dAI8rvwl@vger.kernel.org
-X-Gm-Message-State: APuU4Z/ij1uVIRYrwrRvhSRcTpAiirDlcEwdAL82mTFCFP4FKlcupQIs
-	CvFZTLQ+JkuyOMI89TBsYD/IE1QkP3DoGV3JHFpGMEZjmcpPWLuxboc4oCvMzP6Y5CGFlSGpwCS
-	vHg/qTrwyvhf4Q6xGZ1vEduyBk6gkYb2aWgbiGpV5nxApGF0Tr+N380dV5xs=
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 18BC3606A328;
+	Thu,  5 Nov 2026 00:38:30 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 18BC3606A328
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=qq.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (1024-bit key, unprotected) header.d=qq.com header.i=@qq.com header.a=rsa-sha256 header.s=s201512 header.b=CIL4B5I0
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=qq.com; s=s201512;
+	t=1793839101; bh=mHu2Zp+OIHYsTxDxzUotJkKv0NMf1tqUvXZaUeyrli0=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References;
+	b=CIL4B5I0zxkoEMrOyOvKCtJi+kpKpF86scdupcw/kulTi5BGFQdzVxQZT33Lytd07
+	 /cDBh/Woaq9Smoitloo/IWO2IsDI8HVXTKSBzm4fqO/7NIMYG2FR29oHWBnOoLvEh3
+	 goBNZT7TE1/5kar4o7dEGBJqKqHfncrLAE50vLwU=
+Received: from shuai-VMware-Virtual-Platform.. ([218.28.192.28])
+	by newxmesmtplogicsvrszc43-0.qq.com (NewEsmtp) with SMTP
+	id 9912A272; Thu, 05 Nov 2026 08:38:17 +0800
+X-QQ-mid: xmsmtpt1793839097tkdlsus0m
+Message-ID: <tencent_75A7137EEE37D2E72C50F2284D95B85A6208@qq.com>
+X-QQ-XMAILINFO: Mg/13mbJq/Ru72bRH8u6I/LlE3zpGN+46yeQkAQ9GaBhoYhPdOzk/a6PsVlX4P
+	 o97ZqDAOB4trRBzl+V3jSr0J62lHnaFvlZO2Nk85nksRqRxgkQXgDflczXY+IUXpW1nqUnfecMan
+	 inTo5xX7QcJ05kD7tI74thQF8JxhOJe/jd/IJhEw8h5mobHve+/tECjPhIXMTt1+PA1lB8269yBT
+	 0jb6uU0x3iymrXre5kURvglrNLNOjnlNF8I9YaPIX8aMg6AdeEK/s3T3CIiaaNWifr242O4jEu8A
+	 mEBE2mwHOfxPj5UTx/vBpYZfhIDVh7AouEelQ0TL0pyyeMiMf1Ur2pe0GHeJJmw/G92rBYUJb2it
+	 QG6I/IdbMJvCakFWVLuqF2+Lq88AcUDIt2K/J4jV2ea9t7JHkqi9hOLuMKa/9jMrkDJsoYaMpA0B
+	 ajr4W+ndZEeeZbGVv7KMaehcMBjk+NtliZqG9HB99P/o2VfB9pBqWSf0mPu0XKaJ0RfGuiLQHJDU
+	 0qIy/liIXr6ClnR7CTIjYwyYv9kEmcQZEfQAQxBaAvZEdpaQOiW/wBqmpa4Ea3Wk9kSzcegp4C/Y
+	 xTyjHJdtaMaV1PYP/uHIgeBT3MiKeStWnWV7qIsMFVA/Eu85pK3K3u3V32andFaBALm+rwBFPA4U
+	 BjkyztcQaVDpS6k0rf7emvexLx6fm7rmBWzuBHDaH0xenztjZFblLPNlWazW8Gcy054Nn1ZZotrt
+	 n4SgxOQpx2x1Xa4Z1DUKenVvrbV40EYggm7RliWL/58Ta5MvyceTvbf1huyIocF7ReTnIdwSn1sr
+	 NRWU2uip/C48VveKyVkbrUtwTP8udj5OIuy+nnRixzyKNUg06sO1YrpL/zSQIR5kaajgnlg29ZJG
+	 61JrDDeRRlkRYsOrnzlgQtN0FsJAvtkGsJ6aqinBGN3YD2j/jjAMEoLhsNVG+S1ujnKukQ3tr/H5
+	 pxEWtj6rvIf1swhIcAmoBxExS8+RAI9HiyaF5HZCrG7ywalbd3ZgW1D5p0LDbTVRWsSeOOTJw12V
+	 Csqw9jH8qVC0akU3yZJFWM8jPhvptON83CYlmCRui2Z2W/TubUC3P5s8xl6R+dtMsE4n2FM7CInT
+	 sqe4o+
+X-QQ-XMRINFO: NS+P29fieYNwqS3WCnRCOn9D1NpZuCnCRA==
+From: Shuai Liu <847807867@qq.com>
+To: linux-ext4@vger.kernel.org
+Cc: tytso@mit.edu,
+	adilger.kernel@dilger.ca,
+	libaokun@linux.alibaba.com,
+	jack@suse.cz,
+	ojaswin@linux.ibm.com,
+	ritesh.list@gmail.com,
+	yi.zhang@huawei.com,
+	linux-kernel@vger.kernel.org,
+	syzbot+09bec78ee77613a3efdd@syzkaller.appspotmail.com,
+	sashiko-bot@kernel.org,
+	Shuai Liu <847807867@qq.com>,
+	stable@vger.kernel.org
+Subject: [PATCH v6] ext4: fix slab-use-after-free in do_split()
+Date: Thu,  5 Nov 2026 08:38:17 +0800
+X-OQ-MSGID: <20261105003817.904103-1-847807867@qq.com>
+X-Mailer: git-send-email 2.43.0
+In-Reply-To: <sashiko-outbox-197106@kernel.org>
+References: <sashiko-outbox-197106@kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -58,272 +90,206 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-X-Received: by 2002:a05:6808:3c49:b0:55c:928:6a0f with SMTP id
- 5614622812f47-5640ddd105cmr12069524b6e.52.1793834246093; Wed, 04 Nov 2026
- 15:17:26 -0800 (PST)
-Date: Wed, 04 Nov 2026 15:17:26 -0800
-X-Google-Appengine-App-Id: s~syzkaller
-X-Google-Appengine-App-Id-Alias: syzkaller
-Message-ID: <6aebbd06.21d05368.325ed5.0000.GAE@google.com>
-Subject: [syzbot] [btrfs?] [ext4?] [ntfs3?] memory leak in __pcs_replace_full_main
-From: syzbot <syzbot+4d078516add5f4f12cea@syzkaller.appspotmail.com>
-To: almaz.alexandrovich@paragon-software.com, bp@alien8.de, 
-	dave.hansen@linux.intel.com, dsterba@suse.com, hpa@zytor.com, 
-	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, mingo@redhat.com, ntfs3@lists.linux.dev, 
-	syzkaller-bugs@googlegroups.com, tglx@kernel.org, x86@kernel.org
-Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
 
-Hello,
+do_split() allocates a new directory block with ext4_append() to hold
+the second half of the entries of the leaf block being split, then
+dx_move_dirents() copies entries from the old block (*bh) into the new
+one (bh2).  Nothing verifies that the newly allocated block differs
+from the block being split.
 
-syzbot found the following issue on:
+On a filesystem whose block bitmap is inconsistent with the directory
+tree, a block already referenced as a directory leaf or as an htree
+index block can still be marked free, so ext4_append() can return that
+same block.  With concurrent operations on such a filesystem (as
+exercised by the syzbot reproducer), the block can even be freed
+between allocations, resulting in bh2 aliasing *bh.  dx_move_dirents()
+then copies the block onto itself, corrupting directory entries
+mid-copy: a rec_len field can be overwritten with name bytes, so the
+subsequent wipe of the stale entry memset()s a bogus length, causing
+the slab-use-after-free reported by syzbot.
 
-HEAD commit:    36aad21d50d1 Merge tag 'ksmbd-for-7.4-rc1-part2' of git://..
-git tree:       upstream
-console output: https://syzkaller.appspot.com/x/log.txt?x=14e205f1580000
-kernel config:  https://syzkaller.appspot.com/x/.config?x=afcef595c54d5d11
-dashboard link: https://syzkaller.appspot.com/bug?extid=4d078516add5f4f12cea
-compiler:       gcc (Debian 14.2.0-19) 14.2.0, GNU ld (GNU Binutils for Debian) 2.44
-syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=12e205f1580000
+The same aliasing applies to the htree index blocks.  If the leaf
+block or a newly allocated block aliases an index frame, the index
+header can be overwritten before do_split() runs (add_dirent_to_buf()
+inserting into an aliased leaf, make_indexed_dir() moving the dirents
+into an aliased new block, the index split in ext4_dx_add_entry()
+copying entries into an aliased buffer), letting dx_insert_block()
+memmove() out of bounds with a corrupted count and dx_release() loop
+past the frames[] array (or leak frames) with a corrupted
+indirect_levels.
 
-Downloadable assets:
-disk image: https://storage.googleapis.com/syzbot-assets/67a38cdd86cf/disk-36aad21d.raw.xz
-vmlinux: https://storage.googleapis.com/syzbot-assets/7b8834e6d3d5/vmlinux-36aad21d.xz
-kernel image: https://storage.googleapis.com/syzbot-assets/9103be67c72d/bzImage-36aad21d.xz
-mounted in repro #1: https://storage.googleapis.com/syzbot-assets/a661f7a0d152/mount_0.gz
-  fsck result: OK (log: https://syzkaller.appspot.com/x/fsck.log?x=130fea8d580000)
-mounted in repro #2: https://storage.googleapis.com/syzbot-assets/5aa6292982d9/mount_13.gz
-mounted in repro #3: https://storage.googleapis.com/syzbot-assets/5bf87b41f4ce/mount_16.gz
-  fsck result: OK (log: https://syzkaller.appspot.com/x/fsck.log?x=13558981580000)
+Fix this by checking for these aliases before any directory block
+contents are modified, and bailing out with -EFSCORRUPTED, reporting
+the corruption via ext4_error_inode_block():
 
-AI-generated root cause summary:
-The SLUB allocator's sheaf caching layer allocates 'struct slab_sheaf' objects
-via kmalloc_flags(), which registers them with kmemleak for leak tracking. When
-full RCU sheaves are retired in __kfree_rcu_sheaf(), they are queued into RCU
-via call_rcu(&rcu_sheaf->rcu_head, rcu_free_sheaf). While pending in RCU's
-singly-linked callback list, if any preceding callback resides in memory
-untracked or ignored by kmemleak (such as struct slab from
-call_rcu(&slab->rcu_head, rcu_free_slab)), kmemleak cannot traverse the chain to
-reach subsequent callbacks. Because __alloc_empty_sheaf() does not mark the
-sheaf with kmemleak_not_leak() (which marks the metadata grey so it is not
-reported as a leak while still scanning its cached objects), kmemleak falsely
-flags pending RCU sheaves as unreferenced memory leaks.
+  - make_indexed_dir(): after ext4_append(), before moving the
+    dirents out of the root block
+  - ext4_dx_add_entry(): after reading the leaf block and after
+    ext4_append() in the index split, before the entries are copied
+  - do_split(): for *bh and bh2 against all frames[0..level]
 
-full analysis:  https://syzkaller.appspot.com/x/ai_root_cause?x=4d078516add5f4f12cea
-
-IMPORTANT: if you fix the issue, please add the following tag to the commit:
-Reported-by: syzbot+4d078516add5f4f12cea@syzkaller.appspotmail.com
-
-BUG: memory leak
-unreferenced object 0xffff8881009d4e00 (size 512):
-  comm "kworker/0:1", pid 10, jiffies 4294937433
-  hex dump (first 32 bytes):
-    b0 7e 81 2d 81 88 ff ff 60 bd b3 81 ff ff ff ff  .~.-....`.......
-    00 12 04 00 81 88 ff ff 3c 00 00 00 00 00 00 00  ........<.......
-  backtrace (crc 91d5a5d8):
-    kmemleak_alloc_recursive include/linux/kmemleak.h:44 [inline]
-    slab_post_alloc_hook mm/slub.c:4733 [inline]
-    slab_alloc_node mm/slub.c:5033 [inline]
-    __do_kmalloc_node mm/slub.c:5530 [inline]
-    __kmalloc_flags_noprof+0x42c/0x570 mm/slub.c:5719
-    _kmalloc_flags_noprof mm/slab.h:55 [inline]
-    __alloc_empty_sheaf mm/slub.c:2854 [inline]
-    alloc_empty_sheaf mm/slub.c:2874 [inline]
-    __pcs_replace_full_main+0xf7/0x330 mm/slub.c:6094
-    free_to_pcs mm/slub.c:6147 [inline]
-    slab_free mm/slub.c:6633 [inline]
-    kfree+0x353/0x390 mm/slub.c:6923
-    vfree mm/vmalloc.c:3549 [inline]
-    vfree+0xa8/0x390 mm/vmalloc.c:3521
-    delayed_vfree_work+0x29/0x40 mm/vmalloc.c:3451
-    process_one_work+0x2b7/0x5c0 kernel/workqueue.c:3495
-    process_scheduled_works kernel/workqueue.c:3578 [inline]
-    worker_thread+0x255/0x4a0 kernel/workqueue.c:3659
-    kthread+0x150/0x1a0 kernel/kthread.c:436
-    ret_from_fork+0x219/0x490 arch/x86/kernel/process.c:158
-    ret_from_fork_asm+0x1a/0x30 arch/x86/entry/entry_64.S:245
-
-BUG: memory leak
-unreferenced object 0xffff888102382600 (size 512):
-  comm "kworker/u8:6", pid 403, jiffies 4294937442
-  hex dump (first 32 bytes):
-    10 45 0c 2d 81 88 ff ff 60 bd b3 81 ff ff ff ff  .E.-....`.......
-    00 12 04 00 81 88 ff ff 3c 00 00 00 00 00 00 00  ........<.......
-  backtrace (crc 2d83b05a):
-    kmemleak_alloc_recursive include/linux/kmemleak.h:44 [inline]
-    slab_post_alloc_hook mm/slub.c:4733 [inline]
-    slab_alloc_node mm/slub.c:5033 [inline]
-    __do_kmalloc_node mm/slub.c:5530 [inline]
-    __kmalloc_flags_noprof+0x42c/0x570 mm/slub.c:5719
-    _kmalloc_flags_noprof mm/slab.h:55 [inline]
-    __alloc_empty_sheaf mm/slub.c:2854 [inline]
-    alloc_empty_sheaf mm/slub.c:2874 [inline]
-    __pcs_replace_full_main+0xf7/0x330 mm/slub.c:6094
-    free_to_pcs mm/slub.c:6147 [inline]
-    slab_free mm/slub.c:6633 [inline]
-    kfree+0x353/0x390 mm/slub.c:6923
-    call_usermodehelper_freeinfo kernel/umh.c:43 [inline]
-    umh_complete kernel/umh.c:57 [inline]
-    call_usermodehelper_exec_async+0x1c7/0x1f0 kernel/umh.c:117
-    ret_from_fork+0x219/0x490 arch/x86/kernel/process.c:158
-    ret_from_fork_asm+0x1a/0x30 arch/x86/entry/entry_64.S:245
-
-BUG: memory leak
-unreferenced object 0xffff8881009e5600 (size 512):
-  comm "softirq", pid 0, jiffies 4294937452
-  hex dump (first 32 bytes):
-    10 25 4b 2c 81 88 ff ff 60 bd b3 81 ff ff ff ff  .%K,....`.......
-    00 12 04 00 81 88 ff ff 3c 00 00 00 00 00 00 00  ........<.......
-  backtrace (crc 9cf07d25):
-    kmemleak_alloc_recursive include/linux/kmemleak.h:44 [inline]
-    slab_post_alloc_hook mm/slub.c:4733 [inline]
-    slab_alloc_node mm/slub.c:5033 [inline]
-    __do_kmalloc_node mm/slub.c:5530 [inline]
-    __kmalloc_flags_noprof+0x42c/0x570 mm/slub.c:5719
-    _kmalloc_flags_noprof mm/slab.h:55 [inline]
-    __alloc_empty_sheaf mm/slub.c:2854 [inline]
-    alloc_empty_sheaf mm/slub.c:2874 [inline]
-    __pcs_replace_full_main+0xf7/0x330 mm/slub.c:6094
-    free_to_pcs mm/slub.c:6147 [inline]
-    slab_free mm/slub.c:6633 [inline]
-    kfree+0x353/0x390 mm/slub.c:6923
-    security_task_free+0x6e/0x130 security/security.c:2827
-    __put_task_struct+0x9f/0x260 kernel/fork.c:792
-    rcu_do_batch kernel/rcu/tree.c:2650 [inline]
-    rcu_core+0x269/0x720 kernel/rcu/tree.c:2919
-    handle_softirqs+0x114/0x330 kernel/softirq.c:669
-    run_ksoftirqd kernel/softirq.c:1133 [inline]
-    run_ksoftirqd+0x20/0x30 kernel/softirq.c:1125
-    smpboot_thread_fn+0x1f5/0x430 kernel/smpboot.c:162
-    kthread+0x150/0x1a0 kernel/kthread.c:436
-    ret_from_fork+0x219/0x490 arch/x86/kernel/process.c:158
-    ret_from_fork_asm+0x1a/0x30 arch/x86/entry/entry_64.S:245
-
-BUG: memory leak
-unreferenced object 0xffff888109c00000 (size 512):
-  comm "udevadm", pid 4995, jiffies 4294938376
-  hex dump (first 32 bytes):
-    00 3e 67 26 81 88 ff ff 60 bd b3 81 ff ff ff ff  .>g&....`.......
-    00 12 04 00 81 88 ff ff 3c 00 00 00 00 00 00 00  ........<.......
-  backtrace (crc acde3b3b):
-    kmemleak_alloc_recursive include/linux/kmemleak.h:44 [inline]
-    slab_post_alloc_hook mm/slub.c:4733 [inline]
-    slab_alloc_node mm/slub.c:5033 [inline]
-    __do_kmalloc_node mm/slub.c:5530 [inline]
-    __kmalloc_flags_noprof+0x42c/0x570 mm/slub.c:5719
-    _kmalloc_flags_noprof mm/slab.h:55 [inline]
-    __alloc_empty_sheaf mm/slub.c:2854 [inline]
-    alloc_empty_sheaf mm/slub.c:2874 [inline]
-    __pcs_replace_empty_main+0x260/0x2e0 mm/slub.c:4806
-    alloc_from_pcs mm/slub.c:4887 [inline]
-    slab_alloc_node mm/slub.c:5021 [inline]
-    __kmalloc_cache_noprof+0x370/0x3f0 mm/slub.c:5676
-    _kmalloc_noprof include/linux/slab.h:991 [inline]
-    _kzalloc_noprof include/linux/slab.h:1312 [inline]
-    kernfs_get_open_node fs/kernfs/file.c:537 [inline]
-    kernfs_fop_open+0x523/0x620 fs/kernfs/file.c:725
-    do_dentry_open+0x1d9/0x7e0 fs/open.c:1000
-    vfs_open_consume+0x4e/0x1c0 fs/open.c:1131
-    do_open fs/namei.c:4851 [inline]
-    path_openat+0xb90/0x1250 fs/namei.c:5016
-    do_file_open+0x121/0x200 fs/namei.c:5045
-    do_sys_openat2+0xd9/0x140 fs/open.c:1442
-    do_sys_open fs/open.c:1448 [inline]
-    __do_sys_openat fs/open.c:1464 [inline]
-    __se_sys_openat fs/open.c:1459 [inline]
-    __x64_sys_openat+0x82/0xf0 fs/open.c:1459
-    do_syscall_x64 arch/x86/entry/syscall_64.c:61 [inline]
-    do_syscall_64+0xe9/0x530 arch/x86/entry/syscall_64.c:84
-    entry_SYSCALL_64_after_hwframe+0x77/0x7f
-
-BUG: memory leak
-unreferenced object 0xffff888109bff800 (size 512):
-  comm "udevd", pid 4994, jiffies 4294938441
-  hex dump (first 32 bytes):
-    70 76 fd 26 81 88 ff ff 60 bd b3 81 ff ff ff ff  pv.&....`.......
-    00 12 04 00 81 88 ff ff 3c 00 00 00 00 00 00 00  ........<.......
-  backtrace (crc 1107e34f):
-    kmemleak_alloc_recursive include/linux/kmemleak.h:44 [inline]
-    slab_post_alloc_hook mm/slub.c:4733 [inline]
-    slab_alloc_node mm/slub.c:5033 [inline]
-    __do_kmalloc_node mm/slub.c:5530 [inline]
-    __kmalloc_flags_noprof+0x42c/0x570 mm/slub.c:5719
-    _kmalloc_flags_noprof mm/slab.h:55 [inline]
-    __alloc_empty_sheaf mm/slub.c:2854 [inline]
-    alloc_empty_sheaf mm/slub.c:2874 [inline]
-    __kfree_rcu_sheaf+0x1aa/0x2d0 mm/slub.c:6282
-    kfree_rcu_sheaf mm/slab_common.c:1689 [inline]
-    kvfree_call_rcu+0x1ef/0x3a0 mm/slab_common.c:2044
-    kernfs_unlink_open_file+0x18f/0x1a0 fs/kernfs/file.c:611
-    kernfs_fop_release+0x55/0x110 fs/kernfs/file.c:790
-    __fput+0x1a6/0x4f0 fs/file_table.c:512
-    fput_close_sync+0x67/0x130 fs/file_table.c:618
-    filp_close_sync fs/open.c:1573 [inline]
-    __do_sys_close fs/open.c:1596 [inline]
-    __se_sys_close fs/open.c:1583 [inline]
-    __x64_sys_close+0x4a/0xc0 fs/open.c:1583
-    do_syscall_x64 arch/x86/entry/syscall_64.c:61 [inline]
-    do_syscall_64+0xe9/0x530 arch/x86/entry/syscall_64.c:84
-    entry_SYSCALL_64_after_hwframe+0x77/0x7f
-
-BUG: memory leak
-unreferenced object 0xffff88810a9dae00 (size 512):
-  comm "sshd", pid 5384, jiffies 4294938845
-  hex dump (first 32 bytes):
-    00 7e 05 26 81 88 ff ff 60 bd b3 81 ff ff ff ff  .~.&....`.......
-    00 4a 04 00 81 88 ff ff 20 00 00 00 00 00 00 00  .J...... .......
-  backtrace (crc b8bd2d90):
-    kmemleak_alloc_recursive include/linux/kmemleak.h:44 [inline]
-    slab_post_alloc_hook mm/slub.c:4733 [inline]
-    slab_alloc_node mm/slub.c:5033 [inline]
-    __do_kmalloc_node mm/slub.c:5530 [inline]
-    __kmalloc_flags_noprof+0x42c/0x570 mm/slub.c:5719
-    _kmalloc_flags_noprof mm/slab.h:55 [inline]
-    __alloc_empty_sheaf mm/slub.c:2854 [inline]
-    alloc_empty_sheaf mm/slub.c:2874 [inline]
-    kmem_cache_prefill_sheaf+0x1a2/0x2d0 mm/slub.c:5279
-    mt_get_sheaf lib/maple_tree.c:154 [inline]
-    mas_alloc_nodes lib/maple_tree.c:1079 [inline]
-    mas_preallocate+0x3fb/0x6f0 lib/maple_tree.c:5016
-    vma_iter_prealloc mm/vma.h:698 [inline]
-    __mmap_new_vma mm/vma.c:2713 [inline]
-    __mmap_region+0xd92/0x1be0 mm/vma.c:3054
-    mmap_region+0x19c/0x2a0 mm/vma.c:3136
-    do_mmap+0x950/0xdf0 mm/mmap.c:573
-    vm_mmap_pgoff+0x195/0x310 mm/util.c:581
-    ksys_mmap_pgoff+0x89/0x2e0 mm/mmap.c:619
-    __do_sys_mmap arch/x86/kernel/sys_x86_64.c:96 [inline]
-    __se_sys_mmap arch/x86/kernel/sys_x86_64.c:89 [inline]
-    __x64_sys_mmap+0x6f/0xa0 arch/x86/kernel/sys_x86_64.c:89
-    do_syscall_x64 arch/x86/entry/syscall_64.c:61 [inline]
-    do_syscall_64+0xe9/0x530 arch/x86/entry/syscall_64.c:84
-    entry_SYSCALL_64_after_hwframe+0x77/0x7f
-
-connection error: failed to recv *flatrpc.ExecutorMessageRawT: EOF
-** replaying previous printk message **
-
+Reported-by: syzbot+09bec78ee77613a3efdd@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=09bec78ee77613a3efdd
+Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
+Cc: stable@vger.kernel.org
+Signed-off-by: Shuai Liu <847807867@qq.com>
+Changes in v6:
+  - Move the aliasing checks to every point where a directory buffer
+    is obtained for an htree operation, before its contents are
+    modified, as the checks inside do_split() were too late for three
+    paths (Sashiko):
+    * make_indexed_dir(): an aliased ext4_append() result would be
+      memcpy()ed and memset()ed before do_split() could check it
+    * ext4_dx_add_entry(): add_dirent_to_buf() would insert into a
+      leaf block aliasing an already-verified index block right after
+      the read, and the index split would copy entries into an
+      aliased ext4_append() buffer before do_split() is reached
+  - Extend the commit message accordingly (Sashiko)
 
 ---
-This report is generated by a bot. It may contain errors.
-See https://goo.gl/tpsmEJ for more information about syzbot.
-syzbot engineers can be reached at syzkaller@googlegroups.com.
+ fs/ext4/namei.c | 68 ++++++++++++++++++++++++++++++++++++++++++++++---
+ 1 file changed, 64 insertions(+), 4 deletions(-)
 
-syzbot will keep track of this issue. See:
-https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 354fc2d22df1..d9ae5c5a5562 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1903,13 +1903,14 @@ static struct ext4_dir_entry_2 *dx_pack_dirents(struct inode *dir, char *base,
+  * Returns pointer to de in block into which the new entry will be inserted.
+  */
+ static struct ext4_dir_entry_2 *do_split(handle_t *handle, struct inode *dir,
+-			struct buffer_head **bh,struct dx_frame *frame,
+-			struct dx_hash_info *hinfo)
++			struct buffer_head **bh, struct dx_frame *frames,
++			struct dx_frame *frame, struct dx_hash_info *hinfo)
+ {
+ 	unsigned blocksize = dir->i_sb->s_blocksize;
+ 	unsigned continued;
+ 	int count;
+ 	struct buffer_head *bh2;
++	struct dx_frame *f;
+ 	ext4_lblk_t newblock;
+ 	u32 hash2;
+ 	struct dx_map_entry *map;
+@@ -1922,12 +1923,42 @@ static struct ext4_dir_entry_2 *do_split(handle_t *handle, struct inode *dir,
+ 	if (ext4_has_feature_metadata_csum(dir->i_sb))
+ 		csum_size = sizeof(struct ext4_dir_entry_tail);
+ 
++	for (f = frames; f <= frame; f++) {
++		if (*bh == f->bh) {
++			ext4_error_inode_block(dir, (*bh)->b_blocknr,
++					       EFSCORRUPTED,
++					       "leaf block aliased with index block");
++			brelse(*bh);
++			*bh = NULL;
++			return ERR_PTR(-EFSCORRUPTED);
++		}
++	}
++
+ 	bh2 = ext4_append(handle, dir, &newblock);
+ 	if (IS_ERR(bh2)) {
+ 		brelse(*bh);
+ 		*bh = NULL;
+ 		return ERR_CAST(bh2);
+ 	}
++	if (bh2 == *bh) {
++		ext4_error_inode_block(dir, (*bh)->b_blocknr, EFSCORRUPTED,
++				       "cannot split aliased directory block");
++		brelse(bh2);
++		brelse(*bh);
++		*bh = NULL;
++		return ERR_PTR(-EFSCORRUPTED);
++	}
++	for (f = frames; f <= frame; f++) {
++		if (bh2 == f->bh) {
++			ext4_error_inode_block(dir, bh2->b_blocknr,
++					       EFSCORRUPTED,
++					       "leaf block aliased with index block");
++			brelse(bh2);
++			brelse(*bh);
++			*bh = NULL;
++			return ERR_PTR(-EFSCORRUPTED);
++		}
++	}
+ 
+ 	BUFFER_TRACE(*bh, "get_write_access");
+ 	err = ext4_journal_get_write_access(handle, dir->i_sb, *bh,
+@@ -2257,6 +2288,13 @@ static int make_indexed_dir(handle_t *handle, struct ext4_filename *fname,
+ 		brelse(bh);
+ 		return PTR_ERR(bh2);
+ 	}
++	if (bh2 == bh) {
++		ext4_error_inode_block(dir, bh->b_blocknr, EFSCORRUPTED,
++				       "cannot index aliased directory block");
++		brelse(bh2);
++		brelse(bh);
++		return -EFSCORRUPTED;
++	}
+ 	ext4_set_inode_flag(dir, EXT4_INODE_INDEX);
+ 	data2 = bh2->b_data;
+ 
+@@ -2325,7 +2363,7 @@ static int make_indexed_dir(handle_t *handle, struct ext4_filename *fname,
+ 	if (retval)
+ 		goto out_frames;
+ 
+-	de = do_split(handle,dir, &bh2, frame, &fname->hinfo);
++	de = do_split(handle, dir, &bh2, frames, frame, &fname->hinfo);
+ 	if (IS_ERR(de)) {
+ 		retval = PTR_ERR(de);
+ 		goto out_frames;
+@@ -2476,6 +2514,7 @@ static int ext4_dx_add_entry(handle_t *handle, struct ext4_filename *fname,
+ 			     struct inode *dir, struct inode *inode)
+ {
+ 	struct dx_frame frames[EXT4_HTREE_LEVEL], *frame;
++	struct dx_frame *f;
+ 	struct dx_entry *entries, *at;
+ 	struct buffer_head *bh;
+ 	struct super_block *sb = dir->i_sb;
+@@ -2496,6 +2535,15 @@ static int ext4_dx_add_entry(handle_t *handle, struct ext4_filename *fname,
+ 		bh = NULL;
+ 		goto cleanup;
+ 	}
++	for (f = frames; f <= frame; f++) {
++		if (bh == f->bh) {
++			ext4_error_inode_block(dir, bh->b_blocknr,
++					       EFSCORRUPTED,
++					       "leaf block aliased with index block");
++			err = -EFSCORRUPTED;
++			goto cleanup;
++		}
++	}
+ 
+ 	BUFFER_TRACE(bh, "get_write_access");
+ 	err = ext4_journal_get_write_access(handle, sb, bh, EXT4_JTR_NONE);
+@@ -2549,6 +2597,18 @@ static int ext4_dx_add_entry(handle_t *handle, struct ext4_filename *fname,
+ 			err = PTR_ERR(bh2);
+ 			goto cleanup;
+ 		}
++		for (f = frames; f <= frame; f++) {
++			if (bh2 == f->bh)
++				break;
++		}
++		if (f <= frame || bh2 == bh) {
++			ext4_error_inode_block(dir, bh2->b_blocknr,
++					       EFSCORRUPTED,
++					       "cannot split aliased index block");
++			brelse(bh2);
++			err = -EFSCORRUPTED;
++			goto cleanup;
++		}
+ 		node2 = (struct dx_node *)(bh2->b_data);
+ 		entries2 = node2->entries;
+ 		memset(&node2->fake, 0, sizeof(struct fake_dirent));
+@@ -2631,7 +2691,7 @@ static int ext4_dx_add_entry(handle_t *handle, struct ext4_filename *fname,
+ 			goto journal_error;
+ 		}
+ 	}
+-	de = do_split(handle, dir, &bh, frame, &fname->hinfo);
++	de = do_split(handle, dir, &bh, frames, frame, &fname->hinfo);
+ 	if (IS_ERR(de)) {
+ 		err = PTR_ERR(de);
+ 		goto cleanup;
+-- 
+2.43.0
 
-If the report is already addressed, let syzbot know by replying with:
-#syz fix: exact-commit-title
-
-If you want syzbot to run the reproducer, reply with:
-#syz test: git://repo/address.git branch-or-commit-hash
-If you attach or paste a git patch, syzbot will apply it before testing.
-
-If you want to overwrite report's subsystems, reply with:
-#syz set subsystems: new-subsystem
-(See the list of subsystem names on the web dashboard)
-
-If the report is a duplicate of another one, reply with:
-#syz dup: exact-subject-of-another-report
-
-If you want to undo deduplication, reply with:
-#syz undup
