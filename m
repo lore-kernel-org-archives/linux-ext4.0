@@ -1,129 +1,66 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793879572;
-	b=4JqbkshOdncYKl7cacrPwgBzufqc12Lk44fjHRichx049fAY1qLVLqUahSdWsiZ/fZW+
-	 mZhMN9kLdJjwd//Er1PVbCnKNr016ivN5TqHWZF8H7YVb+N69KjEqy4rAKjAmh5iuId6i
-	 bD2koLosDH/qm0AkvByIVKFfvSrLxRfUDT5/7h6CxsiR/4VX5VMZ7VZVhEgx7Jm1Lzkab
-	 658b/sfqZXz035pepENL+wCnv25c0l0rC38Xz749610RbE71Fzj8089HNIFCjjCXpHrMv
-	 PTLodlButNJH3Gfc7hcMGiEZ0Q4jMaNZbLMM0kGtmw5HtQYxYtZOktYSD/Abh82bI3g==
+	t=1793879809;
+	b=HIkY4EnNlwAQGIDBS2fZum2lUcs1ZBJD6ukXR/Q3gVWVkbsAS/vfixU+P0MXz9niBpiX
+	 9AlvWASAL74LV+pSaXe8nY0O+vLGwWVHapDsg8n9/59pKiMTfS4vT7k2sQ/iuPspYruW9
+	 /o5tmMPcopc2k/ZREnmP+5iF3ZFydWUPTbqwhyAO3ctEJ9mxpxR9HPMTQ2IgwS2hQAbux
+	 kK4NPCexnK0NUYgiDGWmKK4tLf+xTWLLWymuLnIB3JwbNxpVJUmhqA1f5ktYwIoeAT4Sy
+	 Ox/K+aWYhiRL+Q4PZEQZ//2etjsAbUcGAJhXFW86yq+JIlO2AF/s09yLJRhqdmN+40Q==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793879572;
-	h=DMARC-Filter:Received:DKIM-Signature:DKIM-Signature:DKIM-Signature:
-	 DKIM-Signature:Received:Received:Received:Date:From:To:Cc:Subject:
-	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
-	 In-Reply-To:X-Spamd-Result:X-Rspamd-Server:X-Rspamd-Action:
-	 X-Spam-Flag:X-Spam-Score:X-Spam-Level:X-Rspamd-Queue-Id;
-	bh=XTBVvV1llMrY8oPUgGAOljMGttnFmdc1n4iSvCofGvk=;
-	b=bpbI65RtQw/CHNKvst6gx6u/5xAlZclCad2cXmhfIa/E+iVhCEUm2lbB24CpWi8HydGk
-	 zpvZAayd2Gzyi2D6O43V46cg7aMZEb8zkgacd4ZLyEnIkjd1VH1OqfvDmIJaCSwy7q5u1
-	 XvU7HPN7h967dINDKt6quRu8OE1TKeW06LoK0ARMXfCg+fsyfA+6akgehaJOoXTfjzgH4
-	 za5UaBzPrWA5Sg+eRfKMXz+03xHoqGoQzBvM+ChP2PSjEuNsnv5lgkj69oVAWdPyYLA3b
-	 pO2QGSet2rsG1pQ+q52POQpu9XfAMQ26CKnqH6LvblzpUD2UYd2xFpml7i3TT5pe1yQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793879809;
+	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
+	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
+	bh=nLWgWt4BnslkaMJq2Nml0U4unW/O/XancfYoUJ4qlpY=;
+	b=tZr79sHRXiS7NSeKiQaU6luSvw2EA7uGpTbQ33wY35l5wimylC8akeWzfikOk1B58Rnc
+	 M7vftW/Jhr0izN/+DH/yZX7bmWIAtwU0FR7SD2azR1h0JVy8wDkcSiEcqDdIyGy2s1fG+
+	 8kFjB0FLnjAPTzJcPidsU5AYWz1L1tX/+8CT53Qg7V8xXzOwVadJhbaAREAz9aIHOdHT0
+	 35GMR7y1xlNQiC71R2G7YwX7erJv/y6GblKHgBKoyc4Ozl2FN1BnhDqUUZx6VQ/QqPMwM
+	 URUlQ+qJdZDO9iNhttsr7PQL1h1Z4TbnK6Z7kuYe86H7NIywkTbs5eFLoNqt7SHat2A==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=none header.from=suse.cz;
-	spf=pass smtp.mailfrom=suse.cz;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=IlDc2Fvh;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=vvDSWJYG;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=IlDc2Fvh;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=vvDSWJYG;
-	arc=none smtp.remote-ip=195.135.223.131
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=j7mdH2Hw;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 15BC0606A33C;
-	Thu,  5 Nov 2026 11:52:52 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 15BC0606A33C
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7B3CA606A32E;
+	Thu,  5 Nov 2026 11:56:49 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=IlDc2Fvh;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=vvDSWJYG;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=IlDc2Fvh;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=vvDSWJYG
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 090681F785;
-	Thu,  5 Nov 2026 11:52:50 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1793879570; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=XTBVvV1llMrY8oPUgGAOljMGttnFmdc1n4iSvCofGvk=;
-	b=IlDc2FvhESlDd8QXX4z/a9lq2dVMhaxW+HuiTJo6x+4vVVqrVz8k3f/Wr+Mze0vHlceBFP
-	JaL/+k/+YFdhkL/6vCq7Bg2Jyl3kffnaUQoNLw7CYQNpyydj2pmW97ukL1Mouho+skqqWs
-	9mNCq/qpRDGAphiHFTSprMwCLm6e0Vk=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1793879570;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=XTBVvV1llMrY8oPUgGAOljMGttnFmdc1n4iSvCofGvk=;
-	b=vvDSWJYGu2lVXhJVWrbpDbn5nEUGh3VUqLxrYRbdmdLlIIqOha94poMzPs0o88aMpXXTQC
-	GveF9mKsY1fCOgBQ==
-Authentication-Results: smtp-out2.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=IlDc2Fvh;
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=vvDSWJYG
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1793879570; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=XTBVvV1llMrY8oPUgGAOljMGttnFmdc1n4iSvCofGvk=;
-	b=IlDc2FvhESlDd8QXX4z/a9lq2dVMhaxW+HuiTJo6x+4vVVqrVz8k3f/Wr+Mze0vHlceBFP
-	JaL/+k/+YFdhkL/6vCq7Bg2Jyl3kffnaUQoNLw7CYQNpyydj2pmW97ukL1Mouho+skqqWs
-	9mNCq/qpRDGAphiHFTSprMwCLm6e0Vk=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1793879570;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=XTBVvV1llMrY8oPUgGAOljMGttnFmdc1n4iSvCofGvk=;
-	b=vvDSWJYGu2lVXhJVWrbpDbn5nEUGh3VUqLxrYRbdmdLlIIqOha94poMzPs0o88aMpXXTQC
-	GveF9mKsY1fCOgBQ==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id CB5FC134F4;
-	Thu,  5 Nov 2026 11:52:49 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id FWlQIxFu7GoAAwAAD6G6ig
-	(envelope-from <jack@suse.cz>); Thu, 05 Nov 2026 11:52:49 +0000
-Received: by quack.suse.cz (Postfix, from userid 1000)
-	id 45F61B6C1; Thu, 05 Nov 2026 12:52:41 +0100 (CET)
-Date: Thu, 5 Nov 2026 12:52:41 +0100
-From: Jan Kara <jack@suse.cz>
-To: Christian Brauner <brauner@kernel.org>
-Cc: linux-fsdevel@vger.kernel.org, 
-	Linus Torvalds <torvalds@linux-foundation.org>, Jann Horn <jannh@google.com>, Josef Bacik <josef@toxicpanda.com>, 
-	Chris Mason <mason@kernel.org>, Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
-	Eric Dumazet <edumazet@kernel.org>, Thomas Gleixner <tglx@kernel.org>, 
-	Al Viro <viro@zeniv.linux.org.uk>, Jonathan Corbet <corbet@lwn.net>, Christoph Hellwig <hch@lst.de>, 
-	Greg Kroah-Hartman <gregkh@suse.de>, Joel Granados <joel.granados@kernel.org>, 
-	Kees Cook <kees@kernel.org>, Jan Kara <jack@suse.cz>, Jan Kara <jack@suse.com>, 
-	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org, linux-acpi@vger.kernel.org, 
-	linux-kselftest@vger.kernel.org, linux-s390@vger.kernel.org, linux-scsi@vger.kernel.org, 
-	linux-um@lists.infradead.org, linux-wireless@vger.kernel.org, linuxppc-dev@lists.ozlabs.org, 
-	netdev@vger.kernel.org, ntfs3@lists.linux.dev, platform-driver-x86@vger.kernel.org, 
-	coreteam@netfilter.org, kexec@lists.infradead.org, linux-pci@vger.kernel.org, 
-	linux-sound@vger.kernel.org, netfilter-devel@vger.kernel.org, dri-devel@lists.freedesktop.org, 
-	ibm-acpi-devel@lists.sourceforge.net, jfs-discussion@lists.sourceforge.net, 
-	linux-alpha@vger.kernel.org, linux-arm-kernel@lists.infradead.org, linux-cifs@vger.kernel.org, 
-	linux-fbdev@vger.kernel.org, linux-hwmon@vger.kernel.org, linux-mm@kvack.org, 
-	linux-sh@vger.kernel.org, linux-usb@vger.kernel.org, samba-technical@lists.samba.org, 
-	sparclinux@vger.kernel.org, linux-m68k@lists.linux-m68k.org, linux-doc@vger.kernel.org, 
-	linux-serial@vger.kernel.org, linux-atm-general@lists.sourceforge.net, 
-	Takashi Iwai <tiwai@suse.de>, linux-input@vger.kernel.org, linux-raid@vger.kernel.org, 
-	linux-ext4@vger.kernel.org, linux-modules@vger.kernel.org, linux-debuggers@vger.kernel.org, 
-	Chuck Lever <cel@kernel.org>, stable@vger.kernel.org
-Subject: Re: [PATCH RFC 18/38] proc: don't WARN about a name that is already
- registered
-Message-ID: <qaqawx4ajooiiqzu3ngxc46khpnq74u6sl5tz6az4uyssxzly4@346lsx342het>
-References: <20261102-work-procfs-bugfixes-v1-0-59422ed3e465@kernel.org>
- <20261102-work-procfs-bugfixes-v1-18-59422ed3e465@kernel.org>
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=j7mdH2Hw
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C81EF1F00A17;
+	Thu,  5 Nov 2026 11:56:45 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1793879809;
+	bh=nLWgWt4BnslkaMJq2Nml0U4unW/O/XancfYoUJ4qlpY=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References;
+	b=j7mdH2HwkOWECtcq+fuA5uoIYOF4T04KVSxvtXk6Sbqc1V8qzVSDWMd+BXpJ/tGPC
+	 h1Dab8z+24a8iLJeiijSWRzyDMnD39afB9QzMxB1xt2VndJtB/dW7ialpENcmDUYXI
+	 NQULeSdbg0dRdw2c1i8QgxnJ0wWREYiywTytiABFPTIXBqnwW2fNCHg0GRGDWNv7ai
+	 liTnSxEbfj4Za1enqG0/SSQnnv8Dyy3Nr1/BJ46Ax7afK7ltl/ts/2HfT5ztrB8v7R
+	 mnbWoF5MmRPETcrFqXV/K0rpUKAhpB9lRpWnoQqsQsEO6jVxEA6c5FQpHTe2liMtPb
+	 nHSZrAEJXf2MA==
+From: Andrey Albershteyn <aalbersh@kernel.org>
+To: ebiggers@kernel.org,
+	hch@lst.de,
+	fsverity@lists.linux.dev,
+	dsterba@suse.com
+Cc: Andrey Albershteyn <aalbersh@kernel.org>,
+	linux-xfs@vger.kernel.org,
+	linux-btrfs@vger.kernel.org,
+	linux-f2fs-devel@lists.sourceforge.net,
+	linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org,
+	brauner@kernel.org,
+	viro@zeniv.linux.org.uk,
+	jaegeuk@kernel.org,
+	chao@kernel.org,
+	tytso@mit.edu
+Subject: [PATCH v2 2/5] fsverity: add I_VERITY_BUILDING inode state flag
+Date: Thu,  5 Nov 2026 12:55:27 +0100
+Message-ID: <20261105115532.613467-3-aalbersh@kernel.org>
+X-Mailer: git-send-email 2.54.0
+In-Reply-To: <20261105115532.613467-1-aalbersh@kernel.org>
+References: <20261105115532.613467-1-aalbersh@kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -133,113 +70,145 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20261102-work-procfs-bugfixes-v1-18-59422ed3e465@kernel.org>
-X-Spamd-Result: default: False [-11.51 / 50.00];
-	SUSE_INTERNAL_BYPASS(-9.00)[];
-	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	MX_GOOD(-0.01)[];
-	RCVD_TLS_LAST(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	RCVD_COUNT_THREE(0.00)[3];
-	MIME_TRACE(0.00)[0:+];
-	ARC_NA(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	DKIM_TRACE(0.00)[suse.cz:+];
-	R_RATELIMIT(0.00)[to_ip_from(RLpnapcpkwxdkc5mopt1ezhhna)];
-	DNSWL_BLOCKED(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	TO_MATCH_ENVRCPT_SOME(0.00)[];
-	FROM_EQ_ENVFROM(0.00)[];
-	TO_DN_SOME(0.00)[];
-	RCPT_COUNT_GT_50(0.00)[60];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
-	MISSING_XM_UA(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:email,suse.cz:dkim,suse.com:email,imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo]
-X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
-X-Rspamd-Action: no action
-X-Spam-Flag: NO
-X-Spam-Score: -11.51
-X-Spam-Level: 
-X-Rspamd-Queue-Id: 090681F785
+Content-Transfer-Encoding: 8bit
 
-On Mon 02-11-26 15:21:33, Christian Brauner wrote:
-> proc_register() WARNs when the directory already has an entry of the
-> same name and fails the registration. Callers that pick their names
-> themselves should never get there but some take names from userspace.
-> pktgen creates a file for each device a writer of "add_device" adds,
-> named after the device. A device can have any name, including "pgctrl"
-> or "kpktgend_0", the names of pktgen's own files:
-> 
->   ip link set lo name pgctrl
->   ip link set pgctrl up
->   echo "add_device pgctrl" > /proc/net/pktgen/kpktgend_0
-> 
->   proc_dir_entry 'pktgen/pgctrl' already registered
->   WARNING: fs/proc/generic.c:404 at proc_register+0x555/0x8b0, CPU#0: bash/241
->   Call Trace:
->    proc_create_data+0x9f/0xf0
->    pktgen_thread_write+0xd9b/0x1780
->    proc_reg_write+0x1c2/0x3c0
->    vfs_write+0x1cd/0xfa0
-> 
-> The files of a network namespace belong to the root of its user
-> namespace and none of this requires a capability. So once pktgen is
-> loaded an unprivileged user can taint the kernel, or crash it with
-> panic_on_warn, from namespaces of its own. pktgen itself copes with
-> the failed registration just fine.
-> 
-> So go back to what proc_register() did before commit 6c2f91e077f1
-> ("proc: use WARN() rather than printk+backtrace") and what
-> sysfs_warn_dup() does for sysfs: report the name with pr_warn() and
-> dump the stack. While at it, do that after dropping proc_subdir_lock
-> instead of printing a backtrace while holding the lock that every
-> lookup and readdir in procfs needs.
-> 
-> Reported-by: Chris Mason <mason@kernel.org>
-> Fixes: 6c2f91e077f1 ("proc: use WARN() rather than printk+backtrace")
-> Cc: stable@vger.kernel.org
-> Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
+Every filesystem that supports fs-verity keeps a private runtime inode
+flag meaning Merkle tree is currently being built *_VERITY_IN_PROGRESS.
+They all serve the same two purposes: reject a concurrent enable with
+-EBUSY and let the write paths recognize the special writes done while
+the tree is under construction.
 
-Makes sense. Feel free to add:
+Hoist this flag into the VFS as a new inode state flag,
+I_VERITY_BUILDING, and manage its lifetime in the generic fs-verity
+enable path. The flag is set after ->begin_enable_verity() succeeds and
+cleared after ->end_enable_verity() returns (both on the success and the
+rollback paths). Add the concurrent-enable guard.
 
-Reviewed-by: Jan Kara <jack@suse.cz>
+A new helper, fsverity_is_building(), is provided for filesystems to
+query the flag. No filesystem uses it yet; the per-fs flags are
+converted in following patches.
 
-								Honza
+Signed-off-by: Andrey Albershteyn <aalbersh@kernel.org>
+---
+ fs/verity/enable.c       | 22 +++++++++++++++++++---
+ include/linux/fs.h       |  6 ++++++
+ include/linux/fsverity.h | 21 +++++++++++++++++++++
+ 3 files changed, 46 insertions(+), 3 deletions(-)
 
-> ---
->  fs/proc/generic.c | 5 +++--
->  1 file changed, 3 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/proc/generic.c b/fs/proc/generic.c
-> index c560c96a64eb..ef804cd3ec45 100644
-> --- a/fs/proc/generic.c
-> +++ b/fs/proc/generic.c
-> @@ -401,9 +401,10 @@ struct proc_dir_entry *proc_register(struct proc_dir_entry *dir,
->  	write_lock(&proc_subdir_lock);
->  	dp->parent = dir;
->  	if (pde_subdir_insert(dir, dp) == false) {
-> -		WARN(1, "proc_dir_entry '%s/%s' already registered\n",
-> -		     dir->name, dp->name);
->  		write_unlock(&proc_subdir_lock);
-> +		pr_warn("proc_dir_entry '%s/%s' already registered\n",
-> +			dir->name, dp->name);
-> +		dump_stack();
->  		goto out_free_inum;
->  	}
->  	write_unlock(&proc_subdir_lock);
-> 
-> -- 
-> 2.53.0
-> 
+diff --git a/fs/verity/enable.c b/fs/verity/enable.c
+index fe8493280b77..65d3571c62b5 100644
+--- a/fs/verity/enable.c
++++ b/fs/verity/enable.c
+@@ -229,13 +229,23 @@ static int enable_verity(struct file *filp,
+ 
+ 	/*
+ 	 * Start enabling verity on this file, serialized by the inode lock.
+-	 * Fail if verity is already enabled or is already being enabled.
++	 * Fail if verity is already enabled or is already being enabled. Set
++	 * I_VERITY_BUILDING inode runtime flag which will be cleared when
++	 * enablement succeeded or rolled back.
+ 	 */
+ 	inode_lock(inode);
+-	if (IS_VERITY(inode))
++	if (IS_VERITY(inode)) {
+ 		err = -EEXIST;
+-	else
++	} else if (inode_state_read_once(inode) & I_VERITY_BUILDING) {
++		err = -EBUSY;
++	} else {
+ 		err = vops->begin_enable_verity(filp);
++		if (!err) {
++			spin_lock(&inode->i_lock);
++			inode_state_set(inode, I_VERITY_BUILDING);
++			spin_unlock(&inode->i_lock);
++		}
++	}
+ 	inode_unlock(inode);
+ 	if (err)
+ 		goto out;
+@@ -291,6 +301,9 @@ static int enable_verity(struct file *filp,
+ 	 */
+ 	inode_lock(inode);
+ 	err = vops->end_enable_verity(filp, desc, desc_size, params.tree_size);
++	spin_lock(&inode->i_lock);
++	inode_state_clear(inode, I_VERITY_BUILDING);
++	spin_unlock(&inode->i_lock);
+ 	inode_unlock(inode);
+ 	if (err) {
+ 		fsverity_err(inode, "%ps() failed with err %d",
+@@ -317,6 +330,9 @@ static int enable_verity(struct file *filp,
+ rollback:
+ 	inode_lock(inode);
+ 	(void)vops->end_enable_verity(filp, NULL, 0, params.tree_size);
++	spin_lock(&inode->i_lock);
++	inode_state_clear(inode, I_VERITY_BUILDING);
++	spin_unlock(&inode->i_lock);
+ 	inode_unlock(inode);
+ 	goto out;
+ }
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 99caef43ff3c..7c90ce09f797 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -707,6 +707,11 @@ is_uncached_acl(struct posix_acl *acl)
+  * I_LRU_ISOLATING	Inode is pinned being isolated from LRU without holding
+  *			i_count.
+  *
++ * I_VERITY_BUILDING	fs-verity is being enabled on the inode: the Merkle
++ *			tree is under construction.  The file is effectively
++ *			read-only to userspace; the only writes happening are
++ *			for the fs-verity metadata.
++ *
+  * Q: What is the difference between I_WILL_FREE and I_FREEING?
+  *
+  * __I_{SYNC,NEW,LRU_ISOLATING} are used to derive unique addresses to wait
+@@ -741,6 +746,7 @@ enum inode_state_flags_enum {
+ 	I_SYNC_QUEUED		= (1U << 17),
+ 	I_PINNING_NETFS_WB	= (1U << 18),
+ 	I_METADATA_WRITEBACK	= (1U << 19),
++	I_VERITY_BUILDING	= (1U << 20),
+ };
+ 
+ #define I_DIRTY_INODE (I_DIRTY_SYNC | I_DIRTY_DATASYNC)
+diff --git a/include/linux/fsverity.h b/include/linux/fsverity.h
+index 61fe96ccdff6..c72edec57e30 100644
+--- a/include/linux/fsverity.h
++++ b/include/linux/fsverity.h
+@@ -164,6 +164,22 @@ static inline bool fsverity_active(const struct inode *inode)
+ 	return false;
+ }
+ 
++/**
++ * fsverity_is_building() - is fs-verity being enabled on the inode
++ * @inode: inode to check
++ *
++ * This checks whether the inode's Merkle tree is currently being built.
++ * While this is the case the file is read-only to userspace and the only writes
++ * allowed are for the fs-verity metadata. This becomes false when fsverity
++ * metadata is fully created and written to disk or building failed.
++ *
++ * Return: true if fs-verity is being enabled on the inode
++ */
++static inline bool fsverity_is_building(const struct inode *inode)
++{
++	return inode_state_read_once((struct inode *)inode) & I_VERITY_BUILDING;
++}
++
+ struct fsverity_info *__fsverity_get_info(const struct inode *inode);
+ /**
+  * fsverity_get_info - get fsverity information for an inode
+@@ -217,6 +233,11 @@ static inline bool fsverity_active(const struct inode *inode)
+ 	return false;
+ }
+ 
++static inline bool fsverity_is_building(const struct inode *inode)
++{
++	return false;
++}
++
+ static inline struct fsverity_info *fsverity_get_info(const struct inode *inode)
+ {
+ 	return NULL;
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.54.0
+
