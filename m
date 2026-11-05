@@ -1,48 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793908654;
-	b=rTsXi/nzGfpaBrre8xjJwvSZpWu0EzJoOFAxqmgd0D2ydGo4jfTb8Gcw0H3Sy7htJCaF
-	 oKQzXTOO4/KVKPsqG4tvco4znezj8MF+qLaM/sjtHPi76PpXLN5GansN3yUOR//WAx/yW
-	 NSPAUwhklr6kEkAkoC5uTiauQjC1dNKgGUORZTJ6upADpEvcsc1EbXD/ZY4uEuqFfCq1D
-	 /O8sjyJw48rs93X69R2+hz3IXhFCqFkDBAT1SxUazNg3mZqS3ygHJTXdpkWzgOIuPus33
-	 YV0akY57CISxWrafN6maeS44tBtxBRdgToSwe/cCAct8eROr7RclgaTzQAoWGPWeUMw==
+	t=1793908662;
+	b=cS/bB2/urwFnmuub8wZTBBvqFEKKa10rMTcLK/VxUUC8bPrVSiUBiaqin3c7T7iePa5b
+	 iIVxxsVcsBAy10wp9K36vld1ta37K7xbCQtjjr/7OvPX+hkg8Q8mi8H1+i2y/m+8heq9S
+	 bQujVtg0bM5OReQzoOuGKzCTwWaIx3/JpOdsV34pOXYFQr6CUxpfEBieoo8nMfhdsPsGd
+	 zo/GQSm0aJM7MyxrMQOF1aLqBinN7E1hTxFZuD4vCrg5mexYwVRhn5554jqqeSOL+QAuN
+	 iFntirN2/BzrjThBljW6TwjkGpbycLTzAHafp2fqbJadseh2TXm3Nn0nn8/AdEXVViA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793908654;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793908662;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=xFHbGVRg6yrT3KlueEhkmvkVUBCbD/lh7sbmFSVtLTQ=;
-	b=ln5i4x2KoBfD0ekrmA6sUXfIhhuczOf81jBtyWOnovokeoLyoJ8/aDCug7AtPWBMos/Q
-	 481ipZZzup3tBdkkPzGqGswRIoh7w7gZptaY+fwpHAzBg4RLmTTLnBOvQyqaFB9IGh87U
-	 h3nE7GuDjP0G3Fa1k1UwwBl1kzPcLMvNxZYwJzL0HDN8iH+J+XeUviU/72s9Yvj+/DAVd
-	 rhzD6WX0Gncra1757xZcvL2j5Iy4195f5lcTcQkfgoPVgRFJFhlPaNQFR1atFddMxw1Y6
-	 EG/Q0uodIx+vnfpBN53roBzW6YpAEb7Ou8go+kg1S6eZ5rCCAW2OJFGra6xd0YtwUZg==
+	bh=1ucq80d/HBPFI1YIkIEFNdSOXOIK1pX2sWoSRce4LGk=;
+	b=oQQQlFL+gYyT3AlDqdYKA2lAsUm7RrOo4lPB8ujfaCDpNbT6UGL93ULW+DYVyj/kL0GF
+	 hF+sz8k8YM0Xb7eLV1esEPaoZxg4fhRiaq6UPIgi1d69fuJWguOZd/BGFHEFIrh+KUkMF
+	 zrlgmFmpAeey9if+l6i2te/YDz8OAzzvOmvjJGYH+mGKsEbqMtVQdAtAnc+rufrhLgEK2
+	 /MoRFb70FVE24HxqZx+jY3yl8qooH1EVkREYRL32+ywT9X4zQeI7XRxZzSryCXucNnSEh
+	 q+F3NGEe64YUyhg3kuenXv71KP/gm8ivNTs7Hvms2c7OpZV8Z2OC+EzVjeN9XeNLKyA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=MH+i2+6U;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=cyklZAYd;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B2837606A6D2;
-	Thu,  5 Nov 2026 19:57:33 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 88232606B06D;
+	Thu,  5 Nov 2026 19:57:42 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=MH+i2+6U
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 066011F008BE;
-	Thu,  5 Nov 2026 19:57:31 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=cyklZAYd
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A4CAC1F008A7;
+	Thu,  5 Nov 2026 19:57:40 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793908653;
-	bh=xFHbGVRg6yrT3KlueEhkmvkVUBCbD/lh7sbmFSVtLTQ=;
+	s=k20260515; t=1793908662;
+	bh=1ucq80d/HBPFI1YIkIEFNdSOXOIK1pX2sWoSRce4LGk=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=MH+i2+6U9jE27VRxSnmwAC1I+KZsyQYelc+SI0/arXlN1acPqvYicclIueaGmnw0S
-	 7Vufmku32aU/0LTS0ZsEhPWcfV/nyEAphelMqVOOOUXzL7KizWCwGblpTFLBfRVOQ+
-	 aRw3Xd1lLfS6Zlieesl7Sd7dG27m8Iqdo392aGzfQpYi9FKD9imCBtAkWRVDGlQ5yL
-	 tyCoPN0YxGIGINh+RaRkYpaUWkADRL5JES4DnfjVlT3zfh7STaEF5tXVV/1aeg93IZ
-	 vbsnaVOjzd37+164Zegh13k1Ov7WlOlHKfVz6T+tPlvgwuvjMPOhmpOl2Tm3RCKXke
-	 hwokiwRFkoaZQ==
-Message-ID: <sashiko-outbox-200037@kernel.org>
+	b=cyklZAYdu0ZVZTXCtdmNiCr7HiuHeOQyL+0S7CFmQsIMMFfQNly59rhkWaVoLt25u
+	 GJWHmTWEJKwUQ3jEJYZRj8f0gumZIfwawo6h0vxZMknc3/HmVH0Cy+FDJgc4U1e5Jm
+	 T7qHR2VsrYj78ByH806qRFBswbz63IekHv3Cvnq52k0GiBF4SJQjnw1YKFUxkcxM7V
+	 f8oPRK0Sk4UnkzaejQ6R5LFelnNPmHaMgfodZ9a79DjRBdXTM0VSqVCS2MZtqqfHSG
+	 VITqB4tE5wR5v6/XkuPGTmojFSNSLFTaqw3nVHzkB1jGn3Zm8qRlfF/iUUSqvdE60Q
+	 I7YHfXHpobwTg==
+Message-ID: <sashiko-outbox-200040@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH RESEND v2 03/30] lockd: let procfs copy in writes to
- nlm_end_grace
+Subject: Re: [PATCH RESEND v2 06/30] nfsd: let procfs own the seq_file of
+ /proc/fs/nfs/exports
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Christian Brauner" <brauner@kernel.org>
 Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.com>, "Josef
@@ -55,12 +55,12 @@ Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.
  Iwai" <tiwai@suse.de>, linux-ext4@vger.kernel.org, "Chuck Lever" <cel@kernel.org>, tytso@mit.edu, "Heiko
  Carstens" <hca@linux.ibm.com>, "Vasily Gorbik" <gor@linux.ibm.com>, "Alexander
  Gordeev" <agordeev@linux.ibm.com>, "Christian Borntraeger" <borntraeger@linux.ibm.com>
-In-Reply-To: <20261104-work-procfs-fs-v2-3-319e0f9a8aae@kernel.org>
+In-Reply-To: <20261104-work-procfs-fs-v2-6-319e0f9a8aae@kernel.org>
 References: <20261104-work-procfs-fs-v2-0-319e0f9a8aae@kernel.org>
- <20261104-work-procfs-fs-v2-3-319e0f9a8aae@kernel.org>
+ <20261104-work-procfs-fs-v2-6-319e0f9a8aae@kernel.org>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Thu, 05 Nov 2026 19:57:31 +0000
+Date: Thu, 05 Nov 2026 19:57:40 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -70,13 +70,10 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-> Implement ->proc_write_buf() so procfs copies in what is written before
-> it pins the entry. simple_transaction_get() was only used to get a copy
-> of what was written, so look at procfs' copy instead and drop the
-> transaction. A second write to the same file doesn't fail with -EBUSY
-> anymore. Writes larger than PAGE_SIZE - 1 bytes fail with -EINVAL from
-> procfs instead of -EFBIG from simple_transaction_get(), which refused a
-> few bytes less.
+> Declare the seq_operations and let procfs open and free the seq_file.
+> ->proc_open() and ->proc_release() only set up ->private and take and
+> drop the reference to the network namespace now. Reading the file then
+> no longer holds up its removal.
 >=20
 > Acked-by: Chuck Lever <cel@kernel.org>
 > Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
@@ -85,5 +82,5 @@ Sashiko has reviewed this patch and found no issues.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261104-work-procf=
-s-fs-v2-0-319e0f9a8aae@kernel.org?part=3D3
+s-fs-v2-0-319e0f9a8aae@kernel.org?part=3D6
 
