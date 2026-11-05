@@ -1,48 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793908684;
-	b=JKUuyEKwsLJPfHkArOaG0HyIFBaaFa+wZ83FLm9IfkdT7AScgLmihJEb2Rs11nlUtDvX
-	 vAev4+JFYg2zU4K0pbQfz9vH16UQ0y8Vf+aoD6NqT97H2vWQIFX11TZ4RzzocpEXXreUq
-	 23cGQcy68TqJRSjHO2hfz72de/igTcVDPU0eABUTVXBVCvIgyGasftShJu6NdL2Etp7UR
-	 4+Ema2xnAWp4Y2gpikGYm5x+D2E9DdrPL1cl5bJm4HYRu2D/rHRGI0LvyhFgxdlUvxUTM
-	 ZmIy9AYc5shKLHfKdsyIkFpcdUbUE9cxqlPtfPO6fq7HMYBh+d5Hczr3U85rh0Xh/eA==
+	t=1793908691;
+	b=spDRZQIdQ3QEuZYbEYc+g6LVGKd26Y3QiBlwRugSyM/h7zLpPlkZZA/L5YXlqkwpQhuF
+	 5tK9d3vaSnI0jLDm4GRE4mJKaHuZK6Awqn5Gs45ogu20AOrrzslXfYumUH2XfQaGPdXJs
+	 TbUtYXVi1LEATDAjESSaGw5+M4CL+PX9yJeI+/jKvAm+MR3ymzEFTXzKxjxv9Oz1P0Zm2
+	 he+0gQyopOf0HyAwA0udGHyyOuez07B4FLYkRz5l6uQ4GeYJ77CK1PlNyv9Cl1pTzSKtJ
+	 18Q9Q3NF6+BBzs1me0DuJQYII++hX3fnVscqS8+z2lNkYGq6youedXQ11I+YNoMvL7A==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793908684;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793908691;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=xQw5Y21Jefdqk+NLJ1bgD2wYB6yjyjtlILHzStlkXtg=;
-	b=J1iwFlLZrwTijW+oRlyZr9P0gMwMkzs+V3/hRIXp6FWm8494AyIt7IRGYeukBAZCoykl
-	 OOP9QFvO9JqOD6rbZH3pDpCpAX8ykn5CMAoi2e9uluFuIIgKVo1CKqcKSNmHWjScpVOvR
-	 cYKsJSAkm2NYxMbge7gztJaI/rqpOTuWVnGQxVM6yr0NnOaUKu6a6DjKDG+VthxF71BG1
-	 SJTIQFdPBYRY8LesuL6QPFM6Wcmd55SiD4iB/GdWhvy0szZC/PG56kuZEDnLAVWs/KI+1
-	 W9VathjkkC/7Te1NFudVxnaLbDOrgHMKZITckrA3HLFFHGsiGjR7F11IFA55pxTnhmQ==
+	bh=VJM1TPMHTJ5mBUuyXhBiQ3F6ibJxzxb1q4lJPp3RzWY=;
+	b=NvPf9tB3jxHuc1xJY+qwbfsPrcLyPWyA5CRIJeYUc4dOgpvR6//Q+VLgmoNyLSwbE4Ut
+	 j461ud+NRwDG1WaLZFU7iq216bW36IgJJTNiuuPEavJx8CsvVkXYOc2morasFVS3HfFhD
+	 0JUYYADbnlIsFkBM/mvtvSbBkf3JGYVKVxKDVBn+tOXhmFP1vdg2+yiOzV2Yz9ABrBgeN
+	 4OFwz5OO8UNP6kPJIwQC6kWfcBlVVArjBhjEFmwCS1PI4HZTiy/m8uiuw6vlpEoyUlP90
+	 DfTBHJQuttNeyl+049ZBC3P7KcCHViHC6fJ8pZL0vTe3HKRS7XupWaznVf5DSdWTbTA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=DLjGD6ne;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=R49qB2P0;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 06DDB606B052;
-	Thu,  5 Nov 2026 19:58:04 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3CCE3606B061;
+	Thu,  5 Nov 2026 19:58:11 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=DLjGD6ne
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 69FFC1F008A2;
-	Thu,  5 Nov 2026 19:58:02 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=R49qB2P0
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id B19A41F008A4;
+	Thu,  5 Nov 2026 19:58:09 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793908683;
-	bh=xQw5Y21Jefdqk+NLJ1bgD2wYB6yjyjtlILHzStlkXtg=;
+	s=k20260515; t=1793908691;
+	bh=VJM1TPMHTJ5mBUuyXhBiQ3F6ibJxzxb1q4lJPp3RzWY=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=DLjGD6ne+zHJ6l2NtLBp7WGG5HHEcKsAxosFKuR0a7RNuYJAWYFmlP+Eo4EW1JlwF
-	 0VqWA8iJu/xUCfFf45PRI6wxw6ubU1MPAtOe4gnsizzUCn5G90TIhkS+JaYX/xS0Rt
-	 KJgyyZLcQTrRIU+/OkMZbrLRNYgpvjs3AQ62AWHHgn+9vKzQLgChpIiAzq6Sfn7mbe
-	 QHvGzpOfFXUXvhf6Sp6Bstrs4fyt+JGWdnKOviq93faMpWfzEPEWnjRXTOWMz15JYf
-	 bGpLKj6EreLgLDC1RKy7AynA060/DZ2MLXiHudUwyVC6r2EJBdb29sdOTmnyqWnhCd
-	 8WBHWj+qczWmQ==
-Message-ID: <sashiko-outbox-200051@kernel.org>
+	b=R49qB2P0qXLUlPstwwn/cwYKqB7OFfz4cOrfsP1tHpUFMXL/az8OchsolUY+GEzN8
+	 qPorB5vIYuDFFbNWXZE4dER721Q9iHKmNr9gTXfDYm5AJvXye0eCPOLB5v3lQH3wnt
+	 lPQrL8L7KfQOJJHq7nla/3TPNFRoqsbYIXYWjsoCrXCJKCIXzvkbiOVXSwuJWI0CoY
+	 O1TU2YPeucS7sioJZWTFApiz83C+NIGiwdWch89cqPQW8+W+41Rn/7BQvAoF14Rwa5
+	 cS6JRLtxWDf46VmERQg3QZMBNyOybQruZCkAsYR0VLJVVC6hEyS2CEDKwXXOsQKShk
+	 bBlenIqZvFSoQ==
+Message-ID: <sashiko-outbox-200054@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH RESEND v2 17/30] sched/psi: let procfs own the seq_file
- of the pressure files
+Subject: Re: [PATCH RESEND v2 20/30] sched/psi: let procfs own the wait
+ queue of the pressure files
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Christian Brauner" <brauner@kernel.org>
 Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.com>, "Josef
@@ -55,12 +55,12 @@ Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.
  Iwai" <tiwai@suse.de>, linux-ext4@vger.kernel.org, "Chuck Lever" <cel@kernel.org>, tytso@mit.edu, "Heiko
  Carstens" <hca@linux.ibm.com>, "Vasily Gorbik" <gor@linux.ibm.com>, "Alexander
  Gordeev" <agordeev@linux.ibm.com>, "Christian Borntraeger" <borntraeger@linux.ibm.com>
-In-Reply-To: <20261104-work-procfs-fs-v2-17-319e0f9a8aae@kernel.org>
+In-Reply-To: <20261104-work-procfs-fs-v2-20-319e0f9a8aae@kernel.org>
 References: <20261104-work-procfs-fs-v2-0-319e0f9a8aae@kernel.org>
- <20261104-work-procfs-fs-v2-17-319e0f9a8aae@kernel.org>
+ <20261104-work-procfs-fs-v2-20-319e0f9a8aae@kernel.org>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Thu, 05 Nov 2026 19:58:02 +0000
+Date: Thu, 05 Nov 2026 19:58:09 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -70,9 +70,15 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-> Declare the show functions and let procfs open and free the seq_file of
-> /proc/pressure/*. That makes the open functions unnecessary and
-> ->proc_release() only destroys the trigger now.
+> A trigger on one of the /proc/pressure files has a wait queue of its
+> own for its poller, the cgroup pressure files use the queue of their
+> kernfs node through kernfs_generic_poll() and kernfs_notify(). procfs
+> owns the queue of its pressure files now, so use it the same way: the
+> poll_wait() is procfs', and a trigger that fires wakes the pollers of
+> its file with proc_poll_notify(). Like for the cgroup files every
+> poller of the file is woken when any trigger on it fires, and each
+> reports the state of its own trigger. psi_trigger_poll() doesn't need
+> the file anymore.
 >=20
 > Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 
@@ -80,5 +86,5 @@ Sashiko has reviewed this patch and found no issues.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261104-work-procf=
-s-fs-v2-0-319e0f9a8aae@kernel.org?part=3D17
+s-fs-v2-0-319e0f9a8aae@kernel.org?part=3D20
 
