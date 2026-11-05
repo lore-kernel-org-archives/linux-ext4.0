@@ -1,57 +1,86 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=74.125.224.50
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793884002;
-	b=5eEd3+tocmnlxA/M/S2jC8sEgyLoojg2+jyNL7o38TlaXCfyhconqdHzK6ZNFhzlnweY
-	 VCxEpzLzzspFKE6aQ8eJbXT4iopQvME375tpnfW3PwMfdTUe8ZDOvXKURaje6Lg6n20Xs
-	 HOo8w7kSu4yXiqIz+1O2p8Bb4+4cbW9ABWRewVn/dSyHPXjICDKJn4vg+uLSzt/7MbtiJ
-	 HH9UzQ6gaegFeYE1zLPczyUDcUGs5XBk5rnkjqup7F+eOmwexOXFmSvDpDz/g9aWeMlOs
-	 e/ODHfLWxfE/4R1dNJ/ZOXhXooST2jiSrB+fWJq/4vGmK5Nn7M8XRu7u0thq/T7UjIQ==
+	t=1793887251;
+	b=2jkpck5XPoBfIVOBzBxiJ/MjgsAL/w6kQGsqu9EQXhjRbkShcInxVKSvEwzdaBRXNJxy
+	 b+lbOk0K4OQVi/8dlkjV5xw+CFeIYmqyEA8o6fBDydBQeL+iLl6Q6yucrcEJK7xTq79op
+	 0rhqM1kgobyKvII1ywQJTPTYT/kaFPpMCZnl2pJNr0R3O7fB8U1Uyb4+ot8m+pWeE8645
+	 hyLodl8/UWAm35haY49gA7V7ms7QWKE5juyAflL3s02IqqnDL4mclt1PjUhl3AfFosMtY
+	 ZKdUxKG2VQTttX27RlyoOCZ0zesWBtHsagdTz8IlyI4vmkAyourm66RKnMXO8GqMZ6g==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793884002;
-	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
-	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=zxC1tbHwZliHwXzfTOeFwJIrAVz3L2/JNsN6NU2H0VE=;
-	b=MJsWHz+zngx+U+lxSrtNLvsDzjh0+A6j83YhuV6iVBkDsAUTxXllpuIXkPCu/TsTh+Ye
-	 Hj45AXBv1MVfIb88FKhebG+XrkjhYZOrk6E2yxpAFS///DBUa1e89KkKvIx91ZHbicEnB
-	 lkyEaiCU/qIc23oN3Zm4itaeIAeMdt3m3dx1MFFvYuSlaxO37aaVsgVAh9S1tE1vabrvN
-	 uTv//BEXd742xnxXZIsx57A6XoA9ktqzFP+G1Q0aoF6Mz3bGvU0BRg20XT5m82//sTKHR
-	 6iq2LNXey9hu8uVRjIyVrxOgBqsvVgKFvEguoWKLWwZdm2gc6f2o/KPwNV/c1UMmWzA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793887251;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:From:Date:Subject:
+	 MIME-Version:Content-Type:Content-Transfer-Encoding:Message-Id:
+	 X-B4-Tracking:X-Change-ID:To:Cc:X-Mailer;
+	bh=s074/WGaEZodvb8MrBC/plqFT0cVs1hNQbBNRgLS+7A=;
+	b=tMeOxRaRMBjHfqT9HPFu9cohT3nnCP9lrIhPQIH7dH6ZMRP3OqwgCiDKfEtKsvXjCwLO
+	 JTlEIhE3Vbnug+VTZRPdqN8Zdngjgn/KoJ2F+zlDyagVAG4U2qR/vA93ApvPSFrNGuRxy
+	 TtjJXf9+Zau5zOawPWvXhbgA19foN13NYa1v9R0H+42H2lr73AwZQ0Vm1Gqq2Xe5GvRkN
+	 vLcEWxW1e2kLbdzBI/RFwP6Vf5p68KvarQAuKI+t+Y5f4OEIug98iCD03wGPyyIVWK2c2
+	 8OVgbkpW+rNo7Nug6v3xIDk+KKGHhO89oh1upjjyftcCeqPUiiiwGqnwqUKD8ZneDhA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=UKemSfi1;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=pass header.from=gmail.com;
+	spf=pass smtp.mailfrom=gmail.com;
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=nxY9Jccf;
+	arc=none smtp.remote-ip=74.125.224.50
+Received: from mail-yx1-f50.google.com (mail-yx1-f50.google.com [74.125.224.50])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 664D9606A31B
-	for <linux-ext4@vger.kernel.org>; Thu,  5 Nov 2026 13:06:42 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A52BE606A326
+	for <linux-ext4@vger.kernel.org>; Thu,  5 Nov 2026 14:00:50 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org A52BE606A326
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=UKemSfi1
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id CAA281F000C1;
-	Thu,  5 Nov 2026 13:06:41 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793884002;
-	bh=zxC1tbHwZliHwXzfTOeFwJIrAVz3L2/JNsN6NU2H0VE=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=UKemSfi1dBvWWT6wLUuWdPqqQ4HvYLa6xesEtit96hNcAxoGa0SRCrHVi2G5b0nKl
-	 tmromBHM+v8p7heyUEuhT7w/C+TT4vSTyKmNXBlUgqVhS04l2dynGjFHD+/3Q9Kf9r
-	 VeRLhnrhyA2fngtnOFEBJpFiCkF+TPq3ZOR8vldjrl4NipPheeWyIOQUlW+wGvLgRq
-	 0u0syOSimrnviUY2ngDDyK/HXAPyMibnezcA/DwtyyinpPsK9kXVknZovaml0TIzyP
-	 i9h+LEPz/i0qF2jgnH42hduU5nWbFfXE2ErBqxGRePMQh5tDjCsgFDmUWOidovTC7s
-	 l/+qUQcDI0c8A==
-Message-ID: <sashiko-outbox-199118@kernel.org>
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH RFC v2 12/13] fat: sync inode metadata in
- fat_evict_inode()
-Reply-To: sashiko-reviews@lists.linux.dev
-To: "Christian Brauner" <brauner@kernel.org>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-In-Reply-To: <20261105-work-inode-metadata_writeback-v2-12-48628c60c336@kernel.org>
-References: <20261105-work-inode-metadata_writeback-v2-0-48628c60c336@kernel.org>
- <20261105-work-inode-metadata_writeback-v2-12-48628c60c336@kernel.org>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Thu, 05 Nov 2026 13:06:41 +0000
+	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=nxY9Jccf
+Received: by mail-yx1-f50.google.com with SMTP id 956f58d0204a3-677d35fd1d2so2160319d50.1
+        for <linux-ext4@vger.kernel.org>; Thu, 05 Nov 2026 06:00:50 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20260707; t=1793887249; x=1794492049; darn=vger.kernel.org;
+        h=cc:to:message-id:content-transfer-encoding:content-type
+         :mime-version:subject:date:from:from:to:cc:subject:date:message-id
+         :reply-to:content-type;
+        bh=s074/WGaEZodvb8MrBC/plqFT0cVs1hNQbBNRgLS+7A=;
+        b=nxY9JccfHr/AUQr5sZcoBDbdnqV2s5ymUY6k8leyIxTDI+P2/s3U/f4FtFBr5zEDy+
+         hhjwvuWVVISEoxcC68qQC9W8qMSVsOw7dtqwzjGWKP1Gzo7O6+7mZxMJsZHzbB/KqlPK
+         zKfSTNpzdR9y9YriGZWXguMcQFhPSbpcFILwe0zICxAFLuCt0qL2h+DubEOyPkJSLRrY
+         gns4wXEEpBO/ooPpmQ7DbrOPDTh4PdF05cIZ3lQ+Q3X43+pUJRb+XZbu1g8jp62beAtU
+         y4DOzWRswBA7uA4nO1VgbMWIA0KFVApSoQ0kgcP7XJwvF0W7e6IkM4IJBwvRQOvEIWVK
+         88CA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1793887249; x=1794492049;
+        h=cc:to:message-id:content-transfer-encoding:content-type
+         :mime-version:subject:date:from:x-gm-gg:x-gm-message-state:from:to
+         :cc:subject:date:message-id:reply-to:content-type;
+        bh=s074/WGaEZodvb8MrBC/plqFT0cVs1hNQbBNRgLS+7A=;
+        b=H0unZ/Qh2BS6EuVEiuCeUpjMq74L5xvKS6b1dra/oFuwyrSgK+aMwOPEBtGWnuEtxQ
+         SgWSzuBFIV5785c8t0IZvDKNn8aIQ5wVSvujnqWFYoZMrx19JvZnF86zp41yHlZ5zBud
+         1q5S0U3HSuQ7qgKYvGIBPGdZFbbDdxmt0QJykSXj37e2jfTPEMU2eL3UkexYa1p0vDiX
+         5w+lb0LCK+GZe7s6iaRhvSJL8rLGjt/TZ+otA4hhButiPVCsFVmpJQ80lAMAWBSzwwKf
+         8neac7HM1mHrGTC4nTQ3+81jY1f/sRy3OoRdLjotYq0wp/6eV+XB2JUR5LNAjUOTtzeW
+         K5bQ==
+X-Gm-Message-State: APuU4Z9L+KL4ONmL+AQ7O2pA/Wlg1gzrbra0GoeR4V/xrWridEzaVOUK
+	pE0VZ2MXc6UEl/p3/ZY7acRsTgqtz47Il0fGzwl8OjY33X4eKcLol1Jo
+X-Gm-Gg: AYBFou1s0TFw+VQhyGwDUYG4w2hYS1TcTU0kU2yPsYQSqNLDcv2H9XJHw3A3+FL9JGi
+	rpJL7bEQ/7SNG0638CGnpmAeFGw4CRQpApOqFpZ12YMdOURVoD9eNrbqcsA7B7VF4oYvlvQAll/
+	9p3gvQNMxFcikf/ou99ObPYMQWRH1cJpYgZGgMTPMP1c5C21KnQslMrnhi3UXebuo0lSBPVQuZz
+	FI6yfWW7uQ9KPQUIYdhpdtqE1/cTBBkoMb55wW+DLaxgzqWHAfp81J6eeqZyRobNELjXPoPONzO
+	UEYCA7PUq/g80NPcWr3aW5NgzKfrlENbeCdRAcueXmTYeQm7tWoqe4ZX1JU+yPbnR3AW/j9NKyz
+	oxDTeN17pUR01oU/uytBHR/FjcXcpt6JqIcjP+V512CXBiivI8nQ5Psf2pUnbqtEd6nwh4gKiiZ
+	kYEXdjBr2JQ7RoXaIuDpLrMzayZ3alfCgHSWRc6dFTTLzJANWwxhY9ifT/7ujlYXbjjBYedqUcK
+	9LuGSjtNOZxSZC15MIFTSKqzVFzycel9xAQY4zBI1qMKXy1wBzIwQhjiuQPh0K+dblTujqpYh0n
+	Jq8pHcapxczxQAan/Co1HrKL5OvCRAkSYHULM3hlQGYb5NW9seKi57jj37m/R/gDsefMp4QTyhK
+	HPak9bM8C+MJcBN1UluguqLHHFMK2n0aNXdmYRuqrboswQEAT7NIBi9xQ6425
+X-Received: by 2002:a05:690e:d86:b0:679:bec4:aef with SMTP id 956f58d0204a3-67ba4fa93dcmr9290626d50.32.1793887249206;
+        Thu, 05 Nov 2026 06:00:49 -0800 (PST)
+Received: from lab01.myowncloud.network ([2601:cb:4000:1c5:5396:7ba1:d08a:ebca])
+        by smtp.gmail.com with ESMTPSA id 956f58d0204a3-67bee202a69sm3492991d50.5.2026.11.05.06.00.45
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 05 Nov 2026 06:00:45 -0800 (PST)
+From: Amit Patole <amit.patole@gmail.com>
+Date: Thu, 05 Nov 2026 09:00:36 -0500
+Subject: [PATCH] jbd2: document the h_invalid handle flag
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -60,176 +89,64 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261105-kdoc-jbd2-h_invalid-v1-1-4bc224f7d0a2@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAASM7GoC/yXMQQqDMBBA0avIrDuQBKrVq0gRkxnraImSqBTEu
+ 5vq8i3+3yFyEI5QZTsE3iTK5BP0IwPXt/7DKJQMRplca/XEkSaHgyWDfSN+a79C+DJlQaTyTpc
+ KUjkH7uR3Xev37bjagd3yX8FxnIQaoEB3AAAA
+X-Change-ID: 20261105-kdoc-jbd2-h_invalid-8297dd06f190
+To: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.com>, 
+ Andreas Dilger <adilger@dilger.ca>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Amit Patole <amit.patole@gmail.com>
+X-Mailer: b4 0.15.2
 
-Thank you for your contribution! Sashiko AI review found 3 potential issue(=
-s) to consider:
-- [High] fat: fat_evict_inode() syncs stale dir entry before fat_free_eofbl=
-ocks()
-- [Medium] fat: fat_evict_inode() skips mmb_sync() when fat_sync_inode_meta=
-data() fails
-- [Medium] fat: fat_iget() skips I_FREEING inodes while fat_evict_inode() s=
-yncs metadata
---
+Commit 61e2a90a910c ("ext4: enable scoped NOFS when starting a handle
+in nojournal mode") added the h_invalid bit to struct
+jbd2_journal_handle but did not add it to the kernel-doc comment above
+the structure, so kernel-doc now warns:
 
-commit bd339e5e48c232fb0520331a07810a35de6e7ce5
-Author: Christian Brauner <brauner@kernel.org>
+  include/linux/jbd2.h:523 struct member 'h_invalid' not described in
+  'jbd2_journal_handle'
 
-fat: sync inode metadata in fat_evict_inode()
+Describe the new flag. It is set by ext4_get_nojournal() on a handle
+that is not attached to any journal and is tested by
+ext4_handle_valid().
 
-This commit updates fat_evict_inode() to call fat_sync_inode_metadata() when
-evicting a linked inode that has I_METADATA_WRITEBACK set, ensuring dirty
-directory entry and metadata buffers are written out before the inode and i=
-ts
-state bit disappear.
+The warning was found by running scripts/kernel-doc over the headers
+pulled into the htmldocs build. An AI coding assistant (Claude Opus
+5.5) was used to locate the warning and draft this change; it was
+verified with scripts/kernel-doc (no warnings left) and checkpatch.
 
-> diff --git a/fs/fat/inode.c b/fs/fat/inode.c
-> index d85c8fbdcca46..df4616636c659 100644
-> --- a/fs/fat/inode.c
-> +++ b/fs/fat/inode.c
-> @@ -693,7 +693,16 @@ static void fat_evict_inode(struct inode *inode)
->  		inode->i_size =3D 0;
->  		fat_truncate_blocks(inode, 0);
->  	} else {
-> -		mmb_sync(&MSDOS_I(inode)->i_metadata_bhs);
-> +		/*
-> +		 * fsync() can't find what I_METADATA_WRITEBACK tracks once the
-> +		 * inode is gone. This syncs the metadata buffers as well.
-> +		 */
-> +		if (inode_state_read_once(inode) & I_METADATA_WRITEBACK)
-> +			fat_sync_inode_metadata(inode, &(struct writeback_control) {
-> +				.sync_mode =3D WB_SYNC_ALL,
-> +			});
+Fixes: 61e2a90a910c ("ext4: enable scoped NOFS when starting a handle in nojournal mode")
+Signed-off-by: Amit Patole <amit.patole@gmail.com>
+---
+Comment-only change. Built with W=1 on x86_64 (fs/jbd2/, fs/ext4/)
+with no new warnings.
+---
+ include/linux/jbd2.h | 1 +
+ 1 file changed, 1 insertion(+)
 
-[Severity: Medium]
-Can a concurrent lookup reopen the file and complete fsync() before
-fat_evict_inode() finishes syncing the old inode's metadata?
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index e3886963ba00..69f12366a09a 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -482,6 +482,7 @@ struct jbd2_revoke_table_s;
+  * @h_sync: Flag for sync-on-close.
+  * @h_reserved: Flag for handle for reserved credits.
+  * @h_aborted: Flag indicating fatal error on handle.
++ * @h_invalid: Flag for a handle not attached to a journal (ext4 nojournal mode).
+  * @h_type: For handle statistics.
+  * @h_line_no: For handle statistics.
+  * @h_start_jiffies: Handle Start time.
 
-When reclaim isolates the inode, I_FREEING is set before dispose_list()
-calls evict() -> fat_evict_inode(). Unlike filesystems that look up inodes
-via iget_locked() and wait in __wait_on_freeing_inode(), FAT assigns a
-synthetic i_ino via iunique() and looks up existing inodes by i_pos in
-fat_iget():
+---
+base-commit: 05441d697f7f9a927264f4058cbbc6a03dfcac9d
+change-id: 20261105-kdoc-jbd2-h_invalid-8297dd06f190
 
-fs/fat/inode.c:fat_iget() {
-	...
-	hlist_for_each_entry(i, head, i_fat_hash) {
-		BUG_ON(i->vfs_inode.i_sb !=3D sb);
-		if (i->i_pos !=3D i_pos)
-			continue;
-		inode =3D igrab(&i->vfs_inode);
-		if (inode)
-			break;
-	}
-	...
-}
+Best regards,
+--  
+Amit Patole <amit.patole@gmail.com>
 
-Because igrab() returns NULL when I_FREEING is set, fat_iget() returns NULL
-without waiting for the freeing inode to finish eviction.
-
-If another thread looks up the file while the old inode is queued on the
-dispose list or sleeping inside fat_sync_inode_metadata() before
-fat_detach() runs, fat_build_inode() allocates a new clean inode for the
-same i_pos without I_METADATA_WRITEBACK set. Wouldn't a subsequent
-fat_file_fsync() -> simple_fsync_noflush() on that new inode see a clean
-inode and return before the old inode's directory entry buffer writeback has
-completed?
-
-> +		else
-> +			mmb_sync(&MSDOS_I(inode)->i_metadata_bhs);
-
-[Severity: Medium]
-What happens to MSDOS_I(inode)->i_metadata_bhs if fat_sync_inode_metadata()
-encounters a buffer write error on the inode's directory entry block?
-
-In fat_sync_inode_metadata(), if buffer_write_io_error(bh) is true after
-sync_dirty_buffer(bh), the function returns -EIO early before reaching the
-sync_bhs label:
-
-fs/fat/inode.c:fat_sync_inode_metadata() {
-	...
-	if (bh && buffer_uptodate(bh)) {
-		sync_dirty_buffer(bh);
-		if (buffer_write_io_error(bh)) {
-			brelse(bh);
-			return -EIO;
-		}
-	}
-	brelse(bh);
-sync_bhs:
-	return mmb_sync(&MSDOS_I(inode)->i_metadata_bhs);
-}
-
-When evicting a subdirectory inode that has I_METADATA_WRITEBACK set,
-replacing the unconditional mmb_sync() with fat_sync_inode_metadata() means
-an I/O error on the parent directory entry buffer skips mmb_sync() for the
-child directory buffers tracked in i_metadata_bhs, right before
-fat_evict_inode() detaches them via mmb_invalidate(). Should
-fat_sync_inode_metadata() still run mmb_sync() before returning an error, or
-should fat_evict_inode() call mmb_sync() unconditionally?
-
->  		fat_free_eofblocks(inode);
-
-[Severity: High]
-Could calling fat_sync_inode_metadata() before fat_free_eofblocks() write a
-stale directory entry to disk and leave the post-truncation directory entry
-unsynced without I_METADATA_WRITEBACK?
-
-When clusters are preallocated via fallocate() with FALLOC_FL_KEEP_SIZE on a
-zero-byte file, fat_chain_add() updates i_start and i_logstart and marks the
-inode dirty:
-
-fs/fat/misc.c:fat_chain_add() {
-	...
-	} else {
-		MSDOS_I(inode)->i_start =3D new_dclus;
-		MSDOS_I(inode)->i_logstart =3D new_dclus;
-		mark_inode_dirty(inode);
-	...
-}
-
-Before the inode can be isolated from the LRU and evicted, background
-writeback runs fat_write_inode() -> __fat_write_inode(), which writes the
-non-zero i_logstart into the directory entry buffer (with size still 0),
-marks the buffer dirty, and sets I_METADATA_WRITEBACK on the inode.
-
-When fat_evict_inode() then runs on a normal async mount:
-
-1. Because I_METADATA_WRITEBACK is set, fat_sync_inode_metadata()
-   synchronously writes the pre-truncation directory entry buffer (pointing
-   to the fallocated clusters on a zero-byte file) to disk.
-
-2. Next, fat_free_eofblocks() truncates the unused fallocated clusters back
-   to mmu_private:
-
-fs/fat/inode.c:fat_free_eofblocks() {
-	if ((inode->i_blocks << 9) >
-			round_up(MSDOS_I(inode)->mmu_private,
-				MSDOS_SB(inode->i_sb)->cluster_size)) {
-		int err;
-
-		fat_truncate_blocks(inode, MSDOS_I(inode)->mmu_private);
-		...
-		err =3D sync_inode_metadata(inode, inode_needs_sync(inode));
-		...
-	}
-}
-
-3. On an async mount, sync_inode_metadata(inode, 0) calls
-   __fat_write_inode(), which updates the directory entry buffer in memory
-   back to i_logstart =3D 0, marks the buffer dirty again, and sets
-   I_METADATA_WRITEBACK on the dying inode without syncing the buffer.
-
-4. fat_evict_inode() immediately finishes and calls clear_inode(), losing
-   the newly set I_METADATA_WRITEBACK bit while the updated directory entry
-   buffer remains dirty in memory.
-
-If the file is reopened from the cached buffer and fsync() is called,
-simple_fsync_noflush() sees a clean inode without I_METADATA_WRITEBACK and
-skips syncing the directory entry buffer, while fat_file_fsync() flushes the
-FAT table updates where those clusters were freed or reallocated, leaving
-the on-disk zero-byte directory entry pointing at freed clusters if a crash
-occurs.
-
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261105-work-inode=
--metadata_writeback-v2-0-48628c60c336@kernel.org?part=3D12
