@@ -1,48 +1,47 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793908676;
-	b=J7usuNP53s/EQj2YvXf5SZQctvkA2yzchIO+EaAnCNInLVXXzkVU0GpRmLULSb67yvtM
-	 vag/kbFLhRp8loI/yBuit5xSgKP5dsse5R5etjXtsrV8iYOLE2butFxTHoPzlVDP8ImXH
-	 +uCiadgqB90He27MN2QalU0QVylLSJ0h5naWbIoR6QqNt6FKspw3KqyedRWCkYkPS6rIP
-	 1/8kY+S4u5qfWFaZf2mMorPtz/yuK0sj6+uiHp36eURgP57T9Sp3tEmzkEq2uhlUb/oBg
-	 5DSiZ/9oD+c8Obv5cIGrEHGhsVFYYCt9Mgn8dkhalPvRKKDHycezE99eHTJ8nB5fp+g==
+	t=1793908682;
+	b=a5YAX3fCdbYoHbTrNzoSSmRwpJs+Pr1juIYz6MO+WS8XCt5ycMO+8X5fxarkD5YSOQL3
+	 PmVvM9jpQ6bHyfiuUMI7tzvHXhUpVsvOIDXAt9f0BMZgAVm472IueALCTeUloKmFepAy6
+	 VzSkYNPpJlvUdcn+OD37aNilhxmNR9vZhxYj1DUqNNo5skmqHs0Bs21q5y/QT7JZ66kep
+	 bDM5LDKvPHzU9QvLW6hg4XE8UNVdvzqY/udnkZdmB9kN1SSAbFym3Ay/yzRPBrARCdOz3
+	 6qrq11Mq957MUT8Vu+8D7amw5FYGo2HGO1zh18QKHP+hRAoswa9ODdmpQPX+1l+buNA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793908676;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793908682;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=0Y90+62nmTyWN8rDu95xmVr4WrW08UQZKP5u1iiw3Yc=;
-	b=kvUch/f+DCZUG4kVmuNEVnnyJ+AdVuzINVudYZh763a5OTGJ9Alu0LDA55tqMrCLrtc5
-	 epsnMDnHatgegAgl/fvBvIhTvw8ENstj24nMgmvBAvE4a4qHfoO2KxQu9zQHFsDgWxQLW
-	 YTn9NsZxsk7xLQtMiVu9ByZtmZHsH4w13VfkoAWzaEcspC+W/rHKVEnggxoY50mnkcObq
-	 odU10cd6j8KL4otMaXWiY9RBnVwXD9yjbGoq0CqMhNKDyaFYsjwzOW3H+Rs8v27S8KI++
-	 w3Y/LspP/q9nwbXWT1pxy7+oGjgoVnqAtSwfES/nd7B7Ky6gGWGBV8NCntF1P+M7UCg==
+	bh=qvTECsoQq7diLH63c67HY1Y+MAl91kcvdxj3Yxdj/RM=;
+	b=d77zCJqMqFev3dsw9kRkfW2u6BUJBfXGR+2Pz6rYl9QZQPv3MtNGRT3Vhlyli4ORhdVr
+	 r7rVGFsoAa0b7DZJUAMJFFMbdDeqwKGUfDfPoL/f7rKtQCOwOL3elISx5M6c9oHWW4JR8
+	 UU3hCnYrsvsWDtH6eAi6AGHGRJVsPzZS5nqtzHmZlnW5CPe74ToGaUesH+oaFfnxoevfa
+	 9UiyEIUEIW7TT+YcSqyNYN0Nw0UF6qFVkFmN3x3ThgbP/8AvT3/RLn7dDqwOlMlm3O80a
+	 D271ArgnyIU0fIIs5d0ZL4IWXhwMl6KW8y/A3PAaFy92XYNGQEuN45eWUXNh/35LdwQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=KynCzb93;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=iTDh6JUZ;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 26437606B9EB;
-	Thu,  5 Nov 2026 19:57:55 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5D080606D52F;
+	Thu,  5 Nov 2026 19:58:02 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=KynCzb93
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 653031F008A2;
-	Thu,  5 Nov 2026 19:57:54 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=iTDh6JUZ
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 547E41F008A1;
+	Thu,  5 Nov 2026 19:58:00 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793908675;
-	bh=0Y90+62nmTyWN8rDu95xmVr4WrW08UQZKP5u1iiw3Yc=;
+	s=k20260515; t=1793908681;
+	bh=qvTECsoQq7diLH63c67HY1Y+MAl91kcvdxj3Yxdj/RM=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=KynCzb93jkCBa5XgAWl3yl9M0MTpo3fxH9GGhodXmsFvHVjoHrH7fC+ss62AYBxh3
-	 I2L0c2a5NWJkrTtaMLAFCb0YpREbRTcfJDOpJGBwIDXewFn9Z8ZiqtEhC4P6mcbj6m
-	 SFTFzfvvToOSL3d4M0WtVj0ToBnc19Pvn5LF4z5IE5o4EMjoAHnxFEXg5Kkx0Ds3Os
-	 12N+atsPV+EcqCPQBvgkEGTq6zB8hfUcnsT60L+cAHou3s3B6ZpTb9Oexwi673zZ6g
-	 PA+M8lzFtMydtOAITauMFceBvtdRNHvZWcaRerMdas+D0BM3yOmBnUicVq3olC4LSn
-	 dmNJYcXoE/eyg==
-Message-ID: <sashiko-outbox-200047@kernel.org>
+	b=iTDh6JUZxiIl7ZAL6qlwQn5+v0vnKTderRK+PLsTJN/oQxZhqZs4NvItFQ/UwIiwR
+	 0ytPs8j3lohSXxg5Q8nkA0JeEf4xX2VinKsIB9Lhkj7Pdi8C17PHoo2xrKN5CgnCGn
+	 9OwnQMlu1+G9K1qePU+Nfoo7dqS27iNCPpwMb3Y4Z/FP4V0CJWTDOqo0NsI7MIrhKw
+	 rw2IwQxBa/bBxkqIfSbS3xUMeJ17ekXV5ZO+XkfF/t8shPIX98nm88xOpyW2INzSGQ
+	 wh+8Br1s5sA+ebYY9Mxdlw4rXa2kZ3od6LuqlR9YyuVfpjVwxJvXZJjwCXp4kzM+0V
+	 6oTHvAm1wJb7A==
+Message-ID: <sashiko-outbox-200050@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH RESEND v2 13/30] locking/lockdep: let procfs copy in
- writes to /proc/lock_stat
+Subject: Re: [PATCH RESEND v2 16/30] profiling: mark /proc/profile permanent
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Christian Brauner" <brauner@kernel.org>
 Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.com>, "Josef
@@ -55,12 +54,12 @@ Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.
  Iwai" <tiwai@suse.de>, linux-ext4@vger.kernel.org, "Chuck Lever" <cel@kernel.org>, tytso@mit.edu, "Heiko
  Carstens" <hca@linux.ibm.com>, "Vasily Gorbik" <gor@linux.ibm.com>, "Alexander
  Gordeev" <agordeev@linux.ibm.com>, "Christian Borntraeger" <borntraeger@linux.ibm.com>
-In-Reply-To: <20261104-work-procfs-fs-v2-13-319e0f9a8aae@kernel.org>
+In-Reply-To: <20261104-work-procfs-fs-v2-16-319e0f9a8aae@kernel.org>
 References: <20261104-work-procfs-fs-v2-0-319e0f9a8aae@kernel.org>
- <20261104-work-procfs-fs-v2-13-319e0f9a8aae@kernel.org>
+ <20261104-work-procfs-fs-v2-16-319e0f9a8aae@kernel.org>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Thu, 05 Nov 2026 19:57:54 +0000
+Date: Thu, 05 Nov 2026 19:57:59 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -70,9 +69,9 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-> Implement ->proc_write_buf() so procfs copies in what is written before
-> it pins the entry, and look at the first character of that copy. Writes
-> larger than PAGE_SIZE - 1 bytes fail with -EINVAL now.
+> /proc/profile is created when profiling is turned on and never removed.
+> Say so with PROC_ENTRY_PERMANENT, procfs then calls into it without
+> pinning it.
 >=20
 > Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 
@@ -80,5 +79,5 @@ Sashiko has reviewed this patch and found no issues.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261104-work-procf=
-s-fs-v2-0-319e0f9a8aae@kernel.org?part=3D13
+s-fs-v2-0-319e0f9a8aae@kernel.org?part=3D16
 
