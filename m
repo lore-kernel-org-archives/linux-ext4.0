@@ -1,48 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793894557;
-	b=JCXipxoqOJAHinlUnOsVaE3ETe2IMHGhbvcHZ45ABb+GChRqzvHsJtFh36l+pzsMDTZk
-	 jyJnzE6on4eZN9viink4hWY/nuI3tJ42jWdnSqRBwRqoJtixNFrq/nxV2ZL6+Hth4gcln
-	 KY+ily8TcXYoA2nvgukeo0XOX1ep0yrmM3LzpE5tyO46aSH48qh7RzMv1yZyUXIVmKzyA
-	 zF4YG9d0LZ7dL8bcEYpliOV8VXmwY5/gF42kqszAAJKt7QbT1/s1ZKqxstdgZQS1Z9NBP
-	 /cl50q59kQ7lM++lUiHdeCFTvrYFOLrpsz8ArFwzg5EmO+zTs9YqZXxBFKyh03sn+7Q==
+	t=1793894562;
+	b=aHt3/C6X+V7runF5iWa8oxJ6jCbCAZo/qZkLRWJJgnK12cukufN1c6E9CxtC+fiQRiFU
+	 BEGOqZB07VR5QvHzKsvmdQjjREvqdSVLnPFmqhZGbmw1HS83ZzHufAAIDohPOtV9CpkCH
+	 vzlH+aOFs4wgClVLrZ5qUbdfxkKlhOVRKGWrIvZxXPaPXmFL+rHV0CKTczTE9dKc+MBk+
+	 L2TbsIDx2320gNg5K84U2QowlgDpcVbLFty8HjOUOe3q/VEbQgwYHzfaq9cjPBaoePI9b
+	 wrh0NRQmKwqiASI6wRAAT47AMjag1Tl5MAx/ATGGvIt5pEh3wtuVPicLct9QCPuJNeg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793894557;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793894562;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=w1YzNFUQU7EDlyH6y9uKB5yEntROt8vJqzEMZbQhPR0=;
-	b=oWcwOUArR4h3A/j9Ix+Jggzcf5+gd90yte3qwfZPODmfWD0V/HYJrYWeQBCpw6Jg7UwU
-	 S1NNVXYAtSYYKUVA/3fcixf19P8dhYqFxkKj0pQRGj54CEuw1XiCIq1nL01f0IHpsMo13
-	 NOehl273LT+S9tfvQnYQPR/41SoFuSCv7QEFchRuaUcDhxvxWonXawms9o7tPsHfF8znP
-	 pjDk8rUP9Mowt7Ih6HZBwIROAyas4ZUIP/78QrWXjhU8A/JlkyURWl1S5g1cc/cXoq4Lp
-	 ZSlwxv2xPq0d5TINHQnIsm26Q0FCZshv+4EWkAe+1o5NgeO/dxcMmjXnkFCUBc2N2hA==
+	bh=8McZG53fBcXV4teIFZd2EGhPvVQUYCcatV8Mq/vETdw=;
+	b=xmRbogp2/P66ZwCVBlfjbUBfu4Lq+v0tXBVl1GBpYzzYOIGhWkqLhpqRBM5xSVJqZR0Z
+	 LF5L1fAgdIL8puv6GayZ6u7CkWufD5YJVYd2mDpsJSJnpb26DR+ANH5CLQWc3HEPqU3tr
+	 ANkqt0x6iupiGmCJ1rBJjjUKy+HM41DMMn938z/mi2khjeJEoSHTkWKwzd0LMKPGnNaRC
+	 5Lv92wyLNhem9Ek+QI0QbAoyfAtNG839qsgrP4icxDxEBEmWwBA+b5GVpPpLdA4b0vshp
+	 GyTRabKBtWMZh7ZYu0uThperQtne5kFjd1T/Vl28IuQIstueif6jLKpxSX+suaSiLFw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gFeMUvv7;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=X63+5jyR;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B5DFD6075F71;
-	Thu,  5 Nov 2026 16:02:36 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D3A3760707B5;
+	Thu,  5 Nov 2026 16:02:41 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gFeMUvv7
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 743B91F00919;
-	Thu,  5 Nov 2026 16:02:31 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=X63+5jyR
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C79051F0093A;
+	Thu,  5 Nov 2026 16:02:36 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793894556;
-	bh=w1YzNFUQU7EDlyH6y9uKB5yEntROt8vJqzEMZbQhPR0=;
+	s=k20260515; t=1793894561;
+	bh=8McZG53fBcXV4teIFZd2EGhPvVQUYCcatV8Mq/vETdw=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=gFeMUvv7Res5ML5T1SmFuVgB+osG99e8PTH0ZnhMt5SjJ1yvkLz/3Gskp3A2f/MEK
-	 5J08JcCUBvAyrmLDziPHTvBVzwudJABl5J5Kz5pyEIg4vDLzKJJ9o66X3xL1rKC2Hp
-	 +EJ7oE3F5lc9EMhGDIjKC0hirB/W6y0iCHqSg5XC7wNSs2esbqY71zGmTet/c/hwyq
-	 ro/zAJnvm0eSEoa6RUPzMfrbzsMcHSwAoSs/9NGkvAnq9oBeIQHSN3ixxEg+UrjW+5
-	 +K4QbbHpCX9CUvfpWCl4w6AJS56Iee+XzKBp84uNOgBKunyaPEh0S6I9gwPBlcHiXh
-	 Dn2WQhh46NrPQ==
+	b=X63+5jyRGQ50JFwEm4cXlywyif5nS1uoR2B9TuBo71uFu50EFQFpM65gJ5cHmLl9Y
+	 8DOOUqPyyIbR/nbCT51zCV97i7HSlNSMZU19a8Dp2+swnrLxWx5X5I8Ee3kcxTYN+f
+	 5gf3j85DpGVH915jaURtVblqeQI4ppL7d8OxRmnLyL9jS9CmbRCgMdQ4sidAM0cdeu
+	 rdGsOXYdPUwzz67o/2FuPnmcFVEtO5OkOpSvRmuXjoqRWVVNg04OHiYdFYU//+cifS
+	 mKkn1SJxnZbdeyexR7MYrTpoTTlI2nys1lYDjesSurdIUai7aazJLza4N6eQ4z3ta6
+	 dh16aR3ttJBUw==
 From: Mark Brown <broonie@kernel.org>
-Date: Thu, 05 Nov 2026 16:00:35 +0000
-Subject: [PATCH v2 8/9] ASoC: cs35l56: Give the speaker ID pad config KUnit
+Date: Thu, 05 Nov 2026 16:00:36 +0000
+Subject: [PATCH v2 9/9] ASoC: wm_adsp: Give the firmware search order KUnit
  cases distinct names
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -55,7 +55,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261105-kunit-param-names-v2-8-765b3d5275d2@kernel.org>
+Message-Id: <20261105-kunit-param-names-v2-9-765b3d5275d2@kernel.org>
 References: <20261105-kunit-param-names-v2-0-765b3d5275d2@kernel.org>
 In-Reply-To: <20261105-kunit-param-names-v2-0-765b3d5275d2@kernel.org>
 To: Simon Trimmer <simont@opensource.cirrus.com>, 
@@ -77,52 +77,71 @@ Cc: patches@opensource.cirrus.com, linux-kernel@vger.kernel.org,
  linux-doc@vger.kernel.org, linux-ext4@vger.kernel.org, 
  linux-sound@vger.kernel.org, Mark Brown <broonie@kernel.org>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2064; i=broonie@kernel.org;
- h=from:subject:message-id; bh=lNfXF3VJrZV9zM9UGOFM9E9hcm/rozD2WmNnenLxFrQ=;
- b=owGbwMvMwCWm/754w+YLFp2Mp9WSGLLerEjt89LYMYG5VOvRAsErLHtO+tQ6RXr/ljrAKDhft
- tlrq7BQRykLgxgXg6yYIktcFvfL+pLXa/gOLmyDmcPKBDKEgYtTACby0YThn+GdlmU+61bOWu26
- N/Xeu4fJMp1PDjr9P9X6X3x95ZKmc2IM//0P7Tt8Y9IU4/+qdVYbG889tdjGafXk33le3yuPVYq
- VTHgA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2541; i=broonie@kernel.org;
+ h=from:subject:message-id; bh=DtzMeLR01OBhOU9ryO1Ct2VWOckyOBJFtfrKliPQ+gk=;
+ b=owGbwMvMwCWm/754w+YLFp2Mp9WSGLLerEgNEtrzd7b5VLPTrtEq01e7rpuheJVnU9H9TsGKN
+ 2++7pi2raOUhUGMi0FWTJElLov7ZX3J6zV8Bxe2wcxhZQIZwsDFKQATucDMyPDlgdJZy4YrU7P/
+ LJ6w25pjdY6rq5rKnfnc0ho8n9sbsxsZGX5PPXc3oX3H3g3tvxzSZzbozwzkLT93JPTn/6h7aqe
+ 7e/gA
 X-Developer-Key: i=broonie@kernel.org; a=openpgp;
  fpr=3F2568AAC26998F9E813A1C5C3F436CA30F5D8EB
 
-The cs35l56 shared test suites run
-cs35l56_shared_test_onchip_speaker_id_pad_config() both with and
-without pulls configured on the speaker ID pins by listing it twice
-with KUNIT_CASE_PARAM(), which names the case after the function. Both
-cases share a name, so they cannot be told apart in the results.
+The wm-adsp-fw-find suite runs wm_adsp_fw_find_test_search_order()
+against six different sets of parameters by listing it six times with
+KUNIT_CASE_PARAM(), which names each case after the function. All six
+cases are therefore called wm_adsp_fw_find_test_search_order, which
+makes the results ambiguous.
 
 Use KUNIT_CASE_PARAM_UNIQUE() for these entries so that each case is
-also named for the parameter generator it is run with, giving
-cs35l56_shared_test_onchip_speaker_id_pad_config-cs35l56_shared_test_onchip_spkid_gen_params
-and
-cs35l56_shared_test_onchip_speaker_id_pad_config-cs35l56_shared_test_onchip_spkid_pull_gen_params.
+also named for the parameter generator it is run with, for example
+wm_adsp_fw_find_test_search_order-wm_adsp_fw_find_full_search_gen_params.
 
 Reviewed-by: Richard Fitzgerald <rf@opensource.cirrus.com>
 Signed-off-by: Mark Brown <broonie@kernel.org>
 ---
- sound/soc/codecs/cs35l56-shared-test.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+ sound/soc/codecs/wm_adsp_fw_find_test.c | 24 ++++++++++++------------
+ 1 file changed, 12 insertions(+), 12 deletions(-)
 
-diff --git a/sound/soc/codecs/cs35l56-shared-test.c b/sound/soc/codecs/cs35l56-shared-test.c
-index 34bb3d44b51f..ccf5adb7cf2a 100644
---- a/sound/soc/codecs/cs35l56-shared-test.c
-+++ b/sound/soc/codecs/cs35l56-shared-test.c
-@@ -899,10 +899,10 @@ static struct kunit_case cs35l56_shared_test_cases[] = {
- 			 cs35l56_shared_test_gpios_selftest_gen_params),
- 	KUNIT_CASE_PARAM(cs35l56_shared_test_get_onchip_speaker_id,
- 			 cs35l56_shared_test_onchip_spkid_gen_params),
--	KUNIT_CASE_PARAM(cs35l56_shared_test_onchip_speaker_id_pad_config,
--			 cs35l56_shared_test_onchip_spkid_gen_params),
--	KUNIT_CASE_PARAM(cs35l56_shared_test_onchip_speaker_id_pad_config,
--			 cs35l56_shared_test_onchip_spkid_pull_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs35l56_shared_test_onchip_speaker_id_pad_config,
-+				cs35l56_shared_test_onchip_spkid_gen_params),
-+	KUNIT_CASE_PARAM_UNIQUE(cs35l56_shared_test_onchip_speaker_id_pad_config,
-+				cs35l56_shared_test_onchip_spkid_pull_gen_params),
- 	KUNIT_CASE_PARAM(cs35l56_shared_test_stash_onchip_spkid_pins,
- 			 cs35l56_shared_test_onchip_spkid_pull_gen_params),
- 	KUNIT_CASE(cs35l56_shared_test_stash_onchip_spkid_pins_reject_invalid),
+diff --git a/sound/soc/codecs/wm_adsp_fw_find_test.c b/sound/soc/codecs/wm_adsp_fw_find_test.c
+index ae686dc4fa94..0b2b7db3f9f9 100644
+--- a/sound/soc/codecs/wm_adsp_fw_find_test.c
++++ b/sound/soc/codecs/wm_adsp_fw_find_test.c
+@@ -1219,23 +1219,23 @@ KUNIT_ARRAY_PARAM(wm_adsp_fw_find_pick,
+ 		  wm_adsp_fw_find_test_param_desc);
+ 
+ static struct kunit_case wm_adsp_fw_find_test_cases[] = {
+-	KUNIT_CASE_PARAM(wm_adsp_fw_find_test_search_order,
+-			 wm_adsp_fw_find_full_search_gen_params),
++	KUNIT_CASE_PARAM_UNIQUE(wm_adsp_fw_find_test_search_order,
++				wm_adsp_fw_find_full_search_gen_params),
+ 
+-	KUNIT_CASE_PARAM(wm_adsp_fw_find_test_search_order,
+-			 wm_adsp_fw_find_system_alsaname_gen_params),
++	KUNIT_CASE_PARAM_UNIQUE(wm_adsp_fw_find_test_search_order,
++				wm_adsp_fw_find_system_alsaname_gen_params),
+ 
+-	KUNIT_CASE_PARAM(wm_adsp_fw_find_test_search_order,
+-			 wm_adsp_fw_find_system_gen_params),
++	KUNIT_CASE_PARAM_UNIQUE(wm_adsp_fw_find_test_search_order,
++				wm_adsp_fw_find_system_gen_params),
+ 
+-	KUNIT_CASE_PARAM(wm_adsp_fw_find_test_search_order,
+-			 wm_adsp_fw_find_alsaname_gen_params),
++	KUNIT_CASE_PARAM_UNIQUE(wm_adsp_fw_find_test_search_order,
++				wm_adsp_fw_find_alsaname_gen_params),
+ 
+-	KUNIT_CASE_PARAM(wm_adsp_fw_find_test_search_order,
+-			 wm_adsp_fw_find_noqual_gen_params),
++	KUNIT_CASE_PARAM_UNIQUE(wm_adsp_fw_find_test_search_order,
++				wm_adsp_fw_find_noqual_gen_params),
+ 
+-	KUNIT_CASE_PARAM(wm_adsp_fw_find_test_search_order,
+-			 wm_adsp_fw_find_normalization_gen_params),
++	KUNIT_CASE_PARAM_UNIQUE(wm_adsp_fw_find_test_search_order,
++				wm_adsp_fw_find_normalization_gen_params),
+ 
+ 	KUNIT_CASE_PARAM(wm_adsp_fw_find_test_pick_file,
+ 			 wm_adsp_fw_find_pick_gen_params),
 
 -- 
 2.47.3
