@@ -1,47 +1,47 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793907316;
-	b=YPDtmjWc/NhI8FhgmpGz4zHtOdbv4IhoHvTP2f0PXmSl8eBOuXsJXbCYtcUBncGWQsTf
-	 4C7fJo9FJbgc2P8w4uIonNbyK8jnBOnggQADR50QpG9WTZQouOKmHhyVfUi/jyEED3kmm
-	 H/lrjXNg0dfFmjkrHwkXT7wCGWciBCFC3XGRUHq7WluZoF4o/+EjW5orJpW0rLRHJ0NVl
-	 VMvUd9tOiOpbjQrNZTaAKrx8UsDH708VdD9sTZIDasBkr/tKfJqGBc7G5AJ3Q59R0z8+E
-	 fMwHb0/p/98Jp9an8QK5htm3tNKp1YTEy85MtQblM3lhImisoyJWhnCZ+DCHonplxfQ==
+	t=1793907318;
+	b=OvvBUujklDjmbBH5ADOmO1kiBTjgGQzmBvWGceNszoZKszyVBQJB1x/VOwgrRem9Durs
+	 1E/qutwzYoYvdcUQ35nsbZQYNiS+h5Jj+7wxxRWnVT9wT7gYPurRoU/bryg2AW+YaYxLG
+	 tSswtlMWLS04f77+bBjCbmnGuRex4TUHUI59MhMGDw9FORYBzSFbOJ9J3YI8Yj5pex0x3
+	 zDurUEJXFzqK/Ew++1ArSrumGs9ryLJlbuHXRZm55HVxHfL3MiNexEivur1/tMpDxHbFk
+	 O1/G5AQmh0Wy+Kfv+6x1669nn+jimxwhAulgYkOKmgg0Pgvq9hGqzoqZOBXiolLokHA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793907316;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793907318;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=6hoRvIBjdvZcFdce6OvLL9wYKZneWoJGVeTND16Hg0g=;
-	b=N7jvtC3GxIg9zUZRIOOJRNxmWNQs2fTZwwF9CDzDLyFm6/bHR+h9R/DrABG3cq5k3Sh8
-	 QD6jDEAJE+Od8ct+3VFx6EmUvB/xqm8/2FdRqNrOQ0XvVtC+KVuwqFiwggDkD/DZjUOl9
-	 gAspL2aV3VR+PWyf0qHMnaW7F1qTLo+E3oknTnQa+5akJR0loDNB0OfvOxNPHSsrCVY5Q
-	 VsbjYwnqIfxeWRb9VXVeEEvcFtzYebSqf+AQx2GHlGbioJUxFj1ewfp1GljXkeaqM77dU
-	 TQ1CWJuIi4dsQp6hUq1z9k5PZTxuFcFTWGSlyLt86DOQBGbcBzoQ0wB4ZtYx4jBecYw==
+	bh=AP/9HXvjjFp+N4Xnk9ZhfHtJP84zQAgGJz8O2YcoyD0=;
+	b=eJjXZQDwWMm/b/zsXXStvQqp52DD+LZXmEguX/8BzV4rC5mi+ArTJm6SmANkP74xuwey
+	 Vhz4OSFrlo+AkrmBb7JzMqdkXsyReOlup//ykMSFgs9yHu2xhxWAVX9guYYnl0Ah0bO2e
+	 sycapWiCInmsql3VNRx5c+K5goPWT1D3mQLhUkFubEirR++9cnvyPNsjMrm2AXFvjNJGt
+	 mJkJ7yXMloSV7wvKmMVQDpBsBO5z1sQ8d7uRLxVisQH8hI6qfaJgic09Cihq/9qfc3ukw
+	 0rjDPolaG3fsC3rj2KG+c5YHhqQPA/88V1zIJOYiQQeXYbhWZiY0RUJSdVB9uh8xxLg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="H/IGA7VD";
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=VV39f5So;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F1C4A6077281;
-	Thu,  5 Nov 2026 19:35:15 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EE45D607728A;
+	Thu,  5 Nov 2026 19:35:17 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=H/IGA7VD
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 24FE91F0089F;
-	Thu,  5 Nov 2026 19:35:14 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=VV39f5So
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1AEA91F0089E;
+	Thu,  5 Nov 2026 19:35:16 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793907315;
-	bh=6hoRvIBjdvZcFdce6OvLL9wYKZneWoJGVeTND16Hg0g=;
+	s=k20260515; t=1793907317;
+	bh=AP/9HXvjjFp+N4Xnk9ZhfHtJP84zQAgGJz8O2YcoyD0=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=H/IGA7VDolTlFuDSzsR9PpNCLOc+MOL9Jlb497kin2aM9CsKSdGuinZsObzzhjKLu
-	 vZB5+O9pGI8nVCo/32oLJsm4VfhHALYRw69cQLc/OwWudG08CrlbhwGxTj7hUqCvjm
-	 zVfPAInrWuotxqB48n1/G7DlipPyNWJuwaJ2BWS/mluZe9QG+3hr62O+EHJHS7JbdH
-	 R5EBZoDlSrf8ybUt+J6V3XvBz3x5hj9FNHwo4MzJlMjxhvX4Q3MmE7R6Wst9YwTNGO
-	 WDDxetp3K1AY572xeDhT4SHRoltfwdfx2B4GtWjR4CUKwVTi5TNf8KO6vilhKxp27B
-	 EnYkpbISY24IQ==
-Message-ID: <sashiko-outbox-199931@kernel.org>
+	b=VV39f5So1g49N7W3UbazXSKQL1BbkHKsfLDbb5QZyU2fOrbmB53+C4PMQy1tfCByM
+	 YeDx/jfn/yLKwX+us/mZVBJDDA91+KXxpBNNXFRm3QKM0f7cji3TwH5M8nHjoaQe5/
+	 PdhGk3yZ3xaL42g/7f8054+A4X+UPyrne9kb4i1NQQwmr+H3CYFASt7DcN/tUrZHBj
+	 2/O1yXa6ry8ceB9fU543h/I4a9F+hfGsT5rjTvnX1LOe375Qwsz5tsvk/2r3vt3BEP
+	 3JguqV1jlUZuRL/eoYBu9vyZZu4WXiGAEVe3tKSHV+xvGFYZJ3KO+vhvrhYxYSS0a4
+	 ypRBTWf9dhnXg==
+Message-ID: <sashiko-outbox-199932@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH RESEND v2 01/23] proc: drop the compat file operations
+Subject: Re: [PATCH RESEND v2 02/23] proc: add pde_pin() and pde_unpin()
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Christian Brauner" <brauner@kernel.org>
 Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.com>, "Josef
@@ -54,12 +54,12 @@ Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.
  Iwai" <tiwai@suse.de>, linux-ext4@vger.kernel.org, "Chuck Lever" <cel@kernel.org>, tytso@mit.edu, "Heiko
  Carstens" <hca@linux.ibm.com>, "Vasily Gorbik" <gor@linux.ibm.com>, "Alexander
  Gordeev" <agordeev@linux.ibm.com>, "Christian Borntraeger" <borntraeger@linux.ibm.com>
-In-Reply-To: <20261104-work-procfs-core-v2-1-76ace653a773@kernel.org>
+In-Reply-To: <20261104-work-procfs-core-v2-2-76ace653a773@kernel.org>
 References: <20261104-work-procfs-core-v2-0-76ace653a773@kernel.org>
- <20261104-work-procfs-core-v2-1-76ace653a773@kernel.org>
+ <20261104-work-procfs-core-v2-2-76ace653a773@kernel.org>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Thu, 05 Nov 2026 19:35:12 +0000
+Date: Thu, 05 Nov 2026 19:35:15 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -69,19 +69,11 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-> procfs has both sets of file operations twice, with and without
-> ->compat_ioctl(), and picks the one with it for entries that have
-> ->proc_compat_ioctl(). That's from commit 778f3dd5a13c ("Fix procfs
-> compat_ioctl regression") when a file without ->compat_ioctl() went
-> through the translation tables in fs/compat_ioctl.c and one with it
-> didn't. Those tables are gone since commit 77b9040195de ("compat_ioctl:
-> simplify the implementation"). compat_sys_ioctl() answers -ENOTTY for a
-> file without ->compat_ioctl() now, which is what
-> proc_reg_compat_ioctl() answers for an entry without
-> ->proc_compat_ioctl().
->=20
-> So always set ->compat_ioctl() and drop the second set of file
-> operations and the flag that picked it.
+> Every call into an entry that can go away is wrapped in use_pde() and
+> unuse_pde(), and a permanent entry is called straight away. The read,
+> write, poll, ioctl, mmap and lseek methods all spell that out as the
+> same if-else. The next patches add a few more callers. So put it into
+> pde_pin() and pde_unpin() and use them everywhere.
 >=20
 > No functional changes.
 >=20
@@ -91,5 +83,5 @@ Sashiko has reviewed this patch and found no issues.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261104-work-procf=
-s-core-v2-0-76ace653a773@kernel.org?part=3D1
+s-core-v2-0-76ace653a773@kernel.org?part=3D2
 
