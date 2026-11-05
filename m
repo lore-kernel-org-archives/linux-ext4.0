@@ -1,48 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793906960;
-	b=gjYxXONgTw7qGu68/19Z6xmQQjovw6uKUfJEh7BhtibR2Ok6sXgHD/hZBay+tSe+Q/8s
-	 dwUawyXJYUpykn7yXWJQgeboMYPzfcuH8hO4RPqbUSDYoxmd+N2ys1iq+3s31gHTJnq0B
-	 3W2W+/FLT3L+pBuSLC/9A/mWs8Z8VV+p9YnLUcFSP+NAGzGFyf0SFW4r600xrelyBO/Hi
-	 fhzlwwaAEItHjP3Yapp6Hx2vLYBt2OTMHwj6kU+fA8L0mxAfaAfXO2s8ZX8zVMhn+h9bi
-	 zVbiP+qFEJQ6MLAICrYPFjbEgueN8zMtzmoXDOGtm66sAuh6jqzcbIWDsDPlz4PIeLA==
+	t=1793906947;
+	b=amv/o+/U5+5NqjaaQ+VTYS9WY6JyqMxVtJ8GrP+jOLLzB3WUQeSJYqViAvT0QH+qNm6l
+	 IFMAGxiFPqfvxSGANlhID9bX/fYflNBHtuhFM0XQynezrWoOE1xumthp144iUXF+rtKq1
+	 v4nzV61GiAVZmwhT2JA7efRxEuAh8eD15NL5KmrrtDS1iulhwlPX/MdvfP+bX2CdCnS5k
+	 CZwJSAT5NAG71d6Fw9AQG/5wvc425kOgiNXoWRKf+z3KHV1ns/Zo1jkGDt+YvDlVoFr+H
+	 J/qovnGoC8/wo+H+6sigUNl8zhRDIKJcUXFKFtEvVXl9bMgOIcmtwEdtCCN59cgtAOw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793906960;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793906947;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=Qw513NKzixnVetQs2aPch799inLwFwvqjGlTZsHFgHc=;
-	b=JF7A80URZJsZxlv9VeG7Uhz532Ydulkk0bZZxjcFowAIy2ifVW5j0SpMh3tO0eZPfK6Y
-	 lIoHbRqmBsQ3q41yn3EPbELK/1FhdE9W1kOdmi98P1GBxrz2rj9iWBKlnv7PPhweYkdrz
-	 tZd8DJh98nsc7YFk5HU/mQdD691bQGZlwlb74E0BQHQFwKbpToF0h1aylFmslTO/o+7XY
-	 d4JTv5SAiGLjCBYEzgEvYOSLFn4tBGFnwFOJy/RgWqMTNaGZitTOX1INC0WOLdc0w70Oc
-	 qMxMv3habGhWfICaVsKyA93S/N/P3ZWJrLtyRbyvL3sOq9cvjmVpTINFT9QtZYJ6GkQ==
+	bh=EJ5x6oSnf+RrWzbB6XOjg/oJy0lPZOuvIIJGGMYahYs=;
+	b=cYgsEZsQytSExXg5AKNCdg1IeTFT0xeDzc4MuVr+TznEbF1x+8XZcRPuZ59R5skhy74I
+	 3aH56/gq2UEy/HzDa89ZYDUNvQOAszQu9UuGa1fXE4hnqFtXbwfk4yQHjNoxSBc2dPGAh
+	 sumMc0JYkrPTerdVzGLqSqHXZqSEpmfVTKSVjrcvA91m7HU7SJgRYKeDrVnQUY/gRU4OS
+	 +L/F4zvQjItRpP1KV7KEA1qBfJMf/0/s8ma99bjmmibmAj+YRpN7MQP0bb0l4NB4b78GT
+	 NimHWMGPXR0S7snk1Pblw1nn1ZTVscHWOOdL/gB5syxDMkSmW7FUTLHg37ORel2zvrw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=WP5zysBl;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=hhwYqi2Q;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 910BB606D83D;
-	Thu,  5 Nov 2026 19:29:20 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C4AD3606EEAD;
+	Thu,  5 Nov 2026 19:29:06 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=WP5zysBl
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id CF3F21F000C1;
-	Thu,  5 Nov 2026 19:29:18 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=hhwYqi2Q
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id DA3DA1F00A02;
+	Thu,  5 Nov 2026 19:29:04 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793906960;
-	bh=Qw513NKzixnVetQs2aPch799inLwFwvqjGlTZsHFgHc=;
+	s=k20260515; t=1793906946;
+	bh=EJ5x6oSnf+RrWzbB6XOjg/oJy0lPZOuvIIJGGMYahYs=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=WP5zysBlV6QoE+ebdO994NPOQCHtVK69BSl7GA0TkgCejzw4yv+Qi/dIb/BiTtwJI
-	 CtwiPcppWeOxu8qxGDLb2NNs4muOnWOkbdTfgMZetnT6EYIraiEzVZgwrSfKYuy20p
-	 lq1YQ+ODYgN/fNYKxtV+Y3MBG2phtgSlbN/PnX4DhhLfO11dC92+odtKZZNAdRC5BY
-	 cOK2uw6yB5xGSlQ2pqLEJNTrF9NrssiHaYNsRIIVDX79TmltA0T6xLv6ahSmhYnicd
-	 7xH40xuqXjCm2XXdHJHYyElfh7nUle5CnSYYX4imcJF/N71eKI1RK/06V3FFapNV/j
-	 F1VfvpFqH1/NA==
-Message-ID: <sashiko-outbox-199878@kernel.org>
+	b=hhwYqi2QU+5PCxcWnPTB3hxrvFDBanBpjqltnKnowdGwOrQnCfcILl/BCmwovaNzo
+	 wp68GIO/nSzr/nY+0O2mYBFsgas/t8X9pDclsi8l3rtLr8f9yNbcTsGRq+iy4MJ65n
+	 iPM2oWsFb0Z85B1qPfkhGzqkfncZWH+JeXHP4yd2t4cuJpVO4Y7yY85ohQIrqcGzeA
+	 C7/bMiWsDMhTh5YJuMjMHWRP5Zy9sUTojv9oJFEyBgQPOPeojiiAhYUcSybcJI2n7t
+	 19ML9X1uaSQk/DmhtxZof8n0vxdU5xWdxA5OrGQzUPOsV+PQEYss0Ieh46MVONkx2a
+	 deUWye+6T8JuA==
+Message-ID: <sashiko-outbox-199872@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH RESEND v2 15/51] PCI/proc: don't truncate the position
- of config space accesses
+Subject: Re: [PATCH RESEND v2 09/51] profiling: report it when /proc/profile
+ can't be created
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Christian Brauner" <brauner@kernel.org>
 Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.com>, "Josef
@@ -55,12 +55,12 @@ Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.
  Iwai" <tiwai@suse.de>, linux-ext4@vger.kernel.org, "Chuck Lever" <cel@kernel.org>, tytso@mit.edu, "Heiko
  Carstens" <hca@linux.ibm.com>, "Vasily Gorbik" <gor@linux.ibm.com>, "Alexander
  Gordeev" <agordeev@linux.ibm.com>, "Christian Borntraeger" <borntraeger@linux.ibm.com>
-In-Reply-To: <20261104-work-procfs-bugfixes-v2-15-021c84d852e0@kernel.org>
+In-Reply-To: <20261104-work-procfs-bugfixes-v2-9-021c84d852e0@kernel.org>
 References: <20261104-work-procfs-bugfixes-v2-0-021c84d852e0@kernel.org>
- <20261104-work-procfs-bugfixes-v2-15-021c84d852e0@kernel.org>
+ <20261104-work-procfs-bugfixes-v2-9-021c84d852e0@kernel.org>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Thu, 05 Nov 2026 19:29:18 +0000
+Date: Thu, 05 Nov 2026 19:29:04 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -70,30 +70,18 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-> proc_bus_pci_write() truncates the file position to an int. A pwrite()
-> at an offset like 0xfffff000 turns it negative, the check against the
-> size of the config space passes and the count it clamps to ends up
-> larger than what was written. The loop then reads past the end of the
-> caller's buffer and writes all of it into config space at negative
-> offsets, which pci_user_write_config_*() pass on to the config
-> accessors unchecked. The write also returns more than it was asked to
-> write.
+> create_proc_profile() returns 0 whether proc_create() worked or not, so
+> a write to /sys/kernel/profiling that turned profiling on but didn't
+> get the file reports success and there is no file to read the profile
+> from. Return -ENOMEM like the other failures of that write do.
 >=20
-> An offset above 4G that truncates to a small positive value writes to
-> the start of config space instead. proc_bus_pci_read() keeps the
-> position in an unsigned int, so a read at such an offset returns the
-> start of config space instead of hitting EOF.
->=20
-> Check the position against the size of the config space before
-> narrowing it.
->=20
-> Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
-> Cc: stable@vger.kernel.org
+> Fixes: 22b8ce94708f ("profiling: dynamically enable readprofile at runtim=
+e")
 > Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 
 Sashiko has reviewed this patch and found no issues.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261104-work-procf=
-s-bugfixes-v2-0-021c84d852e0@kernel.org?part=3D15
+s-bugfixes-v2-0-021c84d852e0@kernel.org?part=3D9
 
