@@ -1,48 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793907341;
-	b=sx1wXDEUNtT8TpIBUK88vNzLp9jO3RJjId9VNzBHJfeXBqI/xZfUIKcnnkxQdcgIkpxE
-	 nV1WvqT1o3VrAfJuXyuL28bc9Wzjb0pX1fO/0hLhIdt8t87zHNbae9EKpBbvtCd3tDUp/
-	 rpTSnolOse2ELeriEK8zN7X6UGEyzlO/5NSsU8s2FZPakYDkf2y1/VOqoZxo/nr9waEW3
-	 SSp0R8xdGBFOz52pt6rWY42jhevEePj+7LTh03FE8uaCxqSwL7mW0zaXcpBqFMmifc8cG
-	 2kASgpFsJ/v9rm7rauH8u5h0xilRbsLaEOQKOJqunI87Q+U3Q9fFWCO1zfP6Su+4ybA==
+	t=1793907338;
+	b=Rug1S/bZJjDRoqMgSUMKB2H2ckeGf4tzFEu9SB+q3SeJp/qAAGKes45k4eqxqCKK16i6
+	 wf8lwycd99D5EKi3cr5TggJX3mWQ0VDrYE7+LjL0R5k4Z4hzCtfE925mxi2yzWJLq6Kyk
+	 nqPPBW1MzijUscgRAKXJWGzHa+MMNbnlpqjK9yk2Qrsn5H31h0A9WspDusEE32DRr1f4+
+	 RcgUII+vfN0O1B0m0L0G9Mrm08f7ooQygIgkdjdyLMq7Bl6QRQV0WW3jdWUNRXy3RLnqg
+	 ERsuBRS7kpV5Fl8/aA4EJJgtEC0Z3+wpBDPoDb/mmdgOn7jtBI2URq2epVMrWuqh39A==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793907341;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793907338;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=cJix24xlgst9n1WrSlWeglZeAB5lHupKhKyXWNZp4cA=;
-	b=S+cSJ/HcN4rjOxm9oh5SSYsjqi7Owi/k6So8WQ62REnTyAiPMOEjEIsyt0ATIKM7F5pp
-	 ruh7omCzz3EkIKmd/v845S4gvnO0+B+hobBl/fMOeh3aRgTj8jd5Dd+5Zq5n1X04rV5Dn
-	 LfMlsClbhydk/4VlQCKmPnFigunFmxzl28lnwkqSK66gwYvcdX4s0oAde0a6j7d1UCFzQ
-	 RpRP+OFumRvKH7vF4bFb9OY2Lzji8Qu+GD1Qsuqu1wzubg90eotuaTWapLl+rQitOBofo
-	 olV0btHeI/A7mVqE56/2iGtayjvKJdg+lqdgu9NBUkpA8TcIxGREqSgc/OZjB6CK45A==
+	bh=1DrTL1ac6XN1wKtHpceRQArmb2bB9IIZ8TJ6poNHDCM=;
+	b=dxGPqZHbQqKIZ2fLEcaKWKeQyL59a/yZlpQXT/PpPyk2dAXLbWtyAJBihDePZYkQlN2j
+	 8S8sKLhogcT73KDcdzTWYQO/ikjAWUeFFoNDYVVoLRYf/1KT6yUJaiiiIh7fRgzKfn5la
+	 wqpSSPfV1zq3uWZ3hLaQl5+ATDBQlX8PLGoj129qTjhfgl3AIzhItT6FhhIEziJmaowrF
+	 yGaQn3aH/aHh7XYIOEzjCAMl6Jiv6M1VSWwKJvOAxA8+o2fkKXv6uBs/Q5tH1PZnj62FJ
+	 mBLG8s4/zd4ZW6rfFuCpD1MXSBIiZNAMI/qBV4WZXnYiO6SZSYMAiQx7yrePsfJ5dMQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=L+xOHoP2;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=HfWNy4Y5;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 877DB606F967;
-	Thu,  5 Nov 2026 19:35:41 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EC03B60A2609;
+	Thu,  5 Nov 2026 19:35:37 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=L+xOHoP2
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id EE9761F008A1;
-	Thu,  5 Nov 2026 19:35:39 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=HfWNy4Y5
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1946E1F0089E;
+	Thu,  5 Nov 2026 19:35:36 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793907341;
-	bh=cJix24xlgst9n1WrSlWeglZeAB5lHupKhKyXWNZp4cA=;
+	s=k20260515; t=1793907337;
+	bh=1DrTL1ac6XN1wKtHpceRQArmb2bB9IIZ8TJ6poNHDCM=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=L+xOHoP2Qx5/9+jDvNfdYODhXjxiK8RqXCJAGAloJ6qzD7Elus2F01gxdiUGPSQLg
-	 3hE59XNDGx3Za7IV7IDFhB9LofEWxPBNwNN/k2HxtiMoqi+Vht+upRCGoGgUOFkH3t
-	 K7IF2X+TmYn4ZurNmoxh4WyCS1bWuRxOE2FTEP388C89fXUcunpJ8ImJUn3klOcRfi
-	 1QcyMSKwSstZGjhnH3nI7Wpv2CbW+x291Woe+gaojDGoMmhzCTYy/uDNTr87TxD1Wq
-	 B6dVO0t+pEqWn986xFrR6AlFJZfPthvQSSC5s4G8lgOL5oeFUjLAQkfCfoj1cM0Jd4
-	 LCM5TqqMHZEYg==
-Message-ID: <sashiko-outbox-199943@kernel.org>
+	b=HfWNy4Y5RPfNBoKBQHLyyjYyTxbbnjJDdOqRHr0CwmBLc51x1jcm75ZAAgEad1VZu
+	 tS6QZvZfn8sUpNi6mOF5f5DFfUZLIhS4vvvi+iGswUv6KjXZx0o+EpcIZvbbxZe+4c
+	 w+eyoQ8QFIDLRMjiWYtJN8zfopCPPudrCbntig5HUXMXa/Rmrt2bn8OYImFZC4VNa2
+	 R+83Zs+Eu4feiqusBCRRhe6e1B6nEi14J/AHyHRRYVVXAOiMjE6L8AhoiK91X8uzKE
+	 CLf8tyLGMi9vrUilCTGfT/2QMby2aoyrPQEHnvKWwCxXAzjQDLba28dyRTo132ATHY
+	 jJoKKmYLJAz8A==
+Message-ID: <sashiko-outbox-199941@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH RESEND v2 13/23] proc: let procfs own the seq_file of
- /proc/stat
+Subject: Re: [PATCH RESEND v2 11/23] selftests/proc: check that a faulting
+ reader doesn't hold up removal
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Christian Brauner" <brauner@kernel.org>
 Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.com>, "Josef
@@ -55,12 +55,12 @@ Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.
  Iwai" <tiwai@suse.de>, linux-ext4@vger.kernel.org, "Chuck Lever" <cel@kernel.org>, tytso@mit.edu, "Heiko
  Carstens" <hca@linux.ibm.com>, "Vasily Gorbik" <gor@linux.ibm.com>, "Alexander
  Gordeev" <agordeev@linux.ibm.com>, "Christian Borntraeger" <borntraeger@linux.ibm.com>
-In-Reply-To: <20261104-work-procfs-core-v2-13-76ace653a773@kernel.org>
+In-Reply-To: <20261104-work-procfs-core-v2-11-76ace653a773@kernel.org>
 References: <20261104-work-procfs-core-v2-0-76ace653a773@kernel.org>
- <20261104-work-procfs-core-v2-13-76ace653a773@kernel.org>
+ <20261104-work-procfs-core-v2-11-76ace653a773@kernel.org>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Thu, 05 Nov 2026 19:35:39 +0000
+Date: Thu, 05 Nov 2026 19:35:35 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -70,8 +70,18 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-> Declare the show function and let procfs open and free the seq_file.
-> ->proc_open() only preallocates the buffer now.
+> Read /proc/net/dev_snmp6/<dev> of a tun device into a buffer whose first
+> page is backed by userfaultfd and remove the device while the reader
+> sleeps in its copy to userspace:
+>=20
+> - removing the entry doesn't wait for the reader
+>=20
+> - the reader still gets what was printed before the removal
+>=20
+> - and the next read fails with -EIO
+>=20
+> The entry is removed under RTNL, so a regression stalls the test for
+> five seconds before it fails.
 >=20
 > Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 
@@ -79,5 +89,5 @@ Sashiko has reviewed this patch and found no issues.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261104-work-procf=
-s-core-v2-0-76ace653a773@kernel.org?part=3D13
+s-core-v2-0-76ace653a773@kernel.org?part=3D11
 
