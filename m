@@ -1,48 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793907017;
-	b=wO2jBGiqImPZjzJpG3J9MrhNzWmLF0xLvV1NFSBeMQnWBPBN5GjDWaFsM2sKRpHPot9h
-	 m2096WPMOHw8+6U2xW4ITm72/3MPCM071Pvc3LX380FCvU3Q+hNIz7qzvSiL877OL3uZD
-	 yUgA8hAMgaWWnLsEI79Fh/E7+F02Zvcs9g+t095iKtUMSZ+zpTTug4lk/noaKfk+759Bo
-	 IPFpz2VQs3uKpZn4iNsCMTMw5I6/WMEsnrQ9BOPSt94ouQTChli4rdOJ/Y+kkaEYlTDI/
-	 BaWu7ReO0i5q6uvpAqZ25uKJb56IrMnIW2QGPQbO7SUf4tIyoBrc6yugU+zCZF6z2oA==
+	t=1793907008;
+	b=qQmeMlQ3YsLRUqxW8FH0z+IVZjst6RGUds/kyydcunp882+6XrKt0F9YjHKrsjCEmhzt
+	 pGB2aY2Gtfpvo+Q4GP89smhjmL7JMGlkPr0eY8ya8KgyywXspdwGfPlVWZ4nd4BwQHijq
+	 K3kW+REj19VUEDSyL5cf7rRGukJUqegkXm9dfS/K42exNn0/eWtRteylj7eouuFV0xG6H
+	 1eXb/ARyLDczXzPYba+AVF2AG2zfeV0yN6Ha0K4EZISXCaAODtsAltXuGWQ61KHoevu9i
+	 80GDB7S8lvfacC4+77zYxfCcmrt3h/ScodLEQjQdy7TIJmT4Sxzr4UDVVbgXKYvKyvQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793907017;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793907008;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=Wezpe7xp/UNpZ6YyNGBVpwJ4mVErEnOLjUB9+d3ldv8=;
-	b=VInJHA+FkxqjA4S/VqjOj9jos6mS7eHwr3r8+FMEWXhP7itNB8r0AGxoh2sQXZ1BQ4dU
-	 NyQUzLDbTE93lDkR01HTdBTDy6+ueqLDO8fOKay/3jILc+B43LcCHAZd7o3LhhwLUu56j
-	 gK+trGynmjlpWF/qUSjkuEnr3RlX7W2F1iCjDnc/9gbahoQIWGguarezGP4t2trB3J1HH
-	 ObyD75MZ2UuJpfXnizi1gTFLoItL6mTG60RNqiSTb74Gg5S5R0Wl3ela9MjGvGkxzJZOK
-	 wLbaTsP2iUf+5Rzs2rlMmPTCZNdbzFoS2VljNGEJzxe2Io8B1nkuFmNjYXQkeTFzu9w==
+	bh=7PHyXsRCh8nUckWf/52BHUGTboWFHsh+IL6ljZbS9tU=;
+	b=aCw5FDdkb7Z718oI5KGPjcbctDAO0D5c+Y+OZ8BiRBV6J6OhWBvrWSDdSdR0Y9GjxsbM
+	 2zsSzDZsbUU3oG9GljtEbz7qPU0YZ8vQNBb84/OW07CXv1RtT7rRKVTJxBQ6e9EUWCDri
+	 qoKegnwAfXnfE9/sVpwV6xbBYPvHWOYLIYYPzID4jzG+Rp2KV2Ufv+khbARFBT5PoOmT8
+	 aeJMR3e79eTecU+IfNpjGHFmjOVaummhoEUNnj+SKClq4wOKWw/yff32402+UARptHYEq
+	 /yTEnOWzRQBqSfCFZWvvnn7dsA6tDxgvJHF+NLd0vSABSa2Lz05HKPTH5rJIY29hnVw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=AYGRhzRF;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=EzbFf2vH;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F30BE606A6FA;
-	Thu,  5 Nov 2026 19:30:16 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D0904606A335;
+	Thu,  5 Nov 2026 19:30:07 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=AYGRhzRF
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 221B61F00A02;
-	Thu,  5 Nov 2026 19:30:15 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=EzbFf2vH
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 058331F00A17;
+	Thu,  5 Nov 2026 19:30:05 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793907016;
-	bh=Wezpe7xp/UNpZ6YyNGBVpwJ4mVErEnOLjUB9+d3ldv8=;
+	s=k20260515; t=1793907007;
+	bh=7PHyXsRCh8nUckWf/52BHUGTboWFHsh+IL6ljZbS9tU=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=AYGRhzRFSy9T6cqfIEWvUQKmjtAw0ISW0hgFW2F7Lr/kaRiHwoxuT44bCbiePUUYS
-	 tdUcQ4jzDQ7CrEnsBPQgW9Smo5Yo7VTe+wucOJPRcOI77c3zkNZlMJ0NRjRuh8sgD3
-	 Lp9j0YS+XwnTNu63HAG+J/YN6pd76Kf7tGh41xrpRv3miTO3CjljECiDQQB+sm6Fss
-	 MoJPLRGOyHPcgx9QC5PmI/jl4wIKCwPRrYVaXewwxRn3e/SQ11qLxGvzMbs2L2pJAc
-	 lqGAhrJHYOmqMm01AvESwiqJ6R10XNmVbjUe0/EMpwXF0ixUyryXuszpf5w5uT5ckB
-	 0j/SBCiu8pzyQ==
-Message-ID: <sashiko-outbox-199905@kernel.org>
+	b=EzbFf2vH4rdYmLSxg3HKN+VvXLe/yE1Tm+i03FhW8mezL4sHWQcUkoSNnFKVwq0bi
+	 AzCp++9TnQnkMVuRyQ7av+BkhgA/SJE164Miit54lB2OO3Lai0csSIQhWlpUru6waD
+	 +VBsr4BCGwCfqkHgRxJDlwr2XEGmEoMwpsrj5goVIQBSCqw3VOFqGx53PTILkt5ust
+	 nbutmvvSCT+eOLEdguPUYLn5ci6I+dEQYyb70GenJ18ODID+H7xgdB1VM3a+sCkvVh
+	 WEBmPTJH++5VB3kciDdK1xZpG8yPpTWbkTU6g4v0sBHmmzlPDXWv2561dDq3nEbTxS
+	 FmCid2KQ7rxdA==
+Message-ID: <sashiko-outbox-199901@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH RESEND v2 42/51] powerpc/pseries: bound the lengths in
- the ofdt property parser
+Subject: Re: [PATCH RESEND v2 38/51] powerpc/crash_dump: check
+ ioremap_cache() in copy_oldmem_page()
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Christian Brauner" <brauner@kernel.org>
 Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.com>, "Josef
@@ -55,12 +55,12 @@ Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.
  Iwai" <tiwai@suse.de>, linux-ext4@vger.kernel.org, "Chuck Lever" <cel@kernel.org>, tytso@mit.edu, "Heiko
  Carstens" <hca@linux.ibm.com>, "Vasily Gorbik" <gor@linux.ibm.com>, "Alexander
  Gordeev" <agordeev@linux.ibm.com>, "Christian Borntraeger" <borntraeger@linux.ibm.com>
-In-Reply-To: <20261104-work-procfs-bugfixes-v2-42-021c84d852e0@kernel.org>
+In-Reply-To: <20261104-work-procfs-bugfixes-v2-38-021c84d852e0@kernel.org>
 References: <20261104-work-procfs-bugfixes-v2-0-021c84d852e0@kernel.org>
- <20261104-work-procfs-bugfixes-v2-42-021c84d852e0@kernel.org>
+ <20261104-work-procfs-bugfixes-v2-38-021c84d852e0@kernel.org>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Thu, 05 Nov 2026 19:30:14 +0000
+Date: Thu, 05 Nov 2026 19:30:05 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -70,27 +70,18 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-> The commands for /proc/powerpc/ofdt that carry properties, "add_node",
-> "add_property" and "update_property", can make the parser read past the
-> buffer they were copied into:
+> copy_oldmem_page() maps a page of the old kernel that isn't in the
+> linear mapping with ioremap_cache() and copies from it without checking
+> whether the mapping worked. If it didn't, the copy reads from an offset
+> into the NULL page. That oopses unless the copy happens to be a user
+> copy, whose exception table entries turn the fault into a short copy.
 >=20
-> (1) do_update_property() computes the end of the buffer after
->     parse_node() moved buf past the phandle. So the end is off by the
->     length of the phandle string, which can be padded with zeroes, and
->     parse_next_property() accepts a value that reaches that far past
->     the command. new_property() then copies those bytes into the
->     property, which everyone can read in /proc/device-tree.
+> Return -ENOMEM like the other architectures do. read_from_oldmem()
+> turns that into -EFAULT like any other short copy.
 >=20
-> (2) parse_next_property() parses the length with simple_strtoul() into
->     an int and only rejects -1. A length above INT_MAX turns negative,
->     tmp +=3D *length moves backwards and passes the check against the
->     end, so *tmp is read up to 2G in front of the buffer.
-> [ ... ]
-> Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
-> Fixes: 610d91511f99 ("[PATCH] powerpc: Add support for changing propertie=
-s from userspace")
-> Fixes: 46db2f86a3b2 ("powerpc/pseries: Fix to handle slb resize across mi=
-gration")
+> Reported-by: Chris Mason <mason@kernel.org>
+> Fixes: 54c32021eb6f ("[PATCH] powerpc: Add arch-dependent copy_oldmem_pag=
+e")
 > Cc: stable@vger.kernel.org
 > Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 
@@ -98,5 +89,5 @@ Sashiko has reviewed this patch and found no issues.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261104-work-procf=
-s-bugfixes-v2-0-021c84d852e0@kernel.org?part=3D42
+s-bugfixes-v2-0-021c84d852e0@kernel.org?part=3D38
 
