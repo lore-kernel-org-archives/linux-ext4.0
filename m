@@ -1,48 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793906969;
-	b=rjAv4Og7kwIXVU3TeKlhMWXrz/xNtcU4TOU7YkOsiB/ZnUBsf01tA9VQfQJ3f0UxtndS
-	 LhnkmgEpapdWA3r2qDPWlnnwC28su3yafQYLC7UQTT66aTfY4nWDpHBCXxQvF/a9RbXsR
-	 Owq8kUlVRvX+ZsnMYz5a9x4gISiSBdTpLyxkWifhoNl5pcwN/t4DgcbvP5CF7zW+HIiV5
-	 UpzajqYXOrXiu2IBoDdREVY8zf7BtBfV0qkno0jZMk/03YovM0iZSDT3TPimVU8IoRIcy
-	 m/MAn9SCQB9krQp7KzCnEv+Sn5otOmfFOS62lNgW8sS7ZkI/lt4e8oLTjc7E9W5W4ug==
+	t=1793906976;
+	b=fjQXPHpKKwE81oTMpQOq53YU+hB9f4AJ5boNiwNEgozkKK1EtrK3M11qvKtHFCQ8gFyI
+	 8A7ghH73gU0Ix39FT06ldUS93ttrSvBFZqz4sdI3MSXtGhrU0ruOBPho7nLr/rROxiCXZ
+	 Qp11UhoPsGYcKp78RGN9XvbG9ULEwpgfqoSw70/vjiBEpug/lm6liYAe0q/tQYscPrJta
+	 m30bmS6Oh5azThB8ImhhOFudX315SiXgY3RFh0rgJL0xZ+tyhm0V4iu4yqEPYeAytAiQm
+	 KDNmEwuV00JYOPYNUprNv6Q4D3/FwsB4pPGsAkbnMGAIeuKJ0pId4WwpLwZ1wo2yybw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793906969;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793906976;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=BQI+a8njiZ/gI4hynXalYGlHTbeuK2z4PeQyurW9I7E=;
-	b=XdBbLehEdKQno9CSZxWSdu1dNliuKJ5FXl5orPAUW+XbTXeMVlIZueWzLMeUOTp1gKEc
-	 hoJb1v8Z+4/fafwCEMT8spdi3/osBQMrhR8fJKps4i52bxLNAkRvKHe/JSCkzQw2JDdt3
-	 59zWPksSJWOGo19zCzh1jwLjpze8oN5zAV9rsE6fAmrPGSMzAWKT5uwpV8vt1APdsHbJg
-	 bMamwYqEr+JbVgW0cG7iv4WfqJoim7JNNWCePIgEMLmoov2UZjlm13LdnvpxzguPwl3ma
-	 voHsrf3aBn7WE2RZegG/FcQkwzSw2TRjhrLXRGxykrlj/94BuzzO8wrY5Hf6UumIKvQ==
+	bh=PTE5j5M1lfXRKhGqS4rQ0FGlegosh6AezvyKz9Oa8vc=;
+	b=4DJgJidLdjmo2S0hi1zuGbQN+WndVwmJ4E/Hly5xrbv/tZ698XLUFu0dMg2lBgLFj8Sq
+	 IyFtEIFlaegrnoupRw7YD1oynioXO/iWLMbYLSavw9zA/o49NRb29l5RW+5mzMnIOomiQ
+	 5JRWETy6c407VjZ5KgxbnKuAA5jvatyyEzAlhbulH6A5srwrP6QFVq0d3i+oksjV4MzyT
+	 VY2rSE3/uHArWajm8w7mGEfzEvglaZ83AyWNMRP83Sy+wj/cNG0dTGpPSjgjZuSEJMHaB
+	 kSXX/QhSSTOjkZbVmYzeuZSV9QFN38V1suQU5gv88DhIGE4IBnWDLvAY28ihj0PrzOw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=XbZWqE5b;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=h4W85jhD;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CD8CF606D81C;
-	Thu,  5 Nov 2026 19:29:28 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 436EA606A329;
+	Thu,  5 Nov 2026 19:29:36 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=XbZWqE5b
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D932E1F000C1;
-	Thu,  5 Nov 2026 19:29:26 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=h4W85jhD
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id BC88B1F00919;
+	Thu,  5 Nov 2026 19:29:34 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793906968;
-	bh=BQI+a8njiZ/gI4hynXalYGlHTbeuK2z4PeQyurW9I7E=;
+	s=k20260515; t=1793906976;
+	bh=PTE5j5M1lfXRKhGqS4rQ0FGlegosh6AezvyKz9Oa8vc=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=XbZWqE5bV1/7AJYMx+wz+v1eHMIKkyE8SQclRs/OPZo9iXZQoLwkmOhiyxQQQlhJE
-	 8sowAoifBDVNyDNDLEaP8lelRK7/+buyxRsYnpXg78dXMLTw7E9r/wWQq/tiEDzR6y
-	 aX+wD8fLSCGmqTUIYxuEFc1dqwu6r8nwV6Y//hBCH/Ixikoyl/tEaip/uUdqQ2AyFO
-	 Hsl7wCQ5MJ8vCIV28zr9nojYTBgUQpEh6I3Qfn7gkQr2IO9fL1vbfhzhhz3jhjCt/q
-	 EfQn7sAzxdZYYzvTAFpHP0LITOOhjBJNmZidQGsmC3cKnW5zohL3e3FGKtD5LfWZ7w
-	 nN9DEaZl88tjA==
-Message-ID: <sashiko-outbox-199882@kernel.org>
+	b=h4W85jhDarFXBHG0k6JfyOGr8igxfgjaZBbbaCRVTQ0udlKQRWyMl8x3vyWH1Yc0F
+	 dOtLFgk+EUlfavQaPuDi+2NHDf1/BnZunAx0joRjfA786aL3mqNWdnnJweKA1yHUA1
+	 iGSfM1C3r+4wCQJidi28oADHFsujWie1y+IVFLXQTuLX56ywi7d9UyNiLTEecy/eLZ
+	 jxw9spucN1hAz+xXZvmAdLSzDnD4wAfRWUb7WZpsdAxmdjWIEV2sHgXEXcerAu5glG
+	 lvU3C8k5MtoleqtbURHAux8hlkGA1XhQZFvBuFWItTH3nIjDF/nWCIloHR7f5PjeLR
+	 QU48cCjz6Zhyg==
+Message-ID: <sashiko-outbox-199886@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH RESEND v2 19/51] xtensa: simdisk: don't read the file
- name without the lock
+Subject: Re: [PATCH RESEND v2 23/51] scsi: BusLogic: don't return 0 from
+ writes to the proc file
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Christian Brauner" <brauner@kernel.org>
 Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.com>, "Josef
@@ -55,12 +55,12 @@ Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.
  Iwai" <tiwai@suse.de>, linux-ext4@vger.kernel.org, "Chuck Lever" <cel@kernel.org>, tytso@mit.edu, "Heiko
  Carstens" <hca@linux.ibm.com>, "Vasily Gorbik" <gor@linux.ibm.com>, "Alexander
  Gordeev" <agordeev@linux.ibm.com>, "Christian Borntraeger" <borntraeger@linux.ibm.com>
-In-Reply-To: <20261104-work-procfs-bugfixes-v2-19-021c84d852e0@kernel.org>
+In-Reply-To: <20261104-work-procfs-bugfixes-v2-23-021c84d852e0@kernel.org>
 References: <20261104-work-procfs-bugfixes-v2-0-021c84d852e0@kernel.org>
- <20261104-work-procfs-bugfixes-v2-19-021c84d852e0@kernel.org>
+ <20261104-work-procfs-bugfixes-v2-23-021c84d852e0@kernel.org>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Thu, 05 Nov 2026 19:29:26 +0000
+Date: Thu, 05 Nov 2026 19:29:34 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -70,18 +70,16 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-> proc_read_simdisk() looks at dev->filename without holding dev->lock. A
-> write to the same file detaches the disk and frees the name under the
-> lock, so a concurrent reader can copy out freed memory. Copy the name
-> with the lock held.
+> A write to /proc/scsi/BusLogic/<n> resets the statistics and returns 0.
+> Writers that use stdio, echo for example, take that as no progress and
+> retry forever. Return the number of bytes that were written.
 >=20
-> Fixes: b6c7e873daf7 ("xtensa: ISS: add host file-based simulated disk")
-> Cc: stable@vger.kernel.org
+> Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
 > Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 
 Sashiko has reviewed this patch and found no issues.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261104-work-procf=
-s-bugfixes-v2-0-021c84d852e0@kernel.org?part=3D19
+s-bugfixes-v2-0-021c84d852e0@kernel.org?part=3D23
 
