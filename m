@@ -1,48 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793906949;
-	b=JM6sqUpe78rTq74ryNBrsxC/vpFwnApI4mvHDsswO1Tswkfq5DOLN3ve7Ca0qpd2WslP
-	 8BkpdZoURhZbI/Z4T6kDEkNKSvjKyx2yoO3FglBUST/TpCq8X+Mrh7hXgKGsVwqM7ZvZp
-	 stqbz0nrR8zfFukPumaNL8a4VXqV6wwEDthG0oYlzrUAvyoSfUwe18wtY5C01q95WgQTe
-	 ZAn0f2DY4JTjEk+0MxU2TV9PAUcznAKFUtpd6i1QrnQmplp8dvsPp3Eq6F7j8sJ/Iyt1P
-	 O7lRV2V4IlniHB0a/ZOzVDdUps8+Ydsn5fpAsuKn7ZUhFCxnypjmdQJDMwzV4plOOkQ==
+	t=1793906956;
+	b=rDTulH9prtHpT9YocdGYKGjpNVQFDNAKrpxcGlCWfZbIVHxDnQdj6ZfYTFkwuD1Lx66N
+	 ASXEHMGR8OW8F2DzUm8rIEyLaCImsu+H0zNVEdsjqKAAhw1+inLjuFfXtVzBMMD9S0bWE
+	 bEjmR2kYAdB0dRBniVi39qj9BMQy7zhyTG5+ofO49PrA/4eAj4Amv9AcIuKXVAniIwyIb
+	 vGuwsclhplVCQln1hyk7el8j6yxdWvzfZWsOA1AOGRCa92vjcv+tDVtsX1iQlBUcYuxpC
+	 xzAJf8atvtk9A6qzCD37/HWUebS8pfdyC6YJtCQFViddGNEqFYmp7aN9VVPODVwxHxg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793906949;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793906956;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=WG3GFTWAkJDkt5Isqmjqi8WehM/x+yRDWX3FB+RPiNc=;
-	b=iY7J8O0juxGBsdlDR0HyFcJo6rHEK4geh+nSUDeFw0ModkRQezWCLkS+IpEqhQYmHM7d
-	 +6Ts8PEvwPvevmuFmhsnmA02OPUiz22G0DP+0kfPq3tAJ+fliQIqddEIe6BK0bDaxuCKh
-	 rr9cOmmLACKNBsqk7mZigRGr3cf2RNWme+ZbXMTma5DQntnb7kS3ruA8untoBOwtnJ3O4
-	 mUcu9+kZ7aCn71ZWpphRCR48YPU4rc5+W7PGDPtNGegl7lNMRMNOZ2v3YqEZA62kJtSq3
-	 UyXgI75jlHTzRdCWt2QlYnXXVRmH0tDlGTBXuzSVv52MWW0GS8QxBSXfEnPNNAyqH/w==
+	bh=Nyk6A7Xm43ba6GqhnkPuqyLDv4V2ioid2McoXcJIDec=;
+	b=gj2mNxlfLw3MoH6E0N1dMFPQ0nletsV7/nLK+9hCpiTh26/1qHNofbxVm0bORs7yUqg5
+	 ohZz46aJwlAwYvAFxRKj2L/vX7Y++lDQyib6Fbkh6WOUqtv9aMD0j+GhhirSogFLVr05j
+	 BL+rG80uu8zgyvWcB53kS7wlHhbytvhy5Q+2Ou5QTL8fi7WcY8oCnygsTHrxK+gKBXfBK
+	 2CENwgsij1F3lSXyyySImzEqnfuiO8IOctVGjeJZkojoPh69rFYqx4sDjCAmttDuLK0Ze
+	 C2RPEgfdbyfTpCTELv4aVGIDzk7ixbGO8GcFr+4t9kWNhiTz9Eq7teJGlT0nzr99xsA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ScsLd3rU;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=FKfmSIG1;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 579C5606A33A;
-	Thu,  5 Nov 2026 19:29:09 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 71C62606EE8D;
+	Thu,  5 Nov 2026 19:29:16 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ScsLd3rU
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C25A51F00A02;
-	Thu,  5 Nov 2026 19:29:07 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=FKfmSIG1
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id CB75C1F000C1;
+	Thu,  5 Nov 2026 19:29:14 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793906949;
-	bh=WG3GFTWAkJDkt5Isqmjqi8WehM/x+yRDWX3FB+RPiNc=;
+	s=k20260515; t=1793906956;
+	bh=Nyk6A7Xm43ba6GqhnkPuqyLDv4V2ioid2McoXcJIDec=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=ScsLd3rUpDEsoGG4uwZPfedtyuaPFIkZIqnroJ2uSW01MPdhv2idSC+1XlNMnTbQy
-	 u88LGM0YQBO1Mrlqg6jerItStf6+LzwF8Lsr7R4v4U4kuY2c8syp+rc9bdcq385jw0
-	 SxzzODvsIb0aRcx1R2Kvuf/rtT0cKt6nSknSCqumzX96T91e5DtA6YJURkuUNYJI9n
-	 3i8gyASNFFAdDsgsqwIHciGpNG/SqEafO+JQYVTTHIZzuSs4Uh6bsYTE+P/pxKW5OW
-	 OoiVYGwGUHk1o1xftCnj3aU84SDpJJjNmbrsAYtky19RWlV85+fbPUVDVRZD98sJ2Z
-	 VkSIOvrj7G9Xg==
-Message-ID: <sashiko-outbox-199873@kernel.org>
+	b=FKfmSIG1UN/LwBVQXjOkvO7J6MY6CD67myw1qrW+OIpPGU2VpRAVBUgr+00ywjUWT
+	 wLAm/Bi+zzx7OZ9FQjICLzYsmc1028tuWSIQeurLxH8ygiIABX308i+7xPLywURc/W
+	 7ILU32xExlaMpEA2rjZnORa7iwKiD+dh6YvkbgZ7JZXLtf1bwIEbU7n8vEFRB7/ma6
+	 Tswhvw73a0gcOElR+tDfQALqyP4oqfrfBTv8JnT2i6bX4N7GoCW5irT/YJ10btLD9v
+	 GZ/E7p4fjablgkPiTgV19jmiyQHA7eshOJIpKb/a+kzle33JJ/83PDvWIIc14A1u69
+	 eI/S8mKdJSVKA==
+Message-ID: <sashiko-outbox-199876@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH RESEND v2 10/51] zorro: size the proc files like what
- they serve
+Subject: Re: [PATCH RESEND v2 13/51] sched/psi: don't drop the last byte of
+ a trigger write
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Christian Brauner" <brauner@kernel.org>
 Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.com>, "Josef
@@ -55,12 +55,12 @@ Cc: "Linus Torvalds" <torvalds@linux-foundation.org>, "Jann Horn" <jannh@google.
  Iwai" <tiwai@suse.de>, linux-ext4@vger.kernel.org, "Chuck Lever" <cel@kernel.org>, tytso@mit.edu, "Heiko
  Carstens" <hca@linux.ibm.com>, "Vasily Gorbik" <gor@linux.ibm.com>, "Alexander
  Gordeev" <agordeev@linux.ibm.com>, "Christian Borntraeger" <borntraeger@linux.ibm.com>
-In-Reply-To: <20261104-work-procfs-bugfixes-v2-10-021c84d852e0@kernel.org>
+In-Reply-To: <20261104-work-procfs-bugfixes-v2-13-021c84d852e0@kernel.org>
 References: <20261104-work-procfs-bugfixes-v2-0-021c84d852e0@kernel.org>
- <20261104-work-procfs-bugfixes-v2-10-021c84d852e0@kernel.org>
+ <20261104-work-procfs-bugfixes-v2-13-021c84d852e0@kernel.org>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Thu, 05 Nov 2026 19:29:06 +0000
+Date: Thu, 05 Nov 2026 19:29:13 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -70,16 +70,23 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-> The files under /proc/bus/zorro hand out a struct ConfigDev and seek
-> within that, but their size says sizeof(struct zorro_dev). Say
-> sizeof(struct ConfigDev).
+> psi_write() copies at most 32 bytes of the write into its buffer and
+> terminates the buffer by overwriting its last byte. For a write shorter
+> than 32 bytes that is the last byte the writer sent. A trigger written
+> without a trailing newline loses its last digit then, "some 150000
+> 1000000" turns into "some 150000 100000", and a shorter one like
+> "some 150 10000" fails with -EINVAL because the window doesn't fit
+> anymore. Only writes that end in a newline parse as intended.
 >=20
-> Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
+> Copy at most 31 bytes and terminate behind them.
+>=20
+> Fixes: 0e94682b73bf ("psi: introduce psi monitor")
+> Cc: stable@vger.kernel.org
 > Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 
 Sashiko has reviewed this patch and found no issues.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261104-work-procf=
-s-bugfixes-v2-0-021c84d852e0@kernel.org?part=3D10
+s-bugfixes-v2-0-021c84d852e0@kernel.org?part=3D13
 
