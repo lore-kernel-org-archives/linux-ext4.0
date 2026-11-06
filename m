@@ -1,100 +1,100 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.131
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793978456;
-	b=uOKkDNgftqmvf2aJlGjpocbAY2VRleZa0jvj9YvzhPC2pBX/ZO3LwXgsZWxUOz9rmc2d
-	 P1IvzcYDHjmW6FkLgkfMZvLWoh7ZaYYddujSdPSl/1RknWK+Dc20cW51n0w+VOy6O3kQ5
-	 PxJwCQXg3pY8cVsQs3pcY6x5HfnKtuEmUYuHU81IukXgsKtrdGxFXKT6Rwcf2R/ZGvn3J
-	 gpwENmvkJHa6cqFz+LFnws0GsBoKQAX3VJzWUgl7FuO1kDRB2eVSF/boH4QBWXIrEabqt
-	 6jLVktJRWuJ3Jk5pCmLT8JhPPv7WIBmFIFzsQ06QPzB/GxwnbnvFEdMg+N63k8RZohg==
+	t=1793978558;
+	b=aGpbcsPHMvIRSvmTA3+sm0iTSISZAamxzElpvFjp3AeH6qSvxWzOrBUzpeKaMzvyjhQ9
+	 XSm97XOeYYrdVu5qc7FHKRtBYe7tPHw7mgrExIy/MEsoFIKXy9c1mU4dil2JPgOV4qRUq
+	 zA5a2XYkW5RqO+qVSHdyc9RLoHQLClvj9UW/XCGO4kUi9CAV3dCmmf5nhYsJaWJQ4Yq/Z
+	 PZ/sqW2rDsRxPyMa/5k1ItLr8lyIAcBs1Z2+0Uugc90T1+n7/rsntiLq/ibJuxqgElpzf
+	 O58ciTfwXJzpk5a7m6+4InbxemYZDdIHMxha/ceoWyIOMq2mv9OLJg0jICcBQ8IeM3w==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793978456;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793978558;
 	h=DMARC-Filter:Received:DKIM-Signature:DKIM-Signature:DKIM-Signature:
 	 DKIM-Signature:Received:Received:Received:Date:From:To:Cc:Subject:
 	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
-	 In-Reply-To:X-Spamd-Result:X-Rspamd-Server:X-Rspamd-Action:
-	 X-Spam-Flag:X-Spam-Score:X-Spam-Level:X-Rspamd-Queue-Id;
-	bh=lOfcUzUxRduq192IgOhioYawIM/WrKSe+bEbqw39O/Y=;
-	b=XgtXmoWhe4kghS6pX1Mxd23oYspzJs2pxBwAHIUmf30KJS/xyVvIjXtHEzV840Cp4NCN
-	 VeLCWm0CcNyjmHLn7tTS+/A/MhtzSclPVSFEphGpUUCNjyxX3pAuh4FUEa4XqoOJBI3L7
-	 qbXSRnVPRwKfUpScxCfStRU+Ejx/rhXLI7S+x1Ezrwg7YNWBWHcy197VwBwAhLZELSNti
-	 QpArbg/QoX59nEnRci4XA3md8isRJr0M/ck4ZCbxQrDgZB6yWcdaatcyjI0so5CpNubxK
-	 5wn8f0EsNIlgM2E6PI94ILK/p+4yfbHMDWmnfx43yi3E+K4G+hfOVGhgfvRIfRd8UKg==
+	 In-Reply-To:X-Rspamd-Queue-Id:X-Spam-Level:X-Rspamd-Server:
+	 X-Rspamd-Action:X-Spam-Flag:X-Spamd-Result:X-Spam-Score;
+	bh=Td8B4X5FVnj4bgB2qv3pedjWx6urRlwbaxzxfrv0G44=;
+	b=5V67JBM1YiF/c+KnI3jA0JJ6qBw+vJr9zI6v4kBBe2+ipFtjCE5i3BLfKXEXJu7bcJHm
+	 KvnZpQ9Dz9v74LCPSorGeljPCH68x2YRLMXRpKGRnLdDgeMuOyI1iMp4K9L51xenjENyk
+	 OxkxIUR67CoKkNhiKDZoQ3TYldvJCj3CDwqdHfNkwHULKyHWY285pjZ+aW+qCe7JCaQsj
+	 cRW1EZaynsA47VXzk3GoCxV3e1c41LyQ4hvjIc9KrOoJwWFyqRVB7p6IMpW6OaI5MOLTW
+	 z3YVaL1TgWgPQaM7MjkGYv+jneBDVu87Y0EWh6Z1TtUfpCRm0eRZNYs57+lT/BnG/gA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=none header.from=suse.cz;
 	spf=pass smtp.mailfrom=suse.cz;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=h9jZyoaq;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=38Ev3DWo;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=d4HclQzv;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=iNcNz+AH;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=MR6ztttI;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b="v/iP4Pgu";
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=MR6ztttI;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b="v/iP4Pgu";
 	arc=none smtp.remote-ip=195.135.223.131
 Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 22371606A334;
-	Fri,  6 Nov 2026 15:20:56 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 22371606A334
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 445A8606A326;
+	Fri,  6 Nov 2026 15:22:38 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 445A8606A326
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=h9jZyoaq;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=38Ev3DWo;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=d4HclQzv;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=iNcNz+AH
+	dkim=pass (1024-bit key, unprotected) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=MR6ztttI;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=v/iP4Pgu;
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=MR6ztttI;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=v/iP4Pgu
 Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 47D921F452;
-	Fri,  6 Nov 2026 15:20:53 +0000 (UTC)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 37E421F452;
+	Fri,  6 Nov 2026 15:22:36 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1793978454; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1793978556; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=lOfcUzUxRduq192IgOhioYawIM/WrKSe+bEbqw39O/Y=;
-	b=h9jZyoaq1B2i6H+A5hm/gINCxnKytThn6YMUvJtsOwN5elmRsfWoaj88+bviRl2WDV+RRb
-	5iH/WRqcvVCP1vpbSqlJhHPwpOX0nLN91g9IfZAo6vGv8KDrABtmZklGfWp1q+L+9h8NSL
-	c/i3cPWx9U2ftUep+3oHVuYVW0Hf9jg=
+	bh=Td8B4X5FVnj4bgB2qv3pedjWx6urRlwbaxzxfrv0G44=;
+	b=MR6ztttItbndgTEGozJLa6guvPlvE2QKVcXTpWQVPU+Ws5Qd6oxyTlrrBLkPJzKvV9NQVr
+	qF9T9in3l7YVAqGNOO3Cdz+E/UmjtoBlW9asyyFtMWbQaX+dykPsoRrFZYHhvdZ24eHSYs
+	w8JULqSFVrM2DCn9aOoVe/YNxQmfZVQ=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1793978454;
+	s=susede2_ed25519; t=1793978556;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=lOfcUzUxRduq192IgOhioYawIM/WrKSe+bEbqw39O/Y=;
-	b=38Ev3DWobm9B+KYBtrSzLrwn5L8Fj8SB0xjgaj34P+PN2uYJy6zPnJalFNiCBhuLu7ctRo
-	h16K74ufflA7lVCg==
+	bh=Td8B4X5FVnj4bgB2qv3pedjWx6urRlwbaxzxfrv0G44=;
+	b=v/iP4PguDtenZMTnospTO37Itc1LxvJEMXtzVBK8YIpHvyT+NZ2aLitH8jZtES3+Wf9J1I
+	K5SMGdBHoMuSEHDA==
 Authentication-Results: smtp-out2.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=d4HclQzv;
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=iNcNz+AH
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=MR6ztttI;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b="v/iP4Pgu"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1793978453; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1793978556; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=lOfcUzUxRduq192IgOhioYawIM/WrKSe+bEbqw39O/Y=;
-	b=d4HclQzv/UGG7b64v3tnPeQZO/ij/NGmRbS0pKFbsiEAx8S4arF+nq14MvkKEbbme2AHwq
-	d5TnqxX005FUv8+ls6Ek8Hub4rETsb79c5+6qiu9YfWAixgh9MEdrPJlxRFfCONRpBjr/f
-	36pZSW2wP/ITcCIPXDVADIUzuBhMLes=
+	bh=Td8B4X5FVnj4bgB2qv3pedjWx6urRlwbaxzxfrv0G44=;
+	b=MR6ztttItbndgTEGozJLa6guvPlvE2QKVcXTpWQVPU+Ws5Qd6oxyTlrrBLkPJzKvV9NQVr
+	qF9T9in3l7YVAqGNOO3Cdz+E/UmjtoBlW9asyyFtMWbQaX+dykPsoRrFZYHhvdZ24eHSYs
+	w8JULqSFVrM2DCn9aOoVe/YNxQmfZVQ=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1793978453;
+	s=susede2_ed25519; t=1793978556;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=lOfcUzUxRduq192IgOhioYawIM/WrKSe+bEbqw39O/Y=;
-	b=iNcNz+AHUW9J8Sz+onaGSvgxCoIqUZhqaSMW68R+Y9h92hACwCcECwphr80cmlCUE0c0YF
-	Hue5rh/VX2DbggBw==
+	bh=Td8B4X5FVnj4bgB2qv3pedjWx6urRlwbaxzxfrv0G44=;
+	b=v/iP4PguDtenZMTnospTO37Itc1LxvJEMXtzVBK8YIpHvyT+NZ2aLitH8jZtES3+Wf9J1I
+	K5SMGdBHoMuSEHDA==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 20A06134E9;
-	Fri,  6 Nov 2026 15:20:53 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 0715D134E9;
+	Fri,  6 Nov 2026 15:22:36 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id 2q0lAFXw7WrSKgAAD6G6ig
-	(envelope-from <jack@suse.cz>); Fri, 06 Nov 2026 15:20:53 +0000
+	id KCY6Nrvw7WpiLAAAD6G6ig
+	(envelope-from <jack@suse.cz>); Fri, 06 Nov 2026 15:22:36 +0000
 Received: by quack.suse.cz (Postfix, from userid 1000)
-	id BC05721BB5; Fri, 06 Nov 2026 16:20:44 +0100 (CET)
-Date: Fri, 6 Nov 2026 16:20:44 +0100
+	id A3E4421BB7; Fri, 06 Nov 2026 16:22:27 +0100 (CET)
+Date: Fri, 6 Nov 2026 16:22:27 +0100
 From: Jan Kara <jack@suse.cz>
 To: Christian Brauner <brauner@kernel.org>
 Cc: linux-fsdevel@vger.kernel.org, Jan Kara <jack@suse.cz>, 
@@ -102,11 +102,11 @@ Cc: linux-fsdevel@vger.kernel.org, Jan Kara <jack@suse.cz>,
 	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>, Andreas Dilger <adilger.kernel@dilger.ca>, 
 	Baokun Li <libaokun@linux.alibaba.com>, Ojaswin Mujoo <ojaswin@linux.ibm.com>, 
 	"Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, Namjae Jeon <namjae.jeon@samsung.com>, stable@vger.kernel.org
-Subject: Re: [PATCH RFC v2 05/13] ext4: don't read the inode block in
- ext4_sync_inode_metadata()
-Message-ID: <lx65jq4bdbz7srd2ff5ozjalp6clkzwuuvmdqmk5v3wsnzsv6g@holn6db5xlc7>
+Subject: Re: [PATCH RFC v2 13/13] fs: don't strand I_METADATA_WRITEBACK
+ inodes outside the LRU
+Message-ID: <lw7ukbtgicrikfqujwyspwld4a4l7736raczrago4iaicn27ve@g37wwuthduv7>
 References: <20261105-work-inode-metadata_writeback-v2-0-48628c60c336@kernel.org>
- <20261105-work-inode-metadata_writeback-v2-5-48628c60c336@kernel.org>
+ <20261105-work-inode-metadata_writeback-v2-13-48628c60c336@kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -118,7 +118,12 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20261105-work-inode-metadata_writeback-v2-5-48628c60c336@kernel.org>
+In-Reply-To: <20261105-work-inode-metadata_writeback-v2-13-48628c60c336@kernel.org>
+X-Rspamd-Queue-Id: 37E421F452
+X-Spam-Level: 
+X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
+X-Rspamd-Action: no action
+X-Spam-Flag: NO
 X-Spamd-Result: default: False [-11.51 / 50.00];
 	SUSE_INTERNAL_BYPASS(-9.00)[];
 	BAYES_HAM(-3.00)[100.00%];
@@ -148,33 +153,62 @@ X-Spamd-Result: default: False [-11.51 / 50.00];
 	TAGGED_RCPT(0.00)[];
 	DKIM_TRACE(0.00)[suse.cz:+];
 	MISSING_XM_UA(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[iloc.bh:url,suse.com:email,imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.cz:email,suse.cz:dkim]
-X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
-X-Rspamd-Action: no action
-X-Spam-Flag: NO
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,suse.cz:dkim,suse.cz:email,toxicpanda.com:email,imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo]
 X-Spam-Score: -11.51
-X-Spam-Level: 
-X-Rspamd-Queue-Id: 47D921F452
 
-On Thu 05-11-26 13:41:34, Christian Brauner wrote:
-> Without a journal ext4_sync_inode_metadata() looks the inode table
-> block up with __ext4_get_inode_loc_noinmem() which reads it from disk,
-> with readahead of the inode table on top, if it isn't cached. But a
-> block that isn't cached is neither dirty nor under writeback, so there's
-> nothing to write or to wait for.
+On Thu 05-11-26 13:41:42, Christian Brauner wrote:
+> Since commit c474bc56b6d1 ("fs: Provide way for filesystem to wait for
+> metadata writeback") ext2, ext4 without a journal, fat, udf and minix
+> set I_METADATA_WRITEBACK on an inode whose metadata was copied into a
+> buffer that might not have reached the disk yet. Only data integrity
+> writeback, i.e. fsync() and friends, clears it again. The flusher and
+> sync(2) leave it alone.
 > 
-> That read is also something we can't afford once inode eviction calls
-> ->sync_inode_metadata() from reclaim. So look the block up with
-> ext4_get_inode_loc_noio() instead and treat -EAGAIN as nothing to do.
+> inode_lru_isolate() treats every state bit other than I_REFERENCED as a
+> reason not to reclaim the inode right now. It takes the inode off the
+> LRU and relies on iput(), writeback completion or the removal of the
+> last page from the page cache to put it back once the reason is gone.
 > 
-> Note that ext4_get_inode_loc_noio() also returns -EAGAIN for a block
-> that isn't uptodate. Such a block is being read or failed to be read
-> and can't be dirty either. A block whose write failed still counts as
-> uptodate for ext4_buffer_uptodate() so the write error still gets
-> reported.
+> But I_METADATA_WRITEBACK doesn't go away on its own. iput() puts the
+> inode back on the LRU with the bit still set and the next scan takes it
+> off again. So neither memory pressure nor drop_caches can free these
+> inodes. Only fsync() and friends or unmounting the filesystem get rid
+> of them.
 > 
-> Suggested-by: Jan Kara <jack@suse.cz>
-> Cc: stable@vger.kernel.org # v7.3
+> On ext4 without a journal ext4_mark_iloc_dirty() sets the bit on every
+> ext4_mark_inode_dirty(), so even an atime update is enough. An
+> unprivileged user creating or touching lots of files grows the inode
+> cache without bound until the OOM killer comes along.
+> 
+> The inode can't just be thrown away though. An fsync() after the inode
+> was read back in wouldn't know that its metadata still has to be
+> written out. But that's no different from the metadata buffers these
+> filesystems track in their mapping_metadata_bhs. Their ->evict_inode()
+> calls mmb_sync() and that is what allowed commit 972b9dd4e418 ("fs:
+> Ignore inode metadata buffers in inode_lru_isolate()") to take those
+> buffers out of inode_lru_isolate(). With the previous patches
+> ->evict_inode() writes out what I_METADATA_WRITEBACK tracks the same
+> way, without reading anything from disk.
+> 
+> So let the shrinker reclaim inodes with I_METADATA_WRITEBACK like any
+> other clean inode.
+> 
+> Handing these inodes to a work item that syncs them and puts them back
+> on the LRU would work too. But that's a second inode reclaim offload
+> mechanism next to the deferred inode reclaim that is being worked on,
+> and it needs a reference on the inode which leaks into remount, freeze
+> and umount.
+> 
+> For stable this needs the previous patches as well. Without the
+> ->evict_inode() changes an fsync() after the inode was read back in
+> misses the inode block. Without the lookup changes ->evict_inode() reads
+> inode blocks from disk with __GFP_NOFAIL allocations from reclaim. v7.3
+> also still has bfs which sets I_METADATA_WRITEBACK too, so the backport
+> needs the same two changes for bfs.
+> 
+> Fixes: c474bc56b6d1 ("fs: Provide way for filesystem to wait for metadata writeback")
+> Cc: stable@vger.kernel.org # v7.3; see patch description
+> Reported-by: Josef Bacik <josef@toxicpanda.com>
 > Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 
 Looks good. Feel free to add:
@@ -184,43 +218,27 @@ Reviewed-by: Jan Kara <jack@suse.cz>
 								Honza
 
 > ---
->  fs/ext4/inode.c | 12 +++++++-----
->  1 file changed, 7 insertions(+), 5 deletions(-)
+>  fs/inode.c | 5 ++++-
+>  1 file changed, 4 insertions(+), 1 deletion(-)
 > 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 4484c2383eaf..18362580097f 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -6815,22 +6815,24 @@ int ext4_sync_inode_metadata(struct inode *inode, struct writeback_control *wbc)
->  	if (WARN_ON_ONCE(EXT4_SB(inode->i_sb)->s_journal))
->  		return -EFSCORRUPTED;
->  
-> -	err = __ext4_get_inode_loc_noinmem(inode, &iloc);
-> -	if (err)
-> -		return err;
->  	mmb = READ_ONCE(EXT4_I(inode)->i_metadata_bhs);
->  	if (mmb) {
->  		err = mmb_sync(mmb);
->  		if (err)
-> -			goto out;
-> +			return err;
->  	}
-> +	/* A block that isn't cached is neither dirty nor under writeback. */
-> +	err = ext4_get_inode_loc_noio(inode, &iloc);
-> +	if (err == -EAGAIN)
-> +		return 0;
-> +	if (err)
-> +		return err;
->  	sync_dirty_buffer(iloc.bh);
->  	if (buffer_write_io_error(iloc.bh)) {
->  		ext4_error_inode_block(inode, iloc.bh->b_blocknr, EIO,
->  				       "IO error syncing inode");
->  		err = -EIO;
->  	}
-> -out:
->  	brelse(iloc.bh);
->  	return err;
->  }
+> diff --git a/fs/inode.c b/fs/inode.c
+> index 1cb6293b237a..16ebd686d681 100644
+> --- a/fs/inode.c
+> +++ b/fs/inode.c
+> @@ -947,9 +947,12 @@ static enum lru_status inode_lru_isolate(struct list_head *item,
+>  	 * they're already on the LRU, and this can make them
+>  	 * unreclaimable for a while. Remove them lazily here; iput,
+>  	 * sync, or the last page cache deletion will requeue them.
+> +	 * Nothing requeues them for I_METADATA_WRITEBACK, ->evict_inode()
+> +	 * writes that out instead.
+>  	 */
+>  	if (icount_read(inode) ||
+> -	    (inode_state_read(inode) & ~I_REFERENCED) ||
+> +	    (inode_state_read(inode) &
+> +	     ~(I_REFERENCED | I_METADATA_WRITEBACK)) ||
+>  	    !mapping_shrinkable(&inode->i_data)) {
+>  		list_lru_isolate(lru, &inode->i_lru);
+>  		spin_unlock(&inode->i_lock);
 > 
 > -- 
 > 2.53.0
