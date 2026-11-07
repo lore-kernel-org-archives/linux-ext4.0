@@ -1,73 +1,94 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=74.125.82.170
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794069982;
-	b=RNh5wlnikh9hM3seg2Z9rq3Aq6CChwRFgLX+d1XOmgd7u8hxwgTTlYK6N9/f4bWCDX8D
-	 8Rr2a8XT4yPBOCIwTx78INEIEj1C7kQQObdDVxtE/dHRozuDhikn9RUIlQguHifU76nYm
-	 pWx5PsH9uPJ+2fm9NjGe102vbuBpEO+RvGAiKo3XpoNeB/91jx76DIoU8K6WRtYvqx8kX
-	 Kc+AAHotmi5H93myO32zKbOT/UQmEEPRvPI8XIHopzfhQGFvqZeGhCOoycFmUCrBLUVHI
-	 S5e4AUKqWru1d91AAsQ/8thkTo9alggZBZcUb9AeeNFN8qHf7lrQjya1UliDYFi1ApQ==
+	t=1794079806;
+	b=1xutz604ftRePgAuQNeASwQnyL1vvk6yyu4DGTkHxzSmESVTYXXyvYwEF4QyFjWO9Q+5
+	 vCBuVsGjTxri1b48aNTqjfkcOxSt2uVTRRumMjzbS4eb9472Eu7jJ0KEnMKCSM6OBZ1U7
+	 wFc93y7G4pXDTjvclJcWAeiR02whLMtdjul8jQXBYO+cWvNZlGiZHGnEOPzwdd51nqGCt
+	 zVvdgqTB5WTPSZNKhbhLLd54dO12Y30sZTY30IMfB8jU7YmiWM4zRpUjJNg+rrPFL/h2b
+	 TrzOrxdTrN3xS9nJUojGLHxlDgne553jG2Ka/ylp0UpCvTLUJn3W28TR85gp8cPvgyw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794069982;
-	h=Received:DKIM-Signature:Received:Received:X-ME-Sender:
-	 X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:X-Mailer:
-	 MIME-Version:X-ThreadId:Date:From:To:Cc:Message-Id:In-Reply-To:
-	 References:Subject:Content-Type:Content-Transfer-Encoding;
-	bh=iQPFcguwJfJnGIUghj3vW2cnp0ZTKsyoI6OiYKG+trA=;
-	b=fjRHb47nKLsx1wy1GbPkMEGR+EqiDglnweWrt0G3kqWF6H6XFzloVWk/bzNBZH5uf7bk
-	 UDCg3OdSbJP/VDllYKt7b+K6TcV7nY7HnaGFou/njEUEU9X1grDttckHl2jhp1Fuhr/05
-	 QCDNWPOMcGhf4AVOrPSNSsYliKmETEaSSAw25ivGnDQwJA+kl8u/h9mbRf0sKrTTN6vqG
-	 SsiiugnK5x0zK5x1fcUTXw4xtlFEtCtI7NOkALdfCMrHxPlH5SzVCmOpg8i/328Z286fp
-	 Ta/8tGPrZiG09C0WYDOZgp8CCwY+RpbdsbWIn/g/okvTnZRHSlTjLJK2rEvUAvsfk9Q==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794079806;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
+	 From:To:Cc:Subject:Date:Message-ID:X-Mailer:In-Reply-To:References:
+	 MIME-Version:Content-Transfer-Encoding;
+	bh=gXuHBD2/RzkLVBCTVEUe11Pbt4G0CDAmveDcYmqOdLQ=;
+	b=gQM8LIIpOtJ7sdJ5o5L6Soa8PmH/fX/bHX54Tk9+VC7fmBnZfO0yNR6jw39goiO2F3Iw
+	 Z9HBmY5lnh/s8LW1MG+32eFBIjJy9w6aX4CTCzXOXW3JQX0ucCFCOk7z2Q4V9yQC3FPzW
+	 BQ8XxACJ7ilkOPXuTsLRERNedrnu7PpMv+nghEVI0ddsRpYPZORbCk4d6v1R25XyPcnAZ
+	 3t4CStNb9Q/4T90SVpKolHboz26hy68XyCYmFDDJY19NeQAc4oSj0rBJg+EWIpEBDIlji
+	 E6qJJzf6OKYzZNZzzwJ3IOXt+wOSyrU8O7PYIF+e0Tdyw+MDwElOxCjJZZka2fJE1SA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=VM9YuiWn;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=pass header.from=gmail.com;
+	spf=pass smtp.mailfrom=gmail.com;
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=EmJrhyqw;
+	arc=none smtp.remote-ip=74.125.82.170
+Received: from mail-dy1-f170.google.com (mail-dy1-f170.google.com [74.125.82.170])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6DCAE606D80F;
-	Sat,  7 Nov 2026 16:46:22 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DFE93606A326
+	for <linux-ext4@vger.kernel.org>; Sat,  7 Nov 2026 19:30:05 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org DFE93606A326
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=VM9YuiWn
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 54C841F008A6;
-	Sat,  7 Nov 2026 16:46:20 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794069982;
-	bh=iQPFcguwJfJnGIUghj3vW2cnp0ZTKsyoI6OiYKG+trA=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=VM9YuiWnX2AxixylKQUoq+kcitnOG5EzbF2X9QExC8KlL2MDA2iyK+MohWy7Is5c9
-	 XVSDhAm8H/yBVlmhN+3IQseSQF2jGl1M+I2ez83FRgJrdtIoEzyyJH3UteHcMNBF3J
-	 CIxYy49tvs705sBEv6+oNmDe+XeTRlWWJAeIlasE4z+WjzM0vX46Vs29hEnM0d2wZb
-	 W1dkb+g9MV6DZn1boZSIdWYUouaQYtnA2TMkW/lFIttT5mLiUtyZmeYkxA+HrJ549d
-	 6AW15GkyWYPIpCmvFv4xURMQ9MDEdEzTK3dhB19k8mh2nE5zuDwmhWf+JnyyfSm3ph
-	 PLuUxIL3o5qoA==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 8E1DEF40067;
-	Sat,  7 Nov 2026 11:46:19 -0500 (EST)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Sat, 07 Nov 2026 11:46:19 -0500
-X-ME-Sender: <xms:21Xvams7wVEmHspjWmbwhLpib2xNIptoVYE-80X8WqZqZcb1XPT-CA>
-    <xme:21XvamRC29Zg9ykNiW0vwrANU0AC0j8D3WACLizfxgWZ2OLmopVNcj-qyZCZTBqLn
-    FnUPDv24PUXWdCZGoMgnY4GISxXuJoqj_FJTWVyN8AgQyPiOZVj9Iah>
-X-ME-Proxy-Cause: dmFkZTEtlYS0+TY9rHJo1vCDNDBgG/0TlQu1ZgAaexztyT5e7mSb39t8Qfa0vTeatlfpwP
-    5ATotugI+S69Aq5UXpsB8wdUtjDvDqFpA717Gwij4u69sZUh6KSv9WWk6Jq//TgMNLfNVi
-    Uz7LSIH08qzFkhYYh9/35LIN1zJWwwarlCDU1iQg4wt21opJj09VkTQ37+xtOv284TX8B8
-    yl81LC5xmVZyo6A9GjLU5A0F5I2dYlaICl6rU5kYsMelZGpwWY/AOYhI+JMNgaonKgFQaK
-    ku+gQcY5aJl2LKRp0R1zioHZwwCKpV/Rgf4D5rEiKrG8xxXM/BULju0eld0dqqIZyyKUfJ
-    GW19ru42mbqsCpPSyXWqDBJxl5bN5OUlD62byk006CGbw520QKU/yBNHckj8/a7Aw/pswE
-    cEiGWvUnIlIDfqqhyBtbUxKdieVFtOg/Nh7ULYvIP/0NmKpXY6WcXU9anidEQ88SbIQjDc
-    p8Yn7T3r8Bo4iwmbKTgS1vVIcIOOKv75MyWqZv/+HCroxzEXbbFU7dyYNipmhzrf5va650
-    CqAuf2hfcDqsbABPPTHxkCEDCl/Z7jZw9/P1SXCFxyI0OJaeowmrBr44zHzsSCW7ueEBOE
-    v4mcadw/NREalORTbhxI6N8vjS1sruRGJ2ATEo0TnxHIE3AAjUR+ONXu5PSg
-X-ME-Proxy: <xmx:21XvanTCUxiRZL_4tn_RpzN8CzyhB8rLiSKq-UOIyotAbmuEjI7sGA>
-    <xmx:21XvaurCk3dCumlVKotKWDf68V8MDwwzlx-dEeK7pWGM9HqcR4oZkQ>
-    <xmx:21XvavRZiOL5frHmdBkAVeJ6cjpU89f7VYn1Ikw-RN984COqc-2ICA>
-    <xmx:21XvaoJKJLPj7VOMrYps6zuTHuKL8ZgDDK4Gr4RreYxXio5VOww0yA>
-    <xmx:21Xvag3Tq78e8w_19g2SFkvau64M8X7d5PUoh2FKftcFG01vhemSEsb1>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 5E62D782738; Sat,  7 Nov 2026 11:46:19 -0500 (EST)
-X-Mailer: MessagingEngine.com Webmail Interface
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=EmJrhyqw
+Received: by mail-dy1-f170.google.com with SMTP id 5a478bee46e88-33fb4680717so21135eec.1
+        for <linux-ext4@vger.kernel.org>; Sat, 07 Nov 2026 11:30:05 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20260707; t=1794079805; x=1794684605; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=gXuHBD2/RzkLVBCTVEUe11Pbt4G0CDAmveDcYmqOdLQ=;
+        b=EmJrhyqwdMBGj8faFamDG8CXysxUzL9vF+lZ/IQEJwMrxS2JxabiMVVLAWJT5xbBeT
+         JT1VEtLA+4uhNbtcQKzxjm9otT2xluOS21ODrv484pt05jW95Pgeq004rg5whB4X8KLN
+         8htfeqUYtBENdzxG6wiqWUf3Cj+V/nKmMAoP8N/JqXyqXe3pPMYykKruXoRO/rS0/otT
+         YBMqbfL3iE//3crO7MmdJ2qYqsTY0/owRVEgQALPs+GF4C+qgdyh5ARBSXONC77fSWca
+         KPFrHxLH5iW6blt+MPDOp6B/rUkkTGKSZ03fOU7y3i1+wNl6GBt8Zhc7LyPhkQ6keVhl
+         OCkw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1794079805; x=1794684605;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
+         :to:cc:subject:date:message-id:reply-to:content-type;
+        bh=gXuHBD2/RzkLVBCTVEUe11Pbt4G0CDAmveDcYmqOdLQ=;
+        b=2MIlnb89NNApz+jKZni2OCrP6Z+2gk5DSX78PyXNluST6Okq7HjMrExswrLfKs9b+k
+         Jue5UucZaqaD0anzUHj4PNZO2iNc5Ck54qqVyDC+1YM1vu77yL505EWkGc0B19vFOJ3/
+         EWty3mrfm6OPenQAIvxO/1NVdUMhvT4aqByE4wgLGvKtyBs5WyEhDrVCg21nKjBzorl2
+         q522jI6LH8jv3OMnm7VgSZdfyw2jsWGSzhq9Oqa8GZXMiDDd1FOqy2N+EoFlPhhdUWT0
+         Vlphwna2FfN+WtEVIpldkz5u0QGujE50sEIwry3UAuzHCa+2fs/i8yPc0+SX/FSajq+Z
+         saDA==
+X-Forwarded-Encrypted: i=1; AL+hErGqjjjlmoIdsqG/I0cQb5sJ8GdmPzqGla3+U2sYgK62gDlVXh9NniFAEe5qZxlx9s4zBZz3R6P0l45v@vger.kernel.org
+X-Gm-Message-State: APuU4Z/wNq0l7zDs3N6bFbYlS0LUd147lio5PMZTILEa9Ah91cWnluUX
+	AyNf0wRcwzdUP6Qr3lFISF8mSQKNwPvQvh4XaOB/fROSVqbV/39H1nkc
+X-Gm-Gg: AYBFou1dJIu9ejCEHtU2AxMwsNsWQSQsFHYlYTeDfCcAZ/KihRrEZWnyV7F1QpDd+qZ
+	Bdq23tOHLOB3qKEIRgEjXH6hQwRY3735FiCmPfnGBlZEWiKZeiVIrnWUKGFrx9xJ+nEPArA9s4P
+	DhjCT/2vfCud97AqSRb2t8dWWlpkcmvlVt9X6foYVFnHfOkM3ZOQdmx4X08lO0WoEHPk89az5E9
+	ryFnwFlc/rWMYKjsimL08VgRMGv2UlAIrFprjoJAvq+F9lGy4gXdSkYkMpx1ekcBCY/ADIYxt+V
+	DDX/CQn04x/l/AEB7JOTpKlsseDipgbDrBp3Ggj/VtxuWFz1fogbVhXDMX5oYbTiWDHZFBg/hNm
+	FcXqEph4Qmopr7DoNbR+SOn+Z3EeP88rIWcu//ckzG11M2HDjqyEZxAZnG1sB6ihGauQhoa2hhg
+	rC8g1/qzXaFGY6ZkQa4vNgt+U2JsgkkrSIKcjea38Oh7SBpXG1xYu9EBG8bJHbq7038XAUw3VgP
+	PAMy/3Swj08oBNo8kh4rtQZgU9lWTYwRPri5ZyH9hUG6wOy241ZEELP5Ip/by98eyxsOCFI9niN
+	7RTSXyEHandxhQt7HqDEWL9ePgqtvQADW1wZlIkIG4ipiZKwvdi8aK8l6+u7IJwigfBtNg==
+X-Received: by 2002:a05:7301:dd8f:b0:369:21a:dcca with SMTP id 5a478bee46e88-37256326c2dmr68219eec.10.1794079804988;
+        Sat, 07 Nov 2026 11:30:04 -0800 (PST)
+Received: from obadmin-Precision-3680.atlascopco.group ([136.226.232.167])
+        by smtp.gmail.com with ESMTPSA id 5a478bee46e88-36faaa8f1e9sm17204814eec.28.2026.11.07.11.30.03
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Sat, 07 Nov 2026 11:30:04 -0800 (PST)
+From: Sahaj Chaudhari <sahaj123.sc@gmail.com>
+To: fstests@vger.kernel.org
+Cc: Zorro Lang <zlang@kernel.org>,
+	Jan Kara <jack@suse.cz>,
+	linux-ext4@vger.kernel.org
+Subject: [PATCH v2] ext4: test reserved GID block allocation
+Date: Sun,  8 Nov 2026 01:00:50 +0530
+Message-ID: <20261107193050.330685-1-sahaj123.sc@gmail.com>
+X-Mailer: git-send-email 2.43.0
+In-Reply-To: <20261012112109.3363168-1-sahaj123.sc@gmail.com>
+References: <20261012112109.3363168-1-sahaj123.sc@gmail.com>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -77,67 +98,129 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-X-ThreadId: AjxZksNfZZQV
-Date: Sat, 07 Nov 2026 11:45:59 -0500
-From: "Chuck Lever" <cel@kernel.org>
-To: "Christian Brauner" <brauner@kernel.org>, linux-fsdevel@vger.kernel.org
-Cc: "Linus Torvalds" <torvalds@linux-foundation.org>,
- "Jann Horn" <jannh@google.com>, "Josef Bacik" <josef@toxicpanda.com>,
- "Chris Mason" <mason@kernel.org>, "Jeff Layton" <jlayton@kernel.org>,
- NeilBrown <neil@brown.name>, "Eric Dumazet" <edumazet@kernel.org>,
- "Thomas Gleixner" <tglx@kernel.org>,
- "Alexander Viro" <viro@zeniv.linux.org.uk>,
- "Jonathan Corbet" <corbet@lwn.net>, "Christoph Hellwig" <hch@lst.de>,
- "Greg Kroah-Hartman" <gregkh@suse.de>,
- "Joel Granados" <joel.granados@kernel.org>, "Kees Cook" <kees@kernel.org>,
- "Jan Kara" <jack@suse.cz>, "Jan Kara" <jack@suse.com>,
- linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
- linux-acpi@vger.kernel.org, linux-kselftest@vger.kernel.org,
- linux-s390@vger.kernel.org,
- "linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>,
- linux-um@lists.infradead.org, linux-wireless@vger.kernel.org,
- "Linuxppc Dev" <linuxppc-dev@lists.ozlabs.org>, netdev@vger.kernel.org,
- ntfs3@lists.linux.dev, platform-driver-x86@vger.kernel.org,
- coreteam@netfilter.org, kexec@lists.infradead.org, linux-pci@vger.kernel.org,
- linux-sound@vger.kernel.org, netfilter-devel@vger.kernel.org,
- dri-devel@lists.freedesktop.org, ibm-acpi-devel@lists.sourceforge.net,
- jfs-discussion@lists.sourceforge.net, linux-alpha@vger.kernel.org,
- linux-arm-kernel@lists.infradead.org, linux-cifs@vger.kernel.org,
- linux-fbdev@vger.kernel.org, linux-hwmon@vger.kernel.org, linux-mm@kvack.org,
- linux-sh@vger.kernel.org, linux-usb@vger.kernel.org,
- samba-technical@lists.samba.org, sparclinux@vger.kernel.org,
- linux-m68k@lists.linux-m68k.org, linux-doc@vger.kernel.org,
- linux-serial@vger.kernel.org, linux-atm-general@lists.sourceforge.net,
- "Takashi Iwai" <tiwai@suse.de>, linux-input@vger.kernel.org,
- linux-raid@vger.kernel.org, linux-ext4@vger.kernel.org,
- linux-modules@vger.kernel.org, linux-debuggers@vger.kernel.org
-Message-Id: <a1e2d05f-08c6-41ac-a8f9-6985ee00dc97@app.fastmail.com>
-In-Reply-To: <20261104-work-procfs-net-v2-10-221e2437fed1@kernel.org>
-References: <20261104-work-procfs-net-v2-0-221e2437fed1@kernel.org>
- <20261104-work-procfs-net-v2-10-221e2437fed1@kernel.org>
-Subject: Re: [PATCH RESEND v2 10/13] SUNRPC: let procfs own the wait queue of the
- procfs channel files
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 
+Create a small ext4 filesystem with a nonzero reserved block pool and a
+reserved GID stored in the superblock. Fill ordinary free space as an
+unprivileged user outside that group, verify that another allocation is
+denied, then verify that the same user can allocate a block with the
+reserved group as its primary and only supplementary group.
 
+This exercises loading s_resgid from the superblock rather than overriding
+it with a resgid mount option, and detects the regression fixed by:
 
-On Wed, Nov 4, 2026, at 4:13 PM, Christian Brauner wrote:
-> cache_poll() sleeps the poller on queue_wait, which went back to being
-> a static queue so that a poll() on a procfs channel file can't be left
-> on the queue of a cache_detail that its network namespace freed. procfs
-> owns the queue poll() uses now and it outlives the file, so the procfs
-> channel files leave the poll_wait() to procfs and an upcall wakes their
-> pollers through proc_poll_notify(). The channel entry is remembered in
-> the cache_detail for that and forgotten before the entries are removed.
-> The rpc_pipefs files keep sleeping on queue_wait, procfs has nothing to
-> do with them.
->
-> Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
-> ---
+commit c87abbab6147 ("ext4: fix incorrect function call when initializing s_resgid")
 
-Acked-by: Chuck Lever <cel@kernel.org>
+Use su and xfs_io for the credential changes and allocations instead of
+adding a dedicated C helper. Exclude mount options that override the
+reserved IDs and skip configurations without the required users, groups
+or fallocate support.
 
+Link: https://lore.kernel.org/r/20261008065651.3517824-1-sahaj123.sc@gmail.com
+Signed-off-by: Sahaj Chaudhari <sahaj123.sc@gmail.com>
+---
+Changes since v1:
+- Replace the C helper and its build registration with su and xfs_io,
+  following Jan's and Zorro's suggestions.
+- Set both primary and supplementary groups explicitly, and compare
+  ordinary and reserved-GID allocations using the same unprivileged UID.
+- Exclude resuid/resgid mount overrides; leave _user_do unchanged.
 
+Review:
+https://lore.kernel.org/all/j2dthue3fzup753jrndn6kh44qfvihx2bylmiwcoxubnrxpgdk@zx6shyx3hbb6/
+https://lore.kernel.org/all/aurRSqrRkEfyp6M7@zlang-mailbox/
+
+Testing:
+- Exact ./check ext4/309 in x86-64 QEMU: ordinary allocation is denied
+  after filling free space; reserved-GID allocation succeeds on the fixed
+  kernel. The pre-c87abbab6147 kernel fails at the reserved-GID allocation
+  as expected. Both TEST_DEV and SCRATCH_DEV pass e2fsck -fn afterward.
+- Exact ./check ext4/309 passes natively on an AM642 ARM64 board running
+  6.12.57-ti-gd00ea986335d; both loop-backed filesystems pass e2fsck -fn.
+- Validation is limited to ext4/309, not the full xfstests suite.
+
+ tests/ext4/309     | 63 ++++++++++++++++++++++++++++++++++++++++++++++
+ tests/ext4/309.out |  2 ++
+ 2 files changed, 65 insertions(+)
+ create mode 100755 tests/ext4/309
+ create mode 100644 tests/ext4/309.out
+
+diff --git a/tests/ext4/309 b/tests/ext4/309
+new file mode 100755
+index 00000000..3bd12009
+--- /dev/null
++++ b/tests/ext4/309
+@@ -0,0 +1,63 @@
++#! /bin/bash
++# SPDX-License-Identifier: GPL-2.0
++# Copyright (c) 2026 Sahaj Chaudhari.  All Rights Reserved.
++#
++# FS QA Test No. 309
++#
++# Verify that the ext4 reserved GID can allocate blocks after ordinary
++# free space is exhausted.
++#
++. ./common/preamble
++_begin_fstest auto enospc quick
++
++_exclude_fs ext2
++_exclude_fs ext3
++_exclude_scratch_mount_option "resuid=" "resgid="
++
++_fixed_by_kernel_commit c87abbab6147 \
++	"ext4: fix incorrect function call when initializing s_resgid"
++
++_require_scratch
++_require_command "$TUNE2FS_PROG" tune2fs
++_require_xfs_io_command "falloc"
++_require_user
++_require_group
++RES_GROUP=$qa_group
++_require_group root
++FILL_GROUP=root
++
++echo "Silence is golden"
++
++RESGID=$(_cat_group | awk -F: -v group="$RES_GROUP" \
++	'$1 == group { print $3 }')
++FILLGID=$(_cat_group | awk -F: -v group="$FILL_GROUP" \
++	'$1 == group { print $3 }')
++[ "$RESGID" != "$FILLGID" ] || _notrun "reserved and fill groups are identical"
++[ "$(id -u "$qa_user")" -ne 0 ] || _notrun "test user is root"
++TEST_FILE="$SCRATCH_MNT/ext4_resgid.fill"
++
++MKFS_OPTIONS="-m 10 -N 1024 -O ^has_journal $MKFS_OPTIONS" \
++	_scratch_mkfs_sized $((16 * 1024 * 1024)) 4096 >>"$seqres".full 2>&1
++"$TUNE2FS_PROG" -u 0 -g "$RESGID" "$SCRATCH_DEV" >>"$seqres".full 2>&1
++_scratch_mount
++
++touch "$TEST_FILE"
++chmod 0666 "$TEST_FILE"
++
++su -s /bin/bash -g "$FILL_GROUP" -G "$FILL_GROUP" "$qa_user" -c \
++	"$XFS_IO_PROG -f -c 'pwrite 0 16M' '$TEST_FILE'" \
++	>>"$seqres".full 2>&1
++
++if su -s /bin/bash -g "$FILL_GROUP" -G "$FILL_GROUP" "$qa_user" -c \
++	"$XFS_IO_PROG -c 'falloc 16M 4k' '$TEST_FILE'" \
++	>>"$seqres".full 2>&1; then
++	_fail "ordinary user allocated from the reserved pool"
++fi
++
++su -s /bin/bash -g "$RES_GROUP" -G "$RES_GROUP" "$qa_user" -c \
++	"$XFS_IO_PROG -c 'falloc 16M 4k' '$TEST_FILE'" \
++	>>"$seqres".full 2>&1 || _fail "reserved GID failed to allocate a block"
++
++_scratch_unmount
++status=0
++exit
+diff --git a/tests/ext4/309.out b/tests/ext4/309.out
+new file mode 100644
+index 00000000..56330d65
+--- /dev/null
++++ b/tests/ext4/309.out
+@@ -0,0 +1,2 @@
++QA output created by 309
++Silence is golden
 -- 
-Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
+2.43.0
