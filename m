@@ -1,70 +1,165 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=188.68.63.98
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.131
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794034415;
-	b=NAcOB1QeQvYHN+NpORCytkX2QWGGTvQgcIRkj0PAVWFp6JpirHezU32FGz3EN9eXFk8e
-	 Ty1YtqRK1S311bmlWG1LpoYquS/D+sHq2iCW8cYPCuy8k16CunjTXN7YJLyHZl9gGYLut
-	 V7BPAYE6TEum+abSQsDIsiNQNtDeYwypSpllP2MzOotwg1SwVMc86qptH8LaejOhNTzAf
-	 NGVypik+9KKvywvip0EGYlLF74jGhtrxzPdt3p7nEELLa3BlGwiFR/EwI5VqtYpuTL1xN
-	 VegDeAric3ssmAKhOoSBw5lUiuiZB697ec1adkCmDZpHECB2O2aqg5vkpjKEW+FENTQ==
+	t=1794042019;
+	b=e2fPw7Y2rRfKFAQfgwC5LjDb0RhR4W31LDr7IxSWb6hORKRWERUu+1WEtFOl92kMR+Zo
+	 KghAG8ZirLzfM7O1gCouNZzUt68wkwJV6tgZ3db2UgMcM0W2QqUOf+0rU7XvntFCPDPTH
+	 6DoYyeBDsdz0YtWcS2VHIGxLgZ5S5ulHoTuNVuDTsgWQczKtNgnwyeuE7JnG7oBfgc8bB
+	 MRbq+6xUakG07XZz2ZBE9I5J17UE1f/LP2TegmIelH/wNPkqoa6dkh2qRke1qcsAe+adS
+	 QjuLnrXh/kdciTOZEvHuYPlZFVJTgL6hxN2rk8dC6vB84lMaEuI+53+LWws/WsqcQwQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794034415;
-	h=DMARC-Filter:Received:DKIM-Signature:Received:Received:Received:
-	 Received-SPF:Message-ID:Date:MIME-Version:User-Agent:Subject:To:Cc:
-	 References:From:Content-Language:In-Reply-To:Content-Type:
-	 Content-Transfer-Encoding:X-PPP-Message-ID:X-Rspamd-Server:
-	 X-Rspamd-Queue-Id:X-NC-CID;
-	bh=sgjFvW4wEENdKL/320svk5+ImV/LvW07zU9oF/dDyws=;
-	b=DrxHaG/hSyvPHJQ8kQ9sKwaBUERDpwTUtsL/MpibowPXXWu/w6zqYLCYwRAWllSlPMRO
-	 tS3U+KibV9zz7hHssDZnVImIqqWztGxRHS8z0D0sOg+98PpDdTzrvb4TlI5Ky/CoAjUjG
-	 1bXLRCVfeVpP30vzexqwIiUgkTRFvS/AVEh1zrZNXG9xMwHoFljRzrxmAqE5Q/A7/lBiZ
-	 8boXK857ewJWB1sI41O2kPW6f4lBksKQGJlMG7Meji5lutHjNtqoHhDvcwbxCwUDcOCCx
-	 xQgoaz4i7i/obB0Ve/86pMPib6e6tPtmpXYJI+ZtSJJ2bAUkPBf6p4qfAB1Qt2Uq7Mg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794042019;
+	h=DMARC-Filter:Received:DKIM-Signature:DKIM-Signature:DKIM-Signature:
+	 DKIM-Signature:Received:Received:Date:Message-ID:From:To:Cc:Subject:
+	 In-Reply-To:References:User-Agent:MIME-Version:Content-Type:
+	 X-Spamd-Result:X-Rspamd-Server:X-Rspamd-Action:X-Spam-Flag:
+	 X-Spam-Score:X-Spam-Level:X-Rspamd-Queue-Id;
+	bh=2pUKIrJSjwOPfwhHfcJFzwrup6gCdhbZ3XgMEjE3Sk8=;
+	b=5D5/GGSofHUZCuwGhKeC7U+sxjjoltIbDqU/QjDFsQ2ceMBoFrfaSYU7jb/1Ur+pAwN2
+	 4akgWSfdDrLoE000HVYCnn60RmiK0eCIHPypjyVxYdt8JNhTKiEIfkBfRVwH+MAFkhPND
+	 ERS+RS4lfKADF/CttTLIpX8/Ad3MYi+RL+VPHI9LVJVgIz192TU4HV7DRen8mHy+lfBja
+	 yqu//OkUoKd5MDeSIJZ0cSXHezE/3klqx2NGRqL9RhqqraIv/TIetiP7yEbkhA/FjOkMW
+	 /MaRIhfGsrx4+1WO4ZDaqTZ+lEa3tvkeGgxoDgaZ1KojurV2QCO/cdhlAoO0t1CbQLw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=leemhuis.info;
-	spf=pass smtp.mailfrom=leemhuis.info;
-	dkim=pass header.d=leemhuis.info header.i=@leemhuis.info header.a=rsa-sha256 header.s=key2 header.b=bWceHprm;
-	arc=none smtp.remote-ip=188.68.63.98
-Received: from relay.yourmailgateway.de (relay.yourmailgateway.de [188.68.63.98])
+	dmarc=pass header.from=suse.de;
+	spf=pass smtp.mailfrom=suse.de;
+	dkim=pass header.d=suse.de header.i=@suse.de header.a=rsa-sha256 header.s=susede2_rsa header.b=AwkH5jyM;
+	dkim=pass header.d=suse.de header.i=@suse.de header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=JTEoL3TZ;
+	dkim=pass header.d=suse.de header.i=@suse.de header.a=rsa-sha256 header.s=susede2_rsa header.b=nvoaJ0mE;
+	dkim=neutral header.d=suse.de header.i=@suse.de header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=DZerp02L;
+	arc=none smtp.remote-ip=195.135.223.131
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A98FC606A32E;
-	Sat,  7 Nov 2026 06:53:28 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org A98FC606A32E
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=leemhuis.info
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=leemhuis.info
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B62B6606A32D;
+	Sat,  7 Nov 2026 09:00:18 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org B62B6606A32D
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=leemhuis.info header.i=@leemhuis.info header.a=rsa-sha256 header.s=key2 header.b=bWceHprm
-Received: from mors-relay-2501.netcup.net (localhost [127.0.0.1])
-	by mors-relay-2501.netcup.net (Postfix) with ESMTPS id 4jM6Dn363Vz6CMg;
-	Sat,  7 Nov 2026 07:52:41 +0100 (CET)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=leemhuis.info;
-	s=key2; t=1794034361;
-	bh=W4I87TQG2Scg90wu2d+/OtsosugT18Ycf+G0ZMsoPdU=;
-	h=Date:Subject:To:Cc:References:From:In-Reply-To:From;
-	b=bWceHprmzPdDuOSWyaiV2A1lJWko/B9eKOvjrjyBsa1JQf9sjeb06jroqtYWIMb9C
-	 Wcpn0pzKehCp5i3Hr+GPl8p++5DVZ+duvMx/3umEKKnD805DUyIAxW4sb1bVt1ccRi
-	 4eBYPuh+5qjkGkwA9kY9nsA0uQ8dLE8H2AwDj4SB9jONgEppdP4J8Hwu43LIoIsYS2
-	 4Zpk3qLxRrf9OSbTgFRZyTOuRMLnf84Tm4LglX5L9cIltXFZp6A4wmbzDhWRFthATn
-	 GsKmwRw8c9r+wpIkN/xJ0rcCCVD5fF9WcK8GTWid7jqRoAuWY9Q3LBXjLf7u0kmiXc
-	 B6KApkGgRrwIw==
-Received: from policy02-mors.netcup.net (unknown [46.38.225.35])
-	by mors-relay-2501.netcup.net (Postfix) with ESMTPS id 4jM6Dn2N8Qz4xlH;
-	Sat,  7 Nov 2026 07:52:41 +0100 (CET)
-Received: from mxe9fb.netcup.net (unknown [10.243.12.53])
+	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.a=rsa-sha256 header.s=susede2_rsa header.b=AwkH5jyM;
+	dkim=pass header.d=suse.de header.i=@suse.de header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=JTEoL3TZ;
+	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.a=rsa-sha256 header.s=susede2_rsa header.b=nvoaJ0mE;
+	dkim=neutral header.d=suse.de header.i=@suse.de header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=DZerp02L
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange ECDHE (P-256) server-signature RSA-PSS (2048 bits) server-digest SHA256)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by policy02-mors.netcup.net (Postfix) with ESMTPS id 4jM6Dm10GYz8sbs;
-	Sat,  7 Nov 2026 07:52:40 +0100 (CET)
-Received: from [IPV6:2a02:8108:8984:1d00:a0cf:1912:4be:477f] (unknown [IPv6:2a02:8108:8984:1d00:a0cf:1912:4be:477f])
-	by mxe9fb.netcup.net (Postfix) with ESMTPSA id 79B805F987;
-	Sat,  7 Nov 2026 07:52:30 +0100 (CET)
-Authentication-Results: mxe9fb;
-        spf=pass (sender IP is 2a02:8108:8984:1d00:a0cf:1912:4be:477f) smtp.mailfrom=regressions@leemhuis.info smtp.helo=[IPV6:2a02:8108:8984:1d00:a0cf:1912:4be:477f]
-Received-SPF: pass (mxe9fb: connection is authenticated)
-Message-ID: <c34778fd-e5c7-4547-b958-e5a9fb75e5c5@leemhuis.info>
-Date: Sat, 7 Nov 2026 07:52:29 +0100
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 630761F74D;
+	Sat,  7 Nov 2026 09:00:15 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+	t=1794042016; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=2pUKIrJSjwOPfwhHfcJFzwrup6gCdhbZ3XgMEjE3Sk8=;
+	b=AwkH5jyM7t60XRGf7G1aRSt+1A3cbarzW4z/QkvISjLGNPrA/fY2MleEP5q/AQIm+UOa85
+	wJkleCWTNZsU7rGkzPqgTOEFser1A2ESxcK9o91TyOKwj1NxwYRnab9MqOSmomM2duqzSM
+	4ziRifDlEsg/eNGZ4IfRyZBtKF7+5L4=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+	s=susede2_ed25519; t=1794042016;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=2pUKIrJSjwOPfwhHfcJFzwrup6gCdhbZ3XgMEjE3Sk8=;
+	b=JTEoL3TZlb1DCclunsyxaCbXUYbLeMKEOnsS7PWO9bNheMA+zCRiSp1byJB7A+sAicRsv4
+	5OXD2QVrenEMHmAQ==
+Authentication-Results: smtp-out2.suse.de;
+	dkim=pass header.d=suse.de header.s=susede2_rsa header.b=nvoaJ0mE;
+	dkim=pass header.d=suse.de header.s=susede2_ed25519 header.b=DZerp02L
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+	t=1794042015; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=2pUKIrJSjwOPfwhHfcJFzwrup6gCdhbZ3XgMEjE3Sk8=;
+	b=nvoaJ0mEP/zd/0bKFGcoiLmtApr9OQGHZOiEECFWhUq1H30dGD7ZkdmACOX8M4XQGS4NuW
+	oB4Mc0g4OfzK2wWf0UF/9cqPMqA/oflypYavZBONS2BSNW+J/B7gdSUDzy/0qA9b4r1pv4
+	UXAedxogQW7c2CJkDX8oa4Afmn/sre4=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+	s=susede2_ed25519; t=1794042015;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=2pUKIrJSjwOPfwhHfcJFzwrup6gCdhbZ3XgMEjE3Sk8=;
+	b=DZerp02LRPNT9d5/AecFdQdh+IJlOFhOxwpkpzQNy3DQvQ4hOwgMkZ3mhYuZ46BFCA5rf0
+	CaTL33x7XZsPDhBQ==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id E0528132C9;
+	Sat,  7 Nov 2026 09:00:13 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id 19k0LZ3o7mq9VwAAD6G6ig
+	(envelope-from <tiwai@suse.de>); Sat, 07 Nov 2026 09:00:13 +0000
+Date: Sat, 07 Nov 2026 10:00:13 +0100
+Message-ID: <87jympyq1u.wl-tiwai@suse.de>
+From: Takashi Iwai <tiwai@suse.de>
+To: Christian Brauner <brauner@kernel.org>
+Cc: linux-fsdevel@vger.kernel.org,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	Jann Horn <jannh@google.com>,
+	Josef Bacik <josef@toxicpanda.com>,
+	Chris Mason <mason@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>,
+	NeilBrown <neil@brown.name>,
+	Eric Dumazet <edumazet@kernel.org>,
+	Thomas Gleixner <tglx@kernel.org>,
+	Al Viro <viro@zeniv.linux.org.uk>,
+	Jonathan Corbet <corbet@lwn.net>,
+	Christoph Hellwig <hch@lst.de>,
+	Greg Kroah-Hartman <gregkh@suse.de>,
+	Joel Granados <joel.granados@kernel.org>,
+	Kees Cook <kees@kernel.org>,
+	Jan Kara <jack@suse.cz>,
+	Jan Kara <jack@suse.com>,
+	linux-kernel@vger.kernel.org,
+	linux-nfs@vger.kernel.org,
+	linux-acpi@vger.kernel.org,
+	linux-kselftest@vger.kernel.org,
+	linux-s390@vger.kernel.org,
+	linux-scsi@vger.kernel.org,
+	linux-um@lists.infradead.org,
+	linux-wireless@vger.kernel.org,
+	linuxppc-dev@lists.ozlabs.org,
+	netdev@vger.kernel.org,
+	ntfs3@lists.linux.dev,
+	platform-driver-x86@vger.kernel.org,
+	coreteam@netfilter.org,
+	kexec@lists.infradead.org,
+	linux-pci@vger.kernel.org,
+	linux-sound@vger.kernel.org,
+	netfilter-devel@vger.kernel.org,
+	dri-devel@lists.freedesktop.org,
+	ibm-acpi-devel@lists.sourceforge.net,
+	jfs-discussion@lists.sourceforge.net,
+	linux-alpha@vger.kernel.org,
+	linux-arm-kernel@lists.infradead.org,
+	linux-cifs@vger.kernel.org,
+	linux-fbdev@vger.kernel.org,
+	linux-hwmon@vger.kernel.org,
+	linux-mm@kvack.org,
+	linux-sh@vger.kernel.org,
+	linux-usb@vger.kernel.org,
+	samba-technical@lists.samba.org,
+	sparclinux@vger.kernel.org,
+	linux-m68k@lists.linux-m68k.org,
+	linux-doc@vger.kernel.org,
+	linux-serial@vger.kernel.org,
+	linux-atm-general@lists.sourceforge.net,
+	Takashi Iwai <tiwai@suse.de>,
+	linux-input@vger.kernel.org,
+	linux-raid@vger.kernel.org,
+	linux-ext4@vger.kernel.org,
+	linux-modules@vger.kernel.org,
+	linux-debuggers@vger.kernel.org,
+	Chuck Lever <cel@kernel.org>,
+	stable@vger.kernel.org
+Subject: Re: [PATCH RESEND v2 03/51] ALSA: cs46xx: hand the region to the region proc files
+In-Reply-To: <20261104-work-procfs-bugfixes-v2-3-021c84d852e0@kernel.org>
+References: <20261104-work-procfs-bugfixes-v2-0-021c84d852e0@kernel.org>
+	<20261104-work-procfs-bugfixes-v2-3-021c84d852e0@kernel.org>
+User-Agent: Wanderlust/2.15.9 (Almost Unreal) Emacs/30.2 Mule/6.0
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -73,96 +168,57 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
-MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [REGRESSION] 6.1.191: NULL pointer dereference in
- ext4_mb_load_buddy_gfp()
-To: Simone Colombo <colombo.simone@gmail.com>, stable@vger.kernel.org
-Cc: linux-ext4@vger.kernel.org, regressions@lists.linux.dev
-References: 
- <CAEVL6QtFUCs66EtLFj6dO8DQq9YE0Corvy3BTj-9HEvPkTP7xg@mail.gmail.com>
-From: Thorsten Leemhuis <regressions@leemhuis.info>
-Content-Language: de-DE, en-US
-In-Reply-To: 
- <CAEVL6QtFUCs66EtLFj6dO8DQq9YE0Corvy3BTj-9HEvPkTP7xg@mail.gmail.com>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-X-PPP-Message-ID: <179403435076.636600.361162975346760712@mxe9fb.netcup.net>
-X-Rspamd-Server: rspamd-worker-8404
-X-Rspamd-Queue-Id: 79B805F987
-X-NC-CID: pbMQNuX6ZdkhT5QdWWCDeStPtfzWYZy+2Uy6pjZ44bP/TZg3pck=
+MIME-Version: 1.0 (generated by SEMI-EPG 1.14.7 - "Harue")
+Content-Type: text/plain; charset=US-ASCII
+X-Spamd-Result: default: False [-11.01 / 50.00];
+	SUSE_INTERNAL_BYPASS(-9.00)[];
+	BAYES_HAM(-3.00)[100.00%];
+	SUSPICIOUS_RECIPS(1.50)[];
+	MID_CONTAINS_FROM(1.00)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	R_DKIM_ALLOW(-0.20)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	MX_GOOD(-0.01)[];
+	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	ARC_NA(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	TO_DN_SOME(0.00)[];
+	RCVD_TLS_ALL(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.de:email,suse.de:dkim];
+	R_RATELIMIT(0.00)[to_ip_from(RLij3mi59gqb8x3hiq1dpi8wgt)];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	TO_MATCH_ENVRCPT_SOME(0.00)[];
+	RCPT_COUNT_GT_50(0.00)[60];
+	RCVD_COUNT_TWO(0.00)[2];
+	DKIM_SIGNED(0.00)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
+	DKIM_TRACE(0.00)[suse.de:+]
+X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
+X-Rspamd-Action: no action
+X-Spam-Flag: NO
+X-Spam-Score: -11.01
+X-Spam-Level: 
+X-Rspamd-Queue-Id: 630761F74D
 
-On 11/6/26 23:53, Simone Colombo wrote:
+On Wed, 04 Nov 2026 20:16:45 +0100,
+Christian Brauner wrote:
 > 
-> Since 6.1.191, mkdir() on ext4 can oops with a NULL pointer dereference in
-> ext4_mb_load_buddy_gfp(). 6.1.190 does not, in the same test.
+> snd_cs46xx_proc_init() stores the chip in the private data of the five
+> region entries, but snd_cs46xx_io_read() reads that back as the region,
+> so a read of /proc/asound/cardN/CS46xx_BA0 and friends copies from
+> whatever sits at the region's offset in struct snd_cs46xx instead of
+> the mapped registers. Store the region.
+> 
+> Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
+> Cc: stable@vger.kernel.org
+> Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 
-Not my area of expertise, but from a very quick look this seems to be
-the problem that was reported here earlier:
+Reviewed-by: Takashi Iwai <tiwai@suse.de>
 
-https://lore.kernel.org/linux-ext4/20261102-ext4-ntfs3-null-folio-v1-0-4fd91ee23a4a@elliotjb.com/
 
-A fix for that is queued. Please report back if that seems to be a
-different issue.
+thanks,
 
-Ciao, Thorsten
-
->   BUG: kernel NULL pointer dereference, address: 0000000000000000
->   CPU: 0 PID: 60 Comm: mkdir Not tainted 6.1.191 #1
->   RIP: 0010:folio_test_uptodate+0x0/0xc
->   Call Trace:
->    ext4_mb_load_buddy_gfp+0xcb/0x351
->    ext4_mb_regular_allocator+0x3bb/0x82d
->    ext4_mb_new_blocks+0x392/0x93f
->    ext4_ext_map_blocks+0xd5a/0xecd
->    ext4_map_blocks+0x26b/0x47b
->    ext4_getblk+0xca/0x243
->    ext4_bread+0x6/0x45
->    ext4_append+0xc2/0x158
->    ext4_init_new_dir+0x5d/0x103
->    ext4_mkdir+0xfa/0x249
->    vfs_mkdir+0x74/0x8c
->    do_mkdirat+0x81/0xc1
->    __x64_sys_mkdir+0x1d/0x21
-> 
-> (This trace is from a test build of v6.1.191 with KALLSYMS; our production
-> build of 6.1.191 oopses at the same instruction.)
-> 
-> 6.1.191 picked up these two as prerequisites of "ext4: fix e4b bitmap
-> inconsistency reports" (Stable-dep-of: bdc56a9c46b2):
-> 
->   99b150d84e49 ("ext4: convert bd_bitmap_page to bd_bitmap_folio")
->   5eea586b47f0 ("ext4: convert bd_buddy_page to bd_buddy_folio")
-> 
-> They check __filemap_get_folio() only with IS_ERR(), which relies on
-> "mm: return an ERR_PTR from __filemap_get_folio" (6.4). In 6.1,
-> __filemap_get_folio() still returns NULL when the folio isn't cached, so
-> a buddy cache miss in ext4_mb_load_buddy_gfp() ends up in
-> folio_test_uptodate(NULL).
-> 
-> We first hit it on first boot right after growing a mounted ext4 with
-> resize2fs, but it only needs memory pressure. Reproducer in QEMU
-> (x86_64, 320 MiB guest, NVMe disk):
-> 
->   mkfs.ext4 -b 4096 disk.img 244224   # on a 4 GiB image
->   # in the guest:
->   mount /dev/nvme0n1 /mnt
->   resize2fs /dev/nvme0n1              # optional, makes it more likely
->   # fill a 200 MiB tmpfs, write and delete 300 MiB on /mnt, then:
->   for i in $(seq 40); do mkdir /mnt/d$i; dd if=/dev/zero of=/mnt/d$i/f
-> bs=64k count=4; done
-> 
-> 6.1.191 oopses within the first few mkdir calls, with or without the
-> resize. 6.1.190 completes the same test both ways. Without memory
-> pressure it doesn't reproduce here.
-> 
-> Locally we work around it by turning a NULL return into ERR_PTR(-ENOENT),
-> or ERR_PTR(-ENOMEM) with FGP_CREAT, at the six __filemap_get_folio()
-> calls in mballoc.c; with that, 6.1.191 passes the test. I can send that
-> patch if it helps, but you may prefer to fix the backport itself.
-> 
-> #regzbot introduced: v6.1.190..v6.1.191
-> 
-> Thanks,
-> Simone Colombo
-
+Takashi
