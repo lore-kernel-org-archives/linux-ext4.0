@@ -1,125 +1,73 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.128.48
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=51.159.188.251
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794164398;
-	b=OHqvtj1bPFijanWccr2KJm3sqFMkUjeb6FY+7tpfWtSHpoawBpYwNkixIAHY2wvrnvpW
-	 6VsmbfzGm0q3X44Qb7D3EDqlBCawJiHg/Yh1/EEBdhUPhO6j7SLjymPeT7X8n+6nnTaZH
-	 dBA5Y1TPudfvCVdojBDj1kgDxmcqbA1d7iNbTy6PUzg7gnEs2a+4Y2deJ2tNyHyMt28X2
-	 sqCHGrc1Wl5ALHIbcimyJMnLJJwn9nagt/pCtiVPN8Qu8njWjMQs7NUWsipYhXJc40uFi
-	 15Q9MgzV+mArYkbHbqwhchKLzi+U/IP4uyCOiTA8YZqCLOj9+RNMvdm5aBCNHU58pnw==
+	t=1794169177;
+	b=KB9TeepCEWHFas4OnN6zrS+yTgeq3bk8ad7Oj0TZfgmdBhiGeZG/y/v8P9k+H3Tx9Ot4
+	 uj+5Ljcw1qoANxMZUUdKw2sJtn08F1GPDuECng2EjwFu7umzeWYB3pwW6faqt3OiZ/PRE
+	 AHOVKxB8RBO1StUFl01Vs8+gJLtr24TRX/r/R4y/9QUNWuDzS+AuRSIsSB/Ugjg/E+Spi
+	 wV9R1s0zfbekHbOlltIJ9bGpSAD47elXqaXsPjtiZ9a7RlbKiSmbSNNwCcbpsWj/aofeU
+	 T+Y6CMmFU03Mmwgi6MQSiP88IOl7RjVCWJ9VC72iJ4DJh1VGIb5dU98C8AC/+Ii0+iQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794164398;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
-	 Date:From:To:Cc:Subject:Message-ID:In-Reply-To:References:X-Mailer:
-	 MIME-Version:Content-Type:Content-Transfer-Encoding;
-	bh=JLhUwzup1lwefYy8NOOFjthYnrByVfTsqIe79kkV+Lk=;
-	b=0mczNwhpZD7X5OzZumWxYL0E9Qap9z6MsqujAkfKGDfL5rCnRzGjtt0mRaxJQ0UXnN9p
-	 NWk7OfWJ39QohhOVlt8Llsn7pu8tzy2XpnDjWbvpgBsT7jFTJnr66azLfiwSc0OMQq9Ir
-	 AXwkPxs1YURDFk/obIxB83bsHyXRYlKRq+vjigIXuxRah5mjUu5343LM6wylsJTKxtgQm
-	 QU+wkGl9BIbG1iL4DWGxtH7tUK+FlD6Fb1QuqVmTDnlVyB2S7nqGDix4ruC9v9/YZDFFX
-	 AsVK03562DFB9GroGvAhke2v6ks9kUjWgWZVaigt8A3OvJl9NHDYGoKak7BZ/o5sMmQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794169177;
+	h=DMARC-Filter:DKIM-Signature:Received:From:To:Cc:Subject:Date:
+	 Message-ID:X-Mailer:MIME-Version:Content-Type:
+	 Content-Transfer-Encoding:X-AntiAbuse:X-AntiAbuse:X-AntiAbuse:
+	 X-AntiAbuse:X-AntiAbuse:X-Get-Message-Sender-Via:
+	 X-Authenticated-Sender:X-Source:X-Source-Args:X-Source-Dir;
+	bh=WGxGumD/dXf5ILl4zFLVZxTHP87XH1xpUeKbtBCw9cU=;
+	b=eV3TUh1Qayn6fezW9n3ufOlLxAiwHzMjWxvlzxOeMSSvkYplE8ou7ty/YbDEGcpI5RqB
+	 vqOT9u0AJFo5lkba8I3pwEusPceYN/+P5Y1cqEpasJX1tXM9bYD7mXi4i7nkmhPtS0Tq4
+	 32ovbPQ/umbEUdD+vakOrAcJfLgE0r74xf/S92aTpAKBtyLFWyUEiHu7NhmJ4NI9i/5+m
+	 ZaZRCaeEvLDrbItJf8EJdzMsbSuRtTfUvrViNG0ikDy+k0SZbVhRcsWSBt6eX/i7OlFDc
+	 V/1eaCmCQ8VDIo93UlMKiYJzDrqn7rzovTZzR71AUIOU10eGzw1iZd5x4HzzCFKQQOQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=gmail.com;
-	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=XrEUEgHU;
-	arc=none smtp.remote-ip=209.85.128.48
-Received: from mail-wm1-f48.google.com (mail-wm1-f48.google.com [209.85.128.48])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	dmarc=pass header.from=oss.cyber.gouv.fr;
+	spf=pass smtp.mailfrom=oss.cyber.gouv.fr;
+	dkim=pass header.d=oss.cyber.gouv.fr header.i=@oss.cyber.gouv.fr header.a=rsa-sha256 header.s=default header.b=Wvq+Hgh3;
+	arc=none smtp.remote-ip=51.159.188.251
+Received: from oss.cyber.gouv.fr (oss.cyber.gouv.fr [51.159.188.251])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 385C8606A335
-	for <linux-ext4@vger.kernel.org>; Sun,  8 Nov 2026 18:59:58 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 385C8606A335
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D2285606A31C;
+	Sun,  8 Nov 2026 20:19:35 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org D2285606A31C
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=oss.cyber.gouv.fr
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=oss.cyber.gouv.fr
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=XrEUEgHU
-Received: by mail-wm1-f48.google.com with SMTP id 5b1f17b1804b1-4a59100fa83so1416395e9.0
-        for <linux-ext4@vger.kernel.org>; Sun, 08 Nov 2026 10:59:58 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1794164397; x=1794769197; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:mime-version:references
-         :in-reply-to:message-id:subject:cc:to:from:date:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=JLhUwzup1lwefYy8NOOFjthYnrByVfTsqIe79kkV+Lk=;
-        b=XrEUEgHUwv+lt2Z0T4RzlOQuYT1yMbnY/MJrtF5HY2pc8m0ujKE+1IGJbqc3A1SsPJ
-         Pz+po0Wh7ECcrOl1hyNdZBme+OsO/r11IeCA1lW9KMbstFhlOkC0Hm7Ef+TTavGsfrDk
-         7T2AE8nlcorDhYFpLo0KTCt4xOv09AacMRilfH2h4PS2mZ0iBReAF8XAcgtI3iT+qlRY
-         EJQPYUIUlDRCCjadf1+24R8V0flZyhCZpLCroCVsidoQ510350k4POOaAcSXgGRrBTWF
-         rbpUnz5O6K0TOR8uz/zwLHiObwDAqnCJFWP0+ssCNYCBYnXJwQ2yMfUqdKkv6ro/lp/q
-         XMaA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1794164397; x=1794769197;
-        h=content-transfer-encoding:content-type:mime-version:references
-         :in-reply-to:message-id:subject:cc:to:from:date:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=JLhUwzup1lwefYy8NOOFjthYnrByVfTsqIe79kkV+Lk=;
-        b=fY9e3vXfjBePqpI6rVWwBsVyK34bnBlTgepQZfY1iy4TJfqoUtjlXg2KPcR+vGAkWE
-         o6HwNW4IVkD1dkfNWLV+ATsFSk60BPt6/oO9yHh1zS55sY3xhqdDhiSSp9FOfAIKNfV2
-         wh3AxV0lDw4dBI3t+aXgXeW1FDvBoQdfRGWzbCkNgkaWTi1smykVNRGcSwfyc/YUffL8
-         Qkambd8wek2OKXyN3c3F6/RnI/iqr/nznVQiYEHlyD1GxsUp86qZMWy7jGoj4qk5QVTC
-         KrcOLdX/1csVFzlqply6vB+JKlH/yZYkHy+psu508UIRS6soma+k4a+LUI0AEF3WVkWI
-         lyNw==
-X-Forwarded-Encrypted: i=1; AL+hErF2NVQ2aaKThhRMQE9dbhWy6KDj5aqRVgnlxXsmsNi3XpjQEWxAacAQcdGd8w3uIFiFxpcmXf9q3lIl@vger.kernel.org
-X-Gm-Message-State: APuU4Z9XqLEYAmJ/ueBKXWAyzhxzH8pP3bnP7QUvT8iStVtkPypX6nf3
-	q+1f5sl704WN2u9TOy9hyxojcag4ghg8KIAMx1/doJA48hAMFlDfAcGR
-X-Gm-Gg: AYBFou2vL+25GEHkPObm9hzrv0ph+sjqo8I/tvoUmp+D+ClWNLT62xntnPyZLxfeC0Z
-	3sBbUUwNaIDCtLhZ4+qEKUbo+J4qefiDII8e4dh9+LhxaohGJziMgE2nNyg19acwvHNQmkgRl0f
-	NcbriWVF0Q7NZA+qYUf8KOxbWNVN9Y0aRbFQx70wCKgdTyR+ZtuYX/VrikHaeZZlkJvJ5Pr4nli
-	gFpXovhLLShVnX4+7oLUrv+WR/ERIyIOt13vfWH3Vx+ZC6MImM5stMLCL7zBfRiHSWyPluyN1SK
-	NSi2R6hkfFD2YMYNq31VW/BS3qCWYNIGLUnOjMlHyTqm7NKkATW7N7inG5U8xrFkQIIsjtsEv4U
-	yFuQTngj/6U87RlXkHOXtvHilyxHbOWiCM/Z+1p71NhXulLJGiujpL3Ex4prXoKn0VmGdt7wLGK
-	CuC8yfXy+WqDnws7r4fwxO/HC+dC1o6g8NIJYIOzC/t7SmeehQ8MtVRd4Ie+p2c7o3pp2gzebgJ
-	roSF7loco5bPJhtMYKnm/qXZ2UsM5brDWAgeYCuZBYWDXfiFmPryuPmtecJ7afmhcGw90Mrref4
-	d5/KGPILbBi0nBr/9NVOglvB1EB2UTH4gDO1buD7zKpDqHirzx7y5vCZ2F7ykNS+
-X-Received: by 2002:a05:600c:468f:b0:4a1:7e77:c382 with SMTP id 5b1f17b1804b1-4b960d9b170mr35982125e9.5.1794164396406;
-        Sun, 08 Nov 2026 10:59:56 -0800 (PST)
-Received: from pumpkin (82-69-66-36.dsl.in-addr.zen.co.uk. [82.69.66.36])
-        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4b7efb1f3acsm185228445e9.14.2026.11.08.10.59.55
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sun, 08 Nov 2026 10:59:56 -0800 (PST)
-Date: Sun, 8 Nov 2026 18:59:53 +0000
-From: David Laight <david.laight.linux@gmail.com>
-To: Christian Brauner <brauner@kernel.org>
-Cc: Geert Uytterhoeven <geert@linux-m68k.org>,
- linux-fsdevel@vger.kernel.org, Linus Torvalds
- <torvalds@linux-foundation.org>, Jann Horn <jannh@google.com>, Josef Bacik
- <josef@toxicpanda.com>, Chris Mason <mason@kernel.org>, Jeff Layton
- <jlayton@kernel.org>, NeilBrown <neil@brown.name>, Eric Dumazet
- <edumazet@kernel.org>, Thomas Gleixner <tglx@kernel.org>, Al Viro
- <viro@zeniv.linux.org.uk>, Jonathan Corbet <corbet@lwn.net>, Christoph
- Hellwig <hch@lst.de>, Greg Kroah-Hartman <gregkh@suse.de>, Joel Granados
- <joel.granados@kernel.org>, Kees Cook <kees@kernel.org>, Jan Kara
- <jack@suse.cz>, Jan Kara <jack@suse.com>, linux-kernel@vger.kernel.org,
- linux-nfs@vger.kernel.org, linux-acpi@vger.kernel.org,
- linux-kselftest@vger.kernel.org, linux-s390@vger.kernel.org,
- linux-scsi@vger.kernel.org, linux-um@lists.infradead.org,
- linux-wireless@vger.kernel.org, linuxppc-dev@lists.ozlabs.org,
- netdev@vger.kernel.org, ntfs3@lists.linux.dev,
- platform-driver-x86@vger.kernel.org, coreteam@netfilter.org,
- kexec@lists.infradead.org, linux-pci@vger.kernel.org,
- linux-sound@vger.kernel.org, netfilter-devel@vger.kernel.org,
- dri-devel@lists.freedesktop.org, ibm-acpi-devel@lists.sourceforge.net,
- jfs-discussion@lists.sourceforge.net, linux-alpha@vger.kernel.org,
- linux-arm-kernel@lists.infradead.org, linux-cifs@vger.kernel.org,
- linux-fbdev@vger.kernel.org, linux-hwmon@vger.kernel.org,
- linux-mm@kvack.org, linux-sh@vger.kernel.org, linux-usb@vger.kernel.org,
- samba-technical@lists.samba.org, sparclinux@vger.kernel.org,
- linux-m68k@lists.linux-m68k.org, linux-doc@vger.kernel.org,
- linux-serial@vger.kernel.org, linux-atm-general@lists.sourceforge.net,
- Takashi Iwai <tiwai@suse.de>, linux-input@vger.kernel.org,
- linux-raid@vger.kernel.org, linux-ext4@vger.kernel.org,
- linux-modules@vger.kernel.org, linux-debuggers@vger.kernel.org, Chuck Lever
- <cel@kernel.org>
-Subject: Re: [PATCH RESEND v2 14/23] proc: let procfs copy in writes before
- pinning the entry
-Message-ID: <20261108185953.28054fb3@pumpkin>
-In-Reply-To: <20261107-akteur-gemieden-eckdaten-21304d085e35@brauner>
-References: <20261104-work-procfs-core-v2-14-76ace653a773@kernel.org>
-	<CAMuHMdVfakapgBK6TBhO1iWX8qzvLDk8jzRS=t2MVa5G=MCUeg@mail.gmail.com>
-	<20261107-akteur-gemieden-eckdaten-21304d085e35@brauner>
-X-Mailer: Claws Mail 4.1.1 (GTK 3.24.38; arm-unknown-linux-gnueabihf)
+	dkim=pass (2048-bit key, unprotected) header.d=oss.cyber.gouv.fr header.i=@oss.cyber.gouv.fr header.a=rsa-sha256 header.s=default header.b=Wvq+Hgh3
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=oss.cyber.gouv.fr; s=default; h=Content-Transfer-Encoding:Content-Type:
+	MIME-Version:Message-ID:Date:Subject:Cc:To:From:Reply-To:Sender:Content-ID:
+	Content-Description:Resent-Date:Resent-From:Resent-Sender:Resent-To:Resent-Cc
+	:Resent-Message-ID:In-Reply-To:References;
+	bh=WGxGumD/dXf5ILl4zFLVZxTHP87XH1xpUeKbtBCw9cU=; b=Wvq+Hgh3gBOx6FBFdLGWcTsKDN
+	j2FoufL5rGTFehNxlQeP5S2O40c42C/qg+PnOsRUwSfgDwNnvnwna6t8p9kF+7zi/upRFJC1pdsna
+	RPKiBgqWOZoenScoIfNp8QLuxHERkwXP9QrAG7fJN+xeZrMiV+9Yt67uMoIs3MpWYgVBmv6mN2aHp
+	zLtF7nKnVBohJEm0SdESVEJ4u+WKNW2yIes7qxKobrC9LJOG0EOl/id0GWql+XgB1rFg8QINblISB
+	wU7gCx1GdDkBlu/KajTxw8UrNe4+64SabATWVacfu6nS0lKLWda+9eq4JhXN5u3REXJBqsEtiOTYm
+	7PNjcAew==;
+Received: from [151.115.150.205] (port=47338 helo=gepetto..)
+	by pf-012.whm.fr-par.scw.cloud with esmtpsa  (TLS1.3) tls TLS_AES_256_GCM_SHA384
+	(Exim 4.100.1)
+	(envelope-from <Jeremy.Jean@oss.cyber.gouv.fr>)
+	id 1xQ9MT-0000000191p-3J8o;
+	Sun, 08 Nov 2026 21:19:33 +0100
+From: =?UTF-8?q?J=C3=A9r=C3=A9my=20Jean?= <Jeremy.Jean@oss.cyber.gouv.fr>
+To: tytso@mit.edu
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+	Baokun Li <libaokun@linux.alibaba.com>,
+	Jan Kara <jack@suse.cz>,
+	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
+	"Ritesh Harjani" <ritesh.list@gmail.com>,
+	Zhang Yi <yi.zhang@huawei.com>,
+	linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	=?UTF-8?q?J=C3=A9r=C3=A9my=20Jean?= <Jeremy.Jean@oss.cyber.gouv.fr>,
+	stable@kernel.org
+Subject: [PATCH v2] ext4: validate extent root during fast commit replay
+Date: Sun,  8 Nov 2026 20:19:06 +0000
+Message-ID: <20261108201906.1417129-2-Jeremy.Jean@oss.cyber.gouv.fr>
+X-Mailer: git-send-email 2.47.3
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -129,19 +77,64 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+X-AntiAbuse: This header was added to track abuse, please include it with any abuse report
+X-AntiAbuse: Primary Hostname - pf-012.whm.fr-par.scw.cloud
+X-AntiAbuse: Original Domain - vger.kernel.org
+X-AntiAbuse: Originator/Caller UID/GID - [47 12] / [47 12]
+X-AntiAbuse: Sender Address Domain - oss.cyber.gouv.fr
+X-Get-Message-Sender-Via: pf-012.whm.fr-par.scw.cloud: authenticated_id: jeremy.jean@oss.cyber.gouv.fr
+X-Authenticated-Sender: pf-012.whm.fr-par.scw.cloud: jeremy.jean@oss.cyber.gouv.fr
+X-Source: 
+X-Source-Args: 
+X-Source-Dir: 
 
-On Sat, 7 Nov 2026 10:48:35 +0100
-Christian Brauner <brauner@kernel.org> wrote:
+Fast commit replay skips extent tree validation in ext4_iget(). The
+replay code then reads and updates the extent root stored in i_data
+without validating its header.
 
-> > While at it, I think it would be good to use this conversion as an
-> > opportunity to replace "char *" by "void *", which will probably let
-> > you drop several casts from users.  
-> 
-> So I tried that too. The thing is it drops exactly one u8 * cast in
-> ntfs3's label write. 
+The root has space for four extents. A corrupt header with eh_entries
+set to 4 and eh_max set to 5 lets replay insert a fifth extent past
+the end of i_data, which overwrites other fields in struct
+ext4_inode_info.
 
-Since char is now unsigned that one isn't even needed...
+Check the root in ext4_find_extent() during fast commit replay. Apply
+the check even when EXT4_INODE_EXTENTS is clear, because replay can
+call this function for an inode without that flag.
 
-David
+Fixes: 8016e29f4362 ("ext4: fast commit recovery path")
+Cc: stable@kernel.org
+Signed-off-by: Jérémy Jean <Jeremy.Jean@oss.cyber.gouv.fr>
+---
+
+Changes in v2:
+- Validate replay roots regardless of EXT4_INODE_EXTENTS.
+- Rebase on fa4ad798f6f6.
+
+v1: https://lore.kernel.org/all/20260821100559.3612643-2-Jeremy.Jean@oss.cyber.gouv.fr/
+Sashiko: https://sashiko.dev/#/patchset/20260821100559.3612643-2-Jeremy.Jean@oss.cyber.gouv.fr
+    
+ fs/ext4/extents.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index ad0d80e33f609..04268ed26711f 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -905,6 +905,12 @@ ext4_find_extent(struct inode *inode, ext4_lblk_t block,
+ 		ret = -EFSCORRUPTED;
+ 		goto err;
+ 	}
++	/* ext4_iget() skips extent validation during fast commit replay. */
++	if (unlikely(EXT4_SB(inode->i_sb)->s_mount_state & EXT4_FC_REPLAY)) {
++		ret = ext4_ext_check(inode, eh, depth, 0);
++		if (ret)
++			goto err;
++	}
+ 
+ 	if (path) {
+ 		ext4_ext_drop_refs(path);
+-- 
+2.47.3
+
