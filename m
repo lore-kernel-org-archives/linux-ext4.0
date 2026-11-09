@@ -1,75 +1,113 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.130
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794223657;
-	b=spEtiLHs1vykCb7mu18k+fj5gS7BEkKaMdlKxXuZJw3m5VVuJjpOfkW4LAMFYy+Mly6E
-	 VZKQbyZF2edVcC2p8IWqFFLV1YOlSllKdKV/KNi86+yQ9vWNWc9G9wgPMVVGLrMpuOU3s
-	 g01geXp53SmaWi3iH5M0YLchwGkOSqRtXngI8Gy+F8sRhrqFmOTJr1/xm7/7x8/Zn/SS+
-	 T+y62K9SOKsPGV5pY8CNL3u2US196cooTgHmR6ypd+jSSRn/H5IN5QHvbvg4V3ubmStst
-	 PYejedaFY/tIGx9zQ5yBtUVV0s8UZkV9Lp0tO+as/awA/wK8fpPtrRtwfN7L4q+M7yQ==
+	t=1794227263;
+	b=EoG51CH4OiNp8TkP7Knt0lMufxkxCHPpJYB5WLkScs+4P+/JpuNTd3YcFv8Yj8q71C4w
+	 j+QDFbfAHXzHZKsfShRG+CTJrdptxorvZxdPx3cKc0nL6nzxJyVECpo5ZdUOOslDGOUPR
+	 g3IFbhtSafE0pCJ3o7ci0jjJzNGZQa1jrryn2lZfzi0dtA71fVRSankNJfNqRFcLlCsW0
+	 vnRg+y7uBCQ8aUTWQf4Jnny8fk3QbK7/7WhrBstBlNx8xTuliVXnuBkDRf6Qvzi4lgN6n
+	 1xky0Rn7flWTpO6Ujt38livTqCP6Yte6sD3e1GWEwrPY6q3ErrrgqZ1tqcy1hSaK4mA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794223657;
-	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
-	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
-	bh=GTe3rVqqBFubJwfvXPNDDRZX+sidHXepwnZzWomDy5A=;
-	b=NfU9kT2bZiORXw5zCXCda/QL8aJYOgH2BUdYtc79k8w+H+He5VhdNu9Cnf2/2IcxBuZu
-	 whoIpQKrD35eFow0FLSeMsppAHs7T/JowXmdaEvnahhYKBHCrBHaeXZYVCvXSKNKTWszk
-	 Bu8qi6oDSgI1VXT2Gz0/7R+qYdNY941e6XcKfGF8hCMO9ChGo+afDYbgil6zPxFQW8Ini
-	 zhqGLTzGo1Higv2QnpkZm+THa5sLuSQ314SC+lkWoKCvQA7uNE01oHPo+7+uf7W7pI2vb
-	 YaXO+uRyI3C57qCB2gf8wMWl5rPrj/0D0L6RxC02HaZZJotqm2D1dRWZD7LMkPwW/AA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794227263;
+	h=DMARC-Filter:Received:DKIM-Signature:DKIM-Signature:DKIM-Signature:
+	 DKIM-Signature:Received:Received:Received:Date:From:To:Cc:Subject:
+	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
+	 In-Reply-To:X-Rspamd-Queue-Id:X-Spam-Level:X-Rspamd-Server:
+	 X-Rspamd-Action:X-Spam-Flag:X-Spamd-Result:X-Spam-Score;
+	bh=TShl4Qj5cd4OI7xVaq2rRd5VnuO0gWJeEAaJPlDCzGI=;
+	b=Crbzo8Tdh7LUCDKzLKJSbHQfLN84By4yiOp8VEmOI+49TtANsSFYYnDdgTNTPoBGkWGz
+	 tpXynriaFEU6XSg4rDhrMlUexFMD3F1AEAtGmo+kYHfovHcukOX+pB0WXswLbS/xH42I4
+	 GvTZFiI041ZEDIUTgYbhzxhctITW77xvzsXxewEslztdlPksmXC4em7Kyj32iAfLovpSi
+	 M1oU2yQyezQiVMj4ozJRLF7msmzVDpScuhw3Ml2IqAOiTMWjPPVV5Ac/A0r5sdGtMq31K
+	 KJB9kTahlBUfZV6BnAudW+3d6Jv9iiHjuSBGwqEAYadnfyyb8nOO+5oLgK1hSlF91Jw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=iU5O51DC;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	dmarc=none header.from=suse.cz;
+	spf=pass smtp.mailfrom=suse.cz;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=SIl3yVPK;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=LHEzo2P4;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=SIl3yVPK;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=LHEzo2P4;
+	arc=none smtp.remote-ip=195.135.223.130
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E54B7606A31C;
-	Mon,  9 Nov 2026 11:27:36 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F3EE1606A322;
+	Mon,  9 Nov 2026 12:27:42 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org F3EE1606A322
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=iU5O51DC
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 96EA41F0089F;
-	Mon,  9 Nov 2026 11:27:24 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794223656;
-	bh=GTe3rVqqBFubJwfvXPNDDRZX+sidHXepwnZzWomDy5A=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=iU5O51DC6zVVQKzDHuys9tIxjfbSOhYw8z0UcE86pb//wkXavh32S2N8S2PUurU2A
-	 o1E3RopKG7W94xtmWo25LA834OkIsoplK5Zc5sWRxNqoMBKXFQxzncUeAVAHVqzYUN
-	 x0xzl99BebTVjgItzYyFM18S+rvSgi3xMyTZJ/jJZ69X0Gf56Vq2vszIAP9EEsAUq5
-	 YP1A5SHoyPmQVAQUq/DaV61yYmuj4yVaaeC+HIcZMJhadQiWUxN4AW86j7fp4xdZK/
-	 SKtdAofdOgM6AVAC0cEZ3+8Z/6By8LpM/kvwzBv9E4RtCHAt3TdDxZIlKuxADBPb0I
-	 863RWmyUQ6DWA==
-Date: Mon, 9 Nov 2026 12:27:22 +0100
-From: Christian Brauner <brauner@kernel.org>
-To: Kees Cook <kees@kernel.org>
-Cc: linux-fsdevel@vger.kernel.org, 
-	Linus Torvalds <torvalds@linux-foundation.org>, Jann Horn <jannh@google.com>, Josef Bacik <josef@toxicpanda.com>, 
-	Chris Mason <mason@kernel.org>, Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
-	Eric Dumazet <edumazet@kernel.org>, Thomas Gleixner <tglx@kernel.org>, 
-	Al Viro <viro@zeniv.linux.org.uk>, Jonathan Corbet <corbet@lwn.net>, Christoph Hellwig <hch@lst.de>, 
-	Greg Kroah-Hartman <gregkh@suse.de>, Joel Granados <joel.granados@kernel.org>, 
-	Jan Kara <jack@suse.cz>, Jan Kara <jack@suse.com>, linux-kernel@vger.kernel.org, 
-	linux-nfs@vger.kernel.org, linux-acpi@vger.kernel.org, linux-kselftest@vger.kernel.org, 
-	linux-s390@vger.kernel.org, linux-scsi@vger.kernel.org, linux-um@lists.infradead.org, 
-	linux-wireless@vger.kernel.org, linuxppc-dev@lists.ozlabs.org, netdev@vger.kernel.org, 
-	ntfs3@lists.linux.dev, platform-driver-x86@vger.kernel.org, coreteam@netfilter.org, 
-	kexec@lists.infradead.org, linux-pci@vger.kernel.org, linux-sound@vger.kernel.org, 
-	netfilter-devel@vger.kernel.org, dri-devel@lists.freedesktop.org, 
-	ibm-acpi-devel@lists.sourceforge.net, jfs-discussion@lists.sourceforge.net, 
-	linux-alpha@vger.kernel.org, linux-arm-kernel@lists.infradead.org, linux-cifs@vger.kernel.org, 
-	linux-fbdev@vger.kernel.org, linux-hwmon@vger.kernel.org, linux-mm@kvack.org, 
-	linux-sh@vger.kernel.org, linux-usb@vger.kernel.org, samba-technical@lists.samba.org, 
-	sparclinux@vger.kernel.org, linux-m68k@lists.linux-m68k.org, linux-doc@vger.kernel.org, 
-	linux-serial@vger.kernel.org, linux-atm-general@lists.sourceforge.net, 
-	Takashi Iwai <tiwai@suse.de>, linux-input@vger.kernel.org, linux-raid@vger.kernel.org, 
-	linux-ext4@vger.kernel.org, linux-modules@vger.kernel.org, linux-debuggers@vger.kernel.org, 
-	Chuck Lever <cel@kernel.org>
-Subject: Re: [PATCH RESEND v2 07/23] proc: let procfs own the seq_file of
- seq_file entries
-Message-ID: <20261109-atemberaubend-begabung-bedienen-85aade0f99b4@brauner>
-References: <20261104-work-procfs-core-v2-0-76ace653a773@kernel.org>
- <20261104-work-procfs-core-v2-7-76ace653a773@kernel.org>
- <8A21EE2A-F392-40B7-9152-CBC440FDDA70@kernel.org>
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=SIl3yVPK;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=LHEzo2P4;
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=SIl3yVPK;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=LHEzo2P4
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id 2006C21E65;
+	Mon,  9 Nov 2026 12:27:41 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1794227261; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=TShl4Qj5cd4OI7xVaq2rRd5VnuO0gWJeEAaJPlDCzGI=;
+	b=SIl3yVPKYJ965+u18PElxIf+SpbpW9DWOuFivvdPxjIDLRcPdYWHeVFP9dPVrOvXcWNKHa
+	QXWM4EIsZVEyF2p0+NLKnEPZJswIvNpkjKSzAxCdNLvROd3do4q7E3j/2YcMzYyd9cvVzp
+	RXluAneK5cTMlSfwGW/6lIEv1dT+Hf0=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1794227261;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=TShl4Qj5cd4OI7xVaq2rRd5VnuO0gWJeEAaJPlDCzGI=;
+	b=LHEzo2P4Zo+Bt+UY04a9M+fhogjIywgou5EURXROXkzz4WbhnnNfgMWk34VPXbZnigkaLb
+	HZQAcNGmQfCGGxBA==
+Authentication-Results: smtp-out1.suse.de;
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=SIl3yVPK;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=LHEzo2P4
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1794227261; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=TShl4Qj5cd4OI7xVaq2rRd5VnuO0gWJeEAaJPlDCzGI=;
+	b=SIl3yVPKYJ965+u18PElxIf+SpbpW9DWOuFivvdPxjIDLRcPdYWHeVFP9dPVrOvXcWNKHa
+	QXWM4EIsZVEyF2p0+NLKnEPZJswIvNpkjKSzAxCdNLvROd3do4q7E3j/2YcMzYyd9cvVzp
+	RXluAneK5cTMlSfwGW/6lIEv1dT+Hf0=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1794227261;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=TShl4Qj5cd4OI7xVaq2rRd5VnuO0gWJeEAaJPlDCzGI=;
+	b=LHEzo2P4Zo+Bt+UY04a9M+fhogjIywgou5EURXROXkzz4WbhnnNfgMWk34VPXbZnigkaLb
+	HZQAcNGmQfCGGxBA==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id ED15813302;
+	Mon,  9 Nov 2026 12:27:40 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id gX2eMzy88WoZZgAAD6G6ig
+	(envelope-from <jack@suse.cz>); Mon, 09 Nov 2026 12:27:40 +0000
+Received: by quack.suse.cz (Postfix, from userid 1000)
+	id 83CC921FF9; Mon, 09 Nov 2026 13:27:32 +0100 (CET)
+Date: Mon, 9 Nov 2026 13:27:32 +0100
+From: Jan Kara <jack@suse.cz>
+To: Christian Brauner <brauner@kernel.org>
+Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org, 
+	Josef Bacik <josef@toxicpanda.com>, Chris Mason <mason@kernel.org>, linux-ext4@vger.kernel.org, 
+	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>, Andreas Dilger <adilger.kernel@dilger.ca>, 
+	Baokun Li <libaokun@linux.alibaba.com>, Ojaswin Mujoo <ojaswin@linux.ibm.com>, 
+	"Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, Namjae Jeon <namjae.jeon@samsung.com>, stable@vger.kernel.org
+Subject: Re: [PATCH RFC 3/9] ext4: add ext4_inode_loc_block() helper
+Message-ID: <txaqqelwopcsrt5hzisylayvcc3h522ga5f7m3kfn2imcs7qwr@xs6v23q6cpeq>
+References: <20261029-work-inode-metadata_writeback-v1-0-7d6c678a585d@kernel.org>
+ <20261029-work-inode-metadata_writeback-v1-3-7d6c678a585d@kernel.org>
+ <lqhym4n6vu46kretnwfstfutik4vl4l5imhnf6pi3aranjpryx@bgtxuzuha2zs>
+ <20261105-eurer-wimpel-gierig-935915475d98@brauner>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -79,37 +117,68 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <8A21EE2A-F392-40B7-9152-CBC440FDDA70@kernel.org>
+In-Reply-To: <20261105-eurer-wimpel-gierig-935915475d98@brauner>
+X-Rspamd-Queue-Id: 2006C21E65
+X-Spam-Level: 
+X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
+X-Rspamd-Action: no action
+X-Spam-Flag: NO
+X-Spamd-Result: default: False [-11.51 / 50.00];
+	SUSE_INTERNAL_BYPASS(-9.00)[];
+	BAYES_HAM(-3.00)[100.00%];
+	SUSPICIOUS_RECIPS(1.50)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	MX_GOOD(-0.01)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	RCVD_COUNT_THREE(0.00)[3];
+	RCPT_COUNT_TWELVE(0.00)[13];
+	MIME_TRACE(0.00)[0:+];
+	ARC_NA(0.00)[];
+	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	RCVD_TLS_LAST(0.00)[];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	TO_DN_SOME(0.00)[];
+	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	TAGGED_RCPT(0.00)[];
+	MISSING_XM_UA(0.00)[];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	FREEMAIL_CC(0.00)[suse.cz,vger.kernel.org,toxicpanda.com,kernel.org,mail.parknet.co.jp,dilger.ca,linux.alibaba.com,linux.ibm.com,gmail.com,samsung.com];
+	DKIM_TRACE(0.00)[suse.cz:+];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:dkim,suse.com:email,imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo]
+X-Spam-Score: -11.51
 
-On Sat, Nov 07, 2026 at 08:10:28AM -0800, Kees Cook wrote:
-> Please use the new style typed allocation calls for objects:
+On Thu 05-11-26 10:37:01, Christian Brauner wrote:
+> On Wed, Nov 04, 2026 at 06:07:04PM +0100, Jan Kara wrote:
+> > So I don't think this patch is really needed. ext4_get_inode_loc_noio()
+> > does exactly what you need so you can use it in the next patch. If you
+> > really wanted to use sb_find_get_block_nonatomic() instead of
+> > sb_find_get_block(), you can actually switch ext4_get_inode_loc_noio() to
+> > use it.  ext4_get_inode_loc_noio() has only a single caller in ext4 -
+> > ext4_fc_snapshot_inode() - that is actually fine to take the folio lock.
+> > But that is mostly unrelated improvement to ext4.
 > 
-> ops = kmalloc_obj(*ops);
+> Ok, I'll drop this and use ext4_get_inode_loc_noio().
 > 
-> (This happened to jump out at me, but please check the other patches for this pattern.)
+> Hm, the nonatomic lookup isn't optional though. Afaict, the atomic one
+> bails when the folio is being migrated. So for the fast commit snapshot
+> this now means we fall back to a full commit.
+> 
+> So in ->sync_inode_metadata() we now skip a dirty inode block and
+> fsync() returns before it's on disk. So we need to switch
+> ext4_get_inode_loc_noio() over to atomic as well, no?
 
-Done, there are 5 of them in total:
+Yeah, you are right. That's a subtle difference.
 
-proc: resume readdir after the last name it returned
--		cursor = kmalloc(sizeof(*cursor), GFP_KERNEL_ACCOUNT);
-+		cursor = kmalloc_obj(*cursor, GFP_KERNEL_ACCOUNT);
-
-proc: sysctl: resume readdir after the last name it returned
--		cursor = kmalloc(sizeof(*cursor), GFP_KERNEL_ACCOUNT);
-+		cursor = kmalloc_obj(*cursor, GFP_KERNEL_ACCOUNT);
-
-proc: keep the open files of an entry in an open node
--		dp->open = kzalloc(sizeof(*dp->open), GFP_KERNEL);
-+		dp->open = kzalloc_obj(*dp->open);
-
-proc: own the wait queue of an entry with a ->proc_poll()
--	on = kzalloc(sizeof(*on), GFP_KERNEL);
-+	on = kzalloc_obj(*on);
-
-proc: let procfs own the seq_file of seq_file entries
--	ops = kmalloc(sizeof(*ops), GFP_KERNEL);
-+	ops = kmalloc_obj(*ops);
-
+								Honza
 -- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
