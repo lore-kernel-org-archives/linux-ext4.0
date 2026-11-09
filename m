@@ -1,56 +1,127 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=51.159.188.251
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.221.53
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794257274;
-	b=2DspxKZa3N1wSD1uiwXjbE/lXVaFVgqAGUchUf8hWmOt+rO0ctf//Fh+FkR/WrpenfPM
-	 tuym2hBHeR4QrLptO2aOJk69XKjfbw/3/k7BDrbBJSqFxuoQSjpncis2TWr0Sgv4BiFN/
-	 GH/ju9WSX1KMi4Aq2S+y6Jv3gwpe7gs7mFJPThi7xJpQHxY/8chjCZd60S6oBr1TZ9zMG
-	 Wf/jfRkH8kRLkpYh9sbS40SahElo5Xc9xpvNscvWT38kZX4mWC5+mrcsz/oEPtQ4wNpxV
-	 p7InPXuIw9WFR7o8M51jGWwWjJWE4GpAg0PZ0so2o05WxyYbuQLKE1egQVoTUloD2zg==
+	t=1794260762;
+	b=Eb2xXKUA617S89Va9oPPDxgRdRnOJ0k37DClUgY4hZjO3hbRLkjgL76hatJrVHZ9UaOz
+	 BuaH7kBymquDmuDIt5todHSch1qxkN1b0miy7P01BnSJfwtuQMx1UI7DZ8UeM05H+3Et0
+	 XWCpy+rsWnSQTDxkLINY61saN7MqnLIANc7ctpvlsWZS8Vkt7AN2huTyzSakRgk1OHOT2
+	 9uvzWengWu6BiOBYpzs9l+dFxDryFUxuGTSxipvaEZ44UQ9+edRwwoX2K32Y8Isa6kzd4
+	 vMaQ3nORvrB4/sLbUqFMHv8SBku4WKKChXbp8VSw8xlWkPiaEboKtC4GnK3TdZb0fdA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794257274;
-	h=DMARC-Filter:DKIM-Signature:Received:MIME-Version:Date:From:To:Cc:
-	 Subject:In-Reply-To:References:User-Agent:Message-ID:X-Sender:
-	 Content-Type:Content-Transfer-Encoding:X-AntiAbuse:X-AntiAbuse:
-	 X-AntiAbuse:X-AntiAbuse:X-AntiAbuse:X-Get-Message-Sender-Via:
-	 X-Authenticated-Sender:X-Source:X-Source-Args:X-Source-Dir;
-	bh=Qjc3lND2Szj+ZbTboPnK/vG9bXC4WbRqnD1x9RUtNhU=;
-	b=MR7XC1sL4AKaIqE6eHNbbzsiHqwWmjNRgQ7XIvkvva7CReepKARQYm86XcXxXJG81luo
-	 YppJSCUDEdQb8mPQVF5ApCaj4l6EW49DmIxhZZm704uD6BpOA0u63DzIMmf6vcH6BgELd
-	 SeRj48Khb91Vap0p/ZyEmD5RxxjANIcNZzTFdCTC9j6x0WVZYIP/WzD9XIrVcPQHkyu50
-	 AFT/9Q9m0eUxwVzxWUYI5NRG0tTY4hlw33GJbv7QNC2pMshJz9pELpjxf3w5Zy7KgzHF/
-	 4nTTD4LZeAqX9go4j5XZMMXxhz5S2yfmWeOjyREf9QT6//jHRgXD0fsdYVoSoUvqCug==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794260762;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
+	 Date:From:To:Cc:Subject:Message-ID:In-Reply-To:References:X-Mailer:
+	 MIME-Version:Content-Type:Content-Transfer-Encoding;
+	bh=874yjmK9ypxK94+nKOJ/uR1d6HpqK0owgIThZQA8ZUA=;
+	b=fhV2xxqz0YYlBV+1dWCZ7Qm6vxDpS4FSdlrtB673yLp3bfTXufUZ16C+e9IbUA5nfir1
+	 V97xSPxLsWMh3Fww7BH0/aPPwBGovoFKqhE3Gtj2Eq8yrxodiKFOyF4PSN4IUK8xIsW3y
+	 OH7ReVSe/VcMsb2bD/TJ1nZ+afZg+B+3q7E2yLFhuzQ/obdRCpN39r/NVmLnXp0RehkNX
+	 uTb2YM2v8ObIIqnSfs5gBdcj92FdI99sQi4weHxqpmPCjKk4j49T3DoOCwLHRolM50kSq
+	 J683AtEz91aKFTjKR8oCdrSDyCUpwF1osOzmGn6uCAcvljQS3MXjHVLqX1QGPavh14A==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=oss.cyber.gouv.fr;
-	spf=pass smtp.mailfrom=oss.cyber.gouv.fr;
-	dkim=pass header.d=oss.cyber.gouv.fr header.i=@oss.cyber.gouv.fr header.a=rsa-sha256 header.s=default header.b=mpG5CXlN;
-	arc=none smtp.remote-ip=51.159.188.251
-Received: from oss.cyber.gouv.fr (oss.cyber.gouv.fr [51.159.188.251])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	dmarc=pass header.from=gmail.com;
+	spf=pass smtp.mailfrom=gmail.com;
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=LaZ0qPv5;
+	arc=none smtp.remote-ip=209.85.221.53
+Received: from mail-wr1-f53.google.com (mail-wr1-f53.google.com [209.85.221.53])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C0A3D606A321;
-	Mon,  9 Nov 2026 20:47:53 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org C0A3D606A321
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=oss.cyber.gouv.fr
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=oss.cyber.gouv.fr
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 838CF606A31C
+	for <linux-ext4@vger.kernel.org>; Mon,  9 Nov 2026 21:46:02 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 838CF606A31C
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=oss.cyber.gouv.fr header.i=@oss.cyber.gouv.fr header.a=rsa-sha256 header.s=default header.b=mpG5CXlN
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=oss.cyber.gouv.fr; s=default; h=Content-Transfer-Encoding:Content-Type:
-	Message-ID:References:In-Reply-To:Subject:Cc:To:From:Date:MIME-Version:
-	Reply-To:Sender:Content-ID:Content-Description:Resent-Date:Resent-From:
-	Resent-Sender:Resent-To:Resent-Cc:Resent-Message-ID;
-	bh=Qjc3lND2Szj+ZbTboPnK/vG9bXC4WbRqnD1x9RUtNhU=; b=mpG5CXlNlPYFghudAsxPbpQbhu
-	pZ5GpX195PfyZU6zwJ6KgrFHVBQF6c+n198g/P2cqQtXWngP/N2UZKbT9X5eQCLcrUcTUtb4xn/+i
-	nW/jN3Dr0hOhIpNsX8zyXz1zuG5U0z9uLPkOkWXCEJpRQCBWsszSg7x9kKeAdGmWY+VnvzRpPdknh
-	Z3lBLXE4riqv24BSRCAv611VqjSK7y8lBC9cRXewdv/k4jJiv1RofEzjXCNHJPLNwhrRlYtEPfHWH
-	OMOC+l4wKsjbu2h2whj2C83inIlw3bgxCkPq4W34IGT5VcenhqQbVv5hZ+ereRJ/+pTxxGPfPN0hZ
-	XUZLyNZA==;
-Received: from [::1] (port=46436 helo=pf-012.whm.fr-par.scw.cloud)
-	by pf-012.whm.fr-par.scw.cloud with esmtpa (Exim 4.100.1)
-	(envelope-from <jeremy.jean@oss.cyber.gouv.fr>)
-	id 1xQWHQ-0000000DrgI-1qSY;
-	Mon, 09 Nov 2026 21:47:52 +0100
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=LaZ0qPv5
+Received: by mail-wr1-f53.google.com with SMTP id ffacd0b85a97d-490c1d337d8so966215f8f.2
+        for <linux-ext4@vger.kernel.org>; Mon, 09 Nov 2026 13:46:02 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20260707; t=1794260761; x=1794865561; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:mime-version:references
+         :in-reply-to:message-id:subject:cc:to:from:date:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=874yjmK9ypxK94+nKOJ/uR1d6HpqK0owgIThZQA8ZUA=;
+        b=LaZ0qPv5+whTFQHjIA7oYo021SUS2QeXnWN8ii9Y4im7Ue68o46nz2xh/hHMwIUfQ/
+         ICad5fyoXePYl6/8nNVhZk6UxBKiDwJbHcHq6QklDSJskt7Ox2MaUqpcgklbAASOb1WD
+         7U13gt1MK2zXHTSuMFiAfjmE40I4QhfpTIR2Mc6nMOBQW6Dg/mqe6U/h69Hyf/QnrKae
+         CyKIviPRPYc2tnG0IM8qOylYYY2PKnrUJzf833wY0ZcFYDbyZdAS7ekVESO+FaUUNtdA
+         WzN6sPDUCv7pE3hPSGmxzNcqgZM1jmpktE+mpPCXGo9ukB9qCsiBySNit7DIM51G+Ivt
+         K68Q==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1794260761; x=1794865561;
+        h=content-transfer-encoding:content-type:mime-version:references
+         :in-reply-to:message-id:subject:cc:to:from:date:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=874yjmK9ypxK94+nKOJ/uR1d6HpqK0owgIThZQA8ZUA=;
+        b=jathSaxRp4RsuZHZEqVDp9uqruaioDLYDEuMzYPpKDQy2TFunq0n1wSTPY0puqIzFL
+         zfoezZAq4ynaVbzrPkJ8OkOL6e9yC6C/LlHu71J016SCPwHyTXeb775kj0Z+cQkeCXeT
+         LumYuuefw09GL570Lj9FBoawowJ4xkrCYvlSeikVfa7WRGgGJ78dAvlfUQOFtv/11ipm
+         ex31tof0f6DDm8OW0cSo1/vPv7nQiUbBaqfRNlyOCv6kzQDV1nhDQbOLrqGMriSHmjqF
+         xhPDtlHQ6WCaumbA0/MJ+WclHshWW1t6/wAMQ0QHTOZ6S1zsVnTbqjkDw/j0euiHdfdY
+         K9/A==
+X-Forwarded-Encrypted: i=1; AL+hErFytwuR2eDTKB8FeVgbkO0txfVzW7LaZlH35nJU4IJ1+CrvfbzihD03IdSQu28ACWDf3YuuP4jDRCQ0@vger.kernel.org
+X-Gm-Message-State: APuU4Z8NaCHDsSxUPjQpj3QR3J4atMEXZVzzpFb0T6WAhUEXlvFxHEAK
+	+YRpFQSwnMnwsVD/j5Q/wzy73hCsMDMaT+M52NxzaE49WElsdHZdPG73
+X-Gm-Gg: AYBFou3j9eRILzArrUGZY1kCh69dYhAIVilMFO4iOWiyZ9MiBjch1s8gDG2U3bzSm4Q
+	cmqXBk9dprHj8/DgsC2hnhqudYw0vkhUOOroc8X69rXyNH9Du9YhTBoAqE+cOeH2OD1fWfs/D/q
+	3yjbIfIkhbukM/cSWHJDtzEhZkR5FDeevcF+q9PXOIT1vpS2VkkRG/WZd0NC2EqKBmHE6M1VwGq
+	ygO7wVDAcCq/sHxU6SL8gAGzJwIzjNcTjtxlcdlRwRnsA6ayiWVaxQEB8arp804h3yk3F5qlWVE
+	mZAvQ3WAMblpRJjSXGfxALeXNLvzUOeMITyl40g2/s4+hjx5ZrBmrXBAnVAWxHD5OV1z/u0qRFP
+	Da8X3exbhD2xLkTPHhRYGCS3l5UTDsyAlHGYmWvCI09INgWSTzXZ61NHJ+W2fafg5DiDatC3yDM
+	uZpUuFSU9iR/ZkMBNNoaljUwzvwFs2pV74DYDNxCGO9hdbI7zsiWIQE9YBHhabBJ3fiKIS2L36K
+	2elOs0tCV2radaY1gXBdSkFfJgYyPN9hm4Sm81wSdgNJqZybmoaiuMvdVQpL8vVzkwRK/PXwkKd
+	RL7NTF0zItlr636rTmqEtrgVNjGvjYtYHnut8CPhuNzUDWePm1Lzl/kLHm7N2CCrrA==
+X-Received: by 2002:a05:6000:288d:b0:48e:25e1:5eb8 with SMTP id ffacd0b85a97d-4982b28aa42mr1487213f8f.3.1794260760763;
+        Mon, 09 Nov 2026 13:46:00 -0800 (PST)
+Received: from pumpkin (82-69-66-36.dsl.in-addr.zen.co.uk. [82.69.66.36])
+        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-4983585c4fdsm1213644f8f.10.2026.11.09.13.45.59
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Mon, 09 Nov 2026 13:46:00 -0800 (PST)
+Date: Mon, 9 Nov 2026 21:45:58 +0000
+From: David Laight <david.laight.linux@gmail.com>
+To: "Maciej W. Rozycki" <macro@orcam.me.uk>
+Cc: Christian Brauner <brauner@kernel.org>, Geert Uytterhoeven
+ <geert@linux-m68k.org>, linux-fsdevel@vger.kernel.org, Linus Torvalds
+ <torvalds@linux-foundation.org>, Jann Horn <jannh@google.com>, Josef Bacik
+ <josef@toxicpanda.com>, Chris Mason <mason@kernel.org>, Jeff Layton
+ <jlayton@kernel.org>, NeilBrown <neil@brown.name>, Eric Dumazet
+ <edumazet@kernel.org>, Thomas Gleixner <tglx@kernel.org>, Al Viro
+ <viro@zeniv.linux.org.uk>, Jonathan Corbet <corbet@lwn.net>, Christoph
+ Hellwig <hch@lst.de>, Greg Kroah-Hartman <gregkh@suse.de>, Joel Granados
+ <joel.granados@kernel.org>, Kees Cook <kees@kernel.org>, Jan Kara
+ <jack@suse.cz>, Jan Kara <jack@suse.com>, linux-kernel@vger.kernel.org,
+ linux-nfs@vger.kernel.org, linux-acpi@vger.kernel.org,
+ linux-kselftest@vger.kernel.org, linux-s390@vger.kernel.org,
+ linux-scsi@vger.kernel.org, linux-um@lists.infradead.org,
+ linux-wireless@vger.kernel.org, linuxppc-dev@lists.ozlabs.org,
+ netdev@vger.kernel.org, ntfs3@lists.linux.dev,
+ platform-driver-x86@vger.kernel.org, coreteam@netfilter.org,
+ kexec@lists.infradead.org, linux-pci@vger.kernel.org,
+ linux-sound@vger.kernel.org, netfilter-devel@vger.kernel.org,
+ dri-devel@lists.freedesktop.org, ibm-acpi-devel@lists.sourceforge.net,
+ jfs-discussion@lists.sourceforge.net, linux-alpha@vger.kernel.org,
+ linux-arm-kernel@lists.infradead.org, linux-cifs@vger.kernel.org,
+ linux-fbdev@vger.kernel.org, linux-hwmon@vger.kernel.org,
+ linux-mm@kvack.org, linux-sh@vger.kernel.org, linux-usb@vger.kernel.org,
+ samba-technical@lists.samba.org, sparclinux@vger.kernel.org,
+ linux-m68k@lists.linux-m68k.org, linux-doc@vger.kernel.org,
+ linux-serial@vger.kernel.org, linux-atm-general@lists.sourceforge.net,
+ Takashi Iwai <tiwai@suse.de>, linux-input@vger.kernel.org,
+ linux-raid@vger.kernel.org, linux-ext4@vger.kernel.org,
+ linux-modules@vger.kernel.org, linux-debuggers@vger.kernel.org, Chuck Lever
+ <cel@kernel.org>
+Subject: Re: [PATCH RESEND v2 14/23] proc: let procfs copy in writes before
+ pinning the entry
+Message-ID: <20261109214558.0d9d5228@pumpkin>
+In-Reply-To: <alpine.DEB.2.21.2611090504170.17804@angie.orcam.me.uk>
+References: <20261104-work-procfs-core-v2-14-76ace653a773@kernel.org>
+	<CAMuHMdVfakapgBK6TBhO1iWX8qzvLDk8jzRS=t2MVa5G=MCUeg@mail.gmail.com>
+	<20261107-akteur-gemieden-eckdaten-21304d085e35@brauner>
+	<20261108185953.28054fb3@pumpkin>
+	<alpine.DEB.2.21.2611090504170.17804@angie.orcam.me.uk>
+X-Mailer: Claws Mail 4.1.1 (GTK 3.24.38; arm-unknown-linux-gnueabihf)
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -60,53 +131,34 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Date: Mon, 09 Nov 2026 21:47:51 +0100
-From: =?UTF-8?Q?J=C3=A9r=C3=A9my_Jean?= <jeremy.jean@oss.cyber.gouv.fr>
-To: Jan Kara <jack@suse.cz>
-Cc: tytso@mit.edu, Andreas Dilger <adilger.kernel@dilger.ca>, Baokun Li
- <libaokun@linux.alibaba.com>, Ojaswin Mujoo <ojaswin@linux.ibm.com>, Ritesh
- Harjani <ritesh.list@gmail.com>, Zhang Yi <yi.zhang@huawei.com>,
- linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
- stable@vger.kernel.org
-Subject: Re: [PATCH] ext4: fix OOB write in fast-commit replay
-In-Reply-To: <idqh5j5m3rhjsdu77h7dchk5vxj47fcsls7tcdhu4wdf75cthu@sxwipa7u2hyl>
-References: <20261108204345.1423203-2-Jeremy.Jean@oss.cyber.gouv.fr>
- <idqh5j5m3rhjsdu77h7dchk5vxj47fcsls7tcdhu4wdf75cthu@sxwipa7u2hyl>
-User-Agent: Roundcube Webmail/1.6.20
-Message-ID: <038be9b9541cbcc43ed35cf7950b9361@oss.cyber.gouv.fr>
-X-Sender: jeremy.jean@oss.cyber.gouv.fr
-Content-Type: text/plain; charset=UTF-8;
- format=flowed
-Content-Transfer-Encoding: 8bit
-X-AntiAbuse: This header was added to track abuse, please include it with any abuse report
-X-AntiAbuse: Primary Hostname - pf-012.whm.fr-par.scw.cloud
-X-AntiAbuse: Original Domain - vger.kernel.org
-X-AntiAbuse: Originator/Caller UID/GID - [47 12] / [47 12]
-X-AntiAbuse: Sender Address Domain - oss.cyber.gouv.fr
-X-Get-Message-Sender-Via: pf-012.whm.fr-par.scw.cloud: authenticated_id: jeremy.jean@oss.cyber.gouv.fr
-X-Authenticated-Sender: pf-012.whm.fr-par.scw.cloud: jeremy.jean@oss.cyber.gouv.fr
-X-Source: 
-X-Source-Args: 
-X-Source-Dir: 
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 
-On 2026-11-09 14:19, Jan Kara wrote:
-> On Sun 08-11-26 20:43:46, Jérémy Jean wrote:
->> Fast-commit recovery checks record bounds and lengths during scan.
->> Replay reads the records again without these checks. A corrupt 
->> filesystem
->> can make an earlier replay operation overwrite a later record. Its new
+On Mon, 9 Nov 2026 05:05:57 +0000 (GMT)
+"Maciej W. Rozycki" <macro@orcam.me.uk> wrote:
+
+> On Sun, 8 Nov 2026, David Laight wrote:
 > 
-> This fact looks like the real problem. I think we should validate the
-> replay does not corrupt the journal. How does this happen? Otherwise we
-> have to fully redo the validation of each record done in
-> ext4_fc_replay_scan().
+> > > > While at it, I think it would be good to use this conversion as an
+> > > > opportunity to replace "char *" by "void *", which will probably let
+> > > > you drop several casts from users.    
+> > > 
+> > > So I tried that too. The thing is it drops exactly one u8 * cast in
+> > > ntfs3's label write.   
+> > 
+> > Since char is now unsigned that one isn't even needed...  
+> 
+>  Please excuse me missing the context, but what circumstances does your 
+> claim refer to?
 
-The replay can corrupt the journal because a corrupted image can make
-metadata blocks used during replay overlap with fast-commit blocks. I
-agree that making sure that replay does not corrupt the journal would
-be a stronger fix, but I'm not sure I see a simple way to fix this
-properly. Rechecking bounds as I proposed fixes a memory issue but it
-indeed does not address the root cause.
+Just that the cast would have to be:
+	u8 *foo = (u8 *)bar;
+where 'bar' is 'char *', and I don't think you need a cast there when
+char is unsigned.
 
-Regards,
-Jérémy
+David
+ 
+> 
+>   Maciej
+> 
+
