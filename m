@@ -1,56 +1,76 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=78.133.224.34
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794194428;
-	b=moKkeCrJV5iM00Tpiatk3l7+WtSFIjmR+1mF2AbQEIfvbaGNQtrSdcSciDyLlkYwn+OV
-	 gSNR07Wnlxgu8BZuTxg/eXaRbiQXRNYSVNSZSIchD9t30KrDmlNkfyEli6AUjAUNxT9gh
-	 qkwC+CW0EQEZuIrquTzOumY86XeMy8VEvJgyNdZStKTEolW8nIGM1n9E4ECLGTQRGpv+z
-	 fswDTlBynUL3SsTWn/jRrWsHBjpCuRbXbVRkmbNxPIzkIFB5QLiR/2vPwDx+bi4jA7dr0
-	 eNh2ADBVxFAglioF/bFdLnqn7pRk4BlBOV2DzG6QdM3PZp1z0EZYz7SHjrFodKhsKhA==
+	t=1794200762;
+	b=LrG+DEEu60gJ62vzns+suZGrmEKRK0YtqaHn5WXr5tf1yY7yw2FGKosUn4N+BWIWmOzs
+	 8YH/Z6kAKOq4DRdwxOIEF0uum3MNQ6sCiYT0Fw65sBfM4bp/fX8HEACI+pycPrG3ANgmF
+	 0e10FM85Y90n9GEZcqj87xUzIjkfQ/2fgrRTTZEIXUQNyHeEJpNXiahk1rg7KYhStQ9op
+	 YLCUgBffpmj2YMNgfPSXl3fGEOwwhzwTt0uQ206cqbDieW5ZiklOrT9pcbyG39aXWuNZx
+	 VvAsG/FBocSTQw9IdspRDLu10fZf/+qpupZfv4YzTLCI7UtjDMFiAtdlH9J7SNs3TFw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794194428;
-	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
-	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=q6JQaWIPmatXOnzRdreA2gNqPLP0Hpf6HnWnV+1sW98=;
-	b=ztwj+gXuBmz4H7QCOgvyquGY9vloRurfyoVhTjLzQLgRdlzwdZCUHm6+rYMoWDY/X7IX
-	 +yxVY7ODRknRBJtM3Imn55ykYyx2v3BrdOaX6QonKPm7vYokOkOJZpyYXVZURXaemvz5L
-	 ZM7khcvOhunPfJ0yBESQpD0ZvW5vitKbmfu3gXpXjYIdS92P46aWnPUkZpUzyzlXuQDQn
-	 0fFmDCPA/4A6mWAiiYpvsDB+0alYWSsti9pS3P1oktpKv6BkMNhmT06H93zDReoPuUD0H
-	 cd+SyJZiEIV7uSGyXWT+emsOlT9lh57JVKNom6/0Tdv1XtzMS46EakN1neXhWhQWTJw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794200762;
+	h=DMARC-Filter:Received:Received:Date:From:To:cc:Subject:In-Reply-To:
+	 Message-ID:References:User-Agent:MIME-Version:Content-Type;
+	bh=+UmCB5muc9jAh5/NVu2M6h8Lcfrpgge2sRUuegusfl0=;
+	b=0OuLEIAgKXU7KAvFozkBBa3f1Mv708ZV/mV7AuEqlv+uNv4RQQ6oxLuRg70CaAlrcQda
+	 kU+/oTwNmCk/zqSL6WGacdL2KhGdhRBP6iAjFnQhUyBufPVmyVo9NSydGNXPPqZidzbqi
+	 rRT5RxlkRrYqJHI5/17JfeD3gW4i53LeqT0Re6P4C2VxMjHeIXqA+pU6csayT4bFkvyt4
+	 s5t29sErJRBTR2rzX/A9fzsDpt6mOW6cR2LBeiVOQFpMyu9K53GhNNVYS7dh5dhlWNz11
+	 w9LLnBMkuA51LXElSj1oFDY8oQxhCWOlue9fVSB2NQO3QDlefZUvazzMdeLxRtRqsDw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=FPhr2HZ7;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
-	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 03492606A331
-	for <linux-ext4@vger.kernel.org>; Mon,  9 Nov 2026 03:20:27 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=FPhr2HZ7
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 77A5B1F008A1;
-	Mon,  9 Nov 2026 03:20:27 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794194427;
-	bh=q6JQaWIPmatXOnzRdreA2gNqPLP0Hpf6HnWnV+1sW98=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=FPhr2HZ7+ksfegkg0O1BOujYDuBCxDgOEsuSv5/3n5DigjGq3DmqWmjG2Cy5v6Tgt
-	 FtquXNfRzH+2A47otDQBMLBbR9ED+voYvD19EKsqFX17/KNiVfUmcd238iwC+78OlZ
-	 mHgKb0j84twmU7EzUvMRWKXXzEyMcvRyTRsqQi2k9vtaDhg0A/ecnl7ynl8Q+Qam4p
-	 P8iHDs2J/U4Uv4xFt3AsnLDP+QUHruQPjaFvHdfaG2n6lWh5fPLfHfNHFgaTKHzwT0
-	 Oy+9H1GhPAn63vyCgAG92MJ0syd1YXz9BN31cYHIt/h7ilj4OHEphYywQL9s7NPmud
-	 V93TG5sCMiAow==
-Message-ID: <sashiko-outbox-204368@kernel.org>
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH v3] ext4: fix soft lockup while shrinking the extent
- status cache
-Reply-To: sashiko-reviews@lists.linux.dev
-To: "Jianping Liu" <frankljpliu@gmail.com>, linux-ext4@vger.kernel.org
-Cc: tytso@mit.edu
-In-Reply-To: <20261109031356.10659-1-frankljpliu@gmail.com>
-References: <20261109031356.10659-1-frankljpliu@gmail.com>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Mon, 09 Nov 2026 03:20:26 +0000
+	dmarc=none header.from=orcam.me.uk;
+	spf=none smtp.mailfrom=orcam.me.uk;
+	arc=none smtp.remote-ip=78.133.224.34
+Received: from angie.orcam.me.uk (angie.orcam.me.uk [78.133.224.34])
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id 187C9606A322;
+	Mon,  9 Nov 2026 05:05:59 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 187C9606A322
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=orcam.me.uk
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=orcam.me.uk
+Received: by angie.orcam.me.uk (Postfix, from userid 500)
+	id B42DD92009C; Mon,  9 Nov 2026 06:05:57 +0100 (CET)
+Received: from localhost (localhost [127.0.0.1])
+	by angie.orcam.me.uk (Postfix) with ESMTP id B0D2992009B;
+	Mon,  9 Nov 2026 05:05:57 +0000 (GMT)
+Date: Mon, 9 Nov 2026 05:05:57 +0000 (GMT)
+From: "Maciej W. Rozycki" <macro@orcam.me.uk>
+To: David Laight <david.laight.linux@gmail.com>
+cc: Christian Brauner <brauner@kernel.org>, 
+    Geert Uytterhoeven <geert@linux-m68k.org>, linux-fsdevel@vger.kernel.org, 
+    Linus Torvalds <torvalds@linux-foundation.org>, 
+    Jann Horn <jannh@google.com>, Josef Bacik <josef@toxicpanda.com>, 
+    Chris Mason <mason@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
+    NeilBrown <neil@brown.name>, Eric Dumazet <edumazet@kernel.org>, 
+    Thomas Gleixner <tglx@kernel.org>, Al Viro <viro@zeniv.linux.org.uk>, 
+    Jonathan Corbet <corbet@lwn.net>, Christoph Hellwig <hch@lst.de>, 
+    Greg Kroah-Hartman <gregkh@suse.de>, 
+    Joel Granados <joel.granados@kernel.org>, Kees Cook <kees@kernel.org>, 
+    Jan Kara <jack@suse.cz>, Jan Kara <jack@suse.com>, 
+    linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org, 
+    linux-acpi@vger.kernel.org, linux-kselftest@vger.kernel.org, 
+    linux-s390@vger.kernel.org, linux-scsi@vger.kernel.org, 
+    linux-um@lists.infradead.org, linux-wireless@vger.kernel.org, 
+    linuxppc-dev@lists.ozlabs.org, netdev@vger.kernel.org, 
+    ntfs3@lists.linux.dev, platform-driver-x86@vger.kernel.org, 
+    coreteam@netfilter.org, kexec@lists.infradead.org, 
+    linux-pci@vger.kernel.org, linux-sound@vger.kernel.org, 
+    netfilter-devel@vger.kernel.org, dri-devel@lists.freedesktop.org, 
+    ibm-acpi-devel@lists.sourceforge.net, jfs-discussion@lists.sourceforge.net, 
+    linux-alpha@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+    linux-cifs@vger.kernel.org, linux-fbdev@vger.kernel.org, 
+    linux-hwmon@vger.kernel.org, linux-mm@kvack.org, linux-sh@vger.kernel.org, 
+    linux-usb@vger.kernel.org, samba-technical@lists.samba.org, 
+    sparclinux@vger.kernel.org, linux-m68k@lists.linux-m68k.org, 
+    linux-doc@vger.kernel.org, linux-serial@vger.kernel.org, 
+    linux-atm-general@lists.sourceforge.net, Takashi Iwai <tiwai@suse.de>, 
+    linux-input@vger.kernel.org, linux-raid@vger.kernel.org, 
+    linux-ext4@vger.kernel.org, linux-modules@vger.kernel.org, 
+    linux-debuggers@vger.kernel.org, Chuck Lever <cel@kernel.org>
+Subject: Re: [PATCH RESEND v2 14/23] proc: let procfs copy in writes before
+ pinning the entry
+In-Reply-To: <20261108185953.28054fb3@pumpkin>
+Message-ID: <alpine.DEB.2.21.2611090504170.17804@angie.orcam.me.uk>
+References: <20261104-work-procfs-core-v2-14-76ace653a773@kernel.org> <CAMuHMdVfakapgBK6TBhO1iWX8qzvLDk8jzRS=t2MVa5G=MCUeg@mail.gmail.com> <20261107-akteur-gemieden-eckdaten-21304d085e35@brauner> <20261108185953.28054fb3@pumpkin>
+User-Agent: Alpine 2.21 (DEB 202 2017-01-01)
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -59,33 +79,21 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 
-> From: Jianping Liu <frankjpliu@tencent.com>
->=20
-> __es_shrink() walks sbi->s_es_list and reclaims extents from each
-> inode. On a non-preemptible kernel that walk never gives up the CPU.
->=20
-> There is a soft lockup report on our company's machine. The machine
-> with millions of active inodes, 256 CPUs, and heavy memory pressure,
-> concurrent shrinkers run too long.
->=20
-> i_es_lock is dropped after es_reclaim_extents(), and s_es_lock is not
-> taken again until the next inode. When nr_to_scan remains, call
-> cond_resched_tasks_rcu_qs() before continuing the scan.
->=20
-> cond_resched() does not report the RCU quiescent state needed here.
-> It is compiled out when CONFIG_PREEMPTION=3Dy. Otherwise it schedules
-> through preempt_schedule(), and RCU records that switch as a
-> preemption. An RCU-tasks read-side section ends only at a voluntary
-> context switch, cond_resched_tasks_rcu_qs(), idle, or return to
-> userspace. The helper reports that voluntary quiescent state and still
-> lets a non-preemptible kernel reschedule.
->=20
-> Signed-off-by: Jianping Liu <frankjpliu@tencent.com>
+On Sun, 8 Nov 2026, David Laight wrote:
 
-Sashiko has reviewed this patch and found no issues.
+> > > While at it, I think it would be good to use this conversion as an
+> > > opportunity to replace "char *" by "void *", which will probably let
+> > > you drop several casts from users.  
+> > 
+> > So I tried that too. The thing is it drops exactly one u8 * cast in
+> > ntfs3's label write. 
+> 
+> Since char is now unsigned that one isn't even needed...
 
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261109031356.1065=
-9-1-frankljpliu@gmail.com?part=3D1
+ Please excuse me missing the context, but what circumstances does your 
+claim refer to?
 
+  Maciej
