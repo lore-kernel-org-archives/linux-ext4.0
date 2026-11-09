@@ -1,49 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794243147;
-	b=Bwcwj/FX25XIYXGZtBbVXDfHVdF9SkcCV7d++Q5LrRdV5W12Q34q/s1i0iIUC3qlZu4C
-	 UAVybNOTjB4luPFDbv8ebjDBGmZ6aj0T5CEv/9IZB88gbxNM9UyhtNElOypw39ol0GUjm
-	 m5fbfc6CgbsItskLrtuVbT7pGkACAuEcMFXtdNksd6839ddL3A0hwTI9PBiH/9tnVI3PZ
-	 rKJGEvy3mFpdkqGsCSvr4/K5QDklhWu5eul6T9IQqeg0Q+y26jztwp/EXuKZbwAY9q9Cz
-	 YvF2OtESbo5JvPKev+FuUjGW5/JMdYNHmbBLS1oCl9Z0R2ogZf/CJeGSleIrPC7CagA==
+	t=1794243143;
+	b=elIS2hqmtf2kk8pgzUzSZewWeAXKoqVrayFE6vXRZ/XpqnEhdJUR78TcTdX+KgskhuwM
+	 qufhfODgtYZEfn4gIamZx9iurjDUvQuTY/YWIaaJcnlxsbp00s/sTEizpwmrTnYOxo0u9
+	 9F9OnPFSu2VizcmutWJOKrb18kt5kYvSmuJ7wOenDJNa/9BmUNXY/QjoewfmjxSK5Gi6Z
+	 LbSKscsZhcDjWgGEgZsqT1tbnAThexzlDjNvgLAD6wrPmnx+Sl6YwvU6ssUQnZBoDZA1j
+	 E+v14MUOBexLdW5oC7C26pT8+fA/cZ+1XqfIc7A+TQpz4c+iY8tVlVY/rtKctr9S00g==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794243147;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794243143;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=zLH4QKXddQ3PclwzGKt2MypDy/RV4BppD4h97Ydd0V0=;
-	b=uiQj/fpG8vpQGI3TMGe75DMkcEoPzUO1H4TUtf+3eLmLcjLwFSZKnyDcs3EpzZn/1FpK
-	 TsnwlMRQi8O+ms8xb5IPdM6axzhh1aXwyIP59I/e5kYWC7+MK37f1kc8x14MLqAMS5U68
-	 Z6Kgc3lzZBDW8JsdG4DzPSn4REYQC8oMwenhNGPpc2ZPre8vXypnagGOcvzg8gKfY126l
-	 5vdBlZgjlFYwGPV/Ib0Ne9IQ6wZOWnX4Q0pMV2Y1zyd4b9LKBqrRfYweYbjnWcf7rI9ND
-	 KwcdsyVyp/k9/YKN2QhQTindVFFTuwrFX2hk90lceLFQrR2OkMREc101cn+d6JY8QtQ==
+	bh=uq51MUUAmNPFrZxx3InXgsTsHaGuIBJwf1HYCbIU0TQ=;
+	b=Qct0OUKu19G5h0HPo2uKxEfoEwxX6TVTCeC7CoM2DbZkRw9EKUO8bpUdM/Y9XxPT5fhI
+	 entVl9Xb0g++6G6d1mDxTONLge7E6Dtjihv6RQr2qoYG2ugSQDLrd3ZsJVVA4rtbTo2X8
+	 vKVNbJAqf+fXhRajXNa0UQ0pTPjGlP282Uzl/JzJn9IXMbSoTbkWOkO/g11E3zVjzWBhg
+	 wjicE2/hQiJ8K3uS/nGLWLX89rDOksVK3WhMQ6AOpqCIwuBA+LPFkCJCIlc+h7/f03DVW
+	 6gun6alRGWS3wKSEf0enoAb3nCtZ3iSv7cRX1pvu4IO6qlRoL+7uqpmm58rAC9UdjNA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="NLBr/lqH";
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=SSrdk0tV;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 11D8060A3838;
-	Mon,  9 Nov 2026 16:52:27 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=NLBr/lqH
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C74091F008A5;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 73733606EE9D;
 	Mon,  9 Nov 2026 16:52:23 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=SSrdk0tV
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 725BA1F00904;
+	Mon,  9 Nov 2026 16:52:20 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794243146;
-	bh=zLH4QKXddQ3PclwzGKt2MypDy/RV4BppD4h97Ydd0V0=;
+	s=k20260515; t=1794243143;
+	bh=uq51MUUAmNPFrZxx3InXgsTsHaGuIBJwf1HYCbIU0TQ=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=NLBr/lqHzDwHBZwdkQYQTv5SZI9MDm1lb3sH4h3W6TsRn84GvzsqP3YOWEq+rj7pz
-	 aOwDBkhFPmww/EMskWuLByuz8Fkh4/9wqrNQNg9sZwWGK18T/+PDZFvEUYreFux7TD
-	 j8kvXO1CvVZmB9+t6K49HS1b6q95gWRQoEVWtRipN5qwxZ99rSPVGe16qRUaEd2qwF
-	 +HO/LpI4DivW4lqh9slU2UITlltLIR6GvDbHLGxujNWFWj5r3eD2S/ONuNo5Rcvn7a
-	 cVxdopaXA7+rLctXkKPzHHdI8gv+12khyP6smzqXIDACQAjGUWpn47ONYmAalhpArL
-	 IveQTGIHcFOsw==
+	b=SSrdk0tV2OCAlfeTIVpYAeKa0hFIEq+wlRs1aX9VVEHRZEFCVauGcQOiaSsJ45rNi
+	 uPxby3F8a/+gxCrn/69d+qka08xcUn9HGE5P3VyHuwqrvmucuNM00lpZDQBOkS/2cq
+	 SDS5v+LLMKi/rdABWQEd7QfvF6L5VAFPiyyf3dRmQd01nrjn4bMvTTyf+08aA3Mnrj
+	 6Z62ovmS2KummrnIoASRuhrSipzeqNpMv68FyMpVU2g17oMNFgZvfNwwxZNM8YY+1I
+	 wLxsAqg/X6cudffaTkIAHna/ex2B0gK+ud7LuPOCxOl85S/o/X/B/qh5nFTGVuX5Nu
+	 6yI9XPv/rBAfA==
 From: Christian Brauner <brauner@kernel.org>
-Date: Mon, 09 Nov 2026 17:51:24 +0100
-Subject: [PATCH RFC v3 09/14] fs: don't strand I_METADATA_WRITEBACK inodes
- outside the LRU
+Date: Mon, 09 Nov 2026 17:51:23 +0100
+Subject: [PATCH RFC v3 08/14] fs: set I_METADATA_WRITEBACK in
+ mmb_mark_buffer_dirty()
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -55,7 +55,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-work-inode-metadata_writeback-v3-9-91ac6c024018@kernel.org>
+Message-Id: <20261109-work-inode-metadata_writeback-v3-8-91ac6c024018@kernel.org>
 References: <20261109-work-inode-metadata_writeback-v3-0-91ac6c024018@kernel.org>
 In-Reply-To: <20261109-work-inode-metadata_writeback-v3-0-91ac6c024018@kernel.org>
 To: linux-fsdevel@vger.kernel.org, Jan Kara <jack@suse.cz>
@@ -68,103 +68,81 @@ Cc: Josef Bacik <josef@toxicpanda.com>, Chris Mason <mason@kernel.org>,
  Namjae Jeon <namjae.jeon@samsung.com>, 
  "Christian Brauner (Amutable)" <brauner@kernel.org>, stable@vger.kernel.org
 X-Mailer: b4 0.17-dev-ce4c1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4176; i=brauner@kernel.org;
- h=from:subject:message-id; bh=/5Yqud61+lj78SWSAuygp0D8ojyhugiflBGlrR92oMM=;
- b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWR9/CX/VLR9xneL7MosFcfLnAmN6xi95kf7//qguklAR
- /MG149VHaUsDGJcDLJiiiwO7Sbhcst5KjYbZWrAzGFlAhnCwMUpABPxOcrI8FPqkt3ev8Eej7sm
- pp+6cv3yzujcOcx+O+3XM0S0BkceNGL475shXPl8e9d6eUeulotid7mmSlecfnLvsPDLpTcmuSa
- wcQEA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2641; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=ANLjFQZTu7eWBUSoA/NoDD8YeQ/elBxEjOpJYgsXPC4=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWR9/CW3L3/Wh7jaF7OzIpunZehXarXVaH1PntAiv3WT3
+ BshmcaCjlIWBjEuBlkxRRaHdpNwueU8FZuNMjVg5rAygQxh4OIUgInIrWZkeG77tn5h1jzZ5Qu3
+ neRh82Xe8KR0Z5jh/TMZ7fZmKa/0jRgZvtktzHyis+fy0eaiF30b7/V/PxAYHC14eMKhG7u6Zr1
+ 05AQA
 X-Developer-Key: i=brauner@kernel.org; a=openpgp;
  fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-Since commit c474bc56b6d1 ("fs: Provide way for filesystem to wait for
-metadata writeback") ext2, ext4 without a journal, fat, udf and minix
-set I_METADATA_WRITEBACK on an inode whose metadata was copied into a
-buffer that might not have reached the disk yet. Only data integrity
-writeback, i.e. fsync() and friends, clears it again. The flusher and
-sync(2) leave it alone.
+ext2, ext4 without a journal, fat, udf and minix track the metadata
+buffers of an inode in a mapping_metadata_bhs list and sync them from
+->sync_inode_metadata() and ->evict_inode(). The inode block itself is
+only tracked by I_METADATA_WRITEBACK which ->write_inode() sets after
+copying the inode into its buffer.
 
-inode_lru_isolate() treats every state bit other than I_REFERENCED as a
-reason not to reclaim the inode right now. It takes the inode off the
-LRU and relies on iput(), writeback completion or the removal of the
-last page from the page cache to put it back once the reason is gone.
+Set the bit in mmb_mark_buffer_dirty() as well so that it covers all
+the metadata an inode may still have to write out. Set it after the
+buffer is on the list. An fsync() that sees the bit then also finds the
+buffer when it walks the list, and one that cleared the bit before we
+set it leaves it set for the next one.
 
-But I_METADATA_WRITEBACK doesn't go away on its own. iput() puts the
-inode back on the LRU with the bit still set and the next scan takes it
-off again. So neither memory pressure nor drop_caches can free these
-inodes. Only fsync() and friends or unmounting the filesystem get rid
-of them.
+The inode itself may never have been dirtied. fat for example tracks
+the FAT buffers on a private inode that nothing marks dirty. So attach
+the inode to a wb before setting the bit, the way ext4_mark_iloc_dirty()
+does, or writeback_single_inode() has no wb to lock once evict() syncs
+it.
 
-On ext4 without a journal ext4_mark_iloc_dirty() sets the bit on every
-ext4_mark_inode_dirty(), so even an atime update is enough. An
-unprivileged user creating or touching lots of files grows the inode
-cache without bound until the OOM killer comes along.
+That lets evict() write out everything the bit tracks in one place
+instead of every ->evict_inode() calling mmb_sync() itself.
 
-The inode can't just be thrown away though. An fsync() after the inode
-was read back in wouldn't know that its metadata still has to be
-written out. So let the shrinker reclaim inodes with
-I_METADATA_WRITEBACK like any other clean inode and make evict() write
-out what the bit tracks unless the inode is being deleted. Since the
-previous patch the bit covers the tracked metadata buffers as well, and
-since the lookup patches ->sync_inode_metadata() doesn't read anything
-from disk for that. It writes and waits for whatever is still dirty or
-under writeback. The mmb_sync() calls in ->evict_inode() are redundant
-with that and the following patches drop them.
-
-Handing these inodes to a work item that syncs them and puts them back
-on the LRU would work too. But that's a second inode reclaim offload
-mechanism next to the deferred inode reclaim that is being worked on,
-and it needs a reference on the inode which leaks into remount, freeze
-and umount.
-
-For stable this needs the previous patches as well. Without the lookup
-changes evict() ends up reading inode blocks from disk with
-__GFP_NOFAIL allocations from reclaim. v7.3 also still has bfs which
-sets I_METADATA_WRITEBACK too and reads the inode block in
-bfs_sync_inode_metadata(), so the backport needs the cache-only lookup
-for bfs as well.
-
-Fixes: c474bc56b6d1 ("fs: Provide way for filesystem to wait for metadata writeback")
-Cc: stable@vger.kernel.org # v7.3; see patch description
-Reported-by: Josef Bacik <josef@toxicpanda.com>
+Suggested-by: Jan Kara <jack@suse.cz>
+Cc: stable@vger.kernel.org # v7.3
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- fs/inode.c | 13 ++++++++++++-
- 1 file changed, 12 insertions(+), 1 deletion(-)
+ fs/buffer.c | 16 ++++++++++++++--
+ 1 file changed, 14 insertions(+), 2 deletions(-)
 
-diff --git a/fs/inode.c b/fs/inode.c
-index 1cb6293b237a..332108961df6 100644
---- a/fs/inode.c
-+++ b/fs/inode.c
-@@ -818,6 +818,14 @@ static void evict(struct inode *inode)
- 	inode_wait_for_writeback(inode);
- 	spin_unlock(&inode->i_lock);
- 
-+	/*
-+	 * fsync() can't find what I_METADATA_WRITEBACK tracks anymore once the
-+	 * inode is gone, so write it out unless the inode is being deleted.
-+	 */
-+	if (inode->i_nlink &&
-+	    (inode_state_read_once(inode) & I_METADATA_WRITEBACK))
-+		sync_inode_metadata(inode, 1);
+diff --git a/fs/buffer.c b/fs/buffer.c
+index 5d3852b726d6..f951559e7d32 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -621,12 +621,15 @@ void write_boundary_block(struct block_device *bdev,
+  * @bh: The buffer to mark dirty.
+  * @mmb: The list of buffers to add the buffer to.
+  *
+- * Mark the buffer dirty and add it to the list if it is not already on
+- * a list.
++ * Mark the buffer dirty, add it to the list if it is not already on a list
++ * and set I_METADATA_WRITEBACK on the inode so that fsync() and eviction
++ * write it out.
+  */
+ void mmb_mark_buffer_dirty(struct buffer_head *bh,
+ 			   struct mapping_metadata_bhs *mmb)
+ {
++	struct inode *inode = mmb->mapping->host;
 +
- 	if (op->evict_inode) {
- 		op->evict_inode(inode);
- 	} else {
-@@ -947,9 +955,12 @@ static enum lru_status inode_lru_isolate(struct list_head *item,
- 	 * they're already on the LRU, and this can make them
- 	 * unreclaimable for a while. Remove them lazily here; iput,
- 	 * sync, or the last page cache deletion will requeue them.
-+	 * Nothing requeues them for I_METADATA_WRITEBACK, evict() writes
-+	 * that out instead.
- 	 */
- 	if (icount_read(inode) ||
--	    (inode_state_read(inode) & ~I_REFERENCED) ||
-+	    (inode_state_read(inode) &
-+	     ~(I_REFERENCED | I_METADATA_WRITEBACK)) ||
- 	    !mapping_shrinkable(&inode->i_data)) {
- 		list_lru_isolate(lru, &inode->i_lru);
- 		spin_unlock(&inode->i_lock);
+ 	mark_buffer_dirty(bh);
+ 	if (!bh->b_mmb) {
+ 		spin_lock(&mmb->lock);
+@@ -641,6 +644,15 @@ void mmb_mark_buffer_dirty(struct buffer_head *bh,
+ 		list_move_tail(&bh->b_assoc_buffers, &mmb->list);
+ 		spin_unlock(&mmb->lock);
+ 	}
++	/*
++	 * The inode itself may never have been dirtied, so attach it to a wb
++	 * before setting the bit or writeback_single_inode() has nothing to
++	 * lock when evict() syncs it.
++	 */
++	spin_lock(&inode->i_lock);
++	inode_attach_wb(inode, NULL);
++	inode_state_set(inode, I_METADATA_WRITEBACK);
++	spin_unlock(&inode->i_lock);
+ }
+ EXPORT_SYMBOL(mmb_mark_buffer_dirty);
+ 
 
 -- 
 2.53.0
