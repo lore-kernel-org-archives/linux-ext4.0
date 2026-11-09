@@ -1,74 +1,57 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=162.62.58.211
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794245175;
-	b=Y2/ZPDbzCjLfPcFxpBTBtcBt0VIUzGUYHT7i+lOCWaqo1RmKIvDXCAcfEW2SxEfGl9un
-	 gVigy7ChnIGbWfof1GVkCqGiEuEAh4BieggmyCF8GKjzC29HYBfhb0cGHhkf2E/WEy2oX
-	 Qg/JL7/PIytAtgNJIKIImuQGLKBSJmSKKPWVwoedMXyUGoOjqbvENwpAdiXTwGO5X8xVs
-	 e0SFYaPkZam2/lOWQrVopcVyb+Yg3BJWEOw7PrCH1JYVtG2HUeL4JDNhzxusAx3svQc+d
-	 WXwE154T3wSDYWgmgMhMiQo5wwPw7pe7ryL2ytEM4WQOUWN1SpOIalwPGLks+IyPPYQ==
+	t=1794246605;
+	b=nmBxzI3YwcZzyaI5reFA/rZ4EdGTbakQydA++98ke93iSvZWctgkiru9l3y+KKU1+WPf
+	 4qe4AIqC0CNH0BRCaoGD2C5LitXv3w+AOu/ST7ZLCmLebPWsIT0GcWsdmAG+uSZFGhvnL
+	 zpHgWCipYHjDiao+IJBjAzYHh24ke/9j7LgvoL9vqQAGiNJOmLFe1RfQ/2j3HQPG74hVs
+	 CX74CtdZxXzGI/W1wzDV3kc9bPV79fdWJNAh4TuikecgRXA9pYH71xaToCtwdAMZDkVFy
+	 oyFsnFP4qtUMkDfmtfWvG2438i76sQdu8O3tJUBLPLPMS96ZJan89sgTMdnQ7uegw3w==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794245175;
-	h=DMARC-Filter:DKIM-Signature:Received:X-QQ-mid:Message-ID:
-	 X-QQ-XMAILINFO:X-QQ-XMRINFO:From:To:Cc:Subject:X-OQ-MSGID:Date:
-	 Content-Type:Content-Transfer-Encoding:MIME-Version;
-	bh=ReT/huRCwfMeZEY0msKfX5bV9rfXIpPsvnOvO19k0iM=;
-	b=GdMqIuEyM6WGb8DNDA/4q73GV1/ofmy5cLQPUZ2qDP0+e7LEHIYp721mJQXE+jrfENhi
-	 ci7Ok7atcNb1Sg5Bam1wC32imyMI4kcs5qPFyvdgJ8GBbOSylhAd/UOo6BZlmU2nt5Key
-	 Gs3qQl8AmneG1dJGIWyCvrXfQG+7qDN1vLB/ov+XIDlO02PovqEinDybfCnUcjvgzeRIv
-	 9byNuIjl9QWJWqUmkcFzizu256ZWE5xOpXUjq0o+W4MBYg511QoyqP+zEhlDZqPlvFLdQ
-	 XiLzflDaPjvzXVuHXgwmxq4lO8ZLA2wWSEvaiOYv4SuuRn+B+tKhODE+SD0vfES/VEA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794246605;
+	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
+	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
+	bh=7WaOL/yz3CUaaPdrXv7rE8ULiFEEqzeuuoXeAynER3c=;
+	b=xnj0BTywmWgvSjcS+fTdPtM722BTK3XwEaIppQOTmhGa8hNBPyR/gBx21xGC5kZt/GGs
+	 2ttrFzsRy/OTtvteD/b8O+HY2JhAEop2kv1OUP1zp6Ud+99JqzWWhcJfM0CCijS3FjFac
+	 TdK1L5qRTwTcwnsxrG3AjmUfVxqYt42Rl+xSYg6fWpZtDjCLxIqWKLWl1dcCzImAKtPt0
+	 9SRZbJFJtsztHjq9djfJog1geBbrvM9bSTVDevgSFNFHVN2qfobVL3bZdBcXkuKKLPzQ4
+	 34dYOE8ejT1tHgBJ/peiSDrZhp1ei5e5eh6aA5CPEz021/ioyb4+vS6g+6YGS7nMDQg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=qq.com;
-	spf=pass smtp.mailfrom=qq.com;
-	dkim=pass header.d=qq.com header.i=@qq.com header.a=rsa-sha256 header.s=s201512 header.b=B+G+nXic;
-	arc=none smtp.remote-ip=162.62.58.211
-Received: from out162-62-58-211.mail.qq.com (out162-62-58-211.mail.qq.com [162.62.58.211])
-	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Iyml4BiK;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 240DC606A31C;
-	Mon,  9 Nov 2026 17:26:12 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 240DC606A31C
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=qq.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1A24F606A31C
+	for <linux-ext4@vger.kernel.org>; Mon,  9 Nov 2026 17:50:04 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=qq.com header.i=@qq.com header.a=rsa-sha256 header.s=s201512 header.b=B+G+nXic
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=qq.com; s=s201512;
-	t=1794245163; bh=ReT/huRCwfMeZEY0msKfX5bV9rfXIpPsvnOvO19k0iM=;
-	h=From:To:Cc:Subject:Date;
-	b=B+G+nXicFPHm3mw6u6BHvH7g3mK+V9b/Oan/hAEe8OdWIH2zOmTtWQMjCHq/wux6B
-	 aFUrpsZdhfvMMIZgP0UkQ4cieQVwvBAUMAOQfuxTbA4KvzfLOwgqwYP0zjq7oRXuVX
-	 fs1OLUn6r84StJ68fHSlG0PIhGVm3Iy+QTwkw83Q=
-Received: from [172.18.4.77] ([202.113.185.209])
-	by newxmesmtplogicsvrszb51-0.qq.com (NewEsmtp) with SMTP
-	id 68090602; Tue, 10 Nov 2026 01:26:00 +0800
-X-QQ-mid: xmsmtpt1794245160tqflx7u6g
-Message-ID: <tencent_4F47889D184C7FA2287DC2A33A52F3BE9F09@qq.com>
-X-QQ-XMAILINFO: OOO9dHjlsLs72kQUanzLSruAXh2zhKkMYlb2d5aU3n1X7udd1vcg97BC2QHnHT
-	 GK8X8FLwMTT2hmi8N7eKdKaB2ygZ0mPPGUMniCWSBJ73laBK1AFeXVSWtxWDhXKL6NjcCIsPT9QK
-	 yoIaehq1q0W0t103MepaJFLozK1TnY248VvrdkDgJrcSS74v6I2pCj1H0eumWDAfedhtM3uBJaRs
-	 osIQ8MtfRdq4b3Nq8GALMyGjnZVK6clgZrA+/D6zGPTHdSEciWxO+65nH1y97OPrnLNurJlYz5RR
-	 i2zlAj5qVobHXCOu+KuZKVnumUV1X0jQ+YZMSKE1zCZ2cGj8ff8wBsLUbBGKG5Lkb2KB9t89PpJf
-	 B1BGCWFLrYzAGbyB29aqBLC4b3XNr9hBIeO9gFyfhParD+2IImy2UniZ+SHM48uhkwRbeOfX/28V
-	 /ke/33bknqQ0HC5WblMk9WfMq+1c9myhmCQII1lGD5TurDIH48w1WquPqXZfKkAHtQfqdULnTzWM
-	 YSYumMTzhaOQmwADJmYlTbesl1Ol+XYvFetca1SDi5d3PZPsfddocA+rcJuYXDR5aoSlfcPCbsMN
-	 oJBz5+IIap2cRsyecUySS0xl3OU/ou8YsBeohHjMwPSV1u0uLJOHf/mr/fPVUlN3HdLI19ls+ib4
-	 LwvS7SHKNK3RgVuDEMOBUD8zGLVKTqXFev8UnX6koosFLASgY2lu+ejrfpIBzGu/qFKZGhiFTL3q
-	 GQWJe+nezrlulmxA2Gt+eqz/3XQr9NuDzDnNfrED0QpK32ahiyGC21te1aqwwIYyU/uL9BiE0TZ7
-	 NM+Pn5Z+mDp7ZwUu6Yhw9JjS/xC1fn0fgOx3fEIQCl+fy8zrangFzguNn0rUS3pNaH3D9spGzS/T
-	 9hLOqlkUFfBkA1lrtBGBcOddy7o9nZ416BDHO8Aw1sXNWUMKA4QqOhJkwFs2RBxur/tRi8BkcGho
-	 YTnpais7X6jCbldURBEDdzCHPSLB1pbGhwyp9ERevJXDPzTBgFzitg7IcvZRP1CfTlRm+LouOJWo
-	 CKlfnmThoa3onk3pIqmatxADr3noLlInDla7ukV2ljh9zT3uDI
-X-QQ-XMRINFO: OD9hHCdaPRBwH5bRRRw8tsiH4UAatJqXfg==
-From: Guikun Yang <yangguikun19@qq.com>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
- Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.cz>
-Subject: [Bug report] ext4: unvalidated hash trailer read past a fake dirent
- in ext4_inlinedir_to_tree()
-X-OQ-MSGID: <c42-ext4-inlinedir-hash-20261110@qq.com>
-Date: Tue, 10 Nov 2026 18:00:00 +0800
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Iyml4BiK
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7C4591F0089F;
+	Mon,  9 Nov 2026 17:50:04 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1794246604;
+	bh=7WaOL/yz3CUaaPdrXv7rE8ULiFEEqzeuuoXeAynER3c=;
+	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
+	b=Iyml4BiKh3ocVY+oarQTrnWLI9CxfZHPMZLEg0VyVsvsxyvMI0WGOq82RNJ5oDt9e
+	 R7yzxQc+COmWGenE1xhbzTPDE4QBOZm+X+B8fUIHidROmaBQdxS292hme6OCDIR8U/
+	 f1hLoPq630tBSQl/+Cb3wtoVpV3GtJbHHeAShUDnXm9NFe4svhvSi8qLWAs7yh8QWW
+	 fwcFN0BeLDdBZ8aXSKOgTzTz78Q/+kms4qsmx9sE5BV5giFDPv3pOQf3A2xs/pmY21
+	 D512fS4NKvrokOzgFiYIfJ6T0bxwY7kFaR2IfyV0/tpw3ohn+8OJnAbE/FHqWjFCxv
+	 5pcov/qoImmzA==
+Message-ID: <sashiko-outbox-205344@kernel.org>
+From: sashiko-bot@kernel.org
+Subject: Re: [PATCH RFC v3 08/14] fs: set I_METADATA_WRITEBACK in
+ mmb_mark_buffer_dirty()
+Reply-To: sashiko-reviews@lists.linux.dev
+To: "Christian Brauner" <brauner@kernel.org>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+In-Reply-To: <20261109-work-inode-metadata_writeback-v3-8-91ac6c024018@kernel.org>
+References: <20261109-work-inode-metadata_writeback-v3-0-91ac6c024018@kernel.org>
+ <20261109-work-inode-metadata_writeback-v3-8-91ac6c024018@kernel.org>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+Date: Mon, 09 Nov 2026 17:50:03 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -77,120 +60,159 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
-MIME-Version: 1.0
 
-Hi,
+Thank you for your contribution! Sashiko AI review found 3 potential
+issues to consider:
+- [High] ext4: crash in fastcommit replay when mmb_mark_buffer_dirty()
+  sets writeback
+- [Medium] fs/buffer: early return in mmb_mark_buffer_dirty() skips
+  I_METADATA_WRITEBACK
+- [Medium] fs/buffer: mmb_mark_buffer_dirty() sets b_mmb before adding
+  bh to mmb->list
+--
 
-Reading a crafted inline directory ends in a KASAN slab-out-of-bounds in
-ext4_inlinedir_to_tree(), reachable from getdents64() on a mounted image:
+commit f5c565458ebd0a39fc1e91b886caf335fa191c4d
+Author: Christian Brauner <brauner@kernel.org>
 
-  BUG: KASAN: slab-out-of-bounds in ext4_inlinedir_to_tree+0xb6c/0xc00
-  Read of size 4 at addr ffff8880052496bc by task init/1
-   ext4_inlinedir_to_tree
-   ext4_htree_fill_tree
-   ext4_dx_readdir
-   ext4_readdir
-   __se_sys_getdents64
+fs: set I_METADATA_WRITEBACK in mmb_mark_buffer_dirty()
 
-The address is at offset 0x3c of a kmalloc(60) object, i.e. exactly at
-the end of the buffer that holds the inline directory payload.
+This commit attaches the inode to a writeback structure and sets
+I_METADATA_WRITEBACK in mmb_mark_buffer_dirty() so that fsync() and
+inode eviction write out dirty metadata buffers tracked on the mapping.
 
-## The gap
+> diff --git a/fs/buffer.c b/fs/buffer.c
+> index 5d3852b726d6b..f951559e7d32c 100644
+> --- a/fs/buffer.c
+> +++ b/fs/buffer.c
+> @@ -621,12 +621,15 @@ void write_boundary_block(struct block_device *bdev,
+>   * @bh: The buffer to mark dirty.
+>   * @mmb: The list of buffers to add the buffer to.
+>   *
+> - * Mark the buffer dirty and add it to the list if it is not already on
+> - * a list.
+> + * Mark the buffer dirty, add it to the list if it is not already on a l=
+ist
+> + * and set I_METADATA_WRITEBACK on the inode so that fsync() and eviction
+> + * write it out.
+>   */
+>  void mmb_mark_buffer_dirty(struct buffer_head *bh,
+>  			   struct mapping_metadata_bhs *mmb)
+>  {
+> +	struct inode *inode =3D mmb->mapping->host;
+> +
+>  	mark_buffer_dirty(bh);
+>  	if (!bh->b_mmb) {
+>  		spin_lock(&mmb->lock);
+> @@ -641,6 +644,15 @@ void mmb_mark_buffer_dirty(struct buffer_head *bh,
 
-For a casefolded and encrypted directory, the dirent hash trailer lives
-right after the name, at an offset derived from name_len alone:
+[Severity: Medium]
+Can a concurrent mmb_mark_buffer_dirty() set I_METADATA_WRITEBACK before
+bh is linked onto mmb->list?
 
-  #define EXT4_DIRENT_HASHES(entry) \
-        ((struct ext4_dir_entry_hash *)(((void *)(entry)) + \
-         ((8 + (entry)->name_len + EXT4_DIR_ROUND) & ~EXT4_DIR_ROUND)))
+CPU0                                    CPU1
+mmb_mark_buffer_dirty(bh, mmb)
+  spin_lock(&mmb->lock)
+  cmpxchg(&bh->b_mmb, NULL, mmb)
+                                        mmb_mark_buffer_dirty(bh, mmb)
+                                          if (!bh->b_mmb) // false
+                                          inode_state_set(...,
+                                            I_METADATA_WRITEBACK)
+                                        fsync()
+                                          __writeback_single_inode()
+                                            inode_state_clear(...,
+                                              I_METADATA_WRITEBACK)
+                                            mmb_sync(mmb)
+                                              if (!mmb_has_buffers(mmb))
+                                                return 0;  <-- skips bh
+  list_move_tail(..., &mmb->list)
+  spin_unlock(&mmb->lock)
 
-__ext4_check_dir_entry() decides whether an entry is "fake" first:
+Because cmpxchg() sets bh->b_mmb before list_move_tail() adds bh to
+mmb->list, CPU1 sees bh->b_mmb !=3D NULL without taking mmb->lock, sets
+I_METADATA_WRITEBACK, and returns while mmb->list is still empty.  An
+intervening fsync() can then clear I_METADATA_WRITEBACK and return early
+from mmb_sync() when its lockless mmb_has_buffers() check sees an empty
+list, leaving bh unsynced.
 
-  static bool is_fake_dir_entry(struct ext4_dir_entry_2 *de)
-  {
-          ...
-          if (de->file_type == EXT4_FT_DIR_CSUM)
-                  return true;
-          return false;
-  }
+[Severity: Medium]
+Can the early return on cmpxchg(&bh->b_mmb, NULL, mmb) !=3D NULL skip
+setting I_METADATA_WRITEBACK when racing with mmb_sync()?
 
-and then validates rec_len against the fake variant of the length
-helper, which does not account for the 8-byte trailer:
+CPU0                                    CPU1
+__writeback_single_inode()
+  inode_state_clear(...,
+    I_METADATA_WRITEBACK)
+  mmb_sync(mmb)
+    spin_lock(&mmb->lock)
+    __remove_assoc_queue(mmb, bh)
+      bh->b_mmb =3D NULL
+                                        mmb_mark_buffer_dirty(bh, mmb)
+                                          mark_buffer_dirty(bh)
+                                          if (!bh->b_mmb) // true
+    smp_mb()
+    if (buffer_dirty(bh))
+      list_add(..., &mmb->list)
+      bh->b_mmb =3D mmb
+    spin_unlock(&mmb->lock)
+                                          spin_lock(&mmb->lock)
+                                          cmpxchg(&bh->b_mmb, NULL, mmb)
+                                            // returns mmb !=3D NULL
+                                          spin_unlock(&mmb->lock)
+                                          return;  <-- skips setting bit
 
-  else if (unlikely(rlen < ext4_dir_rec_len(de->name_len,
-                                          fake ? NULL : dir)))
-          error_msg = "rec_len is too small for name_len";
+__writeback_single_inode() clears I_METADATA_WRITEBACK before calling
+sync_inode_metadata() -> mmb_sync().  In the second pass of mmb_sync(),
+__remove_assoc_queue() transiently clears bh->b_mmb and then restores
+bh->b_mmb =3D mmb after seeing BH_Dirty from CPU1.  CPU1 then fails the
+cmpxchg() and returns early without setting I_METADATA_WRITEBACK, leaving
+the redirtied buffer on mmb->list with I_METADATA_WRITEBACK clear on the
+inode so a subsequent fsync() or evict() will not write it out.
 
-With file_type == 0xDE, a 12-byte entry (name_len <= 4, no trailer)
-passes every check, including landing exactly at inline_size. The
-readdir path then reads the trailer unconditionally:
+>  		list_move_tail(&bh->b_assoc_buffers, &mmb->list);
+>  		spin_unlock(&mmb->lock);
+>  	}
+> +	/*
+> +	 * The inode itself may never have been dirtied, so attach it to a wb
+> +	 * before setting the bit or writeback_single_inode() has nothing to
+> +	 * lock when evict() syncs it.
+> +	 */
+> +	spin_lock(&inode->i_lock);
+> +	inode_attach_wb(inode, NULL);
+> +	inode_state_set(inode, I_METADATA_WRITEBACK);
+> +	spin_unlock(&inode->i_lock);
+>  }
+>  EXPORT_SYMBOL(mmb_mark_buffer_dirty);
 
-  if (ext4_hash_in_dirent(dir)) {
-          hinfo->hash = EXT4_DIRENT_HASH(de);
-          hinfo->minor_hash = EXT4_DIRENT_MINOR_HASH(de);
-  }
+[Severity: High]
+Does setting I_METADATA_WRITEBACK here cause a NULL pointer dereference
+during ext4 fastcommit replay?
 
-EXT4_DIRENT_HASH(de) evaluates to de + 12 for such an entry, so the
-read starts at the end of the dir_buf allocation.
+0ecd56573c1f ("ext4: Avoid entering writeback paths during fastcommit
+replay") guarded ext4_mark_iloc_dirty() against EXT4_FC_REPLAY so it
+would not set I_METADATA_WRITEBACK while SB_ACTIVE is still clear and
+s_writepages_rwsem is not yet initialized.  However, fastcommit replay
+paths such as ext4_fc_replay_create() and ext4_fc_replay_add_range()
+dirty directory or extent blocks with handle =3D=3D NULL and a non-NULL
+inode, which reaches mmb_mark_buffer_dirty():
 
-Reaching this requires ext4_hash_in_dirent(), i.e. S_CASEFOLD and
-S_ENCRYPTED on the directory inode. Both come from the on-disk i_flags
-and are set unconditionally in ext4_set_inode_flags(); no key is
-needed, because fscrypt_get_encryption_info() is called with
-allow_unsupported from fscrypt_prepare_readdir() and returns 0 both for
-an unreadable "c" xattr (-ERANGE) and for a missing key. The only
-build-time requirement is CONFIG_FS_ENCRYPTION, which distribution
-kernels enable.
+fs/ext4/ext4_jbd2.c:__ext4_handle_dirty_metadata() {
+    ...
+	} else {
+		if (inode) {
+			if (!ext4_i_metadata_bhs(inode))
+				ext4_inode_attach_mmb(inode);
+			mmb_mark_buffer_dirty(bh, ext4_i_metadata_bhs(inode));
+    ...
+}
 
-## Observed
+When replay finishes with the inode and calls iput(), iput_final() sees
+!(sb->s_flags & SB_ACTIVE) and calls write_inode_now(inode, 1).  With
+I_METADATA_WRITEBACK now set, __writeback_single_inode() runs
+do_writepages() -> ext4_writepages() -> percpu_down_read() on the
+uninitialized s_writepages_rwsem, crashing the kernel, and also calls
+ext4_sync_inode_metadata(), which triggers
+WARN_ON_ONCE(EXT4_SB(inode->i_sb)->s_journal) and returns -EFSCORRUPTED.
 
-Deterministic 3/3 on a QEMU x86_64 kernel with KASAN and
-CONFIG_FS_ENCRYPTION. The image is a normal inline directory whose
-inode carries CASEFOLD and ENCRYPT, with the last dirent given
-file_type 0xDE and a rec_len that leaves it flush against the end of
-the inline payload (inline_size 60, hence kmalloc(60)). The control
-image with i_flags cleared mounts and reads back the same directory
-without any report.
-
-## Relation to the lookup-side fix
-
-This is the same read that c7e6b863d298 ("ext4: check dir entry fits
-before reading the hash trailer in ext4_search_dir()") closed on the
-lookup path:
-
-  if (de->name + de->name_len <= dlimit &&
-      (!ext4_hash_in_dirent(dir) ||
-       (char *)de + ext4_dir_rec_len(de->name_len, dir) <= dlimit) &&
-      ext4_match(dir, fname, de))
-
-The readdir path never got the equivalent check, and its leniency about
-fake entries makes the gap larger: it accepts a rec_len that excludes
-the trailer entirely. The neighbouring inline read path also gained two
-header-length checks in 9333cc809f ("ext4: fix out-of-bounds read in
-ext4_read_inline_dir()"); ext4_inlinedir_to_tree() has neither.
-
-## Suggested fix
-
-Skip entries whose rec_len cannot hold the trailer, mirroring the
-lookup-side condition:
-
-  if (ext4_hash_in_dirent(dir)) {
-+         if (ext4_dir_rec_len(de->name_len, dir) >
-+             ext4_rec_len_from_disk(de->rec_len, inline_size))
-+                 goto out;
-          hinfo->hash = EXT4_DIRENT_HASH(de);
-          hinfo->minor_hash = EXT4_DIRENT_MINOR_HASH(de);
-  }
-
-The same condition applies to any other site that reads the trailer
-without a length check; this report covers the one we reproduce.
-
-The reproducer (image builder, ready-made image, serial log) is
-available on request.
-
-Tested on 7.3.0; fs/ext4/inline.c is unchanged in mainline as of
-2026-11-10 apart from the two fixes mentioned above.
-
-Thanks,
-Guikun Yang
-
+--=20
+Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261109-work-inode=
+-metadata_writeback-v3-0-91ac6c024018@kernel.org?part=3D8
