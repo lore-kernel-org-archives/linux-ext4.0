@@ -1,55 +1,54 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=91.218.175.240
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794171381;
-	b=IpKHjoMifJKoPR8LxlzsnNgrj+Djuf2t5m1Y5REOxIz29TdUrS240j6oAJDAGA4VcYhi
-	 f8l8m2ufms/CiyNM4YUL59OEoRAUcQ0qekZH+mNL4pL+76eQt/VY37OLvkXnlBmKcYpEt
-	 VWjfgwok32G1lyM+j6BSRnHyIDgnMkpmLP5h5RuAi917QarRCjFClt/yEuaduVCVm38Wt
-	 CMGWpLfFpfV5jBpcURJOXMxUwpYxOjPF9c6DYERACgZQjcKoYbEDO7zZ8QsLAEb3EJFws
-	 qqu08eYuHr6p7LVU8Wc/jZ1Kvr1kWqHOQBc6o77P3ZORjjXH60kys6uDHvklHc/XB2w==
+	t=1794192731;
+	b=mu5GsQWLQEzqCxG1ymYvA79Fq9UctVjGRkNju7jrfpRDCHCe/rHWm58I0cfeQOzyuqPI
+	 0e1FBnvfuB/bU9vf5izwOO4r5y5EBnKMiePGKpVIncpo+F+lnbbOHpKe1XEpbVsFRAFyL
+	 t2p8P9nbyIokjAZjgLKso2IaVINX6ho8Z8DI1kVYPqtJCpjzaT3pV/pF8FN+TlcMiyl3P
+	 M9NnIPa04U93M4QoVMcSa8PBRWSupraf9tDpgwmghOXqTNOjhCitp3+gtcuZcZrhTBH2f
+	 gkNkPa6uekYQ1xTkCKlsPkCcx5UZJOVEUlMKVyGmhQGTqbKlV6xh0SJ9SOx9ops6e+Q==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794171381;
-	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
-	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=ujZFKpLc0Ix28/V6FG+69l9KmNZz1vlOpwYyVTzHvv0=;
-	b=mHJ9W0RZUHgn37I4WJUXVIsKIuqEc3ZFYQo5jvPQZ9nxx2koWVeMUIjOIKF9JJupOKUi
-	 thEN7ayLHcOYwy0+7sVh5y5dKXomLzEqpGOI44puO8lt7yt9wRMEBdoGqgq6bw3eyISgv
-	 o0sI0/y8JJLwET5UL5rN9ZbjItAvIRN9M5RH7DKyKlw4LgS2BbWa3SeRaCNij+ygmUwNX
-	 r4RgdBzk9rGY5ZZOpSMm/m7+9+/w292On8CuTyQAWw4qM94Cvw++BPJ5xK8iCl6PXs9Uf
-	 3GYlb1XfEnTcVboBN8zb/a4WgDucafCJW/l//8EoNqFGD+/sFnCMMI1nZJlAh9jhoew==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794192731;
+	h=DMARC-Filter:X-Envelope-To:DKIM-Signature:X-Envelope-To:Received:
+	 X-Mizu-Trace-ID:X-Migadu-Flow:Message-ID:Date:MIME-Version:User-Agent:
+	 Subject:To:Cc:References:From:In-Reply-To:Content-Type:
+	 Content-Transfer-Encoding;
+	bh=nWqWiduDQX/+eDY/lBNMvXq4xgQ2WR9If/niokbocYQ=;
+	b=jFkAPAtK1QtdkKAYtL3vrWqhVvKw90Mh3UjsV+bItfcDN+Lkduo5ioSLpDFlARRZc5nG
+	 6dqX0l5hx+QEOa3JdPrbakB3WSyLe7yaMtFKis1goJxR556J2lmEnO7ntT133QU8r9edG
+	 g+ZZK51ljBXhAkHUOeR+MWW88ffXtGManEsUy/eWde+VOSY7PorUldmtMILX9AgNCpQlO
+	 L3lMJYmC/W3jqz/lXWAnq60YM21lKmiHDg0RSuvIkhDYOEOk/qVtNX7bRIJRMkXS8ZWyM
+	 8hvOuKKvZL3fGM5g4kKTICFiz0ue/ufAbGVrliWsSec1tAXOz16GF+vy23ftp+BATmg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=bpx75LLn;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=pass header.from=linux.dev;
+	spf=pass smtp.mailfrom=linux.dev;
+	dkim=pass header.d=linux.dev header.i=@linux.dev header.a=rsa-sha256 header.s=key1 header.b=pKqbz5+1;
+	arc=none smtp.remote-ip=91.218.175.240
+Received: from mta0.migadu.com (out-240.mta0.migadu.com [91.218.175.240])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 18FA6606A31C
-	for <linux-ext4@vger.kernel.org>; Sun,  8 Nov 2026 20:56:20 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C6832606A330
+	for <linux-ext4@vger.kernel.org>; Mon,  9 Nov 2026 02:52:04 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org C6832606A330
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.dev
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=bpx75LLn
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 831231F0089F;
-	Sun,  8 Nov 2026 20:56:20 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794171380;
-	bh=ujZFKpLc0Ix28/V6FG+69l9KmNZz1vlOpwYyVTzHvv0=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=bpx75LLnHHkuFn/BdYvAqO7IILwge4aTMOT/KUXjfHjadoNL7AX9PRkAxhyc9gIRw
-	 3EpK+uLFClVU79BBla9I04nNmVrsPCb09rDwVbQieTGBZfbcFPNEv3mSnDSQFDeF77
-	 pCkpqyqhxVQPeAgxqIOXFuZlRu3VEeMZm4zRifesep2GSHR6BWrnn72tOhpcLhNjlX
-	 Pw0fuUB5ajIoFoi7SRPU2GIEIQJKeZ0OBoXSmK+CaDkNrnjncPsyoJuiuSLKyk846w
-	 ldUhw6MYcbl/koR5L0I5xtgAbiL4/Jmp8TaivwIRCHb7TVxk3bydNHugB3UlojjtnT
-	 Lpm17hlKjcr0A==
-Message-ID: <sashiko-outbox-204031@kernel.org>
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH] ext4: fix OOB write in fast-commit replay
-Reply-To: sashiko-reviews@lists.linux.dev
-To: =?utf-8?b?SsOpcsOpbXkgSmVhbg==?= <Jeremy.Jean@oss.cyber.gouv.fr>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-In-Reply-To: <20261108204345.1423203-2-Jeremy.Jean@oss.cyber.gouv.fr>
-References: <20261108204345.1423203-2-Jeremy.Jean@oss.cyber.gouv.fr>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Sun, 08 Nov 2026 20:56:20 +0000
+	dkim=pass (1024-bit key, unprotected) header.d=linux.dev header.i=@linux.dev header.a=rsa-sha256 header.s=key1 header.b=pKqbz5+1
+X-Envelope-To: linux-ext4@vger.kernel.org
+DKIM-Signature: a=rsa-sha256; bh=1zQrA1miKQ/sO3U4FLD9eN7ND1EAn4eFHq58nFmS/2c=;
+ c=simple/simple; d=linux.dev;
+ h=from:to:subject:date:message-id:mime-version:content-type; s=key1;
+ t=1794192722; v=1; x=1794797522;
+ b=pKqbz5+1nAKvoDjratDGIzCVYLRnYWqr1KkI/51AbwTsIOLh1H3KSkwjZnitIUapDrfX3moK
+ iBDOjWlEa0LcAglhZ0IIVJXQpa10JvLhgoeorLL1bBrmrzYqTSk7F/F73Ux8tJumFsmES18Q1nY
+ WVU2IQ4+YlREcEp/U62zWKW0=
+X-Envelope-To: linux-ext4@vger.kernel.org
+Received: by smtp.migadu.com with ESMTPS id f8a5242679d67f97;
+	Mon, 09 Nov 2026 02:52:02 +0000
+X-Mizu-Trace-ID: f8a5242679d67f97
+X-Migadu-Flow: FLOW_OUT
+Message-ID: <3f45a5f9-9c87-420d-b6a5-6145c834c0d1@linux.dev>
+Date: Mon, 9 Nov 2026 10:51:46 +0800
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -58,56 +57,44 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
+MIME-Version: 1.0
+User-Agent: Mozilla Thunderbird
+Subject: Re: [RFC 1/6] block: refuse a dma-buf bio that carries a crypto
+ context
+To: Christoph Hellwig <hch@lst.de>
+Cc: Jens Axboe <axboe@kernel.dk>, Dan Williams <djbw@kernel.org>,
+ Matthew Wilcox <willy@infradead.org>, Jan Kara <jack@suse.cz>,
+ Alexander Viro <viro@zeniv.linux.org.uk>,
+ Christian Brauner <brauner@kernel.org>, tytso@mit.edu,
+ Andreas Dilger <adilger.kernel@dilger.ca>,
+ Baokun Li <libaokun@linux.alibaba.com>, Ojaswin Mujoo
+ <ojaswin@linux.ibm.com>, "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
+ Zhang Yi <yi.zhang@huawei.com>, "Darrick J. Wong" <djwong@kernel.org>,
+ Andrew Morton <akpm@linux-foundation.org>, asml.silence@gmail.com,
+ Anuj Gupta <anuj1072538@gmail.com>, linux-block@vger.kernel.org,
+ linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+ nvdimm@lists.linux.dev, linux-ext4@vger.kernel.org,
+ linux-xfs@vger.kernel.org, linux-mm@kvack.org, Li Wang <liwang@kylinos.cn>
+References: <20261105065847.196540-1-mengmeng.zhao@linux.dev>
+ <20261105065847.196540-2-mengmeng.zhao@linux.dev>
+ <20261106104119.GA5668@lst.de>
+From: Mengmeng Zhao <mengmeng.zhao@linux.dev>
+In-Reply-To: <20261106104119.GA5668@lst.de>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
 
-Thank you for your contribution! Sashiko AI review found no new issues
-in this patch, but noticed 1 related pre-existing issue it does not
-introduce:
-- [Critical] ext4: missing block bitmap updates in ext4_fc_replay() [1]
---
-
-commit 5ddbe50e098dc2628bd98eec98bb8cad8442ceb0
-Author: J=C3=A9r=C3=A9my Jean <Jeremy.Jean@oss.cyber.gouv.fr>
-
-ext4: fix OOB write in fast-commit replay
-
-This commit re-validates fast-commit record bounds and value lengths
-during the replay phase to prevent out-of-bounds writes if an earlier
-replay operation overwrites a later record.
-
-> diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
-> index 0cac890cf3702..9edd26a18b92e 100644
-> --- a/fs/ext4/fast_commit.c
-> +++ b/fs/ext4/fast_commit.c
-> @@ -2613,6 +2613,11 @@ static int ext4_fc_replay(journal_t *journal, stru=
-ct buffer_head *bh,
->  			ext4_fc_set_bitmaps_and_counters(sb);
->  			break;
->  		}
-> +		if (tl.fc_len > end - val ||
-> +		    !ext4_fc_value_len_isvalid(sbi, tl.fc_tag, tl.fc_len)) {
-> +			ret =3D -EFSCORRUPTED;
-> +			break;
-> +		}
-> =20
->  		ext4_debug("Replay phase, tag:%s\n", tag2str(tl.fc_tag));
->  		state->fc_replay_num_tags--;
-
-[Severity: Critical]
-This problem wasn't introduced by this patch, but can ext4_fc_replay()
-skip ext4_fc_set_bitmaps_and_counters() [1] when the last valid
-EXT4_FC_TAG_TAIL record is in the final block of the fast-commit area?
-
-Because EXT4_FC_TAG_TAIL pads its payload to the block boundary, the loop
-increment advances cur to end right after state->fc_replay_num_tags is
-decremented to 0.  The loop condition cur <=3D end - EXT4_FC_TAG_BASE_LEN
-then exits the loop before the state->fc_replay_num_tags =3D=3D 0 check at =
-the
-top can run.  When that block is also journal->j_fc_last, fc_do_one_pass()
-finishes without calling ext4_fc_replay() again, leaving blocks allocated
-before the crash unmarked in the block bitmaps and subject to reallocation.
-
-[1] https://sashiko.dev/#/bug/linux-07caeb0c-7490-4ef6-a809-3f819db1b121
-
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261108204345.1423=
-203-2-Jeremy.Jean@oss.cyber.gouv.fr?part=3D1
+On 11/6/26 18:41, Christoph Hellwig wrote:
+> On Thu, Nov 05, 2026 at 02:58:42PM +0800, Mengmeng Zhao wrote:
+>> +	/* a dma-buf bio has no pages for integrity work or contents crypto */
+>>  	if (unlikely(op_is_dmabuf(bio->bi_opf) &&
+>> -		bdev_has_integrity_csum(bio->bi_bdev))) {
+>> +	    (bdev_has_integrity_csum(bio->bi_bdev) ||
+>> +	     bio_has_crypt_ctx(bio)))) {
+> 
+> This could really use a factored helper explaining all the refusals.
+> And maybe we should use the chance to sit back and think what else
+> would blow up and add it there as well.
+> 
+Hi Christoph, thanks for the review. I will extract a helper in V2 soon. 
+There are several buffered io fallbacks, it's really necessary to discuss
+how to avoid these. Glad to join it.
