@@ -1,111 +1,100 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.216.43
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794313913;
-	b=kLM0NCkMPeiVOxViOvMquH9/6ZURcvDiEI7hCfSyYiixXg7NqLs8MicHbOryjOtKWsnV
-	 b/vOSBesNRf0KsiB1z+RodJ8yPcbntqqa8mQEgu+rFguqUche4+HHQ6pTRNRZzT3oLVLD
-	 7k3T9AqwAHxuOfIs+HJbxO9EHOtJIR+Q6Xv0qUucGaHKUbKEObh3t6ht2rLR+IP0xdtbS
-	 eWCnIPH/48VQdcJifmdYNYMHfvxVDXLX5uhk/jUOFKtIH0Xg5j0zh+T3gAMjcNyErW3To
-	 3+V3TeKJKV5rgtHq2dvSFxe5fC/1qskUMPO3WFQgH4kzASc0Fkfjcd1oifOhdSwUt/A==
+	t=1794316887;
+	b=TrXuWcXb2k4a8WRmfExRmEdwsubT85wmOKbbXD8YJrXkf95t1qJ+7LFMhiWdzWvhrl/s
+	 cZkXDF/CFzDURFCvxMFPJ7YAakRx6ai/PMLUzite8cWapuIsg/8VgE1YuQvuLh302Rh9Z
+	 I2oGsGdtxlp+sxQJ2JsyYWMNTKujRX08uccYX3qhqz/Qp1ODFCYoGVOtWmRdk6tY8SYJ+
+	 onEQCmkX26WXTdiMxbst3NABh82UyK+E4+iqjE/jBS0AAKI7dHponKr47QFMvX+z/XS02
+	 /uZ/YWGAbNV6YQflkpFQqWdYHJayiR6k9wYQwJ9Mfj5yvNga2jIcnHhz/Qxyegg5VMg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794313913;
-	h=DMARC-Filter:Received:DKIM-Signature:DKIM-Signature:DKIM-Signature:
-	 DKIM-Signature:Received:Received:Received:Date:From:To:Cc:Subject:
-	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
-	 In-Reply-To:X-Spamd-Result:X-Rspamd-Server:X-Rspamd-Action:
-	 X-Spam-Flag:X-Spam-Score:X-Spam-Level:X-Rspamd-Queue-Id;
-	bh=Qb1NmpwfxsibhcfNuBMjvr2vACZ6jsFgtlWvUWxwjbM=;
-	b=o8jSTNXvHpiPs9pXFbfDHtwMyExb/+M5Ixb/ZBl8iD7FzGbqdZGhSoQU447okgC/LfSa
-	 lMpqL+XfVEzIuXZ2tXG7gBrMuTMe3X4oicQxgkfVMXma3y0WYTLVWbR127McU2VDI3rbg
-	 1cirDITUGmwPvVVXU37gHQygoSoGCqFSQPF5UJuLabZRjHBmmgpIhKANh6Ypnp7bfP7D2
-	 6rpYIrBPtWUekcjFDSboZblETOdGanbuFuKWXOVLfS6NDccAE5oKRohvc7iLo6TvGdfp4
-	 x+Tmdd+ddxycdCLLPQ6AC7i5TmwuuMgSWfEvfBbKOdqXHg1IfFRIHD1jhebks8cQiaA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794316887;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:From:To:Cc:Subject:
+	 Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
+	 Content-Transfer-Encoding;
+	bh=3tWiq7aHA+IGdy3MoPePq5JolrdZPCWKlrUl1uu+r1E=;
+	b=pD395ydRUpDMyklHE2hc7Oj25TZngqJe5lHdOazjqel6MadNOX2eh3RHxnPkE1Vk5dJM
+	 fOkte9QMfSAdjK19EU4Tls9qXh3EWl2Sg0k9d2eqEPaCRDpEXpbrZ927nuEKmvI8ANT9g
+	 LXZ0+13PK9i/JR+h48vbViJs1v9snkAFi3rHwRPUz21wDOH9j88AOlS30LRRHB+tcb3sC
+	 8hL9ahAbAxjEdfRqjfItQFFof/jD7F2prgv3TiUdfXaBqUBqF6uCVMQN74RxkPCFAQijQ
+	 VS6BZwepcR63NLNFcph7pxqJwiqPQ4Yo7C2jrsK8bXQqSyoOnQQ29oe08yyuVTyAPyA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=none header.from=suse.cz;
-	spf=pass smtp.mailfrom=suse.cz;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=pfLagRcV;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=h8OtgKmS;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b="B7a/enga";
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=fmo+lr8H;
-	arc=none smtp.remote-ip=195.135.223.131
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	dmarc=pass header.from=gmail.com;
+	spf=pass smtp.mailfrom=gmail.com;
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b="yokdV/NT";
+	arc=none smtp.remote-ip=209.85.216.43
+Received: from mail-pj1-f43.google.com (mail-pj1-f43.google.com [209.85.216.43])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7F659606A31C;
-	Tue, 10 Nov 2026 12:31:52 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 7F659606A31C
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8E1D9607B12F
+	for <linux-ext4@vger.kernel.org>; Tue, 10 Nov 2026 13:21:27 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 8E1D9607B12F
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=pfLagRcV;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=h8OtgKmS;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=B7a/enga;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=fmo+lr8H
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 66A171F84C;
-	Tue, 10 Nov 2026 12:31:49 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1794313910; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=Qb1NmpwfxsibhcfNuBMjvr2vACZ6jsFgtlWvUWxwjbM=;
-	b=pfLagRcVMXKr4d9vPRelm7IOVVImPOLNwpwuwITEKPSU8vexIFkL36yrUSv42xy+PvfH8a
-	0iajZLMo2Hd5cEtj5b8XTQGF95wL636kZe5nDIevlA6OOnn8NyXyY9G+rylpoDTIBXLkac
-	CF0CiL1fHy6kHGThKlBXTo+IesTgjp8=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1794313910;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=Qb1NmpwfxsibhcfNuBMjvr2vACZ6jsFgtlWvUWxwjbM=;
-	b=h8OtgKmS7W5tIUSEbf2k4CtX89ff7cpKXdKDUdFis1c1yZw6HuKpY90YhDu2c54TSrggpC
-	VHPwIz+19JYEgXAA==
-Authentication-Results: smtp-out2.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b="B7a/enga";
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=fmo+lr8H
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1794313909; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=Qb1NmpwfxsibhcfNuBMjvr2vACZ6jsFgtlWvUWxwjbM=;
-	b=B7a/engajOJx1AN0ExlsuI12nC41K7fETFxKv75p9oIDTlklDi3VmqPMpem4awrnT6nc9R
-	86w7Sdydt4prGAdN6rT8Wph303jtvZLBmoDMYcHTfp88+viISscH5KuiB9UWgSNYhc2BQr
-	8zlKJIOfJi5dQjcWEvWES79hiSz1bCo=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1794313909;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=Qb1NmpwfxsibhcfNuBMjvr2vACZ6jsFgtlWvUWxwjbM=;
-	b=fmo+lr8HNxf4btYuX2oZ8EXC1HMH01l0RpgckL8x9NhaG7tOlJbsowuhd71tCzoOVdHBFo
-	USWfxn5kg7J1CrCw==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 3A8351339F;
-	Tue, 10 Nov 2026 12:31:49 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id QcYKBrUO82ojKwAAD6G6ig
-	(envelope-from <jack@suse.cz>); Tue, 10 Nov 2026 12:31:49 +0000
-Received: by quack.suse.cz (Postfix, from userid 1000)
-	id BE697224C7; Tue, 10 Nov 2026 13:31:48 +0100 (CET)
-Date: Tue, 10 Nov 2026 13:31:48 +0100
-From: Jan Kara <jack@suse.cz>
-To: Alan <3164729207@qq.com>
-Cc: Theodore Ts'o <tytso@mit.edu>, 
-	Andreas Dilger <adilger.kernel@dilger.ca>, Baokun Li <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>, 
-	Ojaswin Mujoo <ojaswin@linux.ibm.com>, "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, 
-	Zhang Yi <yi.zhang@huawei.com>, linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
-	stable@vger.kernel.org
-Subject: Re: [PATCH] ext4: free the new extent block when getting its buffer
- fails
-Message-ID: <c24v3lxh2tbx5uw4622vbzrur4dq6hdcezswv7ecqw7n4sxg72@sfx24x535qrq>
-References: <tencent_9EB8EBE910378E46C80E006C6A7DA918BA08@qq.com>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=yokdV/NT
+Received: by mail-pj1-f43.google.com with SMTP id 98e67ed59e1d1-3b0e0e65adbso1006290a91.3
+        for <linux-ext4@vger.kernel.org>; Tue, 10 Nov 2026 05:21:27 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20260707; t=1794316887; x=1794921687; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=3tWiq7aHA+IGdy3MoPePq5JolrdZPCWKlrUl1uu+r1E=;
+        b=yokdV/NT+sxAcdfoZRwwYwindb7sUW6pJD/V0DWZnhBwloPOmxnLzXgD7wPPmWXmvh
+         DidRq5OGwuFDtvdBtyZEyLy5bdNqZxkKMEjMuCdfyj9DylXTCjvalJcr93yLKYn6qmhF
+         oJXItmr5I26wNNT2feuasYVd7w4QnY8Uq063Mwh9hHgn36dYAWPEO1NsX8DgNCnHXhMb
+         gAvVsts8fK6jjiQac+GxZFOrm6Lq32Fdt4wwniOLHMkkkngHzVCilEJTpek0c23jGdDe
+         bXaiHTSqSZAbiHpO7yNlZ225QggqnToREQQMsnmNnomLKr6B9qie0iXY0qTcSKJtCG8/
+         bFUg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1794316887; x=1794921687;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
+         :to:cc:subject:date:message-id:reply-to:content-type;
+        bh=3tWiq7aHA+IGdy3MoPePq5JolrdZPCWKlrUl1uu+r1E=;
+        b=A+dNYd0/V9BqBVFQr+Z9q6tCC0zwTICDITmopvCoYeTIArRbD2aa+u/P5wRQcSxYiv
+         XtO4Ul6yjwy/qP+z6Fk6qHr+UMB3tFaGei/Tct6EFCgKKoEpw9LZKMWt0ut9itjvxGgB
+         hFpjQzL4u0n2xiVSeQJap5HGWma7A7uTHG93HW6uS6IOqfj9gMUApSzyOP/B5ks+19+D
+         bzAA0XVQsyyjJeZE728vpzN8tpE0bq8x/echIQ16hTnf1lYNdE2cbH/JfFwhWr/pJwRx
+         uCgJq5z7m0MPC7m4hZC3ihqh/hdHJMFyKr1vnNma6hhGwKG+AWgq2/gzAaQtTKGHdIfI
+         OT+A==
+X-Gm-Message-State: APuU4Z+UgmwnOZ26uvVLAzI+8PSLRbPa0lbh3JCAt1UZOzMY+5+efL/x
+	Aofy7XL+Ff9GKFAf1rIRbDgIj2PiI2s/awn9fE4kZCAC/KrTil4Gl8gp
+X-Gm-Gg: AYBFou2oUJJKrlf5cT6ASBXU+VfXb1wcJ5c6GDL6xqT7WDADOsLWK7HXH8/xeWO1rhX
+	CVkSeojs7Lf/K5pi5qnZeJ5HaXYaom1rvB7Q/CYLSUpczrW0j+ih+s0kkuEViQbpBm/SFwrq035
+	KLu8u7HL1LWgi5dreBAjY7rh7IVxWSryQxKzezeY9VFUPrkTW+0VW8eLssRogtQ1yf/pdkGghuF
+	ofzTBJGBMebPlG58SsnFqQf8szhJPVLesvw0KyCZT+9rjRXjvGxs24yX/pusjBcrCotiQPjOww+
+	dHaYNSO8ayyOegCSEvOAeQO5oueuenTfau23wZ7HZOhgn0yVRVg3hyzG+7LawQRJ6zYCHjoi6m8
+	3JPydA4kmCAr1/WsnepFZySd2sEK98C5S+ns9EV6ze+EZuwXQDOYNFvltQN50lK97fVTphnNQzO
+	Az2bV5awQ+vIOpjX8i8CFYLpNu7S3gXdKqTELp/Q1EjREeHIYyrw4CzuI+IUiBnagy3iu2WVcE3
+	Qk/xz4rsZgDx+vEK4KRutwpZzN0KbUvH6ipjcSKiUOvVuLeuTScRO3pLgo4T3yN3e5Pe9MlqL6L
+	zQ24O19jBMvG4Jx4xQqsDJQTRsfEEwP1DJF9pNtz/JUQWLjnXsO9
+X-Received: by 2002:a17:90b:574c:b0:3a8:32f2:f4a5 with SMTP id 98e67ed59e1d1-3b166ce2b98mr2944296a91.53.1794316886911;
+        Tue, 10 Nov 2026 05:21:26 -0800 (PST)
+Received: from localhost.localdomain ([152.136.45.109])
+        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-3b168eacb73sm1945635a91.1.2026.11.10.05.21.21
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Tue, 10 Nov 2026 05:21:26 -0800 (PST)
+From: diasyzhangqing@gmail.com
+To: tytso@mit.edu,
+	adilger.kernel@dilger.ca
+Cc: linux-ext4@vger.kernel.org,
+	libaokun@linux.alibaba.com,
+	jack@suse.cz,
+	ojaswin@linux.ibm.com,
+	ritesh.list@gmail.com,
+	yi.zhang@huawei.com,
+	syzbot+d4ecb9a1e5b3dcf8baec@syzkaller.appspotmail.com,
+	linux-kernel@vger.kernel.org,
+	Qing Zhang <diasyzhang@tencent.com>
+Subject: [PATCH] ext4: make concurrent DEFAULT shutdown waits killable
+Date: Tue, 10 Nov 2026 21:21:18 +0800
+Message-ID: <20261110132118.11265-1-diasyzhangqing@gmail.com>
+X-Mailer: git-send-email 2.43.7
+In-Reply-To: <6af1e75f.3e87765f.91969.0010.GAE@google.com>
+References: <6af1e75f.3e87765f.91969.0010.GAE@google.com>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -115,105 +104,97 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <tencent_9EB8EBE910378E46C80E006C6A7DA918BA08@qq.com>
-X-Spamd-Result: default: False [-11.51 / 50.00];
-	SUSE_INTERNAL_BYPASS(-9.00)[];
-	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	MX_GOOD(-0.01)[];
-	RCVD_TLS_LAST(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	RCVD_COUNT_THREE(0.00)[3];
-	MIME_TRACE(0.00)[0:+];
-	ARC_NA(0.00)[];
-	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	FREEMAIL_TO(0.00)[qq.com];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com,qq.com];
-	FREEMAIL_CC(0.00)[mit.edu,dilger.ca,linux.alibaba.com,suse.cz,linux.ibm.com,gmail.com,huawei.com,vger.kernel.org];
-	RCPT_COUNT_SEVEN(0.00)[11];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	TO_DN_SOME(0.00)[];
-	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	TAGGED_RCPT(0.00)[];
-	DKIM_TRACE(0.00)[suse.cz:+];
-	MISSING_XM_UA(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:dkim,suse.com:email,imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,qq.com:email]
-X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
-X-Rspamd-Action: no action
-X-Spam-Flag: NO
-X-Spam-Score: -11.51
-X-Spam-Level: 
-X-Rspamd-Queue-Id: 66A171F84C
+Content-Transfer-Encoding: 8bit
 
-On Tue 10-11-26 15:27:23, Alan wrote:
-> ext4_ext_grow_indepth() allocates and accounts a metadata block before
-> calling sb_getblk_gfp(). If the buffer allocation fails, the new block
-> has not been linked into the extent tree, but the error path returns
-> without freeing it. This leaks the block and leaves i_blocks larger
-> than the number of blocks reachable from the inode.
-> 
-> Commit 8a83ac54940d ("ext4: call bdev_getblk() from sb_getblk_gfp()")
-> removed the implicit __GFP_NOFAIL from this allocation, making this
-> error path reachable.
-> 
-> Free the new metadata block before returning -ENOMEM. Use
-> ext4_free_blocks() to undo both the allocation and inode accounting.
-> 
-> Tested on Linux 6.12.1 by injecting a NULL result at the caller's buffer
-> acquisition boundary. Before the fix, seven failed extent tree growth
-> operations left seven allocated but unreachable blocks and i_blocks of
-> 40 instead of 32 on a filesystem with 4 KiB blocks. After the fix, the
-> same failures leave i_blocks at 32, and e2fsck -fn passes after a normal
-> unmount. Retrying the operation, truncating the file, and growing the
-> tree without injection also succeed.
-> 
-> Fixes: 8a83ac54940d ("ext4: call bdev_getblk() from sb_getblk_gfp()")
-> Cc: stable@vger.kernel.org
-> Signed-off-by: Alan <3164729207@qq.com>
+From: Qing Zhang <diasyzhang@tencent.com>
 
-OK, but this holds for any error in that function at least until we call
-ext4_idx_store_pblock(). So please fix at least all occurences in that one
-function. Thanks.
+Concurrent DEFAULT shutdown callers can all pass the shutdown flag
+check before the first caller finishes bdev_freeze().  They then wait
+uninterruptibly on bd_fsfreeze_mutex and may perform redundant
+freeze/thaw operations, triggering hung-task reports if the initial
+freeze takes long enough.
 
-								Honza
+Serialize DEFAULT shutdown attempts with a per-superblock mutex
+acquired killably.  Re-check the shutdown flag after acquiring it to
+skip the freeze after a successful attempt, or retry if the previous
+attempt failed.
 
-> ---
->  fs/ext4/extents.c | 6 +++++-
->  1 file changed, 5 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index ad0d80e33f6090..7358df54bcd4ae 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -1333,8 +1333,12 @@ static int ext4_ext_grow_indepth(handle_t *handle, struct inode *inode,
->  		return err;
->  
->  	bh = sb_getblk_gfp(inode->i_sb, newblock, __GFP_MOVABLE | GFP_NOFS);
-> -	if (unlikely(!bh))
-> +	if (unlikely(!bh)) {
-> +		/* The new block has not been linked into the extent tree yet. */
-> +		ext4_free_blocks(handle, inode, NULL, newblock, 1,
-> +				 EXT4_FREE_BLOCKS_METADATA);
->  		return -ENOMEM;
-> +	}
->  	lock_buffer(bh);
->  
->  	err = ext4_journal_get_create_access(handle, inode->i_sb, bh,
-> 
-> base-commit: d135ab453a7400a34930bdda1ef4bdc8acfac80e
-> -- 
-> 2.53.0
-> 
+Leave LOGFLUSH and NOLOGFLUSH unchanged.  The ->shutdown callback uses
+NOLOGFLUSH with s_umount held, so it must not acquire a mutex held
+across a freeze.  This does not shorten the initial freeze or prevent
+hung-task reports for the active freezer and other freeze-blocked
+tasks.
+
+Fixes: 783d94854499 ("ext4: add EXT4_IOC_GOINGDOWN ioctl")
+Reported-by: syzbot+d4ecb9a1e5b3dcf8baec@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=d4ecb9a1e5b3dcf8baec
+Signed-off-by: Qing Zhang <diasyzhang@tencent.com>
+---
+
+#syz test: git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master
+ fs/ext4/ext4.h  |  1 +
+ fs/ext4/ioctl.c | 14 +++++++++++++-
+ fs/ext4/super.c |  1 +
+ 3 files changed, 15 insertions(+), 1 deletion(-)
+
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index f38fec3167fb..c4e44e3d58cc 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1647,6 +1647,7 @@ struct ext4_sb_info {
+ 	/* Journaling */
+ 	struct journal_s *s_journal;
+ 	unsigned long s_ext4_flags;		/* Ext4 superblock flags */
++	struct mutex s_shutdown_lock;	/* Serializes DEFAULT shutdown requests */
+ 	struct mutex s_orphan_lock;	/* Protects on disk list changes */
+ 	struct list_head s_orphan;	/* List of orphaned inodes in on disk
+ 					   list */
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index e8e579498c99..3019b16320a0 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -818,16 +818,28 @@ int ext4_force_shutdown(struct super_block *sb, u32 flags)
+ 	if (ext4_forced_shutdown(sb))
+ 		return 0;
+ 
++	if (flags == EXT4_GOING_FLAGS_DEFAULT) {
++		if (mutex_lock_killable(&sbi->s_shutdown_lock))
++			return -EINTR;
++		if (ext4_forced_shutdown(sb)) {
++			mutex_unlock(&sbi->s_shutdown_lock);
++			return 0;
++		}
++	}
++
+ 	ext4_msg(sb, KERN_ALERT, "shut down requested (%d)", flags);
+ 	trace_ext4_shutdown(sb, flags);
+ 
+ 	switch (flags) {
+ 	case EXT4_GOING_FLAGS_DEFAULT:
+ 		ret = bdev_freeze(sb->s_bdev);
+-		if (ret)
++		if (ret) {
++			mutex_unlock(&sbi->s_shutdown_lock);
+ 			return ret;
++		}
+ 		set_bit(EXT4_FLAGS_SHUTDOWN, &sbi->s_ext4_flags);
+ 		bdev_thaw(sb->s_bdev);
++		mutex_unlock(&sbi->s_shutdown_lock);
+ 		break;
+ 	case EXT4_GOING_FLAGS_LOGFLUSH:
+ 		/*
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 9cae52471dee..a1d4fc5c0a68 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -5547,6 +5547,7 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
+ 
+ 	INIT_LIST_HEAD(&sbi->s_orphan); /* unlinked but open files */
+ 	mutex_init(&sbi->s_orphan_lock);
++	mutex_init(&sbi->s_shutdown_lock);
+ 
+ 	spin_lock_init(&sbi->s_bdev_wb_lock);
+ 
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.43.7
+
