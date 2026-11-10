@@ -1,59 +1,60 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794347704;
-	b=PEPeOXsmzvpSh9TljRpuqnzrEXs7/vBf7jff00w6K0B37a+7S+8llhIeCFzNCsuImWkU
-	 t07ItaEQFIO8eYeiBpqoB6+37OvH5NUWawMralJG9tgGLy97L17Zfcy+8XXSsfdQTH/jt
-	 BaQI1pN5vNOAoVym7LMacc3Y+0eIeT9qpbtkZ9FwA6LrpY5SXxWCVn8/xeRNLAbHLUjho
-	 k1ggQ+jK80/G32Iwtkqu9N/wvG6nBSmq57tIhMLERfWxgJitTpvxz4w4iisb2zSzBv3Bq
-	 qaT487HneACn7g98rBrSQva0xg2HK8DVTL3Xg0JJStwSA3vm4r67xI6GbG2fs9tmgpA==
+	t=1794347811;
+	b=IABEHpw8o+WZzbwgkUe8yVxs6IU1xLRM+WysxeIGxrHlctJb22fjdUQB1o3FS1ZbZgWB
+	 fJFZ8hv0LBL64UHpVRnY7/eyh0C17NxDPE83vTd14vOvyRh63YQsE6hYsTb8GjixAt/EH
+	 /JmNWMl9iKgot+HsXOjcKOqGkSex8vLHsrXyBgt7vLeR0D2pjaCz5Xc49t83fz5cqcJNM
+	 zTM4p3ijNJagi7uyA23zEm1/g/irCMbQ+mbPcmeTGpodBzd45m0+wNEL6ns5y6SkVrWW+
+	 h1pgQCFuhB/MCcmHk3j7pSx1P2j4Qvcyq6aRUzmndB1ZiDfEJPRty9HXiI4TfBxLvgg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794347704;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794347811;
 	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
 	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
-	bh=Qo2+jRzUK6ef9hbeUahqrraMXl7IGJhVlYVAOScV8ZI=;
-	b=FEr9OWS7uZ15PGbzfLI6Frsvq8qlK1CcRvxJ3t3JmxqB+DFhJrktIX5+aND+mCLzM0+t
-	 A4DWc8IqDeV9naVG42rlj43PE4PbeCJ3+/J+HrgTX4Zr8mVooLYc7NWkC6ORWmk5+ZWXS
-	 nwA7HPmJUu0j9HNkVvhoA9H7D8CnYTvtBi9sJART5NtFHMsvSrtqwXE/0zSbn50y9Nhlv
-	 2tFBFbq15U6Baw66G4a4A/JdNKkbJLfF0R3OzPjdOZ7Ry8/lemsQlz0t9daOggJF/Pw2E
-	 IGvZhOijR9um+DKckPBVe6xUaBmrBOiFgf7ZExGNnBX8xf5UtiHN8+9nFyh1zRvURmg==
+	bh=2ZDErYEQzOGJUjtDBXVtItn62hZcw22wk/hmpMTwW8s=;
+	b=oEcKGSC4qwIe66vFkMiP6BAY1V46Q7jhY12cFye0q8UXQhnTUKMM8pSAG7p3zS54eeyA
+	 DTelOa9CC1bi3zq1ik6GeXK2LJ9TKQFzb+4FD4D7EG7KJvxnC+tF8vGkuevx5Govb16tL
+	 BGvF5P4+VBXlvY5qtZF2I5IDZtzdoJH8Fw1ZnPMQrnscMHUKT2KF/JA1QxgvUfu+DeddF
+	 5ZcoHZCuV1xaCy88AqrGHOoWYnKmW9L1/RX0Ho81B8ENOKAyGrrWKnjZWORGlkFIX5ASG
+	 SO3rcBlSQKJqj0zaCS2SmODe/4MCLlXIXg9AuMT4CWqLCTabz8y+3C5Ksj6waDRD4cQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=j22Pvhyi;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="OT1LM/Xd";
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1CF8F606A320;
-	Tue, 10 Nov 2026 21:55:03 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 10AC9606D4EC;
+	Tue, 10 Nov 2026 21:56:50 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=j22Pvhyi
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 944791F0089F;
-	Tue, 10 Nov 2026 21:54:59 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=OT1LM/Xd
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8C96A1F008A2;
+	Tue, 10 Nov 2026 21:56:47 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794347703;
-	bh=Qo2+jRzUK6ef9hbeUahqrraMXl7IGJhVlYVAOScV8ZI=;
+	s=k20260515; t=1794347810;
+	bh=2ZDErYEQzOGJUjtDBXVtItn62hZcw22wk/hmpMTwW8s=;
 	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=j22PvhyilTKnM5nyfrsCHKDdMDuDUmUojoPgdFVX3mAQZV2Hd/EwIcKqe9WVrqR2c
-	 MSzVoBQwUnPD6JzsOc+1o53n5QYkcA+nlbqm6dxtbnSJyl1ZOQIiHKoQnYZzRHBowa
-	 e4X8dMoJr9bDyOXLzZ3FjgJiGislRrlSph8RedwX838BPRAKN2NO3x0D/Z2w9j2CW/
-	 KQxt4VdILN3yV+fYs4w6/qhzADCZGiYz2e1iQFRwWJMpZ2iPogLQ1Bb6gF7gFEd0oy
-	 GDOo3T8sD7nRxhmfhzFYGhDL0p+Q5hwG10KJ/zATsmnIkscFJ7zS+hlynFopD1R2yP
-	 G8nJmfQnsF5QA==
-Date: Tue, 10 Nov 2026 22:54:57 +0100
+	b=OT1LM/XddW8RQD5eAmU8fBGOFbAM8/CnJEQs3885Wa0JF4KqnzpeNdym5//nw/qmO
+	 iSIXz2DK4b5upf83EDFMcSmu0R158tcCDKFJPJc+nb5CZdciue++Ti2l4+7JB3cJcZ
+	 ofKUHpSYZzgbI/fZlqfADzqczaOi6d9z3Y/zO6lUhjFut4nTY/Mo51uO4It6fBxl4w
+	 kteuhsecwTnXgVw0wlXvii87uhXMhUgsuU0E2MSi8RSzt1K2+xoj6E83ckzwcRg4rF
+	 Ht/S7BOo0R3XlqC9Z0pGpdIAMmq9jRNZQqamTSsu2Lll7rHCO7Qg9kxjiih6PwTNRR
+	 88zmVF8rr0Lbw==
+Date: Tue, 10 Nov 2026 22:56:45 +0100
 From: Christian Brauner <brauner@kernel.org>
-To: Qu Wenruo <wqu@suse.com>, linux-fsdevel@vger.kernel.org, 
-	Jan Kara <jack@suse.com>
-Cc: Al Viro <viro@zeniv.linux.org.uk>, ecryptfs@vger.kernel.org, 
-	linux-ext4@vger.kernel.org, jfs-discussion@lists.sourceforge.net, 
-	linux-nilfs@vger.kernel.org, exfat@lists.linux.dev, linux-mm@kvack.org, ntfs@lists.linux.dev, 
-	ocfs2-devel@lists.linux.dev, linux-btrfs@vger.kernel.org, gfs2@lists.linux.dev, 
-	linux-efi@vger.kernel.org, linux-mtd@lists.infradead.org, linux-xfs@vger.kernel.org
-Subject: Re: [PATCH v2 23/34] btrfs: check BTRFS_FS_STATE_RO instead of
- SB_RDONLY at runtime
-Message-ID: <20261110-kursniveau-zeltlager-quintessenz-36b26debabe3@brauner>
+To: Ryusuke Konishi <konishi.ryusuke@gmail.com>, 
+	sashiko-reviews@lists.linux.dev
+Cc: Jan Kara <jack@suse.com>, Al Viro <viro@zeniv.linux.org.uk>, 
+	linux-ext4@vger.kernel.org, linux-mm@kvack.org, linux-efi@vger.kernel.org, 
+	linux-mtd@lists.infradead.org, Karl Mehltretter <kmehltretter@gmail.com>, dsterba@suse.cz, 
+	tytso@mit.edu, Mark Fasheh <mark@fasheh.com>, Joel Becker <jlbec@evilplan.org>, 
+	Joseph Qi <joseph.qi@linux.alibaba.com>
+Subject: Re: [PATCH v2 06/34] nilfs2: don't set SB_RDONLY after filesystem
+ errors
+Message-ID: <20261110-deformation-knabe-geltung-3bb7600eaead@brauner>
 References: <20261029-work-fs-sb_rdonly-v2-0-2f44f64f0b66@kernel.org>
- <20261029-work-fs-sb_rdonly-v2-23-2f44f64f0b66@kernel.org>
- <c88e4e9c-6b86-4fbb-94bf-909522badf83@suse.com>
+ <20261029-work-fs-sb_rdonly-v2-6-2f44f64f0b66@kernel.org>
+ <sashiko-outbox-191225@kernel.org>
+ <CAKFNMombDWkJ=m+CjMy7qnd_yy-vZ9c-EE7R95HKKkcy-M0+SQ@mail.gmail.com>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -65,21 +66,51 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Content-Disposition: inline
-In-Reply-To: <c88e4e9c-6b86-4fbb-94bf-909522badf83@suse.com>
+In-Reply-To: <CAKFNMombDWkJ=m+CjMy7qnd_yy-vZ9c-EE7R95HKKkcy-M0+SQ@mail.gmail.com>
 
-On Sun, Nov 01, 2026 at 01:26:22PM +1030, Qu Wenruo wrote:
-> I love the idea. This reminds me exactly why for btrfs_force_shutdown(),
-> we have to manually set the fs error without marking the fs RO, to avoid
-> exactly the same problem.
+On Wed, Nov 04, 2026 at 02:32:10AM +0900, Ryusuke Konishi wrote:
+> Sashiko's point here has a valid aspect.
 >
-> With that said, can you also a set_bit() call in btrfs_force_shutdown()
-> to also set that flag instead of the exsting setting fs_info->fs_error?
+> This inconsistency can be resolved by inserting the following handling
+> logic if sb_emergency_ro(s) is true:
+>
+>        } else if (!ctx->cno) {
+>                 if (nilfs_tree_is_busy(s->s_root)) {
+>                         if (sb_emergency_ro(s)) {
+>                                 if (!(fc->sb_flags & SB_RDONLY)) {
+>                                         err = -EROFS;
+>                                         goto failed_super;
+>                                 } else {
+>                                         s->s_flags |= SB_RDONLY;
+>                                 }
 
-I think so. I'd set BTRFS_FS_STATE_RO in addition to fs_error though.
-start_transaction(), join_transaction() and btrfs_remount_rw() key off
-BTRFS_FS_ERROR().
+Meh, I'd not set SB_RDONLY there. Because it changes the read-only state
+outside of reconfigure_super() which is precisely what this series gets
+rid of.
 
-Note that this changes some error codes after a shutdown.
-btrfs_permission() returns EROFS for MAY_WRITE once btrfs_fs_rdonly() is
-true so opening a file for writing fails with EROFS instead of the EIO
-from btrfs_file_open().
+The superblock can be frozen at that point, e.g., when the error hit
+while it was frozen, and then thaw_super() leaves s_writers locked again:
+
+  mount /dev/sda /mnt
+  fsfreeze -f /mnt
+  <error>                       -> sb_set_emergency_ro()
+  mount -o ro /dev/sda /mnt2    -> SB_RDONLY on the frozen superblock
+  fsfreeze -u /mnt              -> s_writers stay locked
+
+It also turns the superblock read-only underneath the existing
+read-write mount without sb_prepare_remount_readonly().
+
+The busy-tree branch does what get_tree_bdev() does for every other
+block device filesystem. A second read-only mount fails with EBUSY and a
+second read-write mount gets the superblock and every write fails with
+EROFS. That's what ext4 does since commit d3476f3dad4a ("ext4: don't set
+SB_RDONLY after filesystem errors").
+
+If we want the second read-only mount to work I think we should do it
+for get_tree_bdev() and nilfs2 alike and treat the emergency state as
+read-only in the comparison without touching s_flags:
+
+	if ((bool)(fc->sb_flags & SB_RDONLY) !=
+	    (sb_rdonly(s) || sb_emergency_ro(s))) {
+
+But I'd do that on top.
