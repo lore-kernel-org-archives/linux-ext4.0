@@ -1,44 +1,44 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794337462;
-	b=nLa45gC8VYKqcX6R/fyHHdFllb2AAQTKVw5L3yGx2y5ya61AhHxAZOI7rzugULMWuO7X
-	 rzMNuwWXAXVJfGJ1KrtPein5NBeKCJU2ISEo9aaT+36fvT6BXgSVHtFWxOo8pdGIkGdJj
-	 dfaK4xHYcevaBxhDJrQAYCzuAeX0dd8T4QouIhiHO6S+cwJXVuStW0z3NZALMwJbp3O0J
-	 8I6P68yMWkuTZNrZVViGcrVJRiXQKtfkMiQBhdzehhaYJksAr71kRKdqhpPGycBzFrzGg
-	 45dMlfvb9LoEeR6fGjIA5e3XNLvtMQXj3A0cF7cwh0gg70lgdSarO/gAFig1pO/aBJg==
+	t=1794337467;
+	b=yuNj5mvFNsbq+boYa67QLYR7cGiffnbQVjLuMhCcAuXbrZcN603Yd7RE2IbYhRDIC/SV
+	 Bw11GkIU8I5BrVyXgtJbAisjQio60v2Ov7fPWLSI9mY4fzLOdhTGGDtuTTzmmoCw9cx9+
+	 7/ZCpGbR1yahCW+MFRjt62DcvyrTB2hRq1uD/DxWdtbUTmZ/ukk2Ba9YCzyY2a407us6x
+	 5IUSDGIiJXZ4O4lLEQF+SabzGsWfHZ9EmowDvuCe7Pzk8syaOC5s1637I5Gx61VIBsRtR
+	 HHZ8bjRTwm2k+1ZGYhygcatmJj8K6efbLbKBpsO/bueq3qUMWHHbPFpDiS3XR+xv6Sg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794337462;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794337467;
 	h=Received:DKIM-Signature:From:To:Subject:Date:Message-ID:In-Reply-To:
 	 References:MIME-Version:Content-Type:Content-Transfer-Encoding;
-	bh=jot0meT61nYpnJvABWxTHeYzg5H0PbUz/w5w4CVIwGs=;
-	b=xLCKo7I7GEAFlhjyNmnfxTzet5vWWwgPlst/v8kOqingNhYoAf8CYAeweMcG3EBTYQPd
-	 Gh+DIdhTSybb5WIc38Wkua1mfxAWITkYCl+2R9XlPlItAUiYXQCLpSlVIZQhagDyxxCuP
-	 yUDUU4Xsdx4FOm2m3hhHdz73iQMIg705/2BbH3PRCQf/dVqD1QcbVP0KCyVVUSn0lQTlz
-	 1ZdXuvhxYcWthsgLKXxzzMcOBPve0ikO03AOiBNDqpc1yd3Wb9Vi/tWD4qu7AkEKGp/QK
-	 sAy/eDpLDLCA0KWa2a4ClY9sWXpbv827F1pVtS1hlEkOBY0zeKkA97vHtW9K21pXSQg==
+	bh=Z6NcfE7q4aw6EHDzqyxzrOJSO96VOIIF54Ip198CsSs=;
+	b=yqw3DxaFEA/YkWrjFb6cGxs5+Wbge/a8sA0/BqHgG5RPDV4fQV1IDSYJGHMWStZGA9Mp
+	 qLpPrpHJFPqQAZ8elhLsKqSGLzMacFNZVVvlZCkNCsj610e51Aen8fz5Y4ccCC8OhuB6H
+	 VIk6YA7i9bRkjddMUB+NfeDboaLYYDwEmhpHBfqm7S1nykl/Z4MTrB8fhFWy0kvbg+QhH
+	 p2n30m1yoQLoLbfXzdiIYKM5qC/joDP6Rt2kamfPoEE+1w0gGtOkN5+O0euF/htPSCV4q
+	 wRAnZIpXi9v+FL3gT4qdgZ0/VP9scp4UENgIbqbhCTY2YPR/P+YpyCzBt6fZmrNsjVw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=bYqabPnj;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=DYz8mNu9;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5E319606A31C;
-	Tue, 10 Nov 2026 19:04:22 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 855D8606A337;
+	Tue, 10 Nov 2026 19:04:27 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=bYqabPnj
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7838A1F008A1;
-	Tue, 10 Nov 2026 19:04:20 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=DYz8mNu9
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id B763F1F00900;
+	Tue, 10 Nov 2026 19:04:25 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794337461;
-	bh=jot0meT61nYpnJvABWxTHeYzg5H0PbUz/w5w4CVIwGs=;
+	s=k20260515; t=1794337467;
+	bh=Z6NcfE7q4aw6EHDzqyxzrOJSO96VOIIF54Ip198CsSs=;
 	h=From:To:Subject:Date:In-Reply-To:References;
-	b=bYqabPnjr36nnuM/IG5MPueh4TBjsyzTPzlejzErHFnaTQrnwlTtdB1HoWde0x7yi
-	 WzxuXwOb7DXMU0xs5OnBgN/I3VwUqiHAu6Sx5e0WVhEoT78CSjkLyqRvbaZFGMv4Xi
-	 KeNR1Y6SzXlPPDvdXQWhP+LOK4rhlWKHyDmeCRQI8ICYW/syH/vadu6HJbm9if5saE
-	 zoYeeHP/hZFnQ51ZYnChWwCYZ3vED7mHNi8sm6CzgkdsVeM8UepeRdfJbqkMVCJhIS
-	 iTP7KTvJxBIL2ixZqjFwF0/ehOCNVGhaN5gtpXfE20gLor/Cswz04QuEaw7GFvM74H
-	 KKCCgSylstmZQ==
+	b=DYz8mNu94D9UTXC1UZAb0iVNDuG8dMpdKYmD4RDSA/BVuhCM85b0R218Hq8Eu2vkj
+	 2Sw8IHzxkrqKwBocIsdzsYE9DRAlVI4jY0yK0XmdNteqzFkErDViSLsdHPeCEIMxJG
+	 sVmhbMRSsEZr8UvppzzJZPbwXBFQHwfLPmNBwxGzZ6XDjslpE7sU9w3hrWVB8UoGIy
+	 6wm7JuiZK8uKg2Up1G10VcdI2g4tzJXzcdp9mCYrmIeuanQ5KXQY+KxBjZyfw+gXvd
+	 zJjOsJb/KtAHJ70t23kjFPopY/ftH3NpG5oCxvqMKJ1ZlxYQFL0FpgIoRhI9iAuNtT
+	 ZSCocRUuoENSg==
 From: Chris Mason <mason@kernel.org>
 To: mason@kernel.org,
 	tytso@mit.edu,
@@ -53,9 +53,9 @@ To: mason@kernel.org,
 	linux-ext4@vger.kernel.org,
 	tz2294@columbia.edu,
 	brauner@kernel.org
-Subject: [PATCH v7 00/11] reflink and atomic write bugs
-Date: Tue, 10 Nov 2026 14:04:18 -0500
-Message-ID: <20261110190417.32650-2-mason@kernel.org>
+Subject: [PATCH v7 03/11] xfs: don't change the block map under a dirty folio
+Date: Tue, 10 Nov 2026 14:04:21 -0500
+Message-ID: <20261110190417.32650-5-mason@kernel.org>
 In-Reply-To: <20261110190417.32650-1-mason@kernel.org>
 References: <20261110190417.32650-1-mason@kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -70,57 +70,85 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 
-This series did a few rounds privately, but looks ready for the list
-now.  Carlos has accepted patches 1-4, but I've kept them here so the
-whole series can still be tested.
+With CONFIG_TRANSPARENT_HUGEPAGE=y, writeback on XFS can write in place
+to a shared block and corrupt the other file that shares it.
 
-Except for Christoph's patch, these were all found and fixed
-by an LLM.
+xfs_map_blocks() writes in place unless the COW fork has an extent for
+the block. write() and write faults reserve one before they dirty a
+folio over a shared block, so xfs_flush_unmap_range() writes back and
+truncates the range before a clone changes the block map. But the holder
+of a GUP write pin takes no filesystem lock, and the truncate keeps a
+large dirty folio that straddles the range:
 
-The meat of the series is fixing reflink corner cases that incorrectly
-let you write into the source of a reflink.  LLMs also tripped over a
-few ways to use atomic writes to expose stale blocks on the drive, and a
-few races with realtime flag manipulations.
+    clone                         pin holder         writeback
+    =====                         ==========         =========
+    writes the range back
+                                  dirties the folio
+    truncate keeps the folio
+    maps a shared block under it
+                                  dirties it again
+                                                     finds no COW extent
+                                                     writes in place
+                                                     /* shared block */
 
-v6->v7:
+The fix used here is to invalidate the range instead of truncating it,
+and to fail the call with -EINVAL if a dirty folio is left, before the
+block map changes.
 
-Sashiko noticed a few pre-existing corners that I had ignored, so we
-have 3 additional patches dealing with races between FS_IOC_FSSETXATTR
-and decisions about file writes.
+Fixes: 6795801366da ("xfs: Support large folios")
+Signed-off-by: Chris Mason <mason@kernel.org>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+---
 
-"xfs: restart faults racing with realtime flag changes" changed enough
-that I dropped Christoph's review.
+Notes:
+    v6->v7:
+    - No change.
 
-Tal Zussman's series is needed for my current ext4 patches to be
-correct:
-https://lore.kernel.org/all/20261012-ext4-atomic-no-fallback-v2-1-c4b30c60e500@columbia.edu/
+ fs/xfs/xfs_bmap_util.c | 17 +++++++++++++++--
+ fs/xfs/xfs_reflink.c   |  2 +-
+ 2 files changed, 16 insertions(+), 3 deletions(-)
 
-Chris Mason (10):
-  xfs: don't skip the flush before shifting extents
-  xfs: flush the shifted range before changing the file
-  xfs: don't change the block map under a dirty folio
-  iomap: don't punch delalloc under a dirty EOF block
-  fs: validate atomic writes after O_APPEND and limits
-  xfs: recheck direct write alignment after write checks
-  xfs: test for reflink after the dio write checks
-  xfs: test for always COW after the dio write checks
-  xfs: refuse fallocate racing with realtime flag changes
-  xfs: restart faults racing with realtime flag changes
-
-Christoph Hellwig (1):
-  xfs: refuse writes to files racing with realtime inode flag changes
-
- fs/ext4/file.c         |   4 -
- fs/iomap/buffered-io.c |  34 ++++++++-
- fs/read_write.c        |  13 ++++
- fs/xfs/xfs_bmap_util.c |  19 ++++-
- fs/xfs/xfs_file.c      | 167 ++++++++++++++++++++++++++++++++---------
- fs/xfs/xfs_iomap.c     |  40 +++++++++-
- fs/xfs/xfs_reflink.c   |   2 +-
- 7 files changed, 230 insertions(+), 49 deletions(-)
-
-
-base-commit: 7475ea8b58616b33c04afb976cf0fbaad9dd63fb
---
+diff --git a/fs/xfs/xfs_bmap_util.c b/fs/xfs/xfs_bmap_util.c
+index 537c6b29417c..4673d5174645 100644
+--- a/fs/xfs/xfs_bmap_util.c
++++ b/fs/xfs/xfs_bmap_util.c
+@@ -863,8 +863,21 @@ xfs_flush_unmap_range(
+ 	error = filemap_write_and_wait_range(inode->i_mapping, start, end);
+ 	if (error)
+ 		return error;
+-	truncate_pagecache_range(inode, start, end);
+-	return 0;
++
++	/*
++	 * The callers go on to change the block map, so no folio may stay over
++	 * the range.  The holder of a GUP pin can mark a folio dirty again
++	 * after the flush, with no lock of ours.  A truncate drops such a folio
++	 * if it lies inside the range.  If it is a large folio that straddles
++	 * the range, the truncate cannot split it, so it zeroes a part of the
++	 * folio, keeps it, and reports nothing.  The invalidation removes whole
++	 * folios, changes no data, and fails on a dirty folio.
++	 */
++	error = invalidate_inode_pages2_range(inode->i_mapping,
++			start >> PAGE_SHIFT, end >> PAGE_SHIFT);
++	if (error == -EBUSY)
++		error = -EINVAL;
++	return error;
+ }
+ 
+ int
+diff --git a/fs/xfs/xfs_reflink.c b/fs/xfs/xfs_reflink.c
+index 104542b10d9e..ff89516154bd 100644
+--- a/fs/xfs/xfs_reflink.c
++++ b/fs/xfs/xfs_reflink.c
+@@ -1663,7 +1663,7 @@ xfs_reflink_zero_posteof(
+ /*
+  * Prepare two files for range cloning.  Upon a successful return both inodes
+  * will have the iolock and mmaplock held, the page cache of the out file will
+- * be truncated, and any leases on the out file will have been broken.  This
++ * be invalidated, and any leases on the out file will have been broken.  This
+  * function borrows heavily from xfs_file_aio_write_checks.
+  *
+  * The VFS allows partial EOF blocks to "match" for dedupe even though it hasn't
+-- 
 2.55.0
 
