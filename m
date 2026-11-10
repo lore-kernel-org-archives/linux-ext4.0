@@ -1,57 +1,54 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.167.199
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794342949;
-	b=mErtQbNhXg/sI5Wc3rbe0tED8VQ5ieDwEkVR7ycNw7qK3iC3KOlYJJoM5Qiu7fNXp8Hj
-	 8MCJdoPAjawJkozNsQrlUsAI/GNRC6XsLEsFHvmA8aYxrtYpgWEf4XldMASqqtf4SJwXL
-	 fHZCay2oDfZ/Iv/7pOeI1JSMi+HxO/Jz+Y0yrxTIJkz0jn7xvYU8EZVk546WCAoKE/3Ja
-	 WnfQ0h6ws9xvNSgU+s/HOMBXvW5YIFyt8heU9fGrbZCr/Tn2Ly9LwtKCrq/eD3K6jVoBg
-	 NejKRV8gGLIg1vJyNNtjlRCRRLnAPVC7jydhAXb7u5DzwI8OWyOUTypYQ4rJPCJdSqg==
+	t=1794346445;
+	b=4xbQQC4HS0yPO3J8kZXUdz66p/BIQFhsYPWpiS1jQsjLtnSxTF9dE05lYTcM23bgBArJ
+	 iW6Mg1aJDOG+azwbu/iB7bpf8u0wKliXfdxRAZRngmP2nZG7YlRXfi/itUTd8beStlg6K
+	 rTeHDTReTsuqmjJmhvb9X2bxgBVFncOW2ACyHIw+xU520SFJJrT428L6XjGTuUxCIOWAz
+	 G57Rrp8ILe29JSVsBNIyHIycYwRirEp4X6XL73+S1XZnfmKMO74ucNzS8yOKMfLf/5W6c
+	 OYeLB9q79mJEUPIGn1o85AcF5k7FNY8ssqydbNr/aUngE2jnGEBtJGhbxM0m5TAK4nQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794342949;
-	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
-	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=H/yC0PobEp394m3I+tt1fmMC8uiuzh4RYEWUPIL8538=;
-	b=yuz3S1VoeX+vLIl9AdViWGactSv1FzEWk8Aow9Ts2ws09lkR6WTCWd1f+N513tj2T3eL
-	 NPCDT21nqOvsTTWW+2S8XL+cdieQBPHgqb/Cjmui9qePqwfTKukrWR3DP+zlpiG6wk35o
-	 Khy/R5T0TSyRRp+YVpzvzeLkvI8aVGrD8oVmVVDNPvNNkpj6AQPc9haMDjFZ6sZGjKVHF
-	 LLhoEZuO8w7ZrLSlIbQdarJ4cdFkoa3PMhC7Y2XE6HTZuaGCTxYrx6ZBfhN23RgGa30HD
-	 zzDhSKI0nfzx5AKmpdpH4OPaj73pZoU6qSRKuS/3ByZDC25+oflSB5OM0zp+GKbWdug==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794346445;
+	h=DMARC-Filter:Received:X-Google-DKIM-Signature:X-Forwarded-Encrypted:
+	 X-Gm-Message-State:MIME-Version:X-Received:Date:In-Reply-To:
+	 X-Google-Appengine-App-Id:X-Google-Appengine-App-Id-Alias:Message-ID:
+	 Subject:From:To:Content-Type;
+	bh=e0NJJuk/tzgO1znOT9Akzwk6lvWDfgdQGAQjaC8tB3Y=;
+	b=0UzPG5DPsWr6kycto2Z4zaozH02Aq57SpnYMVVEHfbd2lXRgsEpNgrq3WwWl/ZzOdcT/
+	 0dQi/seFOM9SALwJZhsDy/zDbeH5yKlQDFHi8TDuBeb5dJja5eNE0gP3YMQ9vpDlehNct
+	 w6nJPgycC8QNZGRMgXLssOY8Jora1WSbEug8CpNx8r9VVY3JiqxcfhNbcDDFwAbqvlptK
+	 xW+2M+dxbkklpAzlyUzJGGf1Lq20nLBOVk73A5Eyijvuv6MAugL1G31GGizdkjzi71v9w
+	 nMaMIV9CIGxv2tL6Znb+dyk5FdHdBv8ea2JjeuanOiifDht9EnqvqGu+rkLBQHNtcnQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=h1naUZDf;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=fail header.from=syzkaller.appspotmail.com;
+	spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com;
+	arc=none smtp.remote-ip=209.85.167.199
+Received: from mail-oi1-f199.google.com (mail-oi1-f199.google.com [209.85.167.199])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5DF55606A31C
-	for <linux-ext4@vger.kernel.org>; Tue, 10 Nov 2026 20:35:49 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=h1naUZDf
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id CE4431F0089F;
-	Tue, 10 Nov 2026 20:35:48 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794342949;
-	bh=H/yC0PobEp394m3I+tt1fmMC8uiuzh4RYEWUPIL8538=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=h1naUZDfmPAqjo4M2wphGHQxnFPTg2XHgX6DBn7G+7vkCAlh8ywMEjkGVHCWFdWKK
-	 OjJbLNjXrrEfpB/bEHtxJ37BfQmm4/o04E/myJ9nOK/Gi8Aedhg2826SYG5KJhSNSN
-	 osjz972yx+boQyV4AZLvUXs8FbNUwc2UZs4uN9DDIgxxfXZPKSeSelZVxj9erPgVEC
-	 iy7r8NuWzwsHS+75SbRV4lTmrQteBIe3dhTklk3Z7y93nNFB0ZF8eVEA1o7dE8l5ps
-	 lB1bVvzu+tdv56Nq/g5EMTsP7BI5G9rcCu9GAdSdGLTvIxAxqBdveqpLg6k3FZq5d+
-	 Jsib9UQFdhlvg==
-Message-ID: <sashiko-outbox-207714@kernel.org>
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH v7 11/11] xfs: restart faults racing with realtime flag
- changes
-Reply-To: sashiko-reviews@lists.linux.dev
-To: "Chris Mason" <mason@kernel.org>, linux-ext4@vger.kernel.org
-Cc: tytso@mit.edu
-In-Reply-To: <20261110190417.32650-13-mason@kernel.org>
-References: <20261110190417.32650-1-mason@kernel.org>
- <20261110190417.32650-13-mason@kernel.org>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Tue, 10 Nov 2026 20:35:48 +0000
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 83264606A31C
+	for <linux-ext4@vger.kernel.org>; Tue, 10 Nov 2026 21:34:05 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 83264606A31C
+Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
+Received: by mail-oi1-f199.google.com with SMTP id 5614622812f47-4b2d1eb484aso3188686b6e.2
+        for <linux-ext4@vger.kernel.org>; Tue, 10 Nov 2026 13:34:05 -0800 (PST)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1794346444; x=1794951244;
+        h=content-type:to:from:subject:message-id:in-reply-to:date
+         :mime-version:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to:content-type;
+        bh=e0NJJuk/tzgO1znOT9Akzwk6lvWDfgdQGAQjaC8tB3Y=;
+        b=ztgzoi9zd7BHAHyStLPClEAl2/Chl0kj1l2E9uDNo0HaZ5GAJezHTvkQrOFSaCP9oo
+         XySkKxiDdkhHpQ/94n/H/SNZvzyoGtJQqEofXZkzavSj0nZHg7SR12vO2fFxnVw4n2mL
+         P9e0nqSzJ2TPsSg0eQ1ynaUp7lpBKpLG15leNdju3H6wX0SmNs2bZlG4ZiMMhnOnoJAj
+         enzFIR97eHh3m5zORl3yfkhzcIOiMq34xHZRFauHtOkABKs/Oy4fSB9ix1RJjoqYen/z
+         c2XMaZKqMZs1usdEdp8beAKzvUDU8Pn5vfCkDIKfkbdOzmQclx6vtctxh/JxzhFa0BX1
+         3unQ==
+X-Forwarded-Encrypted: i=1; AL+hErHm4sI7MnnEU1k6rzZQCSfn8eJF78GRcWoPHTxDVlBhrQayi4wui1A/Uj0T+vitR1uI+IK8mPfYExW5@vger.kernel.org
+X-Gm-Message-State: APuU4Z+10eedYUX4cLvSnn5zPwC/b+WIsf6d7NJ8/7uS6cJ1ia8r2p6B
+	E+6YGLit4FHmWfZvrv6mGGDfP4g8GJKHuBU/V/kzl7F0Py3wEdwA3S0qAqZJjdoNI/kD3GmWbdH
+	eQE2CTfFIUgjdsqq+fVKQxtVoa8zvfkWmWYwHD0lw2ogYeZJNr6JcVm6ud5g=
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -60,141 +57,158 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
+MIME-Version: 1.0
+X-Received: by 2002:a05:6808:1691:b0:4e8:e664:f268 with SMTP id
+ 5614622812f47-56b96ac9cfcmr235239b6e.25.1794346444536; Tue, 10 Nov 2026
+ 13:34:04 -0800 (PST)
+Date: Tue, 10 Nov 2026 13:34:04 -0800
+In-Reply-To: <20261110132118.11265-1-diasyzhangqing@gmail.com>
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <6af38dcc.b5c6bce2.3112f.0003.GAE@google.com>
+Subject: Re: [syzbot] [block?] [ext4?] INFO: task hung in bdev_freeze
+From: syzbot <syzbot+d4ecb9a1e5b3dcf8baec@syzkaller.appspotmail.com>
+To: adilger.kernel@dilger.ca, diasyzhang@tencent.com, diasyzhangqing@gmail.com, 
+	jack@suse.cz, libaokun@linux.alibaba.com, linux-ext4@vger.kernel.org, 
+	linux-kernel@vger.kernel.org, ojaswin@linux.ibm.com, ritesh.list@gmail.com, 
+	syzkaller-bugs@googlegroups.com, tytso@mit.edu, yi.zhang@huawei.com
+Content-Type: text/plain; charset="UTF-8"
 
-Thank you for your contribution! Sashiko AI review found 2 potential
-issues to consider:
-- [High] xfs: transaction reservation mismatch in
-  xfs_iomap_write_direct() on flag race
-- [High] xfs: missing xfs_get_extsz_hint() recheck in
-  xfs_buffered_write_iomap_begin()
---
+Hello,
 
-commit b8ad8d7e86ab00a3a7fbbde54047f3e1c17b5837
-Author: Chris Mason <mason@kernel.org>
+syzbot has tested the proposed patch but the reproducer is still triggering an issue:
+INFO: task hung in user_get_super
 
-xfs: restart faults racing with realtime flag changes
+INFO: task syz.4.3007:21757 blocked for more than 143 seconds.
+      Not tainted syzkaller #0
+"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+task:syz.4.3007      state:D stack:0     pid:21757 tgid:21733 ppid:5332   task_flags:0x400040 flags:0x00800001
+Call trace:
+ __switch_to+0x2b4/0x6e4 arch/arm64/kernel/process.c:792 (T)
+ context_switch kernel/sched/core.c:5584 [inline]
+ __schedule+0x13a0/0x2bd4 kernel/sched/core.c:7389
+ __schedule_loop kernel/sched/core.c:7466 [inline]
+ schedule+0x13c/0x20c kernel/sched/core.c:7481
+ schedule_preempt_disabled+0x18/0x2c kernel/sched/core.c:7538
+ rwsem_down_read_slowpath+0x544/0x7f8 kernel/locking/rwsem.c:1114
+ __down_read_common kernel/locking/rwsem.c:1291 [inline]
+ __down_read kernel/locking/rwsem.c:1304 [inline]
+ down_read+0xa0/0x2bc kernel/locking/rwsem.c:1576
+ __super_lock fs/super.c:62 [inline]
+ super_lock+0x258/0x344 fs/super.c:124
+ user_get_super+0xb8/0x1bc fs/super.c:1022
+ quotactl_block fs/quota/quota.c:889 [inline]
+ __do_sys_quotactl fs/quota/quota.c:955 [inline]
+ __se_sys_quotactl fs/quota/quota.c:917 [inline]
+ __arm64_sys_quotactl+0x4c8/0x90c fs/quota/quota.c:917
+ __invoke_syscall arch/arm64/kernel/syscall.c:35 [inline]
+ invoke_syscall+0x98/0x244 arch/arm64/kernel/syscall.c:49
+ el0_svc_common+0xec/0x23c arch/arm64/kernel/syscall.c:121
+ do_el0_svc+0x4c/0x5c arch/arm64/kernel/syscall.c:140
+ el0_svc+0x60/0x1d8 arch/arm64/kernel/entry-common.c:797
+ el0t_64_sync_handler+0x44/0x104 arch/arm64/kernel/entry-common.c:816
+ el0t_64_sync+0x198/0x19c arch/arm64/kernel/entry.S:606
 
-This commit rechecks xfs_is_zoned_inode() under the ILOCK in the write
-iomap paths and returns -EAGAIN if the realtime flag changed during a
-page fault.
+Showing all locks held in the system:
+locks held by khungtaskd/32: 1, on CPU#0:
+ #0: ffff800089ab5660 (rcu_read_lock){....}-{1:3}, at: rcu_lock_acquire include/linux/rcupdate.h:309 [inline]
+ #0: ffff800089ab5660 (rcu_read_lock){....}-{1:3}, at: rcu_read_lock include/linux/rcupdate.h:849 [inline]
+ #0: ffff800089ab5660 (rcu_read_lock){....}-{1:3}, at: debug_show_all_locks+0x4c/0x188 kernel/locking/lockdep.c:6871
+locks held by kworker/u9:0/50: 3, last CPU#0:
+ #0: ffff0000ca34d948 ((wq_completion)hci9){+.+.}-{0:0}, at: process_one_work kernel/workqueue.c:3470 [inline]
+ #0: ffff0000ca34d948 ((wq_completion)hci9){+.+.}-{0:0}, at: process_scheduled_works+0x8c8/0x1250 kernel/workqueue.c:3578
+ #1: ffff800092057c20 ((work_completion)(&hdev->cmd_sync_work)){+.+.}-{0:0}, at: process_one_work kernel/workqueue.c:3470 [inline]
+ #1: ffff800092057c20 ((work_completion)(&hdev->cmd_sync_work)){+.+.}-{0:0}, at: process_scheduled_works+0x8d0/0x1250 kernel/workqueue.c:3578
+ #2: ffff0000f0c1cea0 (&hdev->req_lock){+.+.}-{4:4}, at: hci_cmd_sync_work+0x1b0/0x380 net/bluetooth/hci_sync.c:337
+locks held by getty/4498: 2, last CPU#1:
+ #0: ffff0000ca5e80a0 (&tty->ldisc_sem){++++}-{0:0}, at: ldsem_down_read+0x3c/0x4c drivers/tty/tty_ldsem.c:340
+ #1: ffff8000932de2e8 (&ldata->atomic_read_lock){+.+.}-{4:4}, at: n_tty_read+0x350/0xffc drivers/tty/n_tty.c:2211
+locks held by kworker/1:5/5820: 3, on CPU#1:
+ #0: ffff0000c002ad48 ((wq_completion)events){+.+.}-{0:0}, at: process_one_work kernel/workqueue.c:3470 [inline]
+ #0: ffff0000c002ad48 ((wq_completion)events){+.+.}-{0:0}, at: process_scheduled_works+0x8c8/0x1250 kernel/workqueue.c:3578
+ #1: ffff800093847c20 ((work_completion)(&data->fib_event_work)){+.+.}-{0:0}, at: process_one_work kernel/workqueue.c:3470 [inline]
+ #1: ffff800093847c20 ((work_completion)(&data->fib_event_work)){+.+.}-{0:0}, at: process_scheduled_works+0x8d0/0x1250 kernel/workqueue.c:3578
+ #2: ffff0000ccb4d258 (&data->fib_lock){+.+.}-{4:4}, at: nsim_fib_event_work+0x198/0x320 drivers/net/netdevsim/fib.c:1490
+locks held by syz.2.3009/21731: 3, on CPU#1:
+ #0: ffff0000c6600470 (&sbi->s_shutdown_lock){+.+.}-{4:4}, at: ext4_force_shutdown+0x17c/0x658 fs/ext4/ioctl.c:822
+ #1: ffff0000c148f4a0 (&bdev->bd_fsfreeze_mutex){+.+.}-{4:4}, at: bdev_freeze+0x38/0x2e8 block/bdev.c:304
+ #2: ffff0000d39a0478 (sb_writers#3){++++}-{0:0}, at: sb_wait_write fs/super.c:1977 [inline]
+ #2: ffff0000d39a0478 (sb_writers#3){++++}-{0:0}, at: freeze_super+0x498/0xf6c fs/super.c:2241
+locks held by syz.2.3009/21762: 1, on CPU#1:
+ #0: ffff0000c6600470 (&sbi->s_shutdown_lock){+.+.}-{4:4}, at: ext4_force_shutdown+0x17c/0x658 fs/ext4/ioctl.c:822
+locks held by syz.2.3009/21763: 1, on CPU#1:
+ #0: ffff0000d39a0100 (&type->s_umount_key#32){++++}-{4:4}, at: rcu_lock_acquire include/linux/rcupdate.h:309 [inline]
+ #0: ffff0000d39a0100 (&type->s_umount_key#32){++++}-{4:4}, at: rcu_read_lock include/linux/rcupdate.h:849 [inline]
+ #0: ffff0000d39a0100 (&type->s_umount_key#32){++++}-{4:4}, at: rcuwait_wake_up+0x38/0x25c kernel/exit.c:322
+locks held by syz.4.3007/21734: 5, on CPU#1:
+ #0: ffff0000d6314470 (&sbi->s_shutdown_lock){+.+.}-{4:4}, at: ext4_force_shutdown+0x17c/0x658 fs/ext4/ioctl.c:822
+ #1: ffff0000c148dda0 (&bdev->bd_fsfreeze_mutex){+.+.}-{4:4}, at: bdev_freeze+0x38/0x2e8 block/bdev.c:304
+ #2: ffff0000d1490478 (sb_writers#3){++++}-{0:0}, at: sb_wait_write fs/super.c:1977 [inline]
+ #2: ffff0000d1490478 (sb_writers#3){++++}-{0:0}, at: freeze_super+0x498/0xf6c fs/super.c:2241
+ #3: ffff0000d1490100 (&type->s_umount_key#32){++++}-{4:4}, at: __super_lock fs/super.c:60 [inline]
+ #3: ffff0000d1490100 (&type->s_umount_key#32){++++}-{4:4}, at: __super_lock_excl fs/super.c:75 [inline]
+ #3: ffff0000d1490100 (&type->s_umount_key#32){++++}-{4:4}, at: freeze_super+0x4a0/0xf6c fs/super.c:2242
+ #4: ffff0000d1490570 (sb_pagefaults){++++}-{0:0}, at: sb_wait_write fs/super.c:1977 [inline]
+ #4: ffff0000d1490570 (sb_pagefaults){++++}-{0:0}, at: freeze_super+0x4b8/0xf6c fs/super.c:2246
+locks held by syz.4.3007/21756: 1, on CPU#1:
+ #0: ffff0000d6314470 (&sbi->s_shutdown_lock){+.+.}-{4:4}, at: ext4_force_shutdown+0x17c/0x658 fs/ext4/ioctl.c:822
+locks held by syz.4.3007/21757: 1, last CPU#1:
+ #0: ffff0000d1490100 (&type->s_umount_key#32){++++}-{4:4}, at: __super_lock fs/super.c:62 [inline]
+ #0: ffff0000d1490100 (&type->s_umount_key#32){++++}-{4:4}, at: super_lock+0x258/0x344 fs/super.c:124
+locks held by syz.1.3010/21737: 3, on CPU#1:
+ #0: ffff0000ef804470 (&sbi->s_shutdown_lock){+.+.}-{4:4}, at: ext4_force_shutdown+0x17c/0x658 fs/ext4/ioctl.c:822
+ #1: ffff0000c154dda0 (&bdev->bd_fsfreeze_mutex){+.+.}-{4:4}, at: bdev_freeze+0x38/0x2e8 block/bdev.c:304
+ #2: ffff0000eee66478 (sb_writers#3){++++}-{0:0}, at: sb_wait_write fs/super.c:1977 [inline]
+ #2: ffff0000eee66478 (sb_writers#3){++++}-{0:0}, at: freeze_super+0x498/0xf6c fs/super.c:2241
+locks held by syz.1.3010/21767: 1, on CPU#0:
+ #0: ffff0000ef804470 (&sbi->s_shutdown_lock){+.+.}-{4:4}, at: ext4_force_shutdown+0x17c/0x658 fs/ext4/ioctl.c:822
+locks held by syz.1.3010/21768: 1, on CPU#0:
+ #0: ffff0000eee66478 (sb_writers#3){++++}-{0:0}, at: __invoke_syscall arch/arm64/kernel/syscall.c:35 [inline]
+ #0: ffff0000eee66478 (sb_writers#3){++++}-{0:0}, at: invoke_syscall+0x98/0x244 arch/arm64/kernel/syscall.c:49
+locks held by kmmpd-loop4/21743: 1, last CPU#1:
+ #0: ffff0000d1490478 (sb_writers#3){++++}-{0:0}, at: kmmpd+0x2fc/0x938 fs/ext4/mmp.c:173
+locks held by kmmpd-loop3/21772: 1, last CPU#1:
+ #0: ffff0000eedc6478 (sb_writers#3){++++}-{0:0}, at: kmmpd+0x2fc/0x938 fs/ext4/mmp.c:173
+locks held by kmmpd-loop0/21796: 1, last CPU#1:
+ #0: ffff0000eb87c478 (sb_writers#3){++++}-{0:0}, at: kmmpd+0x2fc/0x938 fs/ext4/mmp.c:173
+locks held by kworker/u9:4/21931: 3, last CPU#0:
+ #0: ffff0000c98bf148 ((wq_completion)hci8){+.+.}-{0:0}, at: process_one_work kernel/workqueue.c:3470 [inline]
+ #0: ffff0000c98bf148 ((wq_completion)hci8){+.+.}-{0:0}, at: process_scheduled_works+0x8c8/0x1250 kernel/workqueue.c:3578
+ #1: ffff800098197c20 ((work_completion)(&hdev->cmd_sync_work)){+.+.}-{0:0}, at: process_one_work kernel/workqueue.c:3470 [inline]
+ #1: ffff800098197c20 ((work_completion)(&hdev->cmd_sync_work)){+.+.}-{0:0}, at: process_scheduled_works+0x8d0/0x1250 kernel/workqueue.c:3578
+ #2: ffff0000ec4b0ea0 (&hdev->req_lock){+.+.}-{4:4}, at: hci_cmd_sync_work+0x1b0/0x380 net/bluetooth/hci_sync.c:337
+locks held by kmmpd-loop9/22058: 1, last CPU#1:
+ #0: ffff0000c3d98478 (sb_writers#3){++++}-{0:0}, at: kmmpd+0x2fc/0x938 fs/ext4/mmp.c:173
+locks held by syz-executor/22236: 6, last CPU#1:
+ #0: ffff0000d0912478 (sb_writers#6){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2765 [inline]
+ #0: ffff0000d0912478 (sb_writers#6){.+.+}-{0:0}, at: vfs_write+0x248/0xa0c fs/read_write.c:663
+ #1: ffff0000f6abf480 (&of->mutex){+.+.}-{4:4}, at: kernfs_fop_write_iter+0x1b0/0x3b8 fs/kernfs/file.c:336
+ #2: ffff0000ca778e18 (kn->active#55){.+.+}-{0:0}, at: kernfs_get_active_of fs/kernfs/file.c:73 [inline]
+ #2: ffff0000ca778e18 (kn->active#55){.+.+}-{0:0}, at: kernfs_fop_write_iter+0x1f0/0x3b8 fs/kernfs/file.c:337
+ #3: ffff80008a3bd8a0 (nsim_bus_dev_list_lock){+.+.}-{4:4}, at: del_device_store+0xd8/0x2d4 drivers/net/netdevsim/bus.c:233
+ #4: ffff0000cfcc6128 (&dev->mutex){....}-{4:4}, at: device_lock include/linux/device.h:1109 [inline]
+ #4: ffff0000cfcc6128 (&dev->mutex){....}-{4:4}, at: __device_driver_lock+0x94/0xcc drivers/base/dd.c:1046
+ #5: ffff0000cfcc5258 (&devlink->lock_key#13){+.+.}-{4:4}, at: devl_lock+0x24/0x34 net/devlink/core.c:314
+locks held by syz-executor/22244: 4, last CPU#1:
+ #0: ffff0000d0912478 (sb_writers#6){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2765 [inline]
+ #0: ffff0000d0912478 (sb_writers#6){.+.+}-{0:0}, at: vfs_write+0x248/0xa0c fs/read_write.c:663
+ #1: ffff0000ec554080 (&of->mutex){+.+.}-{4:4}, at: kernfs_fop_write_iter+0x1b0/0x3b8 fs/kernfs/file.c:336
+ #2: ffff0000ca778e18 (kn->active#55){.+.+}-{0:0}, at: kernfs_get_active_of fs/kernfs/file.c:73 [inline]
+ #2: ffff0000ca778e18 (kn->active#55){.+.+}-{0:0}, at: kernfs_fop_write_iter+0x1f0/0x3b8 fs/kernfs/file.c:337
+ #3: ffff80008a3bd8a0 (nsim_bus_dev_list_lock){+.+.}-{4:4}, at: del_device_store+0xd8/0x2d4 drivers/net/netdevsim/bus.c:233
 
-> diff --git a/fs/xfs/xfs_iomap.c b/fs/xfs/xfs_iomap.c
-> index c3465204b8d52..83ff105154b55 100644
-> --- a/fs/xfs/xfs_iomap.c
-> +++ b/fs/xfs/xfs_iomap.c
+=============================================
 
-[ ... ]
 
-> @@ -334,6 +351,11 @@ xfs_iomap_write_direct(
->  	if (error)
->  		return error;
-> =20
-> +	if (xfs_is_zoned_inode(ip)) {
-> +		error =3D xfs_iomap_rtflag_changed(ip);
-> +		goto out_trans_cancel;
-> +	}
-> +
 
-[Severity: High]
-Can xfs_iomap_write_direct() still proceed with a mismatched transaction
-block reservation when FS_IOC_FSSETXATTR races before
-xfs_trans_alloc_inode() takes XFS_ILOCK_EXCL?
+Tested on:
 
-xfs_direct_write_iomap_begin() drops XFS_ILOCK before calling
-xfs_iomap_write_direct(), which then reads xfs_get_extsz_hint(ip) and
-XFS_IS_REALTIME_INODE(ip) unlocked to compute resaligned, dblocks and
-rblocks:
+commit:         067c5c24 Merge tag 'page_alloc-for-7.4-rc2' of git://g..
+git tree:       upstream
+console output: https://syzkaller.appspot.com/x/log.txt?x=110505a1580000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=c06331d9bb9c8204
+dashboard link: https://syzkaller.appspot.com/bug?extid=d4ecb9a1e5b3dcf8baec
+compiler:       Debian clang version 22.1.8 (1~deb13u4), Debian LLD 22.1.8
+userspace arch: arm64
+patch:          https://syzkaller.appspot.com/x/patch.diff?x=1314b1a1580000
 
-fs/xfs/xfs_iomap.c:xfs_iomap_write_direct() {
-	...
-	resaligned =3D xfs_aligned_fsb_count(offset_fsb, count_fsb,
-					   xfs_get_extsz_hint(ip));
-	if (unlikely(XFS_IS_REALTIME_INODE(ip))) {
-		dblocks =3D XFS_DIOSTRAT_SPACE_RES(mp, 0);
-		rblocks =3D resaligned;
-	} else {
-		dblocks =3D XFS_DIOSTRAT_SPACE_RES(mp, resaligned);
-		rblocks =3D 0;
-	}
-	...
-	error =3D xfs_trans_alloc_inode(ip, &M_RES(mp)->tr_write, dblocks,
-			rblocks, force, &tp);
-}
-
-On a zoned filesystem, toggling FS_XFLAG_REALTIME on and off before
-xfs_trans_alloc_inode() locks the inode leaves xfs_is_zoned_inode(ip)
-false at the check above, while tp->t_blk_res only covers metadata split
-blocks:
-
-CPU0 (write fault)                CPU1 (FS_IOC_FSSETXATTR)
-xfs_direct_write_iomap_begin()
-  xfs_iunlock(ip, lockmode)
-                                  sets XFS_DIFLAG_REALTIME
-xfs_iomap_write_direct()
-  XFS_IS_REALTIME_INODE(ip) =3D=3D true
-  dblocks =3D XFS_DIOSTRAT_SPACE_RES(mp, 0)
-  rblocks =3D resaligned
-                                  clears XFS_DIFLAG_REALTIME
-  xfs_trans_alloc_inode()
-    xfs_ilock(ip, XFS_ILOCK_EXCL)
-  xfs_is_zoned_inode(ip) =3D=3D false
-  xfs_bmapi_write()
-    xfs_bmap_btalloc()
-      xfs_trans_mod_sb()
-        tp->t_blk_res_used > tp->t_blk_res
-          xfs_force_shutdown()    <-- forced shutdown
-
-While FS_XFLAG_REALTIME is set at the unlocked check, passing rblocks > 0
-to xfs_trans_alloc_inode() on a zoned mount also calls xfs_dec_frextents()
-directly and can fail with -ENOSPC (returning SIGBUS to the fault) before
-reaching the xfs_is_zoned_inode(ip) check.  The same reservation mismatch
-happens in a single step if FS_IOC_FSSETXATTR changes FS_XFLAG_REALTIME on
-a non-zoned realtime mount or increases ip->i_extsize in that window.
-
-[ ... ]
-
-> @@ -1865,6 +1896,11 @@ xfs_buffered_write_iomap_begin(
->  	if (error)
->  		return error;
-> =20
-> +	if (xfs_is_zoned_inode(ip)) {
-> +		error =3D xfs_iomap_rtflag_changed(ip);
-> +		goto out_unlock;
-> +	}
-> +
-
-[Severity: High]
-Should xfs_buffered_write_iomap_begin() also recheck xfs_get_extsz_hint(ip)
-after acquiring XFS_ILOCK?
-
-xfs_buffered_write_iomap_begin() checks xfs_get_extsz_hint(ip) before
-taking XFS_ILOCK because delayed allocations cannot be used with extent
-size hints.  In xfs_get_extsz_hint(ip), the return value depends on
-!xfs_is_always_cow_inode(ip), XFS_DIFLAG_EXTSIZE and
-XFS_IS_REALTIME_INODE(ip):
-
-CPU0 (write fault)                CPU1 (FS_IOC_FSSETXATTR)
-xfs_buffered_write_iomap_begin()
-  xfs_is_zoned_inode(ip) =3D=3D false
-  xfs_get_extsz_hint(ip) =3D=3D 0
-                                  sets XFS_DIFLAG_REALTIME
-                                  (non-zoned RT with sb_rextsize > 1)
-  xfs_ilock_for_iomap()
-  xfs_is_zoned_inode(ip) =3D=3D false
-  xfs_bmapi_reserve_delalloc()    <-- delalloc with extsz_hint > 0
-
-On a zoned filesystem, the same state is reached if an inode with
-XFS_DIFLAG_EXTSIZE has XFS_DIFLAG_REALTIME set when xfs_get_extsz_hint(ip)
-runs (which returns 0 because xfs_is_always_cow_inode(ip) is true) and
-cleared before xfs_ilock_for_iomap() acquires XFS_ILOCK, or if
-FS_IOC_FSSETXATTR sets XFS_DIFLAG_EXTSIZE directly.
-
-When a 1-block fault proceeds through xfs_bmapi_reserve_delalloc() on a
-realtime inode with sb_rextsize > 1, xfs_blen_to_rtbxlen(mp, 1) rounds down
-to 0, creating a delalloc extent with 0 reserved realtime extents that
-later trips assertions in xfs_rtallocate_align() and underflows maxlen in
-xfs_rtallocate_extent_size() during writeback.
-
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261110190417.3265=
-0-1-mason@kernel.org?part=3D11
