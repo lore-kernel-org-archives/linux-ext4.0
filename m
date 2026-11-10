@@ -1,57 +1,57 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
 	t=1794338217;
-	b=B1GhoqcC9mnAOOUl/bx2EjBocsVJaus8YtSg657lpvIyevsXfSswK5xNaiqZ3z6+jB5i
-	 VYmuGp26uK9OTqrrInTHQZaTIoBDrLRYD8jaWwK5Ta6vvvo3o90TYoGV9okKMdaBjFx7T
-	 T7dLrF93iOa7Ukr9sBzAJ8zKnImGmPWyMFWo0g5OgKbXIfTGq/VFm92ilkne9Xm9+g6AL
-	 i+1qyQMkwDPg4Ns5yME0QgnPLcSFqSEKWjpgNnrQ8NNJEx0Km61GeKCdsfrC46csx8F1p
-	 zCoBy9P3RBJdTMwi5/s5fp4NQlXEWLmWwR/O/M7eQ4EHRYS2S5ECX250nVbrCys4a8A==
+	b=3Y7RRroiXYhAVzPwRTEwQsyAFYc9XynP9Na2g6aJgESsrgEkvkDWRDkf8MP9m9Dgc/3Z
+	 zP9kvo1y8BxNjo397i4Gjg9zn5oPZGZwSmgd0HB2aVbXKBsOFQNKARgfeA5p0qDafx3ZX
+	 hxrI9LkStIblRSlsRuiP0VcnqIkfOmci8gRdFZ9ZbVG4ePckal93Ppx7SkJ9zBpKtNMjh
+	 xY5O0BUIwIbGoj3zQLb/K/n1y3ZgKS+xkFUmVUxRNk9QFZKNAMTaT1HF6NWTYeF+wSB08
+	 dkyhMQHR747SavDZ+G2HsI5fV4PWdhdugSmhp3akatcPtAIsQmrVveaK2rl/xDD3Zaw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
 	a=rsa-sha256; c=relaxed/relaxed; t=1794338217;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=1GuDY11ezbdsiQEbMHVv9DF1zxCXyj3Q0LagAdy0pMI=;
-	b=lze3gO9q5Kao5OKwxquNjfcnJFFlt1qcaNsgjfDxzrdZ0KrrYRui6CFGgmj6v7dSlteI
-	 5DofzX6Gj7ozB/uij8/XX4j0aNAPvZfxQJUXXybud06Zxqdjv13SlSSNs3J6nDqaRBgME
-	 exYnzOaGXMj+A+BMxIduqnuoLsTpgs0v0QOqlsuaypFLXesDJihtnrXMsac3eDjlxcMnI
-	 bRZV8tzGFk0rCWMMtfaRVanY/JBikIctTpa8iE132lzfOmt4bLX8TAt1z6jbaUu0Na0LE
-	 4wcJrSbCPd3jUBYVHVNIpRO9/LTNfoZ/5tRxOT4nqYBQEj8/52H+KY9lhUK5L4lVtfQ==
+	bh=9yssT3sLGegFzxFyFNurC0+s0dETl10LtwG5h8MCph0=;
+	b=xVr3+EHZ9opbW1bi00mrvGFULFdWIIaNVx9hhczkC/aw/yHf9fIZfKfMwZb3GTkyk/CC
+	 2CwxEGLzwgF96jdIEJoRYQSDGcyWwKMCpTKXcrEfUbLMX15u1Nee86RMGMY5sI0Y5P4d9
+	 s3gbbtaFYuf91pc4/2e1lhIiBCDluJB/veceNVC1w1SIYARfdaA+wISt6lDucIL/H4mWr
+	 X+iejsMURcYsj4Dv6UXUCrnD+qLP7shOeOpmr8KTPmtfe7F2zUiKC2Qou1aEM7t24iSiX
+	 zgZBaiC2HzxLQW3xk95hPU7lBasgdOZLmnSB3dQwCsww3m542g0rCX/cC4cE8YHJ5vA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=kvSzXF5P;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=EaVrSLBc;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 16E6D606A326
-	for <linux-ext4@vger.kernel.org>; Tue, 10 Nov 2026 19:16:56 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A48EA606A321
+	for <linux-ext4@vger.kernel.org>; Tue, 10 Nov 2026 19:16:57 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=kvSzXF5P
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7A9CD1F0089F;
-	Tue, 10 Nov 2026 19:16:56 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=EaVrSLBc
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 299DD1F008A1;
+	Tue, 10 Nov 2026 19:16:57 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794338216;
-	bh=1GuDY11ezbdsiQEbMHVv9DF1zxCXyj3Q0LagAdy0pMI=;
+	s=k20260515; t=1794338217;
+	bh=9yssT3sLGegFzxFyFNurC0+s0dETl10LtwG5h8MCph0=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=kvSzXF5PExasXDWWpo/THS8OPZfVmf/E5gc7A7f45Wpt7FNWD9gpZpeWxiZ0+A0gT
-	 O9XREG3oj1F2rsuhMXaM2fhKuBeC1Z2y1hly++aTDabj3ysafSkS6v00WT7DndpGJH
-	 kUNXtUkWaitt/vMiFghIg2Q9FSjvBguVw7Kx9WLyTadQNMRibIDxY82hlUxGJQBpZb
-	 2aVrdadAUKRJ5CQvN9HtiCoJwfMQgVgrHCBLMZcHpwpypUQvV9zRO7qVHtmGwvHtJ0
-	 fTc5flwGYAV6ep4q2V1lNv1aeRKI3I34d6/UP7pJDQHS90XjjlS+gHeTZCUZpnZzP9
-	 N1VYt8mIpy5qg==
-Message-ID: <sashiko-outbox-207647@kernel.org>
+	b=EaVrSLBclaU/KFZwCH2k2TRriaCyNDT3n4FrxSrqz2kfP3/+FUpwqKhKXGzIJmP9M
+	 6jbmIdfenoS7OIH3/5xSmFxbsxrkgln09oWbjJGB5MQJvS9rKi4sDAYNU5KlCqqkrB
+	 045czl4SPd6tggsQPE7GNodpzw4FNBFRUdt9/6kMlrY14ryGncB+AkxXkLvi+eKfsH
+	 PySsvzTgh7o7u4Ce6GnaSlAChmeen4w4eps+rEWTm7i9hn8iuUCVPQPGd1gUDQbgOl
+	 ZoL53JLPPHuV041UCeoUxD9Di+KtfdgJBAWqxms7Cp5LfmZTeDzzFafP3KFoZapniq
+	 tg679A4T8Q1nw==
+Message-ID: <sashiko-outbox-207648@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH v7 01/11] xfs: don't skip the flush before shifting
- extents
+Subject: Re: [PATCH v7 03/11] xfs: don't change the block map under a dirty
+ folio
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Chris Mason" <mason@kernel.org>, linux-ext4@vger.kernel.org
 Cc: tytso@mit.edu
-In-Reply-To: <20261110190417.32650-3-mason@kernel.org>
+In-Reply-To: <20261110190417.32650-5-mason@kernel.org>
 References: <20261110190417.32650-1-mason@kernel.org>
- <20261110190417.32650-3-mason@kernel.org>
+ <20261110190417.32650-5-mason@kernel.org>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Tue, 10 Nov 2026 19:16:55 +0000
+Date: Tue, 10 Nov 2026 19:16:56 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -61,30 +61,38 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-> On an XFS file larger than 4 EiB, collapse range and insert range can
-> drop dirty data without writing it back, and then fail with
-> EFSCORRUPTED.
+> With CONFIG_TRANSPARENT_HUGEPAGE=3Dy, writeback on XFS can write in place
+> to a shared block and corrupt the other file that shares it.
 >=20
-> xfs_prepare_shift() flushes the page cache from its offset to EOF, but
-> passes i_size as the length. Above 4 EiB the end of that range can
-> overflow and turn negative. filemap_write_and_wait_range() then writes
-> nothing, but truncate_pagecache_range() takes the end as unsigned and
-> drops every folio from the start of the range onward.
+> xfs_map_blocks() writes in place unless the COW fork has an extent for
+> the block. write() and write faults reserve one before they dirty a
+> folio over a shared block, so xfs_flush_unmap_range() writes back and
+> truncates the range before a clone changes the block map. But the holder
+> of a GUP write pin takes no filesystem lock, and the truncate keeps a
+> large dirty folio that straddles the range:
 >=20
-> A delalloc extent under a dropped folio stays in the data fork, and the
-> shift returns -EFSCORRUPTED for it.
+>     clone                         pin holder         writeback
+>     =3D=3D=3D=3D=3D                         =3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D         =3D=3D=3D=3D=3D=3D=3D=3D=3D
+>     writes the range back
+>                                   dirties the folio
+>     truncate keeps the folio
+>     maps a shared block under it
+>                                   dirties it again
+>                                                      finds no COW extent
+>                                                      writes in place
+>                                                      /* shared block */
 >=20
-> The fix used here is to pass i_size - offset as the length.
+> The fix used here is to invalidate the range instead of truncating it,
+> and to fail the call with -EINVAL if a dirty folio is left, before the
+> block map changes.
 >=20
-> Fixes: 7f9f71be84bc ("xfs: extent shifting doesn't fully invalidate page =
-cache")
-> Fixes: feeb9b269523 ("filemap: skip write and wait if end offset precedes=
- start")
+> Fixes: 6795801366da ("xfs: Support large folios")
 > Signed-off-by: Chris Mason <mason@kernel.org>
 
 Sashiko has reviewed this patch and found no issues.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261110190417.3265=
-0-1-mason@kernel.org?part=3D1
+0-1-mason@kernel.org?part=3D3
 
