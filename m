@@ -1,63 +1,46 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=198.137.202.133
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=213.95.11.211
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794410221;
-	b=41NWh3GerEXZHeCeVl1NfvNlMsOkuJoTv6fkyGO5FsbDmxrEofhQ4GKJkpiKY3JiIqF1
-	 Tp31f09yiveoHTcmYqQv+CjznLszbqAYA/G1lPSrqbJJXF5IkbW6sA7FAjs7HjP48v7ca
-	 VzLKUuPbCeKpo09iVk1RapSy/XaOVVgf1oC2IqkCUnfP8qB8ggEJ049zLTz+eMSy7WPwF
-	 jSqGePtl+rHOAewcyWkX9t9KyLcyPSPQy30eTVLnhFhyLoD1QnQzWe7YJvobL0/Y04FuN
-	 alR3WxMfJN3U1ucP1qbBfms1HWQbrhmKpEdVDvrc4REOIlQ6fukyUo2mLUTcvCD6IRw==
+	t=1794415655;
+	b=THu+IlgmaWF36pZpAcgDjAd8dCrcenYKG5AkiHE9StFYDErpVBF9gNrz/03rgpjVs5o5
+	 d5mbVvT5OarsJJSU1/67TtnIdgmlXwvpdSm6XR14+H4Dm8rdmr8NM7DxFwP58TnvrPrRV
+	 opAHYzYvIYmI83KtqbH+NoVimWOSV1tiA0PctONTvpGw+Yo83f4a2CBZfOWmlOotNrKCz
+	 x+Ix2mWPnGddpzBA2qXU5dx8HTismHuEcwho1fVsFPydOR2YK9YIR34dy0RxKBlYkK+gf
+	 yaeIBFnb8wm89ACMFc+idJ6I2XchZkkj0KN/Pdk/XZ3Cc8Uxe7HNOq9WYokHfC+zZQQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794410221;
-	h=DMARC-Filter:DKIM-Signature:Received:Date:From:To:Cc:Subject:
-	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
-	 In-Reply-To:X-SRS-Rewrite;
-	bh=ZyvjiUVTS0LNy/JPrAGB8jKMGYRt1C2Vqacsl8yy9CA=;
-	b=Uzd1hmQ0+Jf1up7yQIsQZukzD+GBeQr90J5RxDi27NWjcpxTrEWu13ds7Msu3UBd0Tkp
-	 eMnIZgMEjXF/FjIvjBWaKwJ0t2sUvbn6iQ7Z6l63L/JyHF2mxS2YjCkBkjcvLYhpaWeAm
-	 glLX9RDxEhMP2vhz8NKX7IAUosdngW6mbiCNcgXndoaI6VYEqv9BQIKW++bddLp8hUdTW
-	 ognTUHsou2liT5Shw0bboa42mJv0H0Fa35cqifnEKQVMToI8qzadVcQhse9PBHqfvJ0nL
-	 AKg6eOVUgoSaPl3yZyXTRg6LswBhDjsN7ylbWQbvPFFuK4/Id1pjJT2edGzrk7zACXg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794415655;
+	h=DMARC-Filter:Received:Date:From:To:Cc:Subject:Message-ID:References:
+	 MIME-Version:Content-Type:Content-Disposition:In-Reply-To:User-Agent;
+	bh=K+kwHAGEkFDNzJP5n97ktqb34uHUinchimu8hOpNZYw=;
+	b=5VU5/IzlFllAE8jgQR+25bXIdyf3/FuSmaEjjzh/V1TjOYTeLYPMqIG/O6rY5xTWalVb
+	 2Y4v1f2s9M9MTqb6VOoiBTPmNw3/MleQI+GwlyC5lnoIFc2qEhlS6tRePguH+XnyBqL16
+	 ALVlhgvUVb8DRZQhBxtQ8lRCZmaMEKFmDt0/Tw9zKGrwvvyClV/t7RxJ439JLK3O5DNF8
+	 41btsfgeTVOOZjL6EKtYuWQ66LZ5lx8NGFbfQuEwHhU3o79lTYCatQayPrA59P87Zhqdp
+	 wlWhYu/uTpK9TVYAWQGOUJ5ddTN01AaXG7c1DlDKFy77KdKAnPuUcSy3SEEuDh0haUg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=infradead.org;
-	spf=none smtp.mailfrom=bombadil.srs.infradead.org;
-	dkim=pass header.d=infradead.org header.i=@infradead.org header.a=rsa-sha256 header.s=bombadil.20210309 header.b=1H+hwwr4;
-	arc=none smtp.remote-ip=198.137.202.133
-Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	dmarc=pass header.from=lst.de;
+	spf=pass smtp.mailfrom=lst.de;
+	arc=none smtp.remote-ip=213.95.11.211
+Received: from verein.lst.de (verein.lst.de [213.95.11.211])
+	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CEA2F606A32D;
-	Wed, 11 Nov 2026 15:17:00 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org CEA2F606A32D
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.a=rsa-sha256 header.s=bombadil.20210309 header.b=1H+hwwr4
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
-	:References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-	Content-Transfer-Encoding:Content-ID:Content-Description;
-	bh=ZyvjiUVTS0LNy/JPrAGB8jKMGYRt1C2Vqacsl8yy9CA=; b=1H+hwwr48v0e45F9+jd7s+bPDV
-	M0O+Qvg4caqNE6ZcM27paTBQJmUa88BqEPiC6SHYScXaudA5gCBvcDcBZpZW4OULRIZ6ZDG01m7VN
-	FB91ol0uR3DQsmF+ogTP+MSXEW7dns5F98KxMzOcqkfmc8ndDR+3Mo7sLbsos6dz9HPy4JX+kH7Yl
-	Rh2wBMRemILuklmRUkWQidH7Syh4DYNhEGXhOcyaFbRBY0OV1b25hnWlN6kxyE3EPGImCmU7hyXEg
-	kNJeyAT2Y8oPy6MEjyQwYo1/CdBm9NYgBp7YI2vquibhH4M7JVCMRSYOf4bACTIISptWAWhYIRLtw
-	laVcldvw==;
-Received: from hch by bombadil.infradead.org with local (Exim 4.100.1 #2 (Red Hat Linux))
-	id 1xRA4J-0000000748L-2Dxs;
-	Wed, 11 Nov 2026 15:16:59 +0000
-Date: Wed, 11 Nov 2026 07:16:59 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: Chris Mason <mason@kernel.org>
-Cc: tytso@mit.edu, cem@kernel.org, david@fromorbit.com, jack@suse.cz,
-	djwong@kernel.org, josef@toxicpanda.com, hch@lst.de,
-	linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, tz2294@columbia.edu, brauner@kernel.org
-Subject: Re: [PATCH v7 11/11] xfs: restart faults racing with realtime flag
- changes
-Message-ID: <avSG6wYENgEmN2e8@infradead.org>
-References: <20261110190417.32650-1-mason@kernel.org>
- <20261110190417.32650-13-mason@kernel.org>
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D2646606A321;
+	Wed, 11 Nov 2026 16:47:34 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org D2646606A321
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=lst.de
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=lst.de
+Received: by verein.lst.de (Postfix, from userid 2407)
+	id E5F1568D1E; Wed, 11 Nov 2026 17:47:30 +0100 (CET)
+Date: Wed, 11 Nov 2026 17:47:29 +0100
+From: Christoph Hellwig <hch@lst.de>
+To: Tal Zussman <tz2294@columbia.edu>
+Cc: fstests@vger.kernel.org, Zorro Lang <zlang@kernel.org>,
+	Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
+	Jens Axboe <axboe@kernel.dk>, "Darrick J. Wong" <djwong@kernel.org>,
+	Jan Kara <jack@suse.cz>, Brian Foster <bfoster@redhat.com>
+Subject: Re: [PATCH v2 2/3] common/rc: pass -V 1 when probing pwrite and
+ pread -U
+Message-ID: <20261111164729.GD18355@lst.de>
+References: <20261107-dontcache-test-v2-0-7655bf08d6d1@columbia.edu> <20261107-dontcache-test-v2-2-7655bf08d6d1@columbia.edu>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -69,14 +52,14 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20261110190417.32650-13-mason@kernel.org>
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
+In-Reply-To: <20261107-dontcache-test-v2-2-7655bf08d6d1@columbia.edu>
+User-Agent: Mutt/1.5.17 (2007-11-01)
 
-On Tue, Nov 10, 2026 at 02:04:29PM -0500, Chris Mason wrote:
-> The fix used here is to test again under the ILOCK, before blocks are
-> reserved or allocated, and to return -EAGAIN if the flag has changed, so
-> that the fault starts over.
+On Sat, Nov 07, 2026 at 09:19:40PM -0500, Tal Zussman wrote:
+> xfs_io refuses pwritev2() and preadv2() flags unless -V is given, so
+> probing -U without it always fails. Pass -V 1 for -U in both the pwrite
+> and pread cases.
 
-But non-fault handlers can't really cope with this EAGAIN, and it seems
-it could trigger for those as well?
+Looks good:
 
+Reviewed-by: Christoph Hellwig <hch@lst.de>
