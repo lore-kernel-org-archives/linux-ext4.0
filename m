@@ -1,58 +1,49 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=115.124.30.133
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794351835;
-	b=PAel/PIlIoffLTWvXgutBcxiBOpEW5WgbRKtldr+7JyHz3DocLKp/v+xIv7+K8kQy73u
-	 w8XdOJvf96rMdDyhFFiayvjLkJUfF5mITg33WnfGQs6NCaJZp8nIFGRMoLt5eJh0m/2kH
-	 nmtc3ie9624m0YbSsDhE+HfS4ySwOJYOTKIFGbOxBKHiC3F0OctrPYGIZMz2xNNpWE+Zr
-	 i42Q5M0KZ4vRqXfnCGQlOd/UbS6AlIyp3a2EszdNCYR5sQj6qBqbEX6fjxUWfxgwdG5AB
-	 rSyhclHx/mCwggK9HGtNTbsLtJW28/kuwgmt8tcvWzcSQnfUZ4eRBBNn5VFpNVKIFjg==
+	t=1794360670;
+	b=FfO+lx5GXogLgqb7DWOxYqGfL+fjnDw1YZx3slNeIC3v4+Cc3UnugRghWpdcsC9dhquP
+	 giGHgAtZWkmEagFZyPpebKZ0VoVyRkMczeJMpgUlYw73vY+2VvQQ4z4yK4HRzs0APY3BL
+	 YNBLK3gL55Lt/G3qscMukWAWr0AbKNQfqggcr1RxSxr9PIpKoWFb0fTvtw/7jgL2dslMa
+	 vMPZSwG52GKFpqHI9mU0OJyTCR6A621Q1gAQ4Fxgz720hFJe7qcMm/v70PufBbeTLP5OE
+	 aArDEQ1SgC+TvqF6Me1XRcyIWMDYE5MyYEEJ8b7tPJRC2FAC0GVqVjh3/FlDDRHPvig==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794351835;
-	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
-	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
-	bh=2pIaRdIwsMurNh146HSaQSteAZp0sNsCvcBlMEMyjn0=;
-	b=DGqZ+Hm4bFVRk/RMt39s8X1LEYjZMByZlc0eBXu8aT8wFGmfZfDnbgiA55j7Oh4HatSx
-	 sfr9ys0pvRkHe+tvRppusTNvQueyBOaXWSmS/Awpjr6n5lgpachyG77/e/zJteBWbEgyV
-	 /H3jUsD0m3ommG7GUIBjJYmoPbnS3uD4GIIKWHrYEECObVdm0057p+77UtG3rTZmoGHuU
-	 EAN130lV8yabJBaQoVYj/G9OfzHpNrnQ+O95dE2jb+UjkUnAXCZKfUt4N+eHDFFWupLEB
-	 AmHcBE6t+DyEdo8WlvwewUBoZPI8TpEeANFvwOp8j9FAv0Mm9MQAAQ1PBImr2OYmcRg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794360670;
+	h=DMARC-Filter:DKIM-Signature:X-Alimail-AntiSpam:Received:Message-ID:
+	 Date:MIME-Version:User-Agent:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type:Content-Transfer-Encoding;
+	bh=fz7Db6YPpucPps2P9eFgAPZMsl4Z2nZBpO1+iQqdPhM=;
+	b=RBXudb244Rweuyty63SC19rHx0w4ElIL+4AYxc8G84M3xHfHQ5LVGNRZsNrUcRkXkJEH
+	 q5FP0X704Gd1o5zUtY1T09F1xIJS79yfImNaqoZBsHaoTdQqW5RsLqV8d8n8WVLVtn9Sf
+	 dc/D7/Tj3QLc119ZInWARA9tUST3vFtWtyVboKVDlgCSEw0ZpaVWGsNZyLRb4iK82oGQH
+	 D3+q3uoDzMei+Wgi6WaK3KrYicoZBCLmTzg2BRBgLvw70ErJttB1rko2mSlpSMcPTlq7y
+	 J6skwU+HublMytAcf4DLkTq/Oq2m1HGbdsxwlFsbYTqXsBmZt7H0PGeEXOzf764e0vg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=kBTW1rxq;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	dmarc=pass header.from=linux.alibaba.com;
+	spf=pass smtp.mailfrom=linux.alibaba.com;
+	dkim=pass header.d=linux.alibaba.com header.i=@linux.alibaba.com header.a=rsa-sha256 header.s=default header.b=mq7w0PoV;
+	arc=none smtp.remote-ip=115.124.30.133
+Received: from out30-133.freemail.mail.aliyun.com (out30-133.freemail.mail.aliyun.com [115.124.30.133])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 30CD2606A32A;
-	Tue, 10 Nov 2026 23:03:54 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6D0DE606A321;
+	Wed, 11 Nov 2026 01:31:06 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 6D0DE606A321
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=kBTW1rxq
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 62AB91F00A04;
-	Tue, 10 Nov 2026 23:03:54 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794351834;
-	bh=2pIaRdIwsMurNh146HSaQSteAZp0sNsCvcBlMEMyjn0=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=kBTW1rxq9WZhdtKSM6ZrjLcJDA8KX7zpquW0WCtTZj93ht9JZWcFZTmPvobJNFp5p
-	 W7fw8ONKkd7a9uW9Mg/qf4xDHmOd8hlnRbFF4foksH2xX7qk3QGzGbJYkAa75ekFwJ
-	 OzRNYXI4MvxDD+4HZGPSx2NnRi9PmevHAGdVkVYZRdLMTwDjyRsnAHYGk68OvDDay8
-	 rDnhbCiAaL/Brr0qiCC6247tRAhK2n7XP0yf/xOtZuuMjJqM4qWjPWN7jzk4Svxfvw
-	 pqYkF6OUqIPT5t0qg/xeybx0vaHstfPqOrvFTHTSgBMM/vz9TsD1LPwReRhbFj1B84
-	 7XfdQtupW+l0w==
-Date: Tue, 10 Nov 2026 15:03:53 -0800
-From: Eric Biggers <ebiggers@kernel.org>
-To: Andrey Albershteyn <aalbersh@kernel.org>
-Cc: hch@lst.de, fsverity@lists.linux.dev, dsterba@suse.com,
-	linux-xfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, brauner@kernel.org,
-	viro@zeniv.linux.org.uk, jaegeuk@kernel.org, chao@kernel.org,
-	tytso@mit.edu
-Subject: Re: [PATCH v2 5/5] f2fs: use I_VERITY_BUILDING instead of private
- flags
-Message-ID: <20261110230353.GI1907@quark>
-References: <20261105115532.613467-1-aalbersh@kernel.org>
- <20261105115532.613467-6-aalbersh@kernel.org>
+	dkim=pass (1024-bit key, unprotected) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.a=rsa-sha256 header.s=default header.b=mq7w0PoV
+DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
+	d=linux.alibaba.com; s=default;
+	t=1794360664; h=Message-ID:Date:MIME-Version:Subject:To:From:Content-Type;
+	bh=fz7Db6YPpucPps2P9eFgAPZMsl4Z2nZBpO1+iQqdPhM=;
+	b=mq7w0PoVXCwu1IX5ivmHA8As80sOmn10inPCZOG+QhlYp6qb0mg+dgSd17z1pXOsln4JJ09DELsc+5awHi3JyuM1vG3mkZkxNGxXiVtr8wj0fz65Fmeo+JddfxQeZaPB2cDKH76kna5eWQAcDs3+9zCCKwZ7z1M/3EU9JhzwAZ0=
+X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R121e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033045133197;MF=joseph.qi@linux.alibaba.com;NM=1;PH=DS;RN=17;SR=0;TI=SMTPD_---0XEX6F-L_1794360662;
+Received: from 30.221.145.127(mailfrom:joseph.qi@linux.alibaba.com fp:SMTPD_---0XEX6F-L_1794360662 cluster:ay36)
+          by smtp.aliyun-inc.com;
+          Wed, 11 Nov 2026 09:31:03 +0800
+Message-ID: <f6cdf5d0-9468-48cb-9bfb-0cc41b46c7fe@linux.alibaba.com>
+Date: Wed, 11 Nov 2026 09:31:01 +0800
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -62,24 +53,56 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20261105115532.613467-6-aalbersh@kernel.org>
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH v2 19/34] ocfs2: keep the current mount options on remount
+To: Christian Brauner <brauner@kernel.org>
+Cc: Al Viro <viro@zeniv.linux.org.uk>, Jan Kara <jack@suse.com>,
+ ecryptfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+ jfs-discussion@lists.sourceforge.net, linux-nilfs@vger.kernel.org,
+ exfat@lists.linux.dev, linux-mm@kvack.org, ntfs@lists.linux.dev,
+ ocfs2-devel@lists.linux.dev, linux-btrfs@vger.kernel.org,
+ gfs2@lists.linux.dev, linux-efi@vger.kernel.org,
+ linux-mtd@lists.infradead.org, linux-xfs@vger.kernel.org,
+ linux-fsdevel@vger.kernel.org
+References: <20261029-work-fs-sb_rdonly-v2-0-2f44f64f0b66@kernel.org>
+ <20261029-work-fs-sb_rdonly-v2-19-2f44f64f0b66@kernel.org>
+ <0a8576a4-e397-4a49-ab0e-8f0f32bf2642@linux.alibaba.com>
+ <20261110-zerfallen-meiden-wacholderbeere-a90ac157e063@brauner>
+From: Joseph Qi <joseph.qi@linux.alibaba.com>
+In-Reply-To: <20261110-zerfallen-meiden-wacholderbeere-a90ac157e063@brauner>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
 
-On Thu, Nov 05, 2026 at 12:55:30PM +0100, Andrey Albershteyn wrote:
->  	/*
-> -	 * Write all pages (both data and verity metadata).  Note that this must
-> -	 * happen before clearing FI_VERITY_IN_PROGRESS; otherwise pages beyond
-> -	 * i_size won't be written properly.  For crash consistency, this also
-> -	 * must happen before the verity inode flag gets persisted.
-> +	 * Write all pages (both data and verity metadata). For crash
-> +	 * consistency, this also must happen before the verity inode flag gets
-> +	 * persisted.
->  	 */
 
-Same as ext4 patch: the deleted sentence (which wasn't deleted properly,
-as it left the "this also must happen" clause dangling) actually still
-applies.  Just it should be updated to use the new flag name, or else
-refer to ->end_enable_verity() returning instead.
 
-- Eric
+On 11/11/26 5:52 AM, Christian Brauner wrote:
+> On Fri, Oct 30, 2026 at 10:58:52AM +0800, Joseph Qi wrote:
+>> ocfs2_reconfigure() decides the transition from fc->sb_flags alone without
+>> sb_flags_mask test, unlike reconfigure_super(). And fspick() passes
+>> fs_context_for_reconfigure(target.dentry, 0, 0). So on a read-only mount:
+> 
+>> So it seems we should test sb_flags_mask as well?
+> 
+> No, that's a generic bug. I fixed that in reconfigure_super() with
+> "super: keep the read-only state if a reconfiguration doesn't change it".
+> That is in vfs-7.5.super (cf. [1]). This series depends on that work.
+> 
+> If SB_RDONLY isn't in sb_flags_mask it fills in the current read-only
+> state. So ocfs2_reconfigure() sees SB_RDONLY and stays read-only. ocfs2
+> is one of the 23 filesystems listed there that only look at
+> fc->sb_flags.
+> 
+
+Now it looks fine.
+Reviewed-by: Joseph Qi <joseph.qi@linux.alibaba.com>
+
+>> The same falls out of a legacy remount whose flags omit MS_RDONLY.
+> 
+> No, do_remount() always passes MS_RMT_MASK which includes MS_RDONLY. A
+> remount without MS_RDONLY asks for read-write.
+> 
+> Thanks for the review!
+> 
+> [1]: https://lore.kernel.org/r/20261011-work-super-fixes-core-v1-11-c727176c5b53@kernel.org
+
+
