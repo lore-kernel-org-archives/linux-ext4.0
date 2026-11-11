@@ -1,57 +1,56 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=220.197.31.4
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794383462;
-	b=wxr5mn+ZgmMCO6JJJbFvijdIw6PzhzYB6ttn1UakHATK91OgeOysn95RQB2htKMtdew0
-	 rfAkhz1dEdWLiGDeaXcaVuVBr7a1rpSMSutFcW+Xn2yzbeXi6meCF1OvhZyZ3nAMw6/Ke
-	 kATJkn+caSwhyllln/tIK+tAwIETzZplTQIdTzOy3gc4dwuTgPyB9wELGn0Kbe+TtTyYA
-	 DNDrXRH/JUPDGvrAFq0MWkTd7K6DVnYoeBx3fqqIv4zpLYBrrMUPltl9zUkJ+PuAsMnfr
-	 oewQbMg9lW5uLCYuzLvrOl2zBCS48z5di4epH5PWkiMRoToc/12a7SUX8fAYXoiukkA==
+	t=1794387144;
+	b=B5KKR0eEyEFxMso3OfhG8lKUD91YAbFEn8GQDqYhq+BTQkjSrB2wL8P+/J0xkelvD53c
+	 +kAXfmqTm1GXF1iM9v2v6D6q52nvgQv4/4mV347ixF6fU+o8bNj7I8k6q73F1dmeCZnrR
+	 oV8lNANt7adQNflkKtFB5cJcxsgQlpU1GAIIcB4x/3mMS7D56oi6wXm0U515Jtr4vMpto
+	 fCqcxpBTzMalnAkK8p2gcDNFq6M7KIo+Zq8C+/aZmzlHNZcUVl2oLnpxF8cU6LsMsJpca
+	 XhWIvRIAkqDpdbc3bosVWvPb2W+D6k5xhz3rnLQeAghPy+xNfvODhwvSGZULgby0EXQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794383462;
-	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
-	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=8pSFJGnG0yr8y6scpXPzOOogeUMUfUHBKdrIB+uPnRQ=;
-	b=Gue4EdjGNh0IJoHG0l3pay1N9W1sNexRhf0M9nPe3icNYRUYwuhXisZpF16+lEqlGFYY
-	 tYan09syMv+Cu3WL0D6BAmQ0DSWQAJnyOLt2c5gEXBDzBhwTqBZX6T1ZIrOfAubUmoTRK
-	 Q6OMZM93h9Pjix/zJt/eCIpe6myzusz40POEqKCu5WjXGUJ229yCXzzBVsUYIs15q6dWn
-	 brQd6nF6uu+Trs+8n7hh2WQqwL6wdDL2SE/V4Y23R9hJL6WvTV8ujJxFwqdO1WoL+Udd9
-	 s0/lhZW3Gx6IyM4GUqsadRM1wEQEBetK1Z92Lu1u1cHjGWmKzEulgmwcxBH2QIlYbfA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794387144;
+	h=DMARC-Filter:DKIM-Signature:Date:From:To:Cc:Subject:X-Priority:
+	 X-Mailer:X-NTES-SC:Content-Transfer-Encoding:Content-Type:
+	 MIME-Version:Message-ID:X-Coremail-Locale:X-CM-TRANSID:
+	 X-CM-SenderInfo:X-Coremail-Antispam;
+	bh=x8AHVtJEbM2AUZdBKh4jR6I+1ge046yi64cismTClAA=;
+	b=kBg/FCqhODxt3/NdNjW9Y3O0Fslb3awpBkJiTEOzExn9YRNi+w15f8gCy7YPVfGp7rU2
+	 MZWRGZBB7DQyUacx0CStFhs0EiDRMOZ0yvNFiFg4WJvoq8SR0ZQh+s/YmykrQ0QzaFpRc
+	 /hliJt3ck/Yar1ZNvE6F7msH+0lHqSgyNOrYfTR5KM4EqeGNgn8qEM39yGCQdtgNRMEu3
+	 dmAGX7O753vPuKmQzxWx4Tgb5OiDaHyK7nFmVsbK1yW44LBVl1P1M/hZScuNQrmp6mImb
+	 YeUgx2jdFCav1C0TtirsvXqcGdTRHBYCpzx86Iqg1Z6zLGAoLXgnCg84FvYqlzQeYEg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=A0qgZsS4;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	dmarc=pass header.from=163.com;
+	spf=pass smtp.mailfrom=163.com;
+	dkim=pass header.d=163.com header.i=@163.com header.a=rsa-sha256 header.s=s110527 header.b="DT/MrEtw";
+	arc=none smtp.remote-ip=220.197.31.4
+Received: from m16.mail.163.com (m16.mail.163.com [220.197.31.4])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BE78F606A31C
-	for <linux-ext4@vger.kernel.org>; Wed, 11 Nov 2026 07:51:02 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B7A15606A31C;
+	Wed, 11 Nov 2026 08:52:21 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org B7A15606A31C
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=163.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=A0qgZsS4
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 694D31F00A05;
-	Wed, 11 Nov 2026 07:51:02 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794383462;
-	bh=8pSFJGnG0yr8y6scpXPzOOogeUMUfUHBKdrIB+uPnRQ=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=A0qgZsS4HhVHO6TdPmZirMWnprDngg10iL6jKN8ZNOywb1tTb15mlj77UENGIKFSk
-	 vD0PUDIrA81sZMkbXM7pW2DxPn+NjBVLVzQ2ixwYcbh2R1/vA7xmLt1e5CFNdiHJGR
-	 T0DpkuaQQwbmW34P222vx/DD/2+mITTJHjlMPVSN3zcydRp2980N5Ssb3LQ2VUfk2l
-	 Qhfq2tFFHyOYFGuJU6acWKzpTkB9upXkIQIZKNOQ0Fs2Bm55yXtVT6szdsqKelWQxm
-	 U1+rgulL9M1wN7gt0WdxA1puUxzdPfllLiMd1/yTvpVtqQj7bNgbjEuTgbwb9laUjD
-	 PhvCZE+IDi06g==
-Message-ID: <sashiko-outbox-208546@kernel.org>
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH v2] ext4: free the new extent block on failure to grow
- the tree
-Reply-To: sashiko-reviews@lists.linux.dev
-To: Alan <3164729207@qq.com>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-In-Reply-To: <tencent_DF25FDEF46DA68C4E18D6DB40F08E30BB705@qq.com>
-References: <tencent_9EB8EBE910378E46C80E006C6A7DA918BA08@qq.com>
- <tencent_DF25FDEF46DA68C4E18D6DB40F08E30BB705@qq.com>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Wed, 11 Nov 2026 07:51:01 +0000
+	dkim=pass (1024-bit key, unprotected) header.d=163.com header.i=@163.com header.a=rsa-sha256 header.s=s110527 header.b=DT/MrEtw
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=163.com;
+	s=s110527; h=Date:From:To:Subject:Content-Type:MIME-Version:
+	Message-ID; bh=x8AHVtJEbM2AUZdBKh4jR6I+1ge046yi64cismTClAA=; b=D
+	T/MrEtwLRKdJCjpW7++nRks4tFwPe/Qpg+4ni/vU+LoAxaPXstL+S3Tc49NTiEDD
+	06ePK0sufBHdUKTcp/eBJRlwnpgt60LBj5NhPS3ns3/w9gIu0wfhoqu8GwZ1gw8T
+	VyPh0xZUgslC2KWBG0KKux7WY/h2XSFl2qiGcwVi04=
+Date: Wed, 11 Nov 2026 16:51:53 +0800 (CST)
+From: CJ <firefly0158@163.com>
+To: jack@suse.com
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: KASAN: use-after-free Write in ext2_try_to_allocate on v7.3-rc2
+X-Priority: 3
+X-Mailer: Coremail Webmail Server Version 2023.4-cmXT build
+ 20260511(2e539873) Copyright (c) 2002-2026 www.mailtech.cn 163com
+X-NTES-SC: AL_Qu2SBv+TuEkq5CmRYOkdmEsTju82UcS4ufQl245Xc8EEuS7f5iUqRlhADGXE8O6qGhC3lDKJfD1fz9lHWIZJRhp8D+3qmu6MruEVeLh5xQ==
+Content-Transfer-Encoding: base64
+Content-Type: text/plain; charset=UTF-8
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -60,52 +59,37 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
+MIME-Version: 1.0
+Message-ID: <5fb9abed.76e9.1a1c9ce742a.Coremail.firefly0158@163.com>
+X-Coremail-Locale: zh_CN
+X-CM-TRANSID:gSgvCgD3nyqpLPRqAa5rAA--.838W
+X-CM-SenderInfo: piluvw1o1qikqy6rljoofrz/xtbC+QgNvmr0LKiLLQAA3+
+X-Coremail-Antispam: 1U5529EdanIXcx71UUUUU7vcSsGvfC2KfnxnUU==
 
-Thank you for your contribution! Sashiko AI review found 1 potential
-issue to consider:
-- [High] ext4: single-word name in Author and Signed-off-by trailer
---
-
-commit 28c8d79985e366b191e9eac1f2d5415854ca0289
-Author: Alan <3164729207@qq.com>
-
-> ext4: free the new extent block on failure to grow the tree
->
-> ext4_ext_grow_indepth() allocates and accounts a metadata block before
-> getting its buffer, obtaining journal create access and dirtying the
-> new extent block. If any of these operations fails, the new block has
-> not been linked into the extent tree. However, the error paths return
-> without freeing it, leaking the block and leaving i_blocks larger
-> than the number of blocks reachable from the inode.
->
-> Commit 8a83ac54940d ("ext4: call bdev_getblk() from sb_getblk_gfp()")
-> removed the implicit __GFP_NOFAIL from the buffer allocation, making
-> the allocation failure path reachable. The two journal error paths
-> already lacked cleanup before that commit and are fixed here as well.
->
-> Route all three failures through a common cleanup label to free the
-> unpublished metadata block and undo its inode accounting. Keep the
-> existing buffer unlock and release handling. Once the new block has
-> been linked by ext4_idx_store_pblock(), an ext4_mark_inode_dirty()
-> failure must not free it because the extent tree already references it.
->
-> Tested on Linux 6.12.1 by injecting NULL for buffer acquisition and
-> -EIO for each of the two metadata helper calls at their caller
-> boundaries. Each unfixed case leaves seven unreachable blocks and
-> i_blocks of 40 instead of 32 on a filesystem with 4 KiB blocks. With
-> the fix, all three cases retain i_blocks of 32, preserve the original
-> data and pass e2fsck -fn after a normal unmount. Retry, truncate and
-> uninjected growth also pass for each case.
->
-> Fixes: 8a83ac54940d ("ext4: call bdev_getblk() from sb_getblk_gfp()")
-> Cc: stable@vger.kernel.org
-> Signed-off-by: Alan <3164729207@qq.com>
-
-[Severity: High]
-Documentation/process/submitting-patches.rst requires a full real name in
-the Author header and Signed-off-by trailer to satisfy the Developer's
-Certificate of Origin, rather than a single-word name or handle ("Alan").
-
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/tencent_DF25FDEF46D=
-A68C4E18D6DB40F08E30BB705@qq.com?part=3D1
+CkhpLAoKCnN5emJvdCByZXBvcnRlZCAiS0FTQU46IHVzZS1hZnRlci1mcmVlIFdyaXRlIGluIGV4
+dDJfdHJ5X3RvX2FsbG9jYXRlIiBvbiBMaW51eCA2LjEuIFRoZSBzYW1lIGZhaWx1cmUgaXMgc3Rp
+bGwKcmVwcm9kdWNpYmxlIG9uIHY3LjMtcmMyIHdpdGggdGhlIGFkYXB0ZWQgcmVwcm9kdWNlciBk
+ZXNjcmliZWQgYmVsb3cuCgoKVGhlIHJlcHJvZHVjZXIgbW91bnRzIGEgY3JhZnRlZCBleHQyL2V4
+dDMgaW1hZ2UgYW5kIGNyZWF0ZXMgZGlyZWN0b3JpZXMgaW4gdGhlIG1vdW50ZWQgcm9vdC4gVGhl
+IGFkYXB0ZWQgc3l6IHByb2dyYW0gYWRkcyBleHBsaWNpdCBta2RpcmF0IGNhbGxzIGltbWVkaWF0
+ZWx5IGFmdGVyIHRoZSBpbWFnZSBtb3VudCwgcmVzdG9yaW5nIHRoZSBleHQyX21rZGlyIGFuZCBl
+eHQyX21ha2VfZW1wdHkgYmxvY2stYWxsb2NhdGlvbiBwYXRoLiBUaGUgaW1hZ2UsIG1vdW50IG9w
+dGlvbiwgYW5kIHVucmVsYXRlZCBjYWxscyBhcmUgcHJlc2VydmVkLgoKClRoZSB0YXJnZXQgY29u
+c29sZSByZXBvcnRzIGEgS0FTQU4gdXNlLWFmdGVyLWZyZWUgd3JpdGUgaW4gZXh0Ml90cnlfdG9f
+YWxsb2NhdGUsIHdpdGggdGhlIGFsbG9jYXRpb24gcGF0aCBwYXNzaW5nIHRocm91Z2ggZXh0Ml90
+cnlfdG9fYWxsb2NhdGVfd2l0aF9yc3YsIGV4dDJfbmV3X2Jsb2NrcywgZXh0Ml9tYWtlX2VtcHR5
+LCBleHQyX21rZGlyLCBhbmQgdmZzX21rZGlyLgoKClRoZSB3cml0ZSBvY2N1cnMgd2hpbGUgZXh0
+MiBhbGxvY2F0ZXMgYmxvY2tzIGZvciBhIG5ldyBkaXJlY3RvcnkuIFRoZSBjb25zb2xlIGRvZXMg
+bm90IGlkZW50aWZ5IHdoZXRoZXIgdGhlIHN0YWxlIG9iamVjdCBpcyBhIGdyb3VwIGRlc2NyaXB0
+b3IsIGJpdG1hcCBidWZmZXIsIG9yIGFub3RoZXIgYWxsb2NhdGlvbiBzdHJ1Y3R1cmUuCgoKVGhp
+cyBpcyBhIGZvbGxvdy11cCBmb3IgdGhlIGV4aXN0aW5nIHN5emJvdCByZXBvcnQgaHR0cHM6Ly9z
+eXprYWxsZXIuYXBwc3BvdC5jb20vYnVnP2V4dGlkPThhNDdlMjkyZGI4NWEzYjIwYzc2LCBub3Qg
+YQpiaXNlY3RlZCByb290IGNhdXNlLiBUaGUgdGFyZ2V0IHJlcG9ydCBzaGFyZXMKMTIga2V5IGZy
+YW1lcyB3aXRoIHRoZSBzb3VyY2UgY3Jhc2ggcmVwb3J0LgoKClJlcHJvZHVjZXI6CsKgIHN5eiBy
+ZXByb2R1Y2VyOiBodHRwczovL3Bhc3RlYmluLmNvbS9yYXcvSGpiZlRlUzEKCgpjb25zb2xlIG91
+dHB1dDogaHR0cHM6Ly9wYXN0ZWJpbi5jb20vcmF3L1FaQ2FjUWNTCmtlcm5lbCBjb25maWc6IGh0
+dHBzOi8vc3l6a2FsbGVyLmFwcHNwb3QuY29tL3RleHQ/dGFnPUtlcm5lbENvbmZpZyZ4PWIxYWRj
+MGJmZGUyZDhhNGEKCgpLZXJuZWw6CsKgIEhFQUQgY29tbWl0OiBkZjI5MDgwOTBjZGEzNjhiMDFm
+ZjQzNzA5ZjUxODkwMDc2YzU2MTU3CsKgIGdpdCB0cmVlOiBsaW51eC1zdGFibGUKwqAga2VybmVs
+IHZlcnNpb246IDcuMy4wLXJjMgrCoCB0ZXN0ZWQgdGFnOiB2Ny4zLXJjMgoKCkxldCBtZSBrbm93
+IGlmIHlvdSBuZWVkIG1vcmUgZGV0YWlscyBvciB0ZXN0aW5nLgoKClRoYW5rcy4KCg==
