@@ -1,58 +1,54 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.167.199
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794368332;
-	b=omC5yjDy0QXlm9OhRt+j/0PDEnjy0lppDrTtWRHlWfbxETHRS5fpC4BUWkCQRYb8hH79
-	 cd27X0ldiuIzMLpzhkKYsiR5NDyo5IYogzk4jpSHRVHrVDNs/4gZ2oRx3qYWLPBL0y5+8
-	 Y1Rt0e1PKeBWn21ENqNHQTipx5Rqmd7wpwevrAAQ6DFJdpN8l8kpRd6eKvcYwcKpPCOj8
-	 ZJVPwRa83TP/o3quNmMPEB5XG49yBBmduf6ioTg1OIfvV4bTZIQGWZZ9NLjllCbsvacLP
-	 ldzvurVhcLP65KEjdsgoMdxk9dpb9gpJJ1OJHGUVQI+AoF/1/Uw1WMwnRJYL7VypoYQ==
+	t=1794372363;
+	b=thyIvPFNxo5Mj8NdSXqMU4u60LT2UxKSjsbhZ3IAKIAHsCaEmFlJt4WSRZJoYxbdoqqQ
+	 ojGe+dgXOgqJgkI0OV8vjDVocSjhhhU7uQmj+ZfWiKfBGE1lGR3u6ghByDxj4JnjkYdPo
+	 ESKgpmWnvD3hre+WkCKxPhBA0RzzBFrlS95f5rhgzysRgmkNJzP9wwTAcN39fjhllqIjU
+	 Seirlagr4AY4STs5UBdAztWb/lFlv+Bi/IIMtpQ5cCuSrO3/KV7Zz1+kRTJz48CWEG+TE
+	 IRIzDn4IA3WLWBnCRM/E/qa7aQ3/wecDw9a1TNw8i2OPopv1HAZ03nAhbK2k9y0aTIQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794368332;
-	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
-	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=uDxehLcqtDum2NvD10EWmZpSN+a+/1/QST6UpsvyZlg=;
-	b=D/H71WNsJ61HJ7S9nxAvuXFqWFSDPLDiq1qf66T1vnebjv3A1ESXKZdFOrxjiluXH8Rr
-	 EkOWXfRHxeCxaYpkQiof/y3a6reG+fWyiVGgKiC6eaLh2LiEFhQo9Pb+sG7DUGQDbob1e
-	 +UBQTEAqi2VM52EsSv5ykqP9qIaUE1INnakptFLT4UDdz4pkefVcWkXZVNFFgL5Sg3lL4
-	 o5ATefeF0523DswnSmKQNvkZx/ZLLc+FCXkxMzHNGoQGSsPKjhImlQcXiwh79obyy1L1Z
-	 jg/HFfZFlp0UiO22hXzMOpwtCHP4piIdsJFpPFuACKIm3Bu0w/Dh74jt7PG7kZTCgxQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794372363;
+	h=DMARC-Filter:Received:X-Google-DKIM-Signature:X-Forwarded-Encrypted:
+	 X-Gm-Message-State:MIME-Version:X-Received:Date:In-Reply-To:
+	 X-Google-Appengine-App-Id:X-Google-Appengine-App-Id-Alias:Message-ID:
+	 Subject:From:To:Content-Type;
+	bh=tc06brEby95ail1F4lHOJFrAbzbjGxWAEQqRmICG19U=;
+	b=pZLDCcnFRS/If0Yo9u7/PPstQYlf4HCqSQtnV/3a5hhdWpSbn7WOQSlxEjp2MP2t9+e9
+	 /+blHionoa3aWsx93g58ZC4zIbL6eU+/qoNjvc56PJIMkPe9VRpFpkkBXB9k7y77K2jBH
+	 TTN4sHrH7I2wXrAP8VfdrJzMd8uVh0Nhd/x9FMWV7YzqTvXedLSLKX7mpFWvHdoWVJb5l
+	 m23j4eQLCvHeSCn7egd+Kbk3k7bgRlEFUBitu9RvJIxzQmpWpLn4+EU5m9nruTN4PPEP8
+	 57b9yMYGTb3Dt3LuVFs4SuHDZTJKGteOKxEr30acIqtMvnYNGpWx/dEsbqV+pS/QgbQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Yv9Khm6R;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=fail header.from=syzkaller.appspotmail.com;
+	spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com;
+	arc=none smtp.remote-ip=209.85.167.199
+Received: from mail-oi1-f199.google.com (mail-oi1-f199.google.com [209.85.167.199])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4C758606A31C
-	for <linux-ext4@vger.kernel.org>; Wed, 11 Nov 2026 03:38:51 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Yv9Khm6R
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 821601F0089F;
-	Wed, 11 Nov 2026 03:38:51 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794368331;
-	bh=uDxehLcqtDum2NvD10EWmZpSN+a+/1/QST6UpsvyZlg=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=Yv9Khm6RXa3u82Vi4ipHYRo+nmbVoSg399X/gdgy7YP5cR579vZVTyhgSctuCNtH8
-	 nxyqjDNQalCak3qq2tObrWnW4rsZiynkorm9RVo8i30Lag8FtOtdzqoV/lYcAvSAQv
-	 TdcAGfl0jnFLw6dI/4kMOWh2EAs+1vTLqm7t0ReqFDsVZ1lwxtoS4GKVn6rohHwVFO
-	 igpFq2seaeUCwAdrzax++M+4T0MEzgokSVfwISNOFzRb2uXl1dBtLWxFIheUEL7r0r
-	 J28iLH2us7AQYyLfJNbYMMulsOAzZ/qQp+o7qMVkwZBhgeLKItz7k8reeQn3f6UkNH
-	 b9CUooutDVdTQ==
-Message-ID: <sashiko-outbox-208211@kernel.org>
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH] ext4: make concurrent DEFAULT shutdown waits killable
-Reply-To: sashiko-reviews@lists.linux.dev
-To: diasyzhangqing@gmail.com
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-In-Reply-To: <20261111032743.549426-1-diasyzhangqing@gmail.com>
-References: <6af1e75f.3e87765f.91969.0010.GAE@google.com>
- <20261110132118.11265-1-diasyzhangqing@gmail.com>
- <glup36pqwuh2wsxjozp3x4kne2spsud65ftlw744p72hmh54mx@hi2s256gr3iy>
- <20261111032743.549426-1-diasyzhangqing@gmail.com>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Wed, 11 Nov 2026 03:38:51 +0000
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5368F60A3815
+	for <linux-ext4@vger.kernel.org>; Wed, 11 Nov 2026 04:46:03 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 5368F60A3815
+Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
+Received: by mail-oi1-f199.google.com with SMTP id 5614622812f47-5641cd2cc13so3198810b6e.0
+        for <linux-ext4@vger.kernel.org>; Tue, 10 Nov 2026 20:46:03 -0800 (PST)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1794372362; x=1794977162;
+        h=content-type:to:from:subject:message-id:in-reply-to:date
+         :mime-version:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to:content-type;
+        bh=tc06brEby95ail1F4lHOJFrAbzbjGxWAEQqRmICG19U=;
+        b=rV82TMD1eKSt9xFWDrP6Subz/eXBsOFqOYQnJmTYnD41JlilvmOTewGL8q+Seg1Ptm
+         1G8bhUjIlh4wKyD68gpvKoX0/yo4OKPQJOj71v1U9hPgOpFaRn5np+D5a5eVfK+ZBQub
+         ITdzpMyl4h97sRtdNw3AkaxyIC687A6GiftkftItcdwKoPIOS81Pxf5b7wZdbJMSFiJj
+         Nr9Tfq3+5NI5zParIALsdjcJHX4m7VofzG9NnTQTOBR3sZld5os6RQf9U1Esbsn/+dgY
+         gNLqhbMuybqT2Y5XR0gRgupxcbrqr9KFVTnmQCWsUVFonxeuD/6qWhsm6p0OMP/RKi/U
+         oyaA==
+X-Forwarded-Encrypted: i=1; AL+hErGcNWSfG+BG7CArjPlIIKs0iCWQkMoqesSxpZwdT/ZL5SXHRqr+3VKPuPo5sjLTcxKQO+rPpS/GEPTQ@vger.kernel.org
+X-Gm-Message-State: APuU4Z8f56KOAvTk8kb/b2aFvt7i03eBSk2Rl8ZgHvp+haQdF8PDFAWF
+	E0bLXBz6UhDGqqdw7pmzM7vQ6/K211DhsEOR6Xon3SsifKvpIoL+KZKywS/x5HuLR7crU9T2xWb
+	kLMc5AlBgrOT4L0TdH/aO4UqVNR9Xj31g4qyUOfWkPL+zkI5x5pJrwbBCMdY=
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -61,45 +57,38 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
+MIME-Version: 1.0
+X-Received: by 2002:a05:6808:c123:b0:4f1:a873:6efc with SMTP id
+ 5614622812f47-56b98c19490mr1069217b6e.64.1794372362344; Tue, 10 Nov 2026
+ 20:46:02 -0800 (PST)
+Date: Tue, 10 Nov 2026 20:46:02 -0800
+In-Reply-To: <20261111032743.549426-1-diasyzhangqing@gmail.com>
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <6af3f30a.926a6ce0.263fd.0199.GAE@google.com>
+Subject: Re: [syzbot] [block?] [ext4?] INFO: task hung in bdev_freeze
+From: syzbot <syzbot+d4ecb9a1e5b3dcf8baec@syzkaller.appspotmail.com>
+To: adilger.kernel@dilger.ca, axboe@kernel.dk, diasyzhang@tencent.com, 
+	diasyzhangqing@gmail.com, jack@suse.cz, libaokun@linux.alibaba.com, 
+	linux-block@vger.kernel.org, linux-ext4@vger.kernel.org, 
+	linux-kernel@vger.kernel.org, ojaswin@linux.ibm.com, ritesh.list@gmail.com, 
+	syzkaller-bugs@googlegroups.com, tytso@mit.edu, yi.zhang@huawei.com
+Content-Type: text/plain; charset="UTF-8"
 
-Thank you for your contribution! Sashiko AI review found 2 potential
-issues to consider:
-- [High] block: missing Signed-off-by trailer and real author name in
-  commit
-- [Medium] block: commit message is a raw ext4 email reply with wrong
-  bdev_freeze() info
---
+Hello,
 
-commit b7fc68757e7a71c50d74a009f283890518f74c9a
-Author: diasyzhangqing@gmail.com <diasyzhangqing@gmail.com>
+syzbot tried to test the proposed patch but the build/boot failed:
 
-> ext4: make concurrent DEFAULT shutdown waits killable
->
-> On Tue 10-11-26 21:35:56, Jan Kara wrote:
-> > Err, no. This is really syzkaller self-inflicted damage we aren't going=
- to
-> > work around. If anything you could make the wait on bd_fsfreeze_mutex
-> > in bdev_freeze() killable. That will actually be a sensible change and
-> > should address syzbot warning as well.
->
-> Thanks, that's indeed simpler.  All current callers of bdev_freeze()
-> (the generic FIFREEZE ioctl, ext4, ntfs, ntfs3, xfs) already propagate
-> the error, so only the wait itself needs to change:
+failed to checkout kernel repo git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/master: failed to run ["git" "-c" "core.hooksPath=/dev/null" "fetch" "--force" "f569e972c8e9057ee9c286220c83a480ebf30cc5" "master"]: exit status 128
 
-[Severity: High]
-This commit is missing a Signed-off-by: trailer, and the Author header uses
-an email address instead of the author's real name.
 
-[Severity: Medium]
-Does the commit title and message match the change being made?
+Tested on:
 
-The patch modifies bdev_freeze() in block/bdev.c rather than ext4, and the
-changelog is formatted as an email reply rather than a standalone commit
-description.  In addition, ioctl_fsfreeze() calls freeze_super() rather than
-bdev_freeze(), other callers exist (lock_fs(), exfat_force_shutdown(), and
-f2fs_do_shutdown()), and xfs_fs_goingdown() ignores non-zero returns from
-bdev_freeze() and returns 0 without calling xfs_force_shutdown().
+commit:         [unknown 
+git tree:       upstream
+kernel config:  https://syzkaller.appspot.com/x/.config?x=a58b6b4d667e7a61
+dashboard link: https://syzkaller.appspot.com/bug?extid=d4ecb9a1e5b3dcf8baec
+compiler:       
+userspace arch: arm64
+patch:          https://syzkaller.appspot.com/x/patch.diff?x=17f58b69580000
 
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261111032743.5494=
-26-1-diasyzhangqing@gmail.com?part=3D1
