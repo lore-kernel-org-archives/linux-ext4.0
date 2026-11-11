@@ -1,110 +1,83 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=148.163.139.74
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=162.62.57.210
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794372855;
-	b=y1pGgu2S6M5r8dYj2LirMnIbp0aQIui2L8TjvXD3vLaltcmiTviUQp34babM6wFwHI8l
-	 7cdYPpFefW49ZRAIeY/IQcPghihdodr0zzRZxy+enLvQ+NlbkbLzO6+jDgm+L9J8eHuXF
-	 CH0jG56zf8IdrSqOJkjnzzA+9QH+hAVpVquBevVG8dPuCAt+t9h6kCz2KWsm0SQY9QCLV
-	 sw4UAyXEQzppES8HHMdrfnxfxL1VlvlxxCVWEow0USZwkYhZedp9/9TfRmub4/ijOl6Iu
-	 qmbRw3Xl2A3BvfeAH5w8aKS1VVmZlWurwzygz1Pe4aEhYM5cLRnnGDOPsORrA5gAEig==
+	t=1794382504;
+	b=Jl/vmRjIGZXtBroFO0v8TmYp7Ryu5JECZqi581+Z8yYsO8x6iBPl7kmZrkaCxPRcE3Mx
+	 maCGerVFT0DFBDxUBAtlQguPYzYpVRf41Ku3UWGo5+Sxh57lWwFTtzXDP/MmZjJfxZHRI
+	 9GRO9PhOLsXmbGu6r4W0lK307b+DyWa9Ui+IKKSOg7iFKHITXg4CO1JTi9NgAvUTfUJK3
+	 2kog4k3GoQ609spfTy1xHdwTLkSzYiqraTxzBnCA3CJBSTXZ0P4XBQemqCL51TIOy96m/
+	 DzQBF5bH4xg/ak7isVOhrrGEw12xrq72Qeg9ouUL2H+JAMIzay7zRQsGwDAEwsItXQA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794372855;
-	h=DMARC-Filter:Received:DKIM-Signature:Received:Received:
-	 DKIM-Signature:X-Google-DKIM-Signature:X-Forwarded-Encrypted:
-	 X-Gm-Message-State:X-Gm-Gg:X-Received:X-Received:Received:Message-ID:
-	 Date:MIME-Version:User-Agent:Subject:To:References:Content-Language:
-	 From:In-Reply-To:Content-Type:Content-Transfer-Encoding:
-	 X-Proofpoint-GUID:X-Proofpoint-Spam-Details-Enc:X-Authority-Analysis:
-	 X-Proofpoint-Spam-Info:X-Proofpoint-ORIG-GUID:
-	 X-Proofpoint-Virus-Version:X-Proofpoint-Spam-Details;
-	bh=NtAaZR2KETUPEE3Is5MRv41jGaiQEz+irF5G1JKk/ec=;
-	b=bSoZ25kXOrDLlJ4KhO+li8m+GuIKRdLXRXzcf4VO6MjmkR7oVCY5NjrrehWB7o081is5
-	 s/3vM0ptRuScspWwBRpyA5jYVsg9wtmqEnJmEBkZVeOaZa8VoV+fzapRX5kv9VH6Nobs+
-	 ndHFnqJRm3EmBCB22pwmNQGtjcHEO5Nifb09VtxlCKtHoRFUnCmXYXI6g5AQMylXrDuJ+
-	 BY4YStaL0jTN8qP18/ho0Dv8uhvfwXchzXjdb4rLIUM7NLHECE2hxgoSm9dRlZZfN3qXK
-	 G1UPS1uDRQom4rpNjivFvv1KKeCgX/zwXaXVJttjkJ7YYC27+gZhwubvnCDmMR6VGhg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794382504;
+	h=DMARC-Filter:DKIM-Signature:Received:X-QQ-mid:Message-ID:
+	 X-QQ-XMAILINFO:X-QQ-XMRINFO:From:To:Cc:Subject:Date:X-OQ-MSGID:
+	 X-Mailer:In-Reply-To:References:MIME-Version:
+	 Content-Transfer-Encoding;
+	bh=7XkhAgg5EYqR+h9/JZjrfrLfFurW0BTJZdJ2iN0yVDI=;
+	b=elGlMUHYkuS832depBlqwcWkdUYsWXg7bHJTBop4o1A12WC3YkmfB3zImDUGA8qfxdlN
+	 lgQEyi3Pg5ARQhnFmGpJQc4qlwYqrjKuFDOkj23bGgOoYY0MM14Ym0vVH81ikR7LCz2a5
+	 Ls52LwcOV25hZ9EO0xbKICXV3QQ6eFXRFRI+YVqv3S9frgvlsfUab5AYQIYtbfpYR32cx
+	 aPZAEb1yPEsAimq8PG1sl9kPxbWscCfc+Q3vTObbbcbpM5TA7piZQYlMmjravS/hWRuoH
+	 mUFBsxYei9Y+2rTbMdg1xRiRbicqz7dYWNoSJQPexi5o51m3dld8zFtYHlUwoM7Ys/Q==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=columbia.edu;
-	spf=pass smtp.mailfrom=columbia.edu;
-	dkim=pass header.d=columbia.edu header.i=@columbia.edu header.a=rsa-sha256 header.s=pps01 header.b=FeWaRpX0;
-	dkim=pass header.d=columbia.edu header.i=@columbia.edu header.a=rsa-sha256 header.s=lionmail header.b=DDIgG29a;
-	arc=none smtp.remote-ip=148.163.139.74
-Received: from mx0b-00364e01.pphosted.com (mx0b-00364e01.pphosted.com [148.163.139.74])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	dmarc=pass header.from=qq.com;
+	spf=pass smtp.mailfrom=qq.com;
+	dkim=pass header.d=qq.com header.i=@qq.com header.a=rsa-sha256 header.s=s201512 header.b="sUD/0eU5";
+	arc=none smtp.remote-ip=162.62.57.210
+Received: from out162-62-57-210.mail.qq.com (out162-62-57-210.mail.qq.com [162.62.57.210])
+	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B7F1A606A320
-	for <linux-ext4@vger.kernel.org>; Wed, 11 Nov 2026 04:54:14 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org B7F1A606A320
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=columbia.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=columbia.edu
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D28EA606A31C;
+	Wed, 11 Nov 2026 07:35:01 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org D28EA606A31C
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=qq.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=columbia.edu header.i=@columbia.edu header.a=rsa-sha256 header.s=pps01 header.b=FeWaRpX0;
-	dkim=pass (2048-bit key, unprotected) header.d=columbia.edu header.i=@columbia.edu header.a=rsa-sha256 header.s=lionmail header.b=DDIgG29a
-Received: from pps.filterd (m0167073.ppops.net [127.0.0.1])
-	by mx0b-00364e01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 6AB3WaZ13156958
-	for <linux-ext4@vger.kernel.org>; Tue, 10 Nov 2026 23:54:13 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=columbia.edu; h=
-	content-transfer-encoding:content-type:date:from:in-reply-to
-	:message-id:mime-version:references:subject:to; s=pps01; bh=NtAa
-	ZR2KETUPEE3Is5MRv41jGaiQEz+irF5G1JKk/ec=; b=FeWaRpX0JFJDqtJwU4br
-	PaM4+1C15DtKoY/DjVy4KXDvPyfn+XruGroIDSNDyivz3zErdljr5btTtBNzLpTI
-	ZxUlFjl8LhJZgbup0ow0vs76gL0HebhujdS8F9zVGr6xi7disWPs5Jw9Rr9jURaV
-	64m7PBpFNjUk/wFc71DZ+QWMSjDLhz44ttgjmZRxdOi+gLJxclT8PQDbc3ScCSLT
-	LRpAV/z6kaszEuHAItSZ5lEF/924KuNSvk0juChL9Fk3VNoe/h52JNdLMERXquTD
-	3hq3X8b1GGpa73mmPxPNnZykEq8zWZRqCIe76YYzB+lREDhZdRyMIkppFg+lI3R9
-	xQ==
-Received: from mail-qt1-f199.google.com (mail-qt1-f199.google.com [209.85.160.199])
-	by mx0b-00364e01.pphosted.com (PPS) with ESMTPS id 4hvdjk9278-1
-	(version=TLSv1.3 cipher=TLS_AES_128_GCM_SHA256 bits=128 verify=NOT)
-	for <linux-ext4@vger.kernel.org>; Tue, 10 Nov 2026 23:54:13 -0500 (EST)
-Received: by mail-qt1-f199.google.com with SMTP id d75a77b69052e-5338c59f90dso49488051cf.1
-        for <linux-ext4@vger.kernel.org>; Tue, 10 Nov 2026 20:54:13 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=columbia.edu; s=lionmail; t=1794372853; x=1794977653; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:in-reply-to:from
-         :content-language:references:to:subject:user-agent:mime-version:date
-         :message-id:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=NtAaZR2KETUPEE3Is5MRv41jGaiQEz+irF5G1JKk/ec=;
-        b=DDIgG29awOKMhYcYIs4QIXvig+LhNHeRIot2PHx5iCbjeSgTADb72R/6hE2a+Sa4zT
-         3nktoqVZI5nNGcz1Gk5YAjqWKBvDMRoOf+fWKPM3bodg2SkzfEc/CXO8g2LpoE441KrH
-         fXP3aYnFmq8pN3CBDMe6dYD4cuBEJsINtERvMPpysWsZA5OGNWVGG5YOj+NfHsxYi4fN
-         2UKZS3uQ8N3zAqtbXNGjFCGgOZmWGFrTGlYLhKqATWE/Vx4nBm2cmh0Pqzwa1380ZDyz
-         fQNAepN0ZRRbXwDfmIlHBJh4YTISDeaVjaNkI7HO5KWtEkpW/K4xA8sOa+ct+0AXkvA0
-         C0aQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1794372853; x=1794977653;
-        h=content-transfer-encoding:content-type:in-reply-to:from
-         :content-language:references:to:subject:user-agent:mime-version:date
-         :message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=NtAaZR2KETUPEE3Is5MRv41jGaiQEz+irF5G1JKk/ec=;
-        b=vR+Jqpe5kVS0my80jIAl6+VhL54j663tTEjb5X8ZWl2q6h/aIibZS7a4W/cXoxgDDO
-         cQnIyL4MmfHdPTz7iRcmwu2jDclnlUeuCqb6G2CLN9kvu1JvMVB+FmZTaFnJW73RjgFu
-         T7AuaKxm5wQOrGkhSqxd8f/JmBTyUEvHjizCBOnUWohwdGr5NdI01sQVvQShbqSrYe+y
-         O8b7EJfSUgQrCweAZGKpP+2dhJ6l+lYoQb4o8RQur8+kyCP+temf9VjBAfFuYhrdaLgK
-         +YCbcipdGUmqn/4rcOi48aOqQVNGna1u5wAtQX/AH1ZzB2um0fu0Q0fnotMi9EADeS9/
-         o3CQ==
-X-Forwarded-Encrypted: i=1; AL+hErGSVUG9uDqqU1NdcUsQf6G57CJNKIhIPBsUjuFHMOeTumuxwJ5yQSJdPsnstWaMBKylEN/ZPBglEorh@vger.kernel.org
-X-Gm-Message-State: APuU4Z8wtC7HNIgWjrmHSrb1n7EBhj4vc0XBttHWH7rWhgoOdeVWtC8d
-	6GKL0krJmVg+Wnd/5odzDCJhR66fvPUo6kglNh7chmahwGPEZHDhNcIaB/WzxQ64w1tPmFrWqs+
-	1JGRXmgnom8hUC787o4mcd1c9JbyqzSfHnt8bgJ/AFl6ihd+NeKe0+7Q0eis=
-X-Gm-Gg: AYBFou2LRz+ylp4LGc24boSsFeaWphalejpHTUPYFcIRpZ5AQUBdEmVfbx8m82L+2Jm
-	8SlzwI5QyBmaKLqChpOZmxZjyWji32g8gfqaJGD55x/qZ0WTqU1i7dB+178La+ohAcGR/PnD2AW
-	zrzhJT3GU4xUZo5BpKhJ6uTiN4K8TgmdByxGmQuov2rpIkApe6+GA3FyY3jw4Ry5r7MTYLcI/4f
-	UzyAeS8rPbc8nWI6kyeDhSpqlg3psNAXgzTFtu++6dfvs3Wa0cfkw8i2E67WdeKmmJKtmp+AzTu
-	uGNl4XiUqjBG2jwppouwtWmdhre+kd2IIzRdsTL3MhVigDc8TYPSxBmcl0e+LxUQV4+YgI7oDkc
-	zxhLqo5BeuVGVC95NVkaCQJyKPw+ttGa00yDiaiyoHrd+rIeQ86xe88BetPQaT6juJrv+SfgskN
-	9tSenC9AxLnJxcdiG5JfLJ1Q==
-X-Received: by 2002:a05:622a:506:b0:535:1d5b:a7fa with SMTP id d75a77b69052e-556c08d6ce1mr16074631cf.14.1794372852723;
-        Tue, 10 Nov 2026 20:54:12 -0800 (PST)
-X-Received: by 2002:a05:622a:506:b0:535:1d5b:a7fa with SMTP id d75a77b69052e-556c08d6ce1mr16074451cf.14.1794372852302;
-        Tue, 10 Nov 2026 20:54:12 -0800 (PST)
-Received: from [192.168.1.62] (dyn-160-39-33-242.dyn.columbia.edu. [160.39.33.242])
-        by smtp.gmail.com with ESMTPSA id d75a77b69052e-5550af60493sm41888591cf.4.2026.11.10.20.54.11
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Tue, 10 Nov 2026 20:54:11 -0800 (PST)
-Message-ID: <a2ba8655-eaa0-40cd-ac3d-d768b18192c6@columbia.edu>
-Date: Tue, 10 Nov 2026 23:54:10 -0500
+	dkim=pass (1024-bit key, unprotected) header.d=qq.com header.i=@qq.com header.a=rsa-sha256 header.s=s201512 header.b=sUD/0eU5
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=qq.com; s=s201512;
+	t=1794382492; bh=7XkhAgg5EYqR+h9/JZjrfrLfFurW0BTJZdJ2iN0yVDI=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References;
+	b=sUD/0eU51KAKT+5BIYGAw1KDMR5geF54yfxZhDB2pbz5SyPuvoga562pXCzM9AVwA
+	 Vifoc4YeqS4AL8XlS2LmsZWzcS+hP/boHUpHeWkXY8eZGx1F78bGo755Vs046xR5Ut
+	 ypaEDV2n88Wf2Tx+WwyMxW26+cNDkwOeqcrQAX+o=
+Received: from ikun ([221.176.157.247])
+	by newxmesmtplogicsvrszb51-1.qq.com (NewEsmtp) with SMTP
+	id 8AFBA842; Wed, 11 Nov 2026 15:34:47 +0800
+X-QQ-mid: xmsmtpt1794382487tu8l56qym
+Message-ID: <tencent_DF25FDEF46DA68C4E18D6DB40F08E30BB705@qq.com>
+X-QQ-XMAILINFO: NbgegmlEc3JuquLCMXRl+TrdTYLmF7QIdAEhfhdx0EhL8xJwR36g2aX4Ycvf36
+	 jpL2Suh5WvWzW+XmtuLHY2S/Z+o0cGn43pPpJ3tbd4IUr5qXeClnVv1jfFGnMB8ub5m4XWFH5ngt
+	 QTsGd3xBQsn5MxGyXtUXKu/KkOCglTKKjbaHwOyPMouIo/9nFZ7IExub80ea9QGsScCH3I9n3g/X
+	 du4b67ieZK0TnC/3XtIR3/r1rTjiqpCNzAUcgQCSW/dBwrTDZYa6z71dbRXej5/hw0LQXvByGQZz
+	 hEBDnP2afYxRsOLIOu0oW503Om+LafHuITp/1sDKdu6ozr/4O3FLsqjQEgNGxonI9AHHfVYsYxe+
+	 ZYo/q4p/0a5YytvowfG1HpCBvpA4fWAA/dRMbANF18su8vN+OZRrRET5Dy111UN29Q36AOx3XLIk
+	 Q2iPLT7pDUIJMgPWDEGozs7bvUfeqiH/6PdgZiDQG9EUcrYs3UHXPlRBTprCRe+5OMSSdOnvkPYP
+	 WQp0p7AeIFakhAdTlAdEBsKhR4Veibv43jx1D3BE45akFow6ObEYq+bm1BXzkr5hJAxvqpoUexED
+	 rFbXeUCvA4vLWJI8TEP9LxR4GCcVJi4/sXTuRc9K3F6BIJ1vM735WzDYTmXvNKMt/hrp/1c+Ychn
+	 uVa/bHd2V+fiPY21orc+JtGfCpQieqTDvhU8KAUWFdJ3vstyRuaHgnH7713K/ylQwJIRD3Jyeou/
+	 xHX/NDIXR3SgwrZb8dcXQHoY30ELwIeheh3+02McWcyj5nB7K/vEbdmcHnGwaZ7GVDKFYTEqgJrG
+	 Ok5eP9Sxd9wvroeVi8QrmAvK7Q+FINsGNG6QYCcExow5SqVPHIY1luFlDlVAAFmxZAynZWvoul7v
+	 HfxskOCzIVcXIDsFPLahT8aK6OrdF5EqJQx6LPGkdMh4cdCjjlUiv7vtW0f8lW1yezgTgUvpG4hc
+	 PBHj2byoUcW51rjoyzrvq+97j83RHlBES981gHQZJsQekpSkuqoZjTqd5Xha+pWQiHHguNCRiScw
+	 7fb8YzBlWiV4RX/FJxFnrJBbL9pU8=
+X-QQ-XMRINFO: M/715EihBoGS47X28/vv4NpnfpeBLnr4Qg==
+From: Alan <3164729207@qq.com>
+To: tytso@mit.edu
+Cc: Alan <3164729207@qq.com>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Baokun Li <libaokun@linux.alibaba.com>,
+	Jan Kara <jack@suse.cz>,
+	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
+	"Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
+	Zhang Yi <yi.zhang@huawei.com>,
+	linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	stable@vger.kernel.org
+Subject: [PATCH v2] ext4: free the new extent block on failure to grow the tree
+Date: Wed, 11 Nov 2026 15:34:44 +0800
+X-OQ-MSGID: <20261111073444.8059-1-3164729207@qq.com>
+X-Mailer: git-send-email 2.53.0
+In-Reply-To: <tencent_9EB8EBE910378E46C80E006C6A7DA918BA08@qq.com>
+References: <tencent_9EB8EBE910378E46C80E006C6A7DA918BA08@qq.com>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -114,169 +87,90 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v7 05/11] fs: validate atomic writes after O_APPEND and
- limits
-To: Chris Mason <mason@kernel.org>, tytso@mit.edu, cem@kernel.org,
-        david@fromorbit.com, jack@suse.cz, djwong@kernel.org,
-        josef@toxicpanda.com, hch@lst.de, linux-xfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        brauner@kernel.org
-References: <20261110190417.32650-1-mason@kernel.org>
- <20261110190417.32650-7-mason@kernel.org>
-Content-Language: en-US
-From: Tal Zussman <tz2294@columbia.edu>
-In-Reply-To: <20261110190417.32650-7-mason@kernel.org>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-X-Proofpoint-GUID: MVbQ7Avfr7h8PTMOM36ubizZEpDM3YgL
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYxMTExMDAxOSBTYWx0ZWRfXxZfQ0ByCiK+f
- XEJN9Mvtu80n18A3mvufPT1dDr4ExjOgkl9RRT3CWkxRihf9XEp20S/iWQhH555lRZ4lHDxHtc4
- GWhkKAOPRcWyEQqe1aJmw67vpvUG/zSG+dGAcCzoUb6Of4lGInihXju823ZSwo/TU8YSwRHcYL0
- 7T0GB32GJp+Tha2MJ3+Tsa6sz4UYdcCapNATPxJc15lIx3e1TYrETN1Z1fsNLjrLzbbXw9JIk5z
- dDVSNOiwXO1HetEHRumLmQeLbKbTYQz4nGqf+QRXsCk/zw2/wVQXrZ19xeMDrfrYW4muLm6K/sY
- SiBYP8kjeeWQoU7uSL23FlU5QggRBfUzWhVBABZv9ttAzjqLfKaqtIkfIKgTtTjya8m+TnW5Zg/
- O3xjmZgDcYE3gr6rYc23ULvuxtW2yDE85xlsqTiEm0CGJPJ6kQSJInkfmER//tmfvd3frapW5cW
- AOSZfBw5uzOZwKCkq5w==
-X-Authority-Analysis: v=2.4 cv=V/boQuni c=1 sm=1 tr=0 ts=6af3f4f5 cx=c_pps
- a=WeENfcodrlLV9YRTxbY/uA==:117 a=GaPK54s0Se3oFqK5NkZy0g==:17
- a=IkcTkHD0fZMA:10 a=zJRp6_cAMcgA:10 a=x7bEGLp0ZPQA:10 a=A0y_DWxS2BwA:10
- a=VkNPw1HP01LnGYTKEx00:22 a=Da8U98TiO7q1upZEImrf:22 a=jHxIr1HyPKZ_Q5_91PL3:22
- a=VwQbUJbxAAAA:8 a=mm-HGR4lrNp9vsEGGOYA:9 a=QEXdDO2ut3YA:10
- a=kacYvNCVWA4VmyqE58fU:22
-X-Proofpoint-Spam-Info: AW1haW4tMjYxMTExMDAxOSBTYWx0ZWRfXywyd4eI9lKBn
- aYL+Wp8Nzd4QzASerau72p1gh8MmIQM/fKfBaw4urpsCfJUCnCcXpJHyffjxZE7WmspMaK0sZtK
- 42zmpxal4aV+NCPr7vO1OBBRKZxZafdY2dXcybNhw4kJkcBqrC9I
-X-Proofpoint-ORIG-GUID: MVbQ7Avfr7h8PTMOM36ubizZEpDM3YgL
-X-Proofpoint-Virus-Version: vendor=nai engine=6900 definitions=11962
- signatures=596817
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
- malwarescore=0 clxscore=1015 phishscore=0 adultscore=0 impostorscore=10
- suspectscore=0 spamscore=0 lowpriorityscore=10 bulkscore=10
- priorityscore=1501 classifier=typeunknown authscore=0 authtc= authcc=
- route=outbound adjust=0 reason=mlx scancount=1 engine=8.22.0-2611040001
- definitions=main-2611110019
+Content-Transfer-Encoding: 8bit
 
-On 11/10/26 2:04 PM, Chris Mason wrote:
-> An RWF_ATOMIC write on XFS with reflink can expose stale disk contents
-> if O_APPEND or RLIMIT_FSIZE leaves it sector aligned but not block
-> aligned.
-> 
-> XFS and ext4 call generic_atomic_write_valid() on the range that the
-> caller passed. But generic_write_checks() changes the range later:
-> O_APPEND moves the position, and RLIMIT_FSIZE cuts the length. XFS can
-> then fill only a part of a new block, and still map the whole block into
-> the file:
-> 
->      block size 4096, i_size 512, O_APPEND
->      validated:        0 to 4095
->      written:          512 to 4607
->      new blocks:       0 to 8191
->      stale below EOF:  0 to 511
-> 
-> The fix used here is to validate an atomic write in
-> generic_write_checks(), after its range is final, and to refuse one that
-> was cut. XFS no longer picks the path of an atomic write by the
-> alignment of the range that the caller passed.
-> 
-> Fixes: f096207d3276 ("xfs: Validate atomic writes")
-> Fixes: 43c696f9d094 ("ext4: Check for atomic writes support in write iter")
-> Signed-off-by: Chris Mason <mason@kernel.org>
+ext4_ext_grow_indepth() allocates and accounts a metadata block before
+getting its buffer, obtaining journal create access and dirtying the
+new extent block. If any of these operations fails, the new block has
+not been linked into the extent tree. However, the error paths return
+without freeing it, leaking the block and leaving i_blocks larger
+than the number of blocks reachable from the inode.
 
-Assuming my ext4 patches get picked up:
+Commit 8a83ac54940d ("ext4: call bdev_getblk() from sb_getblk_gfp()")
+removed the implicit __GFP_NOFAIL from the buffer allocation, making
+the allocation failure path reachable. The two journal error paths
+already lacked cleanup before that commit and are fixed here as well.
 
-Reviewed-by: Tal Zussman <tz2294@columbia.edu>
+Route all three failures through a common cleanup label to free the
+unpublished metadata block and undo its inode accounting. Keep the
+existing buffer unlock and release handling. Once the new block has
+been linked by ext4_idx_store_pblock(), an ext4_mark_inode_dirty()
+failure must not free it because the extent tree already references it.
 
-> ---
-> 
-> Notes:
->      v6->v7:
->      - No change.
-> 
->   fs/ext4/file.c    |  4 ----
->   fs/read_write.c   | 13 +++++++++++++
->   fs/xfs/xfs_file.c | 17 +++++++++++------
->   3 files changed, 24 insertions(+), 10 deletions(-)
-> 
-> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-> index 50d3c92709c8..e301d4faf1c3 100644
-> --- a/fs/ext4/file.c
-> +++ b/fs/ext4/file.c
-> @@ -802,10 +802,6 @@ ext4_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
->   		if (len < EXT4_SB(inode->i_sb)->s_awu_min ||
->   		    len > EXT4_SB(inode->i_sb)->s_awu_max)
->   			return -EINVAL;
-> -
-> -		ret = generic_atomic_write_valid(iocb, from);
-> -		if (ret)
-> -			return ret;
->   	}
->   
->   	if (iocb->ki_flags & IOCB_DIRECT)
-> diff --git a/fs/read_write.c b/fs/read_write.c
-> index 676728310899..1b34b7382619 100644
-> --- a/fs/read_write.c
-> +++ b/fs/read_write.c
-> @@ -1775,6 +1775,19 @@ ssize_t generic_write_checks(struct kiocb *iocb, struct iov_iter *from)
->   	if (ret)
->   		return ret;
->   
-> +	/*
-> +	 * O_APPEND has moved the position and the file size limits have
-> +	 * shortened the write by now, so this is the range to validate.  An
-> +	 * atomic write is all or nothing, so refuse it if it got shorter.
-> +	 */
-> +	if (iocb->ki_flags & IOCB_ATOMIC) {
-> +		if (count != iov_iter_count(from))
-> +			return -EINVAL;
-> +		ret = generic_atomic_write_valid(iocb, from);
-> +		if (ret)
-> +			return ret;
-> +	}
-> +
->   	iov_iter_truncate(from, count);
->   	return iov_iter_count(from);
->   }
-> diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
-> index be1f775128d1..153f53f964b9 100644
-> --- a/fs/xfs/xfs_file.c
-> +++ b/fs/xfs/xfs_file.c
-> @@ -926,12 +926,21 @@ xfs_file_dio_write(
->   	if ((iocb->ki_pos | count) & target->bt_logical_sectormask)
->   		return -EINVAL;
->   
-> +	/*
-> +	 * An atomic write is at least one block long, and generic_write_checks()
-> +	 * refuses it unless its final position is a multiple of its length.  So
-> +	 * there is no unaligned case to handle for it.
-> +	 */
-> +	if (iocb->ki_flags & IOCB_ATOMIC) {
-> +		if (xfs_is_zoned_inode(ip))
-> +			return xfs_file_dio_write_zoned(ip, iocb, from);
-> +		return xfs_file_dio_write_atomic(ip, iocb, from);
-> +	}
-> +
->   	if ((iocb->ki_pos | count) & ip->i_mount->m_blockmask)
->   		return xfs_file_dio_write_unaligned(ip, iocb, from);
->   	if (xfs_is_zoned_inode(ip))
->   		return xfs_file_dio_write_zoned(ip, iocb, from);
-> -	if (iocb->ki_flags & IOCB_ATOMIC)
-> -		return xfs_file_dio_write_atomic(ip, iocb, from);
->   	return xfs_file_dio_write_aligned(ip, iocb, from,
->   			&xfs_direct_write_iomap_ops, &xfs_dio_write_ops, NULL);
->   }
-> @@ -1128,10 +1137,6 @@ xfs_file_write_iter(
->   
->   		if (ocount > xfs_get_atomic_write_max(ip))
->   			return -EINVAL;
-> -
-> -		ret = generic_atomic_write_valid(iocb, from);
-> -		if (ret)
-> -			return ret;
->   	}
->   
->   	if (IS_DAX(inode))
-> -- 
-> 2.55.0
-> 
+Tested on Linux 6.12.1 by injecting NULL for buffer acquisition and
+-EIO for each of the two metadata helper calls at their caller
+boundaries. Each unfixed case leaves seven unreachable blocks and
+i_blocks of 40 instead of 32 on a filesystem with 4 KiB blocks. With
+the fix, all three cases retain i_blocks of 32, preserve the original
+data and pass e2fsck -fn after a normal unmount. Retry, truncate and
+uninjected growth also pass for each case.
+
+Fixes: 8a83ac54940d ("ext4: call bdev_getblk() from sb_getblk_gfp()")
+Cc: stable@vger.kernel.org
+Signed-off-by: Alan <3164729207@qq.com>
+---
+ fs/ext4/extents.c | 16 ++++++++++++----
+ 1 file changed, 12 insertions(+), 4 deletions(-)
+
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index ad0d80e33f6090..f0b2852f8a9342 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -1333,15 +1333,17 @@ static int ext4_ext_grow_indepth(handle_t *handle, struct inode *inode,
+ 		return err;
+ 
+ 	bh = sb_getblk_gfp(inode->i_sb, newblock, __GFP_MOVABLE | GFP_NOFS);
+-	if (unlikely(!bh))
+-		return -ENOMEM;
++	if (unlikely(!bh)) {
++		err = -ENOMEM;
++		goto out_free;
++	}
+ 	lock_buffer(bh);
+ 
+ 	err = ext4_journal_get_create_access(handle, inode->i_sb, bh,
+ 					     EXT4_JTR_NONE);
+ 	if (err) {
+ 		unlock_buffer(bh);
+-		goto out;
++		goto out_free;
+ 	}
+ 
+ 	ext_size = sizeof(EXT4_I(inode)->i_data);
+@@ -1366,7 +1368,7 @@ static int ext4_ext_grow_indepth(handle_t *handle, struct inode *inode,
+ 
+ 	err = ext4_handle_dirty_metadata(handle, inode, bh);
+ 	if (err)
+-		goto out;
++		goto out_free;
+ 
+ 	/* Update top-level index: num,max,pointer */
+ 	neh = ext_inode_hdr(inode);
+@@ -1389,6 +1391,12 @@ static int ext4_ext_grow_indepth(handle_t *handle, struct inode *inode,
+ 	brelse(bh);
+ 
+ 	return err;
++
++out_free:
++	/* The new block has not been linked into the extent tree yet. */
++	ext4_free_blocks(handle, inode, NULL, newblock, 1,
++			 EXT4_FREE_BLOCKS_METADATA);
++	goto out;
+ }
+ 
+ /*
+
+base-commit: d135ab453a7400a34930bdda1ef4bdc8acfac80e
+-- 
+2.53.0
 
