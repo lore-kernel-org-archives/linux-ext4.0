@@ -1,57 +1,57 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794389692;
-	b=IzVZ3rwtoTzWD1THW7J+j0nJQcGnE35RDsoM4gK3560IWaulV/cSQ5LX0k23xNB+iD5J
-	 TrwzUY62XAiQTykG2LqWFmbyEUD0G0NclOTbqTSDqCJw/WBxvD5sJOvLZ83ASL/NF1LcK
-	 NJ+DCaXyadZwpkuXoXnr/wTzt/vaUFKMUeySsWRKFyW3MYAiYiajgPFtdYtgM+nKeDeyu
-	 9HsomEXjJazZNjvAX1F5DMeO8HfyJoQldMn+uOdjSaDHVglkFqu8bLPXcn/A9YU+PoVlY
-	 h+k0Ppe7ECQE2SJZ//QW8Z62d6wC0RHCab7Fvf0Kab5T3K0vb0PI92g7drqUhXxcF1A==
+	t=1794389729;
+	b=d9gBJ9he8QdCAWgmZKyPGlT6bjSnqr4UjzT5QW2MP/zv0MUcvMDvXpQROscDar/49bxs
+	 cUu7HktHGOPXbisyoDz/ddNToeAuG+2h0dMoZbix4ftZTXHJ46Y/QtO8w7hTLeRWUwlUr
+	 Ugft3ecbRYxlVUTH6K51Lu5MeL2yLn7/YDcY36wIzhMsKKTWc1xDX0xh2/JK2ZWnRoA7t
+	 xeDswEQALmQ7XVnIXvTVPopg8z+ratB3qWGH1N+3Pm2Kc/t8Ke7TLnHmmNPpv9hK4VRwZ
+	 PFSKYV+y8cQ4/w2TmWw3y/4ChOAQA15x7CA1B6sVFvjoym8ekcIjQCJ4960jCzEtHIA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794389692;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794389729;
 	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
 	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
-	bh=9oT8mJ+Ro9B5pT3ilEOpm07E7nXRbdqUWub1X6gjjq8=;
-	b=KZtsII5NaXbO+pLuoMM+IH+lKvqUDGYjFDVlaPzJ9f9ZJ9/OQ+qyLagpKhljK1Ak6HVd
-	 SPDHaH9qLAIVqvmYprrhE958sNXRtCXRhm91m82h9+WllQnPnGUtq/Ricy2K/ldqgKqO2
-	 wp+ZzASbeUAm9fw6q3Kt93AyW1+IlL2t0lGtU9AO30olk4TsfF9NAxyVmL82BYK1HC/oX
-	 pbco4CQmU+KOQqiZeypuPy6W5ejOhFfOe/8x+hyWwf3UTaY05fCXTETc0t+8ZxBoquZZQ
-	 uJ4eJL/sswhkYC26Wo9N2HqUIWfDmpSBBUfK1RjTPdGzkKPwrxm5iJom6JDDQhlzlBA==
+	bh=0wPrDM3ByIgNRkd8um3+s03MrGcxAel/A496/JlTAcw=;
+	b=0iikCRmutIW1M0QXESJ6tiHJAeHAEKm/o6aGbzua6cioRGOc50F8K4JEn2HTwnvm8Fra
+	 q467wv4Vk89k8cLwXOmX6qh4eSk8Mhy2Uia/xlaQjibm8tERNJk6ZJxn4PK6T45+Dtv2w
+	 vwk/LpNtEHUkPB5tJKxEIesq96d9QqonA/CwjqYnV/ltMI5YoUQ/wh8y/C/kWjZTu3LN1
+	 2SRwIYsDUP8ZcR2NnJgARnGtiY50oIH+/UC2qseXW7VsM3HpQ4LrwXKxeiF8CSl/cW9kd
+	 TA3K6afIdx1Hy9a+fg3okID5N0eQt5/dW0CvTNbRgFNgwqz9Qan+3CF3ArQHmGvq/+Q==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=OdtnVYVc;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gAMQa0RH;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 30632606A324;
-	Wed, 11 Nov 2026 09:34:51 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BF771606A31C;
+	Wed, 11 Nov 2026 09:35:29 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=OdtnVYVc
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 90CCD1F00A05;
-	Wed, 11 Nov 2026 09:34:48 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gAMQa0RH
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 69C1C1F00A05;
+	Wed, 11 Nov 2026 09:35:26 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794389691;
-	bh=9oT8mJ+Ro9B5pT3ilEOpm07E7nXRbdqUWub1X6gjjq8=;
+	s=k20260515; t=1794389729;
+	bh=0wPrDM3ByIgNRkd8um3+s03MrGcxAel/A496/JlTAcw=;
 	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=OdtnVYVcsG19f5hTkpS9kaTbzYuiT4HMccwgMwUjVwnIpesQBW34vpb3Soyr4kOrP
-	 hOWU9u/FdRtMey9V9HCAE456IT8ckxwm57A+Ly6VYYZWBpzFU181QmxIL4ZKaQBkuv
-	 R4IW4Vu3xTtqaWY7OChZuL0TLDuaiwTiXF6Sh1i/iIOBQY4YZqWcOBld9mgeDtepGg
-	 xhpH4Hal/ORXF7Ws8rDRjza2UZ1LZnHqJFb3QJhbDQIkq2cHWiFFEkTUDv9nHA3f8I
-	 KC2GcTd5PWGGo5PuIK0Rr7OdS0N/e91AdadUEU857idCihrAQD4FlV8x8zGu2F2D2e
-	 mjn9fyjTG/YWQ==
-Date: Wed, 11 Nov 2026 10:34:46 +0100
+	b=gAMQa0RHrVEcdCTId5GAxxrGWJDWYg7Xh9YkxitRixioy7tg5wkBQEI9uDd0st8Uh
+	 YnLgub2226L347lF9jDxz6rLuPv+BzoRXwpWU0BDi3ju+jCRN2OVUks/c7NHGphhPb
+	 yixhl7x1QNHf0c/Lk2q3KpoiDJj3aFjSw/RyQ1fFnXRuUmU7OERWNGYndDndIk28pZ
+	 mcUdS46AqNl+Ss3lxn4EkmaINg65asBvoEa4HqvQacm+3kr4vokkQ8k0xi5Y3s3AtZ
+	 xSra2BP1eQvakfogTaMApKno9neO8lkjjcSTp8d26FwgVll1KJ2zWA+h/3Hdorto4K
+	 Aygw8PaUPL5yQ==
+Date: Wed, 11 Nov 2026 10:35:23 +0100
 From: Christian Brauner <brauner@kernel.org>
 To: sashiko-reviews@lists.linux.dev
 Cc: Jan Kara <jack@suse.com>, Al Viro <viro@zeniv.linux.org.uk>, 
 	linux-ext4@vger.kernel.org, linux-mm@kvack.org, linux-efi@vger.kernel.org, 
 	linux-mtd@lists.infradead.org, dsterba@suse.cz, tytso@mit.edu, Mark Fasheh <mark@fasheh.com>, 
 	Joel Becker <jlbec@evilplan.org>, Joseph Qi <joseph.qi@linux.alibaba.com>
-Subject: Re: [PATCH v2 17/34] ntfs: don't set SB_RDONLY after filesystem
- errors
-Message-ID: <20261111-weinreben-einlieferung-sequenz-e817949ea18c@brauner>
+Subject: Re: [PATCH v2 25/34] gfs2: wait for a pending withdraw before
+ remounting read-only
+Message-ID: <20261111-dackel-verfechten-eheringe-01ff8d8ee23b@brauner>
 References: <20261029-work-fs-sb_rdonly-v2-0-2f44f64f0b66@kernel.org>
- <20261029-work-fs-sb_rdonly-v2-17-2f44f64f0b66@kernel.org>
- <sashiko-outbox-191236@kernel.org>
+ <20261029-work-fs-sb_rdonly-v2-25-2f44f64f0b66@kernel.org>
+ <sashiko-outbox-191244@kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -63,19 +63,14 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Content-Disposition: inline
-In-Reply-To: <sashiko-outbox-191236@kernel.org>
+In-Reply-To: <sashiko-outbox-191244@kernel.org>
 
-On Fri, Oct 30, 2026 at 04:10:02PM +0000, sashiko-bot@kernel.org wrote:
-> Should ntfs_trim_prealloc() (called from ntfs_file_release() and
-> ntfs_stream_file_release()) also check ntfs_emergency_state(vol) before
-> rolling back preallocated blocks?
+On Fri, Oct 30, 2026 at 04:10:09PM +0000, sashiko-bot@kernel.org wrote:
+> If the filesystem is subsequently remounted read-only via
+> gfs2_reconfigure() -> gfs2_make_fs_ro(), gfs2_log_flush() bails out early on
+> the withdrawn filesystem without clearing SDF_JOURNAL_LIVE, leaving
+> wait_on_bit() in gfs2_make_fs_ro() sleeping forever while holding
+> sb->s_umount.
 
-It only drops trailing holes from the runlist so no clusters are freed.
-And __ntfs_write_inode(), ntfs_mft_writepages() and
-ntfs_mft_record_free() refuse in that state so nothing reaches the disk.
-
-> Does ntfs_drop_big_inode() need the same !ntfs_emergency_state(ni->vol) guard
-> when truncating unlinked inodes with I_SYNC set?
-
-Yes, ntfs_evict_big_inode() already leaves unlinked inodes alone in that
-state. We'll probably just do the same.
+Pre-existing. The fix is probably to queue the withdraw from
+gfs2_reconfigure() and flush it before gfs2_make_fs_ro().
