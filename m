@@ -1,44 +1,44 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794445213;
-	b=0TyoqZU8DVg3qawyh98Uee1AVfBQVt51oRY9wtD8lW1pCgvhDX00NYDq0ejFEHDqTJ+A
-	 nueXP9X4ZV9raquLP0+DxbF8VKbj59cc0HZ0+wnedMXcbiMLhqnJut+5qZ+SCxJPLCfRm
-	 BL1CeexynzLKM7agjv06EFOnGtGFCG1I7ntm1MhUV9ZRD7BBvWpuDzKEJHH8jSVq6NBUH
-	 NtcJt7TuxVvxS3XBowL72YOMUXtt1NkXZZc6MreHGTpXOqjjnVXY4ekUfWG8orxQFDnWO
-	 PS2Aejx+ObWEwtwwoK7398NUoRSasmfarzzsSpIG/diEuEKOXzVVgpqH/G2C08Y466g==
+	t=1794445352;
+	b=ASUTQQua4IfjRHrJLbq6DUJuOwVJIkyDTt01MaMeKkJP1fKImqeRnaRtEFZgauDh9/FK
+	 7ixxWrF+iv36vVf2s2rYJQvApK/hiNnBauFAE3twjhvX2QhwQx4FOqm3xc3AjZHe2nuDf
+	 jYj/KYw1HGz0zF3cv+zYvrs7URrSPpABFwxvLqrAwJYTk4kfkc8Ao5diWT+3Scl9IsvDM
+	 ufqcAB5rifjULwKl2ilEmg026tdivEZhAP7bykLEvX1l4suC05Voe7tV0sblrQPUVOFLB
+	 ZW1i5w2xgGj7Lfn9hBBkGZ9w/mwIu73qGXmc6EUL6czLJKlGSUUcKFxN8cyyg1ImN/A==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794445213;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794445352;
 	h=Received:DKIM-Signature:From:To:Subject:Date:Message-ID:MIME-Version:
 	 Content-Type:Content-Transfer-Encoding;
-	bh=zWmPymlzejZ7GlRCAMVbhE088neiMPzQi0kZtOpaw+k=;
-	b=Yi1/cBci8e4P6vkEf7yU0Kxu0DawPfVfkEyYrYY0Wa+Lr1k09iB1J8fOb6dh4PNzruBh
-	 UgNjs2bXerb6czbbrK8V0g/DPtEd/KX3vYYibgVfzBbz499cJ4tVbllfNanLpU6xt9lDp
-	 OL5VzcG/qr+mPIBGMozPHL/qLiSpbj2C+cQEzUJFce8kE4nJ8MONYIinmP84848e+J7wK
-	 nNwgftYJMBH+Nn/y7YGfwZ7NEondutFh5lyVfRUMLmnWgoWvobNeh2Guhz/0OuLoyaR17
-	 SWihuUR+ZtRLqETgkOH51IpR6c/XMOuJVXOEjYmdD7smNBDubjjMfr1Q/G/xUtmWL/Q==
+	bh=UJ6pBTxZI5zl/SA/eySRsyQjQecxO78gpkfJo+Szb8g=;
+	b=wujaFxhMVdEL81kMT5uK4IuF5MsRzWqjRNCiH2/IuGqSd+4RTV1YHVa31Ncgk2Uc25v/
+	 wjCXy+YXorfLFgxJQfg0JFpSAXQ3kmT8DYcUWrgKtfW9Ns3GZrTzuCGNfItJG4EzDIiiC
+	 V+/VK9BLFl8j1DZj61UJ61rVEgdC+it0Tl2zmg4rPw4tpmJKnpObdqtsyQP8b4bR6LR0J
+	 WR0IxTB3fjCmJKFw300XGTx5Hw3vLKmz3Uo6rX9jhSjgLtrb8sghoqqDnwUewygi+JVQW
+	 EBto/Ijq8fXI3DuI4iN5SlIyc8E37o47F5qbK89kGCqtps05/93T0EXEwavi6cumWoQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=HoCe7KRc;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=AFQvf56g;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 63D6B606A31C;
-	Thu, 12 Nov 2026 01:00:13 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A77EC606A32A;
+	Thu, 12 Nov 2026 01:02:32 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=HoCe7KRc
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A5D531F00A0B;
-	Thu, 12 Nov 2026 01:00:11 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=AFQvf56g
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id E13491F00A07;
+	Thu, 12 Nov 2026 01:02:30 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794445213;
-	bh=zWmPymlzejZ7GlRCAMVbhE088neiMPzQi0kZtOpaw+k=;
+	s=k20260515; t=1794445352;
+	bh=UJ6pBTxZI5zl/SA/eySRsyQjQecxO78gpkfJo+Szb8g=;
 	h=From:To:Subject:Date;
-	b=HoCe7KRcGj8jAFQEs1D9GiRgDXNz3LDhrmUYEPVHbevYH9YfU+FjakM1Rsr/12BVz
-	 AKqK8cbxu2GGJ5kdzH+p6x13xmvjaGo3+8Pr9phKSuMlxIyPSbzAsYXZQkuxaBc6U+
-	 nPeHbxqFSzuO3bkQ7ECIdTK4TftHgIxs8aVj6YfNvWuyagEw4+VgYGp0yNKloRqEmI
-	 rKJ7F+fwg2MxhrWTACzOgApoYTHrX2ai1U8gAow5nhTZ98g7DV1SOrxjSNDXyuJr2p
-	 VcPgPxwKz6hABV+1k17nIP/BNALeMszLG81kLzL1TmSC0vopKb6LgmjjD39tcFXclS
-	 iyP/RjZstQBPw==
+	b=AFQvf56g3eIjArlJVOsynAYId/FJfXW06wkO3vrXUr8fNKxURuMlM0SSFVNc2vi/s
+	 H+tV7ZD0qWvvTRYghHBFtZeuB6wWknEHWem1VBSZFxvsY3Ep1eZ3aFepUQCy/+lFo+
+	 XbfzjdCohn1A3o2+vHnLw6NSz1RStz4XLGto3BkfIB9fuTDuRJcma7a1h58tolCMZC
+	 EW8taYMOhAXYg17ynEsLGpdYnry+WaJMWYUTNI++6sX1jrNmmct5evaLGujWBWSg0N
+	 AmNTFuVS9e8zSGxwL2gmex+NqngG4j0tL1Lv2c67S3XxEefTKBfbSCEpncC8CnoC57
+	 ufhtxzUbVauDg==
 From: Chris Mason <mason@kernel.org>
 To: mason@kernel.org,
 	tytso@mit.edu,
@@ -54,8 +54,8 @@ To: mason@kernel.org,
 	tz2294@columbia.edu,
 	brauner@kernel.org
 Subject: [PATCH v8 00/15] reflink and atomic write bugs
-Date: Wed, 11 Nov 2026 20:00:10 -0500
-Message-ID: <20261112010010.50612-1-mason@kernel.org>
+Date: Wed, 11 Nov 2026 20:02:29 -0500
+Message-ID: <20261112010229.51029-1-mason@kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -67,6 +67,8 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
+
+[ the send command got interrupted apologies for the two dups ]
 
 This series did a few rounds privately, but looks ready for the list
 now.  Carlos has accepted patches 1-4, but I've kept them here so the
