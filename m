@@ -1,44 +1,44 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794519991;
-	b=2XYZ8SuufCZIT3iJWJkDCApakN16DewMNaper4poYoHLzF2mXeifPuAST2+eFBgTYS58
-	 8LQdwgYyZEVTMEEPu/FrgTr/3DN1RYU5oks8S2guD6Mg6bxxUnyhopgN2igTR1uNmR46e
-	 aINrdqL3MvBJlzgJjNq/+7EdgvmIBtkRIrqTHua0KSeXjt1NEvD8ZKOsDneD5ZOh1swTp
-	 zD9YVHVECBCFJCAWtBD0mu/n1eIRFBP2XWUe3faKg+ZzsFRhk9HXsf30O3vwLrZ1qxwEt
-	 OzHuRjO0mrpdoZj9fA1rTHzwVToXl7GzStHJSuzD9C0Du+jr/tXjsDbBAPfASNJotVg==
+	t=1794519992;
+	b=XYcJr27FQTrfxKkH6+9wgc1CLBzfMaxxLKF9FS0tgBXMZRK1nvNI5W9lvp7I1D6/CBpZ
+	 S8lQss1KexbSv+0JPSA+tMU6MOwWduEEFYC3DEloua276x+so58lEm/o1nf5lY82UTw4h
+	 S27Ag82LTrkAmpXqhmWQ/m6ZfxEd+Az90LYt/cRUiAY6kJs6BafmVWwMb6pbD9sy8+ExL
+	 wlWwsVpuu46YAM8ONu2v7R6mUCUByvR7xLZCQfDwXUCy+QnMDjDAc1zgvBK5dRkmA3hrC
+	 5XsluN2ZB+fJpkUbOZvUuCZH4MpAAJyzGOXOa/j5syUJgaqOPWYoT1hIvtUCRTUpT2g==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794519991;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794519992;
 	h=Received:DKIM-Signature:From:To:Subject:Date:Message-ID:In-Reply-To:
 	 References:MIME-Version:Content-Type:Content-Transfer-Encoding;
-	bh=9M7tjtD0z2+HWzcxTNlE58HbSH+XbPuIDRBiX2N9YqM=;
-	b=2w3rWKgHsMMX80qnoyFssRxE8FrMr79Bdv6oM0GeXKJg8b7Ohjd25pvetXZkqzJ8Ssl6
-	 NrxFxlYakxjx/zODJi7HCRVFRfcqoJvUoYM/NnDg/+aVdlLOFVHXxfS2wCBAMCr3NlgWy
-	 iAVJ6f7VKbHdVRBw0mfPFKf5vTbxGHSWG3eTL4gUn9MbMPVfmTh4LFmO1JUPJaLMlXe4U
-	 hgkJZ7RTwMpSKmQW7e7SE0aaztcaNnH/6le3unGZDNfhioYlu9Z37UhsNYy06tU4DCmzt
-	 nZS24s9/zICxg5l/k1pXWY0I4+wf1BBHuUkhC/FwO1oBINn8ML8fHiNl6w/w2lZigVQ==
+	bh=QR9m/svfIRjXnbqKqWOERF/bRhogZTRtjnHurWmfAk8=;
+	b=BoWAzXNBtLgzn/ovko4NA04JN6YnMCyAu+3QI5K6GXLtrYevsdgksGnOn8uS0HvubmEI
+	 NcP+719a5kZN4EsbToxCSp9Ua4QpRB8j3bmUiU6gshU5TXb5l/qdqOrpwBlGInysv1fN8
+	 jicUmHtOFLwnYu96ztXD8hDJXEBufkTa+bUTqxb9K1HiDPR0l2Me5qgkpuGf64nfWUDp7
+	 KTRIXYcv+vo7ZnActbu44tqLNqH6Wom7LRHvamvKCOy6OmRNdV30caBZ3QZZdZw9axCe1
+	 tNF9mKEv/EpbiSzxV1J8mDnFuvIQMHn0ZBiR541eqTmq1PxzZVyQlGM9GMEAytDuIpw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=LTqG09y7;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=TTn0Q9md;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ED9A2606A897;
-	Thu, 12 Nov 2026 21:46:30 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 66B5E606A897;
+	Thu, 12 Nov 2026 21:46:32 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=LTqG09y7
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 04B7B1F000C4;
-	Thu, 12 Nov 2026 21:46:28 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=TTn0Q9md
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C46D01F000CE;
+	Thu, 12 Nov 2026 21:46:30 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794519990;
-	bh=9M7tjtD0z2+HWzcxTNlE58HbSH+XbPuIDRBiX2N9YqM=;
+	s=k20260515; t=1794519992;
+	bh=QR9m/svfIRjXnbqKqWOERF/bRhogZTRtjnHurWmfAk8=;
 	h=From:To:Subject:Date:In-Reply-To:References;
-	b=LTqG09y7aowQ7R91qxe/b3QTf2b6nmYp0X00QFH1qJU13d0QPGcXh0WR/5tMJ2CkE
-	 5wblJFm/meeRMAPlH5OltQzdJibl3Xe9EilRT2nXeg16ezH4L23m1pJeGhysDBJ9xS
-	 UeATPXn47/dwPNSGNEh7u2QsMqqKxlYSrePONU8ahK/oBIPrhR7hjn4CcTjIjbTl8P
-	 KEaN9r72YK+N+ARMuGi0Tq7W5BBT3QcYYRF+GSk66PCpqJ+vs781Pf7fQzsnIK6/f/
-	 +OjOX7B4hE94ICt0mLqg5RLWguvEEK1CROI23yY/JPslbIPHfVgegWSNhXPkuKSdUf
-	 QvVCWBBSX+WiA==
+	b=TTn0Q9mdPKNMmKmGtfwl+7/2rilMIByBC11VSwEvP/74zJvBWUOmENx98Kz3Vtb+Y
+	 mo8xFCYdsBWVw8o5oNTVxGpTokIDzDZb69+eYmMgzdcrvZ2AupkTywfK+T09hPMOsa
+	 8RvClI4O1qGyaz9wu+oSyZNGhIRefgS4qAcuNoxzWbBu8chy7WxtuNvhBFObkz67xA
+	 le1j8ospKsCT49L04Gh72Vd0G3bm5oKvWHipfLC65ptDT7TVifyWGH7nnoCahTspsc
+	 ctQ42rLSCafnz9X9W00wUutkfqTxRPvy6Ci0WJ90BXtq/8cHlM+mU+ZaP1NMm8ifMT
+	 9M295EEdt5bKA==
 From: Chris Mason <mason@kernel.org>
 To: mason@kernel.org,
 	tytso@mit.edu,
@@ -53,9 +53,9 @@ To: mason@kernel.org,
 	linux-ext4@vger.kernel.org,
 	tz2294@columbia.edu,
 	brauner@kernel.org
-Subject: [PATCH v9 13/14] xfs: don't enable DAX on zoned inodes
-Date: Thu, 12 Nov 2026 16:46:17 -0500
-Message-ID: <20261112214604.67875-14-mason@kernel.org>
+Subject: [PATCH v9 14/14] xfs: test for realtime and reflink under the pNFS locks
+Date: Thu, 12 Nov 2026 16:46:18 -0500
+Message-ID: <20261112214604.67875-15-mason@kernel.org>
 In-Reply-To: <20261112214604.67875-1-mason@kernel.org>
 References: <20261112214604.67875-1-mason@kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -70,84 +70,96 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 
-A store through a shared mapping can dereference a NULL pointer if the
-file is zoned and has S_DAX.
+A pNFS client can write to blocks that its file shares with another
+file, or that are no part of its file, if a LAYOUTGET races with a clone
+or with FS_IOC_FSSETXATTR.
 
-The zoned code does not support DAX, but XFS doesn't check for this:
-with dax=always or FS_XFLAG_DAX, an inode gets S_DAX if its device does
-DAX, and an internal zoned section on pmem does. The write fault then
-takes the zoned path:
+xfs_fs_map_blocks() hands out no layout for a reflinked or a realtime
+inode, since the client writes in place and only knows the data device.
+But it tests for both before it takes the IOLOCK, and both flags are set
+under that lock:
 
-    xfs_filemap_fault()
-      xfs_write_fault()
-        xfs_write_fault_zoned()
-          page_folio(vmf->page)     /* NULL in a DAX fault */
+    LAYOUTGET                           clone
+    =========                           =====
+                                        takes the IOLOCK
+                                        breaks the layouts
+    xfs_fs_map_blocks()
+      sees no reflink flag
+      waits for the IOLOCK
+                                        sets the reflink flag
+                                        shares the blocks
+                                        drops the IOLOCK
+      maps the shared blocks
+    /* the client writes in place */
 
-ftruncate() crashes in a similar way, in xfs_reflink_end_cow().
+If FS_IOC_FSSETXATTR sets the realtime flag of an empty file instead,
+the blocks come from the realtime device, and nfsd points the client at
+the same address on the data device.
 
-The fix used here is to never set S_DAX on a zoned inode, and to refuse
-to change the realtime flag of an S_DAX inode on a zoned file system.
+The fix used here is to test for both once the locks are held.
 
-Zoned files now use the page cache with dax=always or FS_XFLAG_DAX. A
-file whose realtime flag is cleared stays without DAX until its inode
-is evicted.
-
-Fixes: be458049ffe3 ("xfs: enable the zoned RT device feature")
+Fixes: e54b5bf9d7ae ("xfs: recognize the reflink feature bit")
+Fixes: 527851124d10 ("xfs: implement pNFS export operations")
 Signed-off-by: Chris Mason <mason@kernel.org>
 ---
 
 Notes:
     v8->v9:
-    - The commit log and the comments say that the zoned code does not
-      support DAX, no longer that it cannot (Christoph Hellwig).
-    - The commit log no longer says that ftruncate() only crashes on kernels
-      without an earlier patch of the series. That patch has lost the test
-      that stopped it.
-    - Was 15/15.
-    
-    v7->v8:
     - New patch.
 
- fs/xfs/xfs_ioctl.c | 8 +++++---
- fs/xfs/xfs_iops.c  | 4 ++++
- 2 files changed, 9 insertions(+), 3 deletions(-)
+ fs/xfs/xfs_pnfs.c | 32 +++++++++++++++++---------------
+ 1 file changed, 17 insertions(+), 15 deletions(-)
 
-diff --git a/fs/xfs/xfs_ioctl.c b/fs/xfs/xfs_ioctl.c
-index af13ad6784b7..49ba762ea969 100644
---- a/fs/xfs/xfs_ioctl.c
-+++ b/fs/xfs/xfs_ioctl.c
-@@ -564,11 +564,13 @@ xfs_ioctl_setattr_xflags(
+diff --git a/fs/xfs/xfs_pnfs.c b/fs/xfs/xfs_pnfs.c
+index 065875c8b7da..945f7a3e11ca 100644
+--- a/fs/xfs/xfs_pnfs.c
++++ b/fs/xfs/xfs_pnfs.c
+@@ -147,21 +147,6 @@ xfs_fs_map_blocks(
+ 	if (xfs_is_shutdown(mp))
+ 		return -EIO;
  
- 		/*
- 		 * If S_DAX is enabled on this file, we can only switch the
--		 * device if both support fsdax.  We can't update S_DAX because
--		 * there might be other threads walking down the access paths.
-+		 * device if both support fsdax, and the zoned code does not.
-+		 * We can't update S_DAX because there might be other threads
-+		 * walking down the access paths.
- 		 */
- 		if (IS_DAX(VFS_I(ip)) &&
--		    (mp->m_ddev_targp->bt_daxdev == NULL ||
-+		    (xfs_has_zoned(mp) ||
-+		     mp->m_ddev_targp->bt_daxdev == NULL ||
- 		     (mp->m_rtdev_targp &&
- 		      mp->m_rtdev_targp->bt_daxdev == NULL)))
- 			return -EINVAL;
-diff --git a/fs/xfs/xfs_iops.c b/fs/xfs/xfs_iops.c
-index d307ec97fac8..a84a4c1c3fc2 100644
---- a/fs/xfs/xfs_iops.c
-+++ b/fs/xfs/xfs_iops.c
-@@ -1373,6 +1373,10 @@ xfs_inode_supports_dax(
- 	if (mp->m_sb.sb_blocksize != PAGE_SIZE)
- 		return false;
+-	/*
+-	 * We can't export inodes residing on the realtime device.  The realtime
+-	 * device doesn't have a UUID to identify it, so the client has no way
+-	 * to find it.
+-	 */
+-	if (XFS_IS_REALTIME_INODE(ip))
+-		return -ENXIO;
+-
+-	/*
+-	 * The pNFS block layout spec actually supports reflink like
+-	 * functionality, but the Linux pNFS server doesn't implement it yet.
+-	 */
+-	if (xfs_is_reflink_inode(ip))
+-		return -ENXIO;
+-
+ 	/*
+ 	 * Lock out any other I/O before we flush and invalidate the pagecache,
+ 	 * and then hand out a layout to the remote system.  This is very
+@@ -174,6 +159,23 @@ xfs_fs_map_blocks(
+ 	 */
+ 	xfs_ilock(ip, XFS_IOLOCK_EXCL | XFS_MMAPLOCK_EXCL);
  
-+	/* The zoned code does not support DAX. */
-+	if (xfs_is_zoned_inode(ip))
-+		return false;
++	/*
++	 * We can't export inodes residing on the realtime device.  The realtime
++	 * device doesn't have a UUID to identify it, so the client has no way
++	 * to find it.  The flag is set under the IOLOCK, so test only now.
++	 */
++	error = -ENXIO;
++	if (XFS_IS_REALTIME_INODE(ip))
++		goto out_unlock;
 +
- 	/* Device has to support DAX too. */
- 	return xfs_inode_buftarg(ip)->bt_daxdev != NULL;
- }
++	/*
++	 * The pNFS block layout spec actually supports reflink like
++	 * functionality, but the Linux pNFS server doesn't implement it yet.
++	 * This flag is set under the IOLOCK as well.
++	 */
++	if (xfs_is_reflink_inode(ip))
++		goto out_unlock;
++
+ 	error = -EINVAL;
+ 	limit = mp->m_super->s_maxbytes;
+ 	if (!write)
 -- 
 2.55.0
 
