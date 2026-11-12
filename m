@@ -1,55 +1,56 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794457285;
-	b=Ru9xYk7iHUo/7uKfP2qmMPBmaF2V1/aadosZRnnDM0DYtfTS+UfZJsRhYMpZL9KAzWX2
-	 u6mBghlWpCkSMZXw02zAPAHKFHCL47k4dgn4DnNGyDeg6YWrxM0yw5TqzVbRklPzlzny0
-	 VSEUPQoMPUkETeYOxV0E+CSfsTmj2emE1UP7VanxKnS2Q34JBhEVYbZmLmL2XFn2VNWTB
-	 Zg34+2Z9GYEAREe+0h5Wk1zc+gIbrgo3O8GWqohRs3uA9R69mD9H0Foaz8Unsph55kapF
-	 js1HS768E6fu42jy31lpet0wnxjTQgxNcBZwnb8/7jXmZI3GW1o/MMYzQRj58h3b1EA==
+	t=1794457463;
+	b=G8ZgDfIAQkUNxT8egtqckRyZ9LjHZbJ1itQGmMUxEBqrqZqVGL24/Gy0L7S/nV2/QHMu
+	 t95YzMj+vEzOOZU6JYjXqNQBLPIBNsFuDUZYFTz600zWA8kjLI/8QrpceuJVAWdrcy17Z
+	 QA83PpWgqFz9Uv4gKuXYMIJQiU/yYJNnwtdQhqyfKJM9+mPdIB3AE2HqqZs2ndc5kWPbW
+	 sA3WA9Q6QkDNiTo7qI8FnBvnFJlVt1oqrVwpnFTJc72301HYWBT6twtyG2MC1KLaaPgbN
+	 SFCH3El3OoTQ4mRGcMBiUIkBdvPMZJ7cV5YM3nrLX9mJkK0Thq2Aweb4B2dI8eFMfzg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794457285;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794457463;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=X64UwcY//X+Uyursm8BW8LkuDX5odxwlqUFpdTlKvXE=;
-	b=YJ8N0/qWwKxeBrYcGx1+rv+zyUERIpqUJi/IiryFe+qY/zVx0ALLGrm864/y2J3bPlP7
-	 BGaeNYuq0qz6g9iKd9MeY4HyDhtc65ZIamVO4DRA71nJyXKbcWk7zO67Sqnvdi6Nttr+h
-	 afRVtOThgGTDwh3hkisGrCxGbPqOUZKx6YlTJd+k/AFz0RAiV2Lppu8jN4RgnkPpdyBjJ
-	 ojfLx0aRXSFV1T1F8EdPlHSuG2pmdWiitdO2jxnd9mBPR4jRtqprdq0gdaGYVirGYNp+n
-	 fbtGSfZ72hahdi/+mJeJk5HiID9ng0q0exHUUNbtmfKYQ2GpnvqsmUbGr1PdXaswfqw==
+	bh=td+Orbl4wH+DBTOkZbQaQ+MQlcUNoLmDS1ONONFwwuE=;
+	b=edQwG0m01bDE51Nu/XbpJKa6IkL+8iuchYNO1ieoQU46fk56QPFnZoJSgZHllZ2Yfhkr
+	 9OsdKhyPwNQTZBd4oSrPafp1WdIzyc5t67vzT4gfW+l8rs0x3jlPC7VVq4l3LENovJLlg
+	 uMWYmETW8S6O8y2ynqzxZP5dOH2+6/dhw7Im3PdPEgjy1+SAr+1+uTnhlvcPDgRHLBKkY
+	 7vQsUI6BUr8+AHnI6PDHi4+QV+OBNM9E/zAhoUmIvP1lw1M5K4C8c3u6v2LmsQnnDToM0
+	 YM1GXpKumDJrGTdw7BNWY3OiI3ZwEEVbLM97WXRXSr/bhbyEV6JwbpByqNcKAMC5RRQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Ka8suLzA;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=m8M1F7us;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 995F1606A31C
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Nov 2026 04:21:25 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BDE00606A323
+	for <linux-ext4@vger.kernel.org>; Thu, 12 Nov 2026 04:24:23 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Ka8suLzA
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 133EA1F00A05;
-	Thu, 12 Nov 2026 04:21:25 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=m8M1F7us
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 29D731F00A05;
+	Thu, 12 Nov 2026 04:24:23 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794457285;
-	bh=X64UwcY//X+Uyursm8BW8LkuDX5odxwlqUFpdTlKvXE=;
+	s=k20260515; t=1794457463;
+	bh=td+Orbl4wH+DBTOkZbQaQ+MQlcUNoLmDS1ONONFwwuE=;
 	h=From:Subject:Reply-To:To:In-Reply-To:References:Date;
-	b=Ka8suLzA41B0FC6gyQdIS4hS+P15qeK4iPjoE6cC8dRu3VdrAR0LysMmBjNZo2QSN
-	 t6GLj2exqllrmAmZi9rbVcWQqTcRI+0wf/njKDQ9NeokYmLG+UcZBO0BsDKQW6/UDW
-	 MnmpHKA9wrcZa7n6dBoy/XmG87jDvwdwwW4PnlNo+TvIIx4U4FbFMw6vVQH2ZE5xtd
-	 HHN82pmpfnMv+G/334aknxX5hfCiTAr+kwK79zH7NMDZ/7sPgERFGEpxZrU5dxsIo9
-	 W0ORZspfczJVlgglBMfeVQ9OFyPnj7/e8AnD3f0sLKhyhFpDFDWgBsNMP0LITQDkI0
-	 +a0SnPUL3Ae5A==
-Message-ID: <sashiko-outbox-210330@kernel.org>
+	b=m8M1F7us1okJrD2JrJwUobl0e9vs4v/98yPMSJbJf5QQKOo5zetnbz0dADcodP7Jf
+	 xsDu9aWnZ26xqikJo+JGL/5mB+LX+0Wb9nK1LoKGQx9Am2Ezl9PRsXc8RaVpmzFP4w
+	 myBHN/ACQWmRZY//JqQ7DwW8kOaRuzNSIpxgFzaz/GoA3W4+3rnjSRfMLOvHI1L4rX
+	 3BgkNai0plpjxf5TiOV+/0M6QGvugvLKb9nQVZiNXF9f8DJXQzP/lFKApjcA0A20Ty
+	 RnHqycw8MbhuKpNL378a9UR/iL3Ws+wCALkV244m28NU5nnF+t41rQRCGWMBc6fpNP
+	 l9+5SXcUD7qGg==
+Message-ID: <sashiko-outbox-210332@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH 05/27] ext4: add KUnit tests for fs/ext4/namei.c
+Subject: Re: [PATCH 16/27] ext4: enable full feature coverage in
+ fs/ext4/.kunitconfig
 Reply-To: sashiko-reviews@lists.linux.dev
 To: =?utf-8?b?VGhlb2RvcmUgVHMnbw==?= <tytso@mit.edu>, "Ext4 Developers List" <linux-ext4@vger.kernel.org>
-In-Reply-To: <20261112040638.1576836-6-tytso@mit.edu>
+In-Reply-To: <20261112040638.1576836-17-tytso@mit.edu>
 References: <20261112040638.1576836-1-tytso@mit.edu>
- <20261112040638.1576836-6-tytso@mit.edu>
+ <20261112040638.1576836-17-tytso@mit.edu>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Thu, 12 Nov 2026 04:21:24 +0000
+Date: Thu, 12 Nov 2026 04:24:22 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -59,87 +60,36 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-Thank you for your contribution! Sashiko AI review found no new issues
-in this patch, but noticed 1 related pre-existing issue it does not
-introduce:
-- [High] ext4: out-of-bounds read due to missing dx_entry validation in
-  ext4_htree_next_block() [1]
---
+> Enable CONFIG_EXT4_FS_POSIX_ACL, CONFIG_EXT4_FS_SECURITY,
+> CONFIG_FS_VERITY, CONFIG_FS_ENCRYPTION, CONFIG_QUOTA, CONFIG_QFMT_V2,
+> and CONFIG_UNICODE in fs/ext4/.kunitconfig so conditional ext4 source
+> files and feature-gated code paths (POSIX ACLs, security xattrs,
+> fs-verity, fscrypt, quota accounting, and UTF-8 casefolding) are
+> compiled and exercised during KUnit runs.
+>=20
+> Fix mock superblock and test setup bugs in existing KUnit suites exposed
+> by enabling these Kconfig options:
+>=20
+> - Provide .get_dquots callbacks in mock super_operations under
+>   CONFIG_QUOTA in block_validity-test.c, extents-test.c,
+>   fast_commit-test.c, inline-test.c, inode-test.c, mballoc-test.c,
+>   namei-test.c, and xattr-test.c so dquot_drop() does not dereference a
+>   NULL callback during ext4_clear_inode().
+> - Populate sb->s_cop =3D &ext4_cryptops under CONFIG_FS_ENCRYPTION in
+>   balloc-test.c, extents-test.c, fast_commit-test.c, inline-test.c,
+>   inode-test.c, mballoc-test.c, and xattr-test.c so
+>   fscrypt_put_encryption_info() can resolve inode_info_offs safely on
+>   eviction.
+> - Fix test_namei_casefold_lookup_and_strict() under CONFIG_UNICODE in
+>   namei-test.c to use SB_ENC_STRICT_MODE_FL (instead of undeclared
+>   SB_STRICT_ENCODING) and propagate EXT4_INODE_CASEFOLD to S_CASEFOLD on
+>   the VFS directory inode via ext4_set_inode_flags().
+>=20
+> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 
-commit 2ae6fd1b46635dda6b69ee78cd382ff9c0d0450a
-Author: Theodore Ts'o <tytso@mit.edu>
-
-ext4: add KUnit tests for fs/ext4/namei.c
-
-This commit adds a KUnit test suite for directory lookup, HTree indexing,
-and namespace operations in fs/ext4/namei.c, and exports the internal
-HTree definitions and helper wrappers needed by the tests.
-
-> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-> index a6386c1d237f1..63d01a9711a27 100644
-> --- a/fs/ext4/namei.c
-> +++ b/fs/ext4/namei.c
-
-[ ... ]
-
-> @@ -4249,3 +4103,159 @@ const struct inode_operations ext4_special_inode_=
-operations =3D {
->  	.get_inode_acl	=3D ext4_get_acl,
->  	.set_acl	=3D ext4_set_acl,
->  };
-> +EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_special_inode_operations);
-> +
-> +#if IS_ENABLED(CONFIG_EXT4_KUNIT_TESTS)
-
-[ ... ]
-
-> +int ext4_htree_next_block_test(struct inode *dir, __u32 hash,
-> +			       struct dx_frame *frame,
-> +			       struct dx_frame *frames, __u32 *start_hash)
-> +{
-> +	return ext4_htree_next_block(dir, hash, frame, frames, start_hash);
-> +}
-> +EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_htree_next_block_test);
-
-[Severity: High]
-This problem wasn't introduced by this patch, but can
-ext4_htree_next_block() read out of bounds past bh->b_data [1] when
-loading a sibling interior dx_node block?
-
-fs/ext4/namei.c:ext4_htree_next_block() {
-	...
-	while (1) {
-		if (++(p->at) < p->entries + dx_get_count(p->entries))
-			break;
-		if (p =3D=3D frames)
-			return 0;
-		num_frames++;
-		p--;
-	}
-	...
-	while (num_frames--) {
-		bh =3D ext4_read_dirblock(dir, dx_get_block(p->at), INDEX);
-		if (IS_ERR(bh))
-			return PTR_ERR(bh);
-		p++;
-		brelse(p->bh);
-		p->bh =3D bh;
-		p->at =3D p->entries =3D ((struct dx_node *) bh->b_data)->entries;
-	}
-	return 1;
-}
-
-Unlike dx_probe(), which checks dx_get_limit() against dx_node_limit() and
-verifies that dx_get_count() is non-zero and within dx_get_limit(),
-ext4_htree_next_block() assigns p->entries directly from bh->b_data without
-validating the new node's count or limit.  If a corrupted interior node has
-an out-of-bounds count (for example, when metadata_csum is disabled or
-buffer_verified(bh) is already set), later calls to ext4_htree_next_block()
-advance p->at up to p->entries + dx_get_count(p->entries) and dereference
-it via dx_get_hash() and dx_get_block(), reading past the end of bh->b_data.
-
-[1] https://sashiko.dev/#/bug/linux-c6639d9a-25ec-49eb-a6a4-468135552f9a
+Sashiko has reviewed this patch and found no issues.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261112040638.1576=
-836-1-tytso@mit.edu?part=3D5
+836-1-tytso@mit.edu?part=3D16
+
