@@ -1,60 +1,60 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=18.9.28.11
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794458846;
-	b=hXAouyBWCp3FC/OfVtMwVvZ+lM2y7WT4CRE/A0UcAhukJMlVAzfL58LzLtqviO6v0UxD
-	 oxdTW2ksOO6K8PEBEc5ssvicUmjtf4xAuP5JiurTUEuycESLE0PQXADsCG/rz99rPaFWR
-	 swZq7RxIAikBAR6GigeGn7dm/J7Rzz6yD1jbkdqgcPdUw2rqOih+naJU9Cq/pHG77iL7b
-	 GKAOKR92YwKu+OkaosLY7Gl1ggWvAFyb92ctEYy+t4GxNChnm46Kb4lHd7Avwcf+J+G7l
-	 LvhAhLcTWCw/rXL6ys9dG4HA+Jz00Ms4Wm+26HSqVqoq2OEyJRDZRYvARC65mO88hQw==
+	t=1794458847;
+	b=MYTOSG9lq2gzam8upeJ+QRttJCChRir+2YcCO/t7nWD2eDQUX1uJLcO5VEBSolffpXYX
+	 Jy/DRibuuPqY8UXPrukCXwT4ss5hXVUBc65nFshEwy8W8a/vIfkmmu4m/jCu5Zwwf/vZD
+	 q5+sET6/2g79XnQhyYpEhw9tHPozm9PIaz6+YCRo94GF7L6hCdRb4W4LJUGlsYZMNZHPM
+	 YK2l2U4Z/MYdE7oPGmU7EgL9z46EGOugNnxulZy4LBp9Sk0BxfZcsUIqDuoHC9ikgDtkJ
+	 iFv9/kTGMH9vv8NhH/M4nOwK25j3KJy/56HndgFTKedgvyUpro/3yf7nPW73Oh+9G3A==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794458846;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794458847;
 	h=DMARC-Filter:Received:DKIM-Signature:Received:From:To:Cc:Subject:
 	 Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
 	 Content-Transfer-Encoding;
-	bh=PK0ip+zTgebht41jD7/GC21WCEccymQfcBvhtoWh4Lg=;
-	b=03OsD9CPA69MtG+J0K2xWOUnj4ry4qr3yW27/5GowXcFrlSftq8P3fxW3iOCqN7vXU6j
-	 oYw7cjs+FyYYhFa+UquzlM88jtVvrfKakK4eFV8LurHTzucUKREmxw7HDyEAEAkbr6rDW
-	 xUmut8MDXYNMYbHohsPKRHIgGfyLKjxMiGXFpLyyLAo6ptrobB9ybf0fBS4/sl9FAR+C8
-	 87B+0eU9LdCXbLJVJTJObQyQCZclcbsHonFlkwjMQoyaIWzZm2EULyYBKjJ/BTW0vuJyz
-	 kFS01j+fgxWftoxgs/yCMwX6/rUi92VUYQHxHS86pb1rKw9vE0JRLNXT9TubYABPV7w==
+	bh=TecECUWF8LFyki6NA+Jr56CZGkOKZivNOrQvLDPUdus=;
+	b=i/TGQUUtRpot+/guLOjE+v+Av3Yn09KLDkgvRuPahfsc4ZiQXjaQEO3WOVZzryQMUNc/
+	 nUjoUHoa0TWpa8Q0Ik52Zr6gBjGhsnyoFBURfWv4O2znUoe63gRlr3IhvcYPj4q5JkxmT
+	 HyyB+uVNSZuFQk2j/FM60YnjXzTsoDBR2LRon55dEjT1weEAlY1v8zP6WXbgjE3PF1O4x
+	 0jsA5FmhBTSYSTbRwX0g19NUNQzu/QGmIPEU8nA/3BueGAKKlJAA3IwpnJQXGymIPFgd4
+	 dPvW12wJfdd89Pvil34HGiwMq83bfRhdwcbsYuAuOko7Ovtytw3L7YL7W1hNTGNyuGA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=mit.edu;
 	spf=pass smtp.mailfrom=mit.edu;
-	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=J2KrsRKI;
+	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=cOmEsFYo;
 	arc=none smtp.remote-ip=18.9.28.11
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E608160A263D
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Nov 2026 04:47:25 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org E608160A263D
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2DCA7606A882
+	for <linux-ext4@vger.kernel.org>; Thu, 12 Nov 2026 04:47:26 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 2DCA7606A882
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=J2KrsRKI
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=cOmEsFYo
 Received: from trampoline.thunk.org (pool-173-48-111-191.bstnma.fios.verizon.net [173.48.111.191])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AC4lMOR031271
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AC4lMZE031249
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
 	Wed, 11 Nov 2026 23:47:23 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1794458844; bh=PK0ip+zTgebht41jD7/GC21WCEccymQfcBvhtoWh4Lg=;
+	t=1794458843; bh=TecECUWF8LFyki6NA+Jr56CZGkOKZivNOrQvLDPUdus=;
 	h=From:Subject:Date:Message-ID:MIME-Version;
-	b=J2KrsRKIvDC34qpnGRtF5MhFIePFObqa56+ZNm2bgzq3k9im9rTXG5ViFYfIevoeN
-	 pKnUDjO2QkztayqI+ARCzW/9FxQshfMrDXuIg0JRfMUZ3IW/qw+bewWjgIzWq2JQUE
-	 j8DkRLfLFnvsZeXfHFY6sZfbcCTAbmZDoXPFDFNURtU6VWNeDM3CCCAe15/HQzambF
-	 vnyw+P0QSMubGewR6ZX2AJBTZMElhBhoeD18wLMGsscfoe4j1I2tolN024Y17ogODN
-	 AIcXFwLGIUs0U1kGqdSKpg1vsPVvh2L5/AIEvIV5lJnwjZyFLI9bvaHW7ySL0HHJzt
-	 V3Oa2c4JI3T3g==
+	b=cOmEsFYowG4krNN6y2H55b6VOnRQK8scgpjinnHH4RekiWi41ktJudFkUmnijKjOo
+	 u2t+hEJmVdK15yO4+9gJmDaRNDzzQxc3Gu1D3dtpJ65slkV0jQY7KqqvpwyxJuv7bB
+	 dVWZ/3TaoD7COXdU+tuabHFr3Swz4MvKpL1vCC/7IP9pQ+tZH05ry7RnejpwSBhztM
+	 uA6FlYM2TqxKtNxPWXNpWiCbmDjba/mBEf4BHi6YonhKGsFg9hghoic/xxZ3WXr1hg
+	 yyhwsJ0sSdSTlsou9KSvxBlxlH+yAb3lsXiE4qhThpenB6yZ5JRsptyz2f7F7WN4oG
+	 srZrOa/mb6xPg==
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id 5C50F2E0158; Wed, 11 Nov 2026 23:47:19 -0500 (EST)
+	id 4FEE12E0154; Wed, 11 Nov 2026 23:47:19 -0500 (EST)
 From: "Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Cc: "Theodore Ts'o" <tytso@mit.edu>
-Subject: [PATCH 19/23] ext4: bound the MMP update and check intervals
-Date: Wed, 11 Nov 2026 23:47:08 -0500
-Message-ID: <20261112044712.1577296-20-tytso@mit.edu>
+Subject: [PATCH 15/23] ext4: cap migrated extents at EXT_INIT_MAX_LEN
+Date: Wed, 11 Nov 2026 23:47:04 -0500
+Message-ID: <20261112044712.1577296-16-tytso@mit.edu>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <20261112044712.1577296-1-tytso@mit.edu>
 References: <20261112044712.1577296-1-tytso@mit.edu>
@@ -69,385 +69,159 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Neither kmmpd() nor ext4_multi_mount_protect() validate the
-s_mmp_update_interval value from the superblock or the
-mmp_check_interval value from the MMP block:
+When converting an indirect-mapped inode to extents, ext4_ext_migrate()
+coalesces physically and logically contiguous blocks in
+update_extent_range() without any upper bound, and finish_range() then
+stores the raw run length into the 16-bit ee_len field.
 
- - With s_mmp_update_interval == 0, the "diff < mmp_update_interval *
-   HZ" test in kmmpd() is never true, so kmmpd never sleeps.  It
-   rewrites the MMP block with REQ_SYNC | REQ_META | REQ_PRIO writes in
-   a tight loop until the filesystem is unmounted.  e2fsprogs treats a
-   zero interval as "use the default" (5 seconds), so such a value is
-   not even necessarily the result of corruption.
+An initialized extent can be at most EXT_INIT_MAX_LEN (32768) blocks
+long; larger ee_len values encode unwritten extents.  So if an indirect
+file contains a contiguous run of more than 32768 blocks (128 MiB with
+4 KiB blocks), the migrated extent is silently turned into an unwritten
+extent of length (len - 32768): the file data reads back as zeroes, the
+tail of the run becomes a hole, and 32768 blocks are leaked once the
+file is truncated or unlinked.  A run of exactly 65536 blocks wraps
+ee_len to zero, producing a corrupt extent.
 
- - Both fields are 16 bits wide and only have a lower bound applied at
-   mount time.  A value of 65535 in either of them makes
-   ext4_multi_mount_protect() sleep min(2 * 65535 + 1, 65535 + 60)
-   seconds, i.e. more than 18 hours, up to twice, before mount(2)
-   completes.  kmmpd() itself already caps the check interval it
-   advertises to EXT4_MMP_MAX_CHECK_INTERVAL once it is running, and
-   e2fsprogs refuses to set an update interval larger than 300 seconds.
+Stop extending the current range once it reaches EXT_INIT_MAX_LEN, so
+that long runs are split into several initialized extents.
 
-Add a helper that returns s_mmp_update_interval with zero mapped to the
-e2fsprogs default and larger values capped to the e2fsprogs maximum,
-and use it in both kmmpd() and ext4_multi_mount_protect().  Also cap
-the check interval used at mount time, and the initial one advertised
-by kmmpd(), to EXT4_MMP_MAX_CHECK_INTERVAL, matching what kmmpd()
-already does after its first update.  Since kmmpd now updates the MMP
-block at least every EXT4_MMP_MAX_UPDATE_INTERVAL seconds, the
-resulting maximum mount wait of 360 seconds is still long enough to
-notice another node that is actively using the filesystem.
-
-Add KUnit tests covering both the mount-time wait and, by running the
-real kmmpd() in a thread with the I/O and sleep helpers stubbed out,
-the kmmpd() update cadence.
-
-Fixes: c5e06d101aaf ("ext4: add support for multiple mount protection")
+Fixes: c14c6fd5c56a ("ext4: Add EXT4_IOC_MIGRATE ioctl")
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/ext4.h     |   8 +++
- fs/ext4/mmp-test.c | 170 +++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/mmp.c      |  31 +++++++--
- 3 files changed, 205 insertions(+), 4 deletions(-)
+ fs/ext4/migrate-test.c | 91 ++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/migrate.c      |  6 ++-
+ 2 files changed, 95 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index c7d64bb21c57..5d6d4876f487 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2866,6 +2866,13 @@ struct mmpd_data {
-  */
- #define EXT4_MMP_MAX_CHECK_INTERVAL	300UL
+diff --git a/fs/ext4/migrate-test.c b/fs/ext4/migrate-test.c
+index e83d208a5117..7a7d6607b67f 100644
+--- a/fs/ext4/migrate-test.c
++++ b/fs/ext4/migrate-test.c
+@@ -1041,6 +1041,96 @@ static void test_ind_migrate_rejections(struct kunit *test)
+ 	iput(inode);
+ }
  
 +/*
-+ * Default and maximum interval between MMP block updates in seconds, as
-+ * used by e2fsprogs for s_mmp_update_interval.
++ * Test 8: ext4_ext_migrate() splits a physically and logically contiguous
++ * run longer than EXT_INIT_MAX_LEN into multiple initialized extents rather
++ * than encoding the raw length into ee_len, which would turn the extent
++ * into an unwritten one (or wrap ee_len) and lose the file data.
 + */
-+#define EXT4_MMP_UPDATE_INTERVAL	5UL
-+#define EXT4_MMP_MAX_UPDATE_INTERVAL	300UL
++static void test_ext_migrate_caps_long_run_at_init_max_len(struct kunit *test)
++{
++	struct migrate_test_ctx *ctx = test->priv;
++	const unsigned int per_blk = MIGRATE_TEST_BLK_SIZE / sizeof(__le32);
++	const unsigned int nr_ind = 128;
++	const ext4_fsblk_t data_pblk = 2000;
++	const ext4_fsblk_t ind_pblk = 600, dind_pblk = 700;
++	const ext4_lblk_t len = EXT4_NDIR_BLOCKS + per_blk + nr_ind * per_blk;
++	const int max_len = EXT_INIT_MAX_LEN;
++	struct ext4_extent_header *eh;
++	struct ext4_extent *ex;
++	struct buffer_head *bh;
++	struct inode *inode;
++	ext4_fsblk_t pblk = data_pblk;
++	unsigned int i, j;
 +
- /*
-  * Function prototypes
-  */
-@@ -4233,6 +4240,7 @@ extern int ext4_read_mmp_block_test(struct super_block *sb,
- 				    ext4_fsblk_t mmp_block);
- extern int ext4_write_mmp_block_test(struct super_block *sb,
- 				     struct buffer_head *bh);
-+extern int ext4_kmmpd_test(void *data);
- #endif
- 
- /* verity.c */
-diff --git a/fs/ext4/mmp-test.c b/fs/ext4/mmp-test.c
-index 008857631394..c36f625f88a5 100644
---- a/fs/ext4/mmp-test.c
-+++ b/fs/ext4/mmp-test.c
-@@ -7,6 +7,7 @@
- #include <kunit/test.h>
- #include <linux/blkdev.h>
- #include <linux/buffer_head.h>
-+#include <linux/delay.h>
- #include <linux/fs.h>
- #include <linux/fs_context.h>
- #include <linux/kthread.h>
-@@ -62,6 +63,14 @@ struct mmp_test_ctx {
- 
- 	int run_thread_err;
- 	unsigned int run_thread_calls;
++	/* 12 + 256 + 128 * 256 = 33036 blocks > EXT_INIT_MAX_LEN */
++	KUNIT_ASSERT_GT(test, len, (ext4_lblk_t)max_len);
++	ext4_blocks_count_set(ctx->es, data_pblk + len + 1024);
 +
-+	/* Real kmmpd() run from the ext4_mmp_run_thread() stub */
-+	bool run_kmmpd;
-+	struct task_struct *kmmpd_thread;
-+	unsigned int kmmpd_write_calls;
-+	unsigned int kmmpd_wait_calls;
-+	long kmmpd_wait_timeout;
-+	u16 kmmpd_check_interval;
- };
- 
- static struct kunit *active_mmp_test;
-@@ -111,6 +120,20 @@ static int mmp_submit_write_stub(struct buffer_head *bh)
- 	if (!test)
- 		return -EIO;
- 	ctx = test->priv;
++	inode = migrate_make_test_inode(test, 22, S_IFREG | 0644);
++	i_size_write(inode, (loff_t)len * MIGRATE_TEST_BLK_SIZE);
 +
-+	if (current == READ_ONCE(ctx->kmmpd_thread)) {
-+		struct mmp_struct *mmp = (struct mmp_struct *)bh->b_data;
++	for (i = 0; i < EXT4_NDIR_BLOCKS; i++)
++		EXT4_I(inode)->i_data[i] = cpu_to_le32(pblk++);
 +
-+		if (!ctx->kmmpd_write_calls)
-+			ctx->kmmpd_check_interval =
-+				le16_to_cpu(mmp->mmp_check_interval);
-+		WRITE_ONCE(ctx->kmmpd_write_calls, ctx->kmmpd_write_calls + 1);
-+		/* Never let a misbehaving kmmpd monopolize the CPU */
-+		schedule_timeout_interruptible(1);
-+		set_buffer_uptodate(bh);
-+		return 0;
++	EXT4_I(inode)->i_data[EXT4_IND_BLOCK] = cpu_to_le32(ind_pblk);
++	bh = migrate_get_or_create_bh(ctx, ind_pblk);
++	KUNIT_ASSERT_NOT_NULL(test, bh);
++	for (j = 0; j < per_blk; j++)
++		((__le32 *)bh->b_data)[j] = cpu_to_le32(pblk++);
++	brelse(bh);
++
++	EXT4_I(inode)->i_data[EXT4_DIND_BLOCK] = cpu_to_le32(dind_pblk);
++	bh = migrate_get_or_create_bh(ctx, dind_pblk);
++	KUNIT_ASSERT_NOT_NULL(test, bh);
++	for (i = 0; i < nr_ind; i++)
++		((__le32 *)bh->b_data)[i] = cpu_to_le32(dind_pblk + 1 + i);
++	brelse(bh);
++
++	for (i = 0; i < nr_ind; i++) {
++		bh = migrate_get_or_create_bh(ctx, dind_pblk + 1 + i);
++		KUNIT_ASSERT_NOT_NULL(test, bh);
++		for (j = 0; j < per_blk; j++)
++			((__le32 *)bh->b_data)[j] = cpu_to_le32(pblk++);
++		brelse(bh);
 +	}
++	inode->i_blocks = (blkcnt_t)(len + 2 + nr_ind) *
++			  (MIGRATE_TEST_BLK_SIZE >> 9);
 +
- 	ctx->write_calls++;
- 	if (ctx->write_err_on_call &&
- 	    ctx->write_calls == (unsigned int)ctx->write_err_on_call) {
-@@ -160,6 +183,14 @@ static long mmp_wait_timeout_stub(long timeout)
- 	if (!test)
- 		return 1;
- 	ctx = test->priv;
++	KUNIT_EXPECT_EQ(test, ext4_ext_migrate(inode), 0);
++	KUNIT_EXPECT_TRUE(test,
++			  ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS));
++	eh = ext_inode_hdr(inode);
++	if (!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS) ||
++	    !eh->eh_entries)
++		goto out;
 +
-+	if (current == READ_ONCE(ctx->kmmpd_thread)) {
-+		ctx->kmmpd_wait_timeout = timeout;
-+		WRITE_ONCE(ctx->kmmpd_wait_calls, ctx->kmmpd_wait_calls + 1);
-+		/* Really sleep; ext4_stop_mmpd() wakes us up */
-+		return schedule_timeout_interruptible(timeout);
-+	}
++	KUNIT_EXPECT_EQ(test, le16_to_cpu(eh->eh_depth), 0U);
++	ex = EXT_FIRST_EXTENT(eh);
 +
- 	if (ctx->wait_calls < MMP_MAX_WAITS)
- 		ctx->wait_timeouts[ctx->wait_calls] = timeout;
- 	ctx->wait_calls++;
-@@ -181,6 +212,17 @@ static long mmp_wait_timeout_stub(long timeout)
- 	return 0;
- }
- 
-+static int mmp_kmmpd_thread_fn(void *data)
-+{
-+	struct kunit *test = active_mmp_test;
-+	struct mmp_test_ctx *ctx = test->priv;
++	/* Extent 0: lblk [0..32767] -> data_pblk, initialized */
++	KUNIT_EXPECT_EQ(test, le32_to_cpu(ex[0].ee_block), 0U);
++	KUNIT_EXPECT_FALSE(test, ext4_ext_is_unwritten(&ex[0]));
++	KUNIT_EXPECT_EQ(test, ext4_ext_get_actual_len(&ex[0]), max_len);
++	KUNIT_EXPECT_EQ(test, ext4_ext_pblock(&ex[0]), data_pblk);
 +
-+	/* Let the static stubs redirect the calls made by kmmpd() too */
-+	current->kunit_test = test;
-+	WRITE_ONCE(ctx->kmmpd_thread, current);
-+	return ext4_kmmpd_test(data);
++	/* Extent 1: remainder of the run, initialized */
++	KUNIT_EXPECT_EQ(test, le16_to_cpu(eh->eh_entries), 2U);
++	if (le16_to_cpu(eh->eh_entries) < 2)
++		goto out;
++	KUNIT_EXPECT_EQ(test, le32_to_cpu(ex[1].ee_block), (u32)max_len);
++	KUNIT_EXPECT_FALSE(test, ext4_ext_is_unwritten(&ex[1]));
++	KUNIT_EXPECT_EQ(test, ext4_ext_get_actual_len(&ex[1]),
++			(int)len - max_len);
++	KUNIT_EXPECT_EQ(test, ext4_ext_pblock(&ex[1]), data_pblk + max_len);
++
++	/* Indirect metadata blocks were released */
++	KUNIT_EXPECT_TRUE(test, migrate_was_freed(ctx, ind_pblk));
++	KUNIT_EXPECT_TRUE(test, migrate_was_freed(ctx, dind_pblk + 1));
++out:
++	iput(inode);
 +}
 +
- static struct task_struct *mmp_run_thread_stub(struct super_block *sb,
- 					       const char *bdevname,
- 					       int bdevname_len)
-@@ -194,6 +236,8 @@ static struct task_struct *mmp_run_thread_stub(struct super_block *sb,
- 	ctx->run_thread_calls++;
- 	if (ctx->run_thread_err)
- 		return ERR_PTR(ctx->run_thread_err);
-+	if (ctx->run_kmmpd)
-+		return kthread_run(mmp_kmmpd_thread_fn, sb, "kunit-kmmpd");
- 
- 	return kthread_run(mmp_dummy_kthread_fn, NULL, "kunit-mmpd");
- }
-@@ -229,6 +273,12 @@ static void mmp_reset_counters(struct mmp_test_ctx *ctx)
- 	ctx->mutated_seq = 0;
- 	ctx->run_thread_err = 0;
- 	ctx->run_thread_calls = 0;
-+	ctx->run_kmmpd = false;
-+	ctx->kmmpd_thread = NULL;
-+	ctx->kmmpd_write_calls = 0;
-+	ctx->kmmpd_wait_calls = 0;
-+	ctx->kmmpd_wait_timeout = 0;
-+	ctx->kmmpd_check_interval = 0;
- }
- 
- static void mmp_cleanup_ctx(void *data)
-@@ -640,6 +690,124 @@ static void test_mmp_interrupted_waits_and_kthread_failure(struct kunit *test)
- 	ctx->sbi.s_mmp_bh = NULL;
- }
- 
-+static void test_mmp_update_interval_bounds(struct kunit *test)
-+{
-+	struct mmp_test_ctx *ctx = mmp_setup_ctx(test);
-+	int ret;
-+
-+	/*
-+	 * A bogus s_mmp_update_interval must not stall mount for hours:
-+	 * the check interval is capped to EXT4_MMP_MAX_CHECK_INTERVAL, so
-+	 * wait_time = min(2 * 300 + 1, 300 + 60) = 360s.
-+	 */
-+	ctx->es->s_mmp_update_interval = cpu_to_le16(U16_MAX);
-+	mmp_init_disk_block(ctx, 100, 5);
-+	mmp_reset_counters(ctx);
-+
-+	ret = ext4_multi_mount_protect(ctx->sb, MMP_TEST_VALID_BLK);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, ctx->wait_calls, 2U);
-+	KUNIT_EXPECT_EQ(test, ctx->wait_timeouts[0], (long)(360 * HZ));
-+	KUNIT_EXPECT_EQ(test, ctx->wait_timeouts[1], (long)(360 * HZ));
-+	ext4_stop_mmpd(&ctx->sbi);
-+	ctx->sbi.s_mmp_bh = NULL;
-+
-+	/* Same for a bogus mmp_check_interval in the MMP block */
-+	ctx->es->s_mmp_update_interval = cpu_to_le16(EXT4_MMP_UPDATE_INTERVAL);
-+	mmp_init_disk_block(ctx, 100, U16_MAX);
-+	mmp_reset_counters(ctx);
-+
-+	ret = ext4_multi_mount_protect(ctx->sb, MMP_TEST_VALID_BLK);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, ctx->wait_calls, 2U);
-+	KUNIT_EXPECT_EQ(test, ctx->wait_timeouts[0], (long)(360 * HZ));
-+	KUNIT_EXPECT_EQ(test, ctx->wait_timeouts[1], (long)(360 * HZ));
-+	ext4_stop_mmpd(&ctx->sbi);
-+	ctx->sbi.s_mmp_bh = NULL;
-+
-+	/* Zero selects the default interval: wait_time = 2 * 5 + 1 = 11s */
-+	ctx->es->s_mmp_update_interval = 0;
-+	mmp_init_disk_block(ctx, 100, 0);
-+	mmp_reset_counters(ctx);
-+
-+	ret = ext4_multi_mount_protect(ctx->sb, MMP_TEST_VALID_BLK);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, ctx->wait_calls, 2U);
-+	KUNIT_EXPECT_EQ(test, ctx->wait_timeouts[0], (long)(11 * HZ));
-+	KUNIT_EXPECT_EQ(test, ctx->wait_timeouts[1], (long)(11 * HZ));
-+	ext4_stop_mmpd(&ctx->sbi);
-+	ctx->sbi.s_mmp_bh = NULL;
-+}
-+
-+/*
-+ * Mount with a real kmmpd() thread, then give it time to either go to sleep
-+ * after its first MMP block update or rewrite the block several times in a
-+ * row without sleeping.
-+ */
-+static int mmp_start_kmmpd(struct mmp_test_ctx *ctx, u16 update_interval)
-+{
-+	int ret, i;
-+
-+	ctx->es->s_mmp_update_interval = cpu_to_le16(update_interval);
-+	mmp_init_disk_block(ctx, EXT4_MMP_SEQ_CLEAN, 5);
-+	mmp_reset_counters(ctx);
-+	ctx->run_kmmpd = true;
-+
-+	ret = ext4_multi_mount_protect(ctx->sb, MMP_TEST_VALID_BLK);
-+	if (ret)
-+		return ret;
-+
-+	for (i = 0; i < 100; i++) {
-+		if (READ_ONCE(ctx->kmmpd_wait_calls) ||
-+		    READ_ONCE(ctx->kmmpd_write_calls) >= 3)
-+			break;
-+		msleep(20);
-+	}
-+	return 0;
-+}
-+
-+static void test_kmmpd_update_interval_bounds(struct kunit *test)
-+{
-+	struct mmp_test_ctx *ctx = mmp_setup_ctx(test);
-+	unsigned int write_calls, wait_calls;
-+
-+	/*
-+	 * s_mmp_update_interval == 0 must not make kmmpd rewrite the MMP
-+	 * block in a busy loop; it uses the default interval instead.
-+	 * No KUNIT_ASSERT while kmmpd runs: it must be stopped before the
-+	 * static stubs are torn down.
-+	 */
-+	KUNIT_ASSERT_EQ(test, mmp_start_kmmpd(ctx, 0), 0);
-+	write_calls = READ_ONCE(ctx->kmmpd_write_calls);
-+	wait_calls = READ_ONCE(ctx->kmmpd_wait_calls);
-+	ext4_stop_mmpd(&ctx->sbi);
-+	ctx->sbi.s_mmp_bh = NULL;
-+
-+	KUNIT_EXPECT_EQ(test, write_calls, 1U);
-+	KUNIT_EXPECT_EQ(test, wait_calls, 1U);
-+	KUNIT_EXPECT_GT(test, ctx->kmmpd_wait_timeout, 0L);
-+	KUNIT_EXPECT_LE(test, ctx->kmmpd_wait_timeout,
-+			(long)(EXT4_MMP_UPDATE_INTERVAL * HZ));
-+	KUNIT_EXPECT_EQ(test, ctx->kmmpd_check_interval,
-+			EXT4_MMP_CHECK_MULT * EXT4_MMP_UPDATE_INTERVAL);
-+
-+	/* A huge s_mmp_update_interval is capped */
-+	KUNIT_ASSERT_EQ(test, mmp_start_kmmpd(ctx, U16_MAX), 0);
-+	write_calls = READ_ONCE(ctx->kmmpd_write_calls);
-+	wait_calls = READ_ONCE(ctx->kmmpd_wait_calls);
-+	ext4_stop_mmpd(&ctx->sbi);
-+	ctx->sbi.s_mmp_bh = NULL;
-+
-+	KUNIT_EXPECT_EQ(test, write_calls, 1U);
-+	KUNIT_EXPECT_EQ(test, wait_calls, 1U);
-+	KUNIT_EXPECT_GT(test, ctx->kmmpd_wait_timeout,
-+			(long)((EXT4_MMP_MAX_UPDATE_INTERVAL - 1) * HZ));
-+	KUNIT_EXPECT_LE(test, ctx->kmmpd_wait_timeout,
-+			(long)(EXT4_MMP_MAX_UPDATE_INTERVAL * HZ));
-+	KUNIT_EXPECT_EQ(test, ctx->kmmpd_check_interval,
-+			EXT4_MMP_MAX_CHECK_INTERVAL);
-+}
-+
- static struct kunit_case mmp_test_cases[] = {
- 	KUNIT_CASE(test_mmp_csum_set_and_verify),
- 	KUNIT_CASE(test_read_and_write_mmp_block),
-@@ -647,6 +815,8 @@ static struct kunit_case mmp_test_cases[] = {
- 	KUNIT_CASE(test_mmp_clean_and_fsck_sequences),
- 	KUNIT_CASE(test_mmp_active_seq_conflict_and_claim),
- 	KUNIT_CASE(test_mmp_interrupted_waits_and_kthread_failure),
-+	KUNIT_CASE(test_mmp_update_interval_bounds),
-+	KUNIT_CASE(test_kmmpd_update_interval_bounds),
+ static struct kunit_case ext4_migrate_test_cases[] = {
+ 	KUNIT_CASE(test_ext_migrate_precondition_checks_and_fast_symlink),
+ 	KUNIT_CASE(test_ext_migrate_direct_and_ind_coalescing_and_holes),
+@@ -1049,6 +1139,7 @@ static struct kunit_case ext4_migrate_test_cases[] = {
+ 	KUNIT_CASE(test_ext_swap_inode_data_detects_concurrent_allocation),
+ 	KUNIT_CASE(test_ind_migrate_empty_and_single_direct_extent),
+ 	KUNIT_CASE(test_ind_migrate_rejections),
++	KUNIT_CASE(test_ext_migrate_caps_long_run_at_init_max_len),
  	{}
  };
  
-diff --git a/fs/ext4/mmp.c b/fs/ext4/mmp.c
-index 025c9f332726..050263ad4015 100644
---- a/fs/ext4/mmp.c
-+++ b/fs/ext4/mmp.c
-@@ -151,6 +151,20 @@ void __dump_mmp_msg(struct super_block *sb, struct mmp_struct *mmp,
- 		       (int)sizeof(mmp->mmp_bdevname), mmp->mmp_bdevname);
- }
- 
-+/*
-+ * Return s_mmp_update_interval, using the default if it is zero and capping
-+ * it to the maximum that e2fsprogs allows, so that a bogus value can neither
-+ * make kmmpd rewrite the MMP block in a busy loop nor stall mount for hours.
-+ */
-+static unsigned int ext4_mmp_update_interval(struct ext4_super_block *es)
-+{
-+	unsigned int interval = le16_to_cpu(es->s_mmp_update_interval);
-+
-+	if (!interval)
-+		return EXT4_MMP_UPDATE_INTERVAL;
-+	return min_t(unsigned int, interval, EXT4_MMP_MAX_UPDATE_INTERVAL);
-+}
-+
- /*
-  * kmmpd will update the MMP sequence every s_mmp_update_interval seconds
-  */
-@@ -163,7 +177,7 @@ static int kmmpd(void *data)
- 	ext4_fsblk_t mmp_block;
- 	u32 seq = 0;
- 	unsigned long failed_writes = 0;
--	int mmp_update_interval = le16_to_cpu(es->s_mmp_update_interval);
-+	unsigned int mmp_update_interval = ext4_mmp_update_interval(es);
- 	unsigned mmp_check_interval;
- 	unsigned long last_update_time;
- 	unsigned long diff;
-@@ -176,8 +190,9 @@ static int kmmpd(void *data)
- 	 * Start with the higher mmp_check_interval and reduce it if
- 	 * the MMP block is being updated on time.
- 	 */
--	mmp_check_interval = max(EXT4_MMP_CHECK_MULT * mmp_update_interval,
--				 EXT4_MMP_MIN_CHECK_INTERVAL);
-+	mmp_check_interval = clamp(EXT4_MMP_CHECK_MULT * mmp_update_interval,
-+				   EXT4_MMP_MIN_CHECK_INTERVAL,
-+				   EXT4_MMP_MAX_CHECK_INTERVAL);
- 	mmp->mmp_check_interval = cpu_to_le16(mmp_check_interval);
- 
- 	memcpy(mmp->mmp_nodename, init_utsname()->nodename,
-@@ -314,7 +329,7 @@ int ext4_multi_mount_protect(struct super_block *sb,
- 	struct buffer_head *bh = NULL;
- 	struct mmp_struct *mmp = NULL;
- 	u32 seq;
--	unsigned int mmp_check_interval = le16_to_cpu(es->s_mmp_update_interval);
-+	unsigned int mmp_check_interval = ext4_mmp_update_interval(es);
- 	unsigned int wait_time = 0;
+diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
+index 8d76042f0cae..e4c1603e1402 100644
+--- a/fs/ext4/migrate.c
++++ b/fs/ext4/migrate.c
+@@ -67,11 +67,13 @@ static int update_extent_range(handle_t *handle, struct inode *inode,
+ {
  	int retval;
- 
-@@ -340,6 +355,8 @@ int ext4_multi_mount_protect(struct super_block *sb,
+ 	/*
+-	 * See if we can add on to the existing range (if it exists)
++	 * See if we can add on to the existing range (if it exists).
++	 * An initialized extent cannot be longer than EXT_INIT_MAX_LEN.
  	 */
- 	if (le16_to_cpu(mmp->mmp_check_interval) > mmp_check_interval)
- 		mmp_check_interval = le16_to_cpu(mmp->mmp_check_interval);
-+	if (mmp_check_interval > EXT4_MMP_MAX_CHECK_INTERVAL)
-+		mmp_check_interval = EXT4_MMP_MAX_CHECK_INTERVAL;
- 
- 	seq = le32_to_cpu(mmp->mmp_seq);
- 	if (seq == EXT4_MMP_SEQ_CLEAN)
-@@ -463,4 +480,10 @@ int ext4_write_mmp_block_test(struct super_block *sb, struct buffer_head *bh)
- 	return write_mmp_block(sb, bh);
- }
- EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_write_mmp_block_test);
-+
-+int ext4_kmmpd_test(void *data)
-+{
-+	return kmmpd(data);
-+}
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_kmmpd_test);
- #endif
+ 	if (lb->first_pblock &&
+ 		(lb->last_pblock+1 == pblock) &&
+-		(lb->last_block+1 == lb->curr_block)) {
++		(lb->last_block+1 == lb->curr_block) &&
++		(lb->last_block - lb->first_block + 1 < EXT_INIT_MAX_LEN)) {
+ 		lb->last_pblock = pblock;
+ 		lb->last_block = lb->curr_block;
+ 		lb->curr_block++;
 -- 
 2.56.0.542.g3ef89b7020-goog
 
