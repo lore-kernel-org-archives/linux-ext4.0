@@ -1,60 +1,60 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=18.9.28.11
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794458843;
-	b=qkdCml3paE+GbyRs8JMqnAC5e2xo8tRpYKMt1S1JopI63Fc8tn04TaC3hbP2+KyPLvxS
-	 aRE/pew4HeWAr13hqIJBrDVxYhAEMJu0altYHjr7Ms0EAINQIxb63ru+58t6f7wCIKmKC
-	 vNgrhrOCt6M7pZ6MWWslytkcB4l3eRuekWyM5MVyOVxFuTTPxqHJ0l01dtPHCsSfn4HJJ
-	 dh4ftLPbPTt0faou2tM55rT+rmbYLTe56ZYK5goDOc835W9RDcifamrnAmmCPykOApeG6
-	 72toFqbkU+7ID7kZ+4a95LJnmqW8gjGTLFBUl2ZqmguTifWu/4XgT1w4wBpBkbcvfNw==
+	t=1794458844;
+	b=OXEDHjPBQvj6bEMGKW0WH9sjohlVe2Mx8tjaZ22D1NVMp0MoObYpU0pf43lSIa6Gifji
+	 MCuRC9GLI/YvfWlyfHfl5jJbXfOZQBDR9PAlPQOGGKB8oGOCDGd3Wb3CmagGYudsNXXir
+	 DRE0Yd7aUUUnmzir4jmCQTy/xA5O9g0o7bubmuZMC7njSuYGv5wGZdaACyUhvFP1hmNsg
+	 zeCdios3nIiSQAOuLt6w5RwyRj76l+Qbqu7MII/RVjR0qPcO9iSdcYhglat4rIsb7xxn7
+	 4I0Uyu9qLScM5cAro/8SGMe5KsuKloq5aNSAnemTBXbKDn5YnI1taHAcamv21C7EI6g==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794458843;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794458844;
 	h=DMARC-Filter:Received:DKIM-Signature:Received:From:To:Cc:Subject:
 	 Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
 	 Content-Transfer-Encoding;
-	bh=KGtLuqGO4EmlbYQIALfu7opBNYnoiDN+6GNWbjP39Eg=;
-	b=k74zghVvQzRgHdHdqoT4BJrODgx+63FAzX9SDebRk+FCU14YkkhRl4vsnrsyv2gmJe2D
-	 lJaPvVpROJcQkS/svezDFUtnbd6LQmIpplWpoASoEhePwzCDOB6TwkHoOa8qrcarougcK
-	 qjUfrVzCtXFz0980uMfiXZPXZP8qO1sG/skinaEweJT0buUOWpHiztRbwzotO41tcw7Wh
-	 N7MEaLgYyKydhfZQXK4YIS9ohKjOAHeMmHLfyTwJGskadT4tH1ZTPRdurFsbaGagt3BAj
-	 I0/RGP/0yd+zcpA0Nrgywp6MUm8ZkMtF5P81+ZOhdzsZqaL9OC8Ob3XcnYrYT2bhXvg==
+	bh=WCdOdIPVIDRbB7zs5S0BxDq95dJdRjePOmootpL7sQE=;
+	b=WVhUfXRhlXyxjLK8eqZg5i29cu3lkpCgDw89gkMcr1WEsS8TTv5a6zexcCuRE2Y9aTEA
+	 6OtECgyqNZM4eE+T3NCktNOlrN+frFOkbPVtZaAxHQwpd7dWU0dKj9RLGl6i1ZAdCuTQi
+	 xJsmPoIDYVrVxowqBPwpjxBehkZvcTCOJKhYMp6sMB5ut1EIvd5h2Agg2114oEEq34utt
+	 MgDDoh7ob4hS79DdASbeAGAOOulZuLX4TzH6O+FVt0en4JvyCu63x9B2nQvqEUkTHTQ+U
+	 TRYnOGdCkRLJS5HqrPFZrMXY+m46iN+Ps5OvlWaoXNe2j4fdHunHygB5rsIzpAYN04g==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=mit.edu;
 	spf=pass smtp.mailfrom=mit.edu;
-	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=Oc2qVmJm;
+	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=TfTjNL4Y;
 	arc=none smtp.remote-ip=18.9.28.11
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D7766606A33C
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B3E93606A88F
 	for <linux-ext4@vger.kernel.org>; Thu, 12 Nov 2026 04:47:22 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org D7766606A33C
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org B3E93606A88F
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=Oc2qVmJm
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=TfTjNL4Y
 Received: from trampoline.thunk.org (pool-173-48-111-191.bstnma.fios.verizon.net [173.48.111.191])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AC4lJ9A031129
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AC4lJFW031128
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
 	Wed, 11 Nov 2026 23:47:20 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1794458840; bh=KGtLuqGO4EmlbYQIALfu7opBNYnoiDN+6GNWbjP39Eg=;
+	t=1794458840; bh=WCdOdIPVIDRbB7zs5S0BxDq95dJdRjePOmootpL7sQE=;
 	h=From:Subject:Date:Message-ID:MIME-Version;
-	b=Oc2qVmJmedPO1CdODfsfqz7N2Ngpgv3YSqtGv+WvRnNZmgt6UQ3gOWiLnim1DJ19i
-	 SES34KyvgVIzyC/GJ3iyR2lDN2m/KMNRhEQPlGKBvMnhCVXNemNZWM2FwJcmOXyz3Y
-	 WGh9ULjPOyPOsfw35ckUXy8Rsx8s32OQFU+ECHyius4fQ2rwtmD5KBVMV6vDCXEL/D
-	 5PKV9vOqd3Xs7J8iTds84Ijzd6UtoeB1CJijhtQoty1kdqYrbQo5bmvpCqboz/nQW8
-	 69UAiwT/L3X4MAaT9WVOz+QLWHibN/I7uNdwZqo4MIy+G5cBK6L1L6fdEbQzrQgXOU
-	 8xXNr1Mb3/v2A==
+	b=TfTjNL4YBMPyk6zxULHsM/urCMS2z1pTxM/850hqrWR4WEiXGUzxalNcmM5pM/q6V
+	 sbMEr+YeIMZTIDFW8x1etibny+1u6bpl/B4br+TLB4aZNG/Kvvv48uLmpWOqVeg41k
+	 eVR5RCAOQP1ALrWPkvLSMBlLCPYbHv7UzmmxVChuSGhp6W1NFeQHlM7g0RQELXz9+w
+	 i7wVSjGUvQkc7SoRXBGIWM1gFDkOzz6Eh9Y0/sdU27RhwGuVao1xjQHsjkwEDMfA7/
+	 bMJgi0oLnk2nyP6cYbJWXSc2RxGxh7ijycUim2emWYjsLDIKLw0qqu54zTGGtYWhuu
+	 tUTMaJJ5rPhBA==
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id 2A50B2E013F; Wed, 11 Nov 2026 23:47:19 -0500 (EST)
+	id 2744B2E013B; Wed, 11 Nov 2026 23:47:19 -0500 (EST)
 From: "Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Cc: "Theodore Ts'o" <tytso@mit.edu>
-Subject: [PATCH 03/23] ext4: don't allow enabling casefold via EXT4_IOC_SET_TUNE_SB_PARAM
-Date: Wed, 11 Nov 2026 23:46:52 -0500
-Message-ID: <20261112044712.1577296-4-tytso@mit.edu>
+Subject: [PATCH 02/23] ext4: return -EFSBADCRC when skipping a corrupt backup superblock
+Date: Wed, 11 Nov 2026 23:46:51 -0500
+Message-ID: <20261112044712.1577296-3-tytso@mit.edu>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <20261112044712.1577296-1-tytso@mit.edu>
 References: <20261112044712.1577296-1-tytso@mit.edu>
@@ -69,218 +69,123 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-EXT4_IOC_SET_TUNE_SB_PARAM allows setting the casefold feature (along
-with s_encoding and s_encoding_flags) on a mounted file system, but it
-only updates the on-disk superblock.  The in-memory state needed by
-casefolding is set up exclusively at mount time:
+Commit 9a8c5b0d0615 ("ext4: update the backup superblock's at the end
+of the online resize") stopped setting err = -EFSBADCRC when
+ext4_update_backup_sb() finds a backup superblock with an invalid
+checksum, so that ext4_std_error() would not mark the file system as
+corrupted.  However, it left err at 0, so the function now returns 1,
+claiming that the backup superblock was successfully updated.
 
- - sb->s_encoding is loaded by ext4_encoding_init(), so it stays NULL;
- - the casefolding dentry operations are installed before the root
-   dentry is created, and can't be retrofitted onto a live dcache;
- - nothing checks for CONFIG_UNICODE, so a kernel without it can set
-   a feature that then prevents the file system from being mounted.
+This makes the "Ignore bad checksum; try to update next sb" check in
+ext4_update_superblocks_fn() dead code, and the skipped backup is
+counted towards the two backup superblocks which are supposed to be
+updated through the journal.  If one of the first backups is corrupt,
+fewer than two backup superblocks get journalled updates.
 
-Since ext4_has_feature_casefold() becomes true as soon as the primary
-superblock is updated, userspace can then set EXT4_CASEFOLD_FL on an
-empty directory, and the next lookup or create in it passes the NULL
-sb->s_encoding to utf8_casefold(), crashing the kernel.
+Release the buffer and return -EFSBADCRC directly, bypassing
+ext4_std_error(), so the caller skips the corrupt backup without
+counting it and without aborting the update.
 
-Casefolding has to be enabled while the file system is unmounted, so
-stop advertising and accepting the casefold feature and the
-EXT4_TUNE_FL_ENCODING{,_FLAGS} operations, and remove the code that
-handled them.
-
-Fixes: 04a91570ac67 ("ext4: implemet new ioctls to set and get superblock parameters")
+Fixes: 9a8c5b0d0615 ("ext4: update the backup superblock's at the end of the online resize")
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/ioctl-test.c | 35 ++++++++++++++++++++-------------
- fs/ext4/ioctl.c      | 47 +++++++-------------------------------------
- 2 files changed, 28 insertions(+), 54 deletions(-)
+ fs/ext4/ioctl-test.c | 47 ++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/ioctl.c      | 10 ++++++++--
+ 2 files changed, 55 insertions(+), 2 deletions(-)
 
 diff --git a/fs/ext4/ioctl-test.c b/fs/ext4/ioctl-test.c
-index c3eee774bcfa..fab2b9f8ff35 100644
+index ebe4a87f17e1..c3eee774bcfa 100644
 --- a/fs/ext4/ioctl-test.c
 +++ b/fs/ext4/ioctl-test.c
-@@ -522,8 +522,6 @@ static void test_sb_callbacks_and_setparams(struct kunit *test)
- 			   EXT4_TUNE_FL_DEF_HASH_ALG |
- 			   EXT4_TUNE_FL_RAID_STRIDE |
- 			   EXT4_TUNE_FL_RAID_STRIPE_WIDTH |
--			   EXT4_TUNE_FL_ENCODING |
--			   EXT4_TUNE_FL_ENCODING_FLAGS |
- 			   EXT4_TUNE_FL_MOUNT_OPTS |
- 			   EXT4_TUNE_FL_EDIT_FEATURES |
- 			   EXT4_TUNE_FL_FORCE_FSCK;
-@@ -539,8 +537,6 @@ static void test_sb_callbacks_and_setparams(struct kunit *test)
- 	params.def_hash_alg = DX_HASH_HALF_MD4;
- 	params.raid_stride = 16;
- 	params.raid_stripe_width = 128;
--	params.encoding = EXT4_ENC_UTF8_12_1;
--	params.encoding_flags = SB_ENC_STRICT_MODE_FL;
- 	strscpy(params.mount_opts, "nodelalloc,noatime",
- 		sizeof(params.mount_opts));
- 	params.set_feature_compat_mask = EXT4_FEATURE_COMPAT_DIR_INDEX;
-@@ -563,9 +559,6 @@ static void test_sb_callbacks_and_setparams(struct kunit *test)
- 	KUNIT_EXPECT_EQ(test, es->s_def_hash_version, DX_HASH_TEA);
- 	KUNIT_EXPECT_EQ(test, le16_to_cpu(es->s_raid_stride), 16);
- 	KUNIT_EXPECT_EQ(test, le32_to_cpu(es->s_raid_stripe_width), 128U);
--	KUNIT_EXPECT_EQ(test, le16_to_cpu(es->s_encoding), EXT4_ENC_UTF8_12_1);
--	KUNIT_EXPECT_EQ(test, le16_to_cpu(es->s_encoding_flags),
--			SB_ENC_STRICT_MODE_FL);
- 	KUNIT_EXPECT_STREQ(test, (char *)es->s_mount_opts,
- 			   "nodelalloc,noatime");
- 	KUNIT_EXPECT_NE(test,
-@@ -583,8 +576,9 @@ static void test_sb_callbacks_and_setparams(struct kunit *test)
- 
- /*
-  * Verify ext4_validate_tune_sb_params rejects malformed mount_opts, invalid
-- * flags, out-of-range parameters, unsupported feature edits, and standalone
-- * encoding updates, while normalizing DIR_INDEX and CASEFOLD enablement.
-+ * flags, out-of-range parameters, unsupported feature edits, encoding
-+ * updates and online casefold enablement, while normalizing DIR_INDEX
-+ * enablement.
-  */
- static void test_validate_tune_sb_params(struct kunit *test)
- {
-@@ -675,20 +669,33 @@ static void test_validate_tune_sb_params(struct kunit *test)
- 	KUNIT_EXPECT_FALSE(test, uuid_is_null(&uu));
- 	KUNIT_EXPECT_EQ(test, sbi->s_def_hash_version, DX_HASH_HALF_MD4);
- 
--	/* Encoding without CASEFOLD -> -EINVAL; with CASEFOLD -> UTF8_12_1 */
-+	/* Encoding changes and online casefold enablement -> -EOPNOTSUPP */
- 	memset(&params, 0, sizeof(params));
- 	params.set_flags = EXT4_TUNE_FL_ENCODING;
- 	params.encoding = EXT4_ENC_UTF8_12_1;
- 	KUNIT_EXPECT_EQ(test, ext4_validate_tune_sb_params_test(sb, &params),
--			-EINVAL);
-+			-EOPNOTSUPP);
-+
-+	memset(&params, 0, sizeof(params));
-+	params.set_flags = EXT4_TUNE_FL_ENCODING_FLAGS;
-+	KUNIT_EXPECT_EQ(test, ext4_validate_tune_sb_params_test(sb, &params),
-+			-EOPNOTSUPP);
- 
- 	memset(&params, 0, sizeof(params));
- 	params.set_flags = EXT4_TUNE_FL_EDIT_FEATURES;
- 	params.set_feature_incompat_mask = EXT4_FEATURE_INCOMPAT_CASEFOLD;
- 	KUNIT_EXPECT_EQ(test, ext4_validate_tune_sb_params_test(sb, &params),
--			0);
--	KUNIT_EXPECT_EQ(test, params.encoding, EXT4_ENC_UTF8_12_1);
--	KUNIT_EXPECT_EQ(test, params.encoding_flags, 0);
-+			-EOPNOTSUPP);
-+
-+	memset(&params, 0, sizeof(params));
-+	params.set_flags = EXT4_TUNE_FL_FEATURES;
-+	params.feature_compat = le32_to_cpu(es->s_feature_compat);
-+	params.feature_incompat = le32_to_cpu(es->s_feature_incompat) |
-+				  EXT4_FEATURE_INCOMPAT_CASEFOLD;
-+	params.feature_ro_compat = le32_to_cpu(es->s_feature_ro_compat);
-+	KUNIT_EXPECT_EQ(test, ext4_validate_tune_sb_params_test(sb, &params),
-+			-EOPNOTSUPP);
-+	KUNIT_EXPECT_FALSE(test, ext4_has_feature_casefold(sb));
+@@ -817,6 +817,52 @@ static void test_update_superblocks_and_overhead(struct kunit *test)
+ 	KUNIT_EXPECT_EQ(test, ctx->sync_bh_calls, 5);
  }
- 
- /*
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 37ad549ad693..8537d5766732 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -1269,9 +1269,13 @@ static int ext4_ioctl_setuuid(struct file *filp,
- 	EXT4_TUNE_FL_DEF_HASH_ALG | EXT4_TUNE_FL_RAID_STRIDE | \
- 	EXT4_TUNE_FL_RAID_STRIPE_WIDTH | EXT4_TUNE_FL_MOUNT_OPTS | \
- 	EXT4_TUNE_FL_FEATURES | EXT4_TUNE_FL_EDIT_FEATURES | \
--	EXT4_TUNE_FL_FORCE_FSCK | EXT4_TUNE_FL_ENCODING | \
--	EXT4_TUNE_FL_ENCODING_FLAGS)
-+	EXT4_TUNE_FL_FORCE_FSCK)
  
 +/*
-+ * Casefolding can't be enabled on a mounted file system: sb->s_encoding
-+ * and the casefolding dentry operations are only set up at mount time,
-+ * before any dentries exist.
++ * Verify that a backup superblock with an invalid checksum is reported as
++ * -EFSBADCRC (and left untouched) rather than counted as updated, and that
++ * ext4_update_superblocks_fn still updates the remaining backups.
 + */
- #define EXT4_TUNE_SET_COMPAT_SUPP \
- 		(EXT4_FEATURE_COMPAT_DIR_INDEX |	\
- 		 EXT4_FEATURE_COMPAT_STABLE_INODES)
-@@ -1280,8 +1284,7 @@ static int ext4_ioctl_setuuid(struct file *filp,
- 		 EXT4_FEATURE_INCOMPAT_EA_INODE |	\
- 		 EXT4_FEATURE_INCOMPAT_ENCRYPT |	\
- 		 EXT4_FEATURE_INCOMPAT_CSUM_SEED |	\
--		 EXT4_FEATURE_INCOMPAT_LARGEDIR |	\
--		 EXT4_FEATURE_INCOMPAT_CASEFOLD)
-+		 EXT4_FEATURE_INCOMPAT_LARGEDIR)
- #define EXT4_TUNE_SET_RO_COMPAT_SUPP \
- 		(EXT4_FEATURE_RO_COMPAT_LARGE_FILE |	\
- 		 EXT4_FEATURE_RO_COMPAT_DIR_NLINK |	\
-@@ -1293,9 +1296,6 @@ static int ext4_ioctl_setuuid(struct file *filp,
- #define EXT4_TUNE_CLEAR_INCOMPAT_SUPP (0)
- #define EXT4_TUNE_CLEAR_RO_COMPAT_SUPP (0)
- 
--#define SB_ENC_SUPP_MASK (SB_ENC_STRICT_MODE_FL |	\
--			  SB_ENC_NO_COMPAT_FALLBACK_FL)
--
- static int ext4_ioctl_get_tune_sb(struct ext4_sb_info *sbi,
- 				  struct ext4_tune_sb_params __user *params)
- {
-@@ -1376,10 +1376,6 @@ static void ext4_sb_setparams(struct ext4_sb_info *sbi,
- 	if (params->set_flags & EXT4_TUNE_FL_RAID_STRIPE_WIDTH)
- 		es->s_raid_stripe_width =
- 			cpu_to_le32(params->raid_stripe_width);
--	if (params->set_flags & EXT4_TUNE_FL_ENCODING)
--		es->s_encoding = cpu_to_le16(params->encoding);
--	if (params->set_flags & EXT4_TUNE_FL_ENCODING_FLAGS)
--		es->s_encoding_flags = cpu_to_le16(params->encoding_flags);
- 	if (params->set_flags & EXT4_TUNE_FL_MOUNT_OPTS)
- 		strscpy_pad(es->s_mount_opts, params->mount_opts);
- 	if (params->set_flags & EXT4_TUNE_FL_EDIT_FEATURES) {
-@@ -1411,7 +1407,6 @@ static int ext4_validate_tune_sb_params(struct super_block *sb,
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	struct ext4_super_block *es = sbi->s_es;
--	int enabling_casefold = 0;
- 
- 	if ((params->set_flags & EXT4_TUNE_FL_MOUNT_OPTS) &&
- 	    strnlen(params->mount_opts, sizeof(params->mount_opts)) ==
-@@ -1482,20 +1477,6 @@ static int ext4_validate_tune_sb_params(struct super_block *sb,
- 			~le32_to_cpu(es->s_feature_incompat);
- 		params->set_feature_ro_compat_mask &=
- 			~le32_to_cpu(es->s_feature_ro_compat);
--		if (params->set_feature_incompat_mask &
--		    EXT4_FEATURE_INCOMPAT_CASEFOLD) {
--			enabling_casefold = 1;
--			if (!(params->set_flags & EXT4_TUNE_FL_ENCODING)) {
--				params->encoding = EXT4_ENC_UTF8_12_1;
--				params->set_flags |= EXT4_TUNE_FL_ENCODING;
--			}
--			if (!(params->set_flags &
--			      EXT4_TUNE_FL_ENCODING_FLAGS)) {
--				params->encoding_flags = 0;
--				params->set_flags |=
--					EXT4_TUNE_FL_ENCODING_FLAGS;
--			}
--		}
- 		if (params->set_feature_compat_mask &
- 		    EXT4_FEATURE_COMPAT_DIR_INDEX) {
- 			uuid_t uu;
-@@ -1519,20 +1500,6 @@ static int ext4_validate_tune_sb_params(struct super_block *sb,
- 			}
- 		}
++static void test_update_backup_sb_bad_csum(struct kunit *test)
++{
++	struct ioctl_test_ctx *ctx = test->priv;
++	struct super_block *sb = ctx->sb;
++	static const ext4_group_t good_grps[] = { 1, 5, 7 };
++	char new_label[EXT4_LABEL_MAX] = "csum_label";
++	struct ext4_super_block *bad;
++	int i;
++
++	bad = (struct ext4_super_block *)ctx->backup_sb_bufs[3];
++	bad->s_checksum = cpu_to_le32(~le32_to_cpu(bad->s_checksum));
++
++	ctx->sync_bh_calls = 0;
++	KUNIT_EXPECT_EQ(test,
++			ext4_update_backup_sb_test(sb, NULL, 3,
++						   ext4_sb_setlabel_test,
++						   new_label),
++			-EFSBADCRC);
++	KUNIT_EXPECT_EQ(test, ctx->sync_bh_calls, 0);
++	KUNIT_EXPECT_MEMNEQ(test, bad->s_volume_name, new_label,
++			    EXT4_LABEL_MAX);
++
++	/* Primary + backups 1, 5 and 7 are updated; backup 3 is skipped */
++	KUNIT_EXPECT_EQ(test,
++			ext4_update_superblocks_fn_test(sb,
++							ext4_sb_setlabel_test,
++							new_label),
++			0);
++	KUNIT_EXPECT_EQ(test, ctx->sync_bh_calls, 4);
++	KUNIT_EXPECT_MEMNEQ(test, bad->s_volume_name, new_label,
++			    EXT4_LABEL_MAX);
++	for (i = 0; i < ARRAY_SIZE(good_grps); i++) {
++		struct ext4_super_block *bes;
++
++		bes = (struct ext4_super_block *)
++			ctx->backup_sb_bufs[good_grps[i]];
++		KUNIT_EXPECT_MEMEQ(test, bes->s_volume_name, new_label,
++				   EXT4_LABEL_MAX);
++	}
++}
++
+ /*
+  * Verify swap_inode_data swaps i_data, i_disksize, i_size, i_version,
+  * atime/mtime, and EXT4_FL_SHOULD_SWAP flags while preserving non-swapped
+@@ -1191,6 +1237,7 @@ static struct kunit_case ioctl_test_cases[] = {
+ 	KUNIT_CASE(test_validate_tune_sb_params),
+ 	KUNIT_CASE(test_tune_sb_mount_opts_guard),
+ 	KUNIT_CASE(test_update_superblocks_and_overhead),
++	KUNIT_CASE(test_update_backup_sb_bad_csum),
+ 	KUNIT_CASE(test_swap_inode_data_and_seed),
+ 	KUNIT_CASE(test_immutable_dax_and_fileattr),
+ 	KUNIT_CASE(test_force_shutdown_and_ioctl_dispatch),
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 286f4a3e459a..37ad549ad693 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -110,7 +110,8 @@ int ext4_update_primary_sb(struct super_block *sb, handle_t *handle,
+  *
+  * Returns: 0 when no modification was done (no superblock in the group)
+  *	    1 when the modification was successful
+- *	   <0 on error
++ *	   <0 on error (-EFSBADCRC if the backup superblock has an invalid
++ *	      checksum and was skipped)
+  */
+ static int ext4_update_backup_sb(struct super_block *sb,
+ 				 handle_t *handle, ext4_group_t grp,
+@@ -159,7 +160,12 @@ static int ext4_update_backup_sb(struct super_block *sb,
+ 		ext4_msg(sb, KERN_ERR, "Invalid checksum for backup "
+ 		"superblock %llu", sb_block);
+ 		unlock_buffer(bh);
+-		goto out_bh;
++		/*
++		 * Let the caller skip this backup; don't report it via
++		 * ext4_std_error() since it must not abort the update.
++		 */
++		brelse(bh);
++		return -EFSBADCRC;
  	}
--	if (params->set_flags & EXT4_TUNE_FL_ENCODING) {
--		if (!enabling_casefold)
--			return -EINVAL;
--		if (params->encoding == 0)
--			params->encoding = EXT4_ENC_UTF8_12_1;
--		else if (params->encoding != EXT4_ENC_UTF8_12_1)
--			return -EINVAL;
--	}
--	if (params->set_flags & EXT4_TUNE_FL_ENCODING_FLAGS) {
--		if (!enabling_casefold)
--			return -EINVAL;
--		if (params->encoding_flags & ~SB_ENC_SUPP_MASK)
--			return -EINVAL;
--	}
- 
- 	return 0;
- }
+ 	func(EXT4_SB(sb), es, arg);
+ 	if (ext4_has_feature_metadata_csum(sb))
 -- 
 2.56.0.542.g3ef89b7020-goog
 
