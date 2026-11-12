@@ -1,56 +1,77 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=198.175.65.14
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794485516;
-	b=WQUHg72bcg+SiawYDSITYomRnYcusA3oo8Vbouy1+1yD0aDBZn9wwOD5EmZHq3x8t0Lf
-	 zZLBgrrXiGPlsJxAiYIZGuEn5yqBvE0o5LytRBJgEkxyt9N4T9HkhhKKxsZO6sxt3erpb
-	 zI3UUpwqsJfjLk2QaY20rsV0O0Qps/w0VCrjIa3YZP52XZX5teLjf+kiZyPKW3tHjj7ns
-	 ERZlLc00nR2ORW6txDzxhc3PAzhI39G8SxapBLPydUXOwsYrPD+iIVCJEgJk0KMgIN/Q4
-	 ZFeP0UkcN5bmfP3COrottv1aZVw4wRP2X1snQt1jJDVJfVKP58JLwpzpJdlbwYUJqJA==
+	t=1794485748;
+	b=EjeaCK7QKsNf3FLK5kMMOx+YSGQrPv/+x9yOwDbhMyGXvy1lIUO/sm46nCdRWThOSZX9
+	 HLo/S0XP0Yh7y4CfKN/isoTSYhzNJLGfvovLsEAvwLrsTcZ7+tR5nlJeWmUIMvUzlm6et
+	 hmlfrIui6EGnoy3cYd+hkK33Izbb2gUXMLfegjWXE5Ph76yc/VFMLQP+PP0RMmEuXwDZw
+	 ha3Y+I93/xDrcgJsgwATrHF2seomFIFZzw8vuCs8t1GMFZWvFRouVI69UujTOWHFZryZW
+	 sCPdT3ZKciKpIWhq/d8MxMKtl5BHHo17ijZcOChZ0TdpJsqqHPVG10YhGdH29jhKpFg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794485516;
-	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
-	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=6O7hLi7zy9rCI36HpITBClTKuiJ/OZPk9kCbuhwmtf0=;
-	b=k4zoOP/0xRKz10jvYRWok55r0WqSvHdc+8uzP9x7KEyz3fwvOs4GzeQMU7vIHjxJ5Fes
-	 CWiDfxw57yvCmIJqo5JH1XclmjNihYNRR4Z4VNGzy5E2x9GQnIf69umtXd2KMqqKAlHFA
-	 2E1ZLh/3ueKH9B/d53JO3QuhB3LiOIDIXSg+5yDWw7xRPCGekqyn2Fyzm7gHZmofGy4eZ
-	 m5A1132H6W2E2lfHQIJRFTh3pySVzwkez9t18r7TXo1QbQrGPN2E37a7YANpUQxXIhgUa
-	 qR4eQavciATX44lr5g5KS3X8Ptx3iLFFwJwtb8jiEXn2UKRsETVk+bNp9nRYM6bmHPw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794485748;
+	h=DMARC-Filter:DKIM-Signature:X-CSE-ConnectionGUID:X-CSE-MsgGUID:
+	 X-IronPort-AV:X-IronPort-AV:Received:X-CSE-ConnectionGUID:
+	 X-CSE-MsgGUID:X-ExtLoop1:X-IronPort-AV:Received:Received:Date:From:Cc:
+	 Subject:Message-ID:User-Agent;
+	bh=3qyc/cPiHv27qeuCXhGOl8VURbqRxsTeeCkrEbopk1Q=;
+	b=rAUoDfnUBQSzXQq7biInnVF30zVQTJ/E6XYFyfnY0fOomSc2ziV69relnXiAJNJpxauY
+	 VTSM0rVk5PcaYFjQLeVPJ39E9dkDEyiVLV/T0dwEBqNkPy9DIKxu8v0n/odW4JuO4WO/p
+	 Dv73nzqDIeADBT/FpVv3h3Ata+L0GQ/MWzRJnsuyTOHzr2PrLFW6XpzzKLq8d6S8xLytw
+	 HuByTCuF+DM3ECMnQRxOlrAOh6bffp7CI2mbI8Ti+9pdIbgv9a1M1wdqwV92dk8UTPFGA
+	 Qk/unTAu3B1BzA0xyvxXsBJnC6H6D0ikOF0etLSZvo2UZoiFCBTudazZdlhkoGn4C4w==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=XgFf4M9s;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=pass header.from=intel.com;
+	spf=pass smtp.mailfrom=intel.com;
+	dkim=pass header.d=intel.com header.i=@intel.com header.a=rsa-sha256 header.s=Intel header.b=Au9KcP8Y;
+	arc=none smtp.remote-ip=198.175.65.14
+Received: from mgamail.intel.com (mgamail.intel.com [198.175.65.14])
+	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F2450606A321
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Nov 2026 12:11:55 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C5C31606A321
+	for <linux-ext4@vger.kernel.org>; Thu, 12 Nov 2026 12:15:47 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org C5C31606A321
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=intel.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=XgFf4M9s
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5C1191F00A05;
-	Thu, 12 Nov 2026 12:11:55 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794485515;
-	bh=6O7hLi7zy9rCI36HpITBClTKuiJ/OZPk9kCbuhwmtf0=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=XgFf4M9syUwNjzDCFO4kwLKAGvRXNXQYxLuvW0aYK8zOYVjAk4GiDHgj2K12y9MIt
-	 PXqpoKQRiw23V7fZwLaCnG2n/n7kUiQG0PWpM1WTeWYX6qHmbvDNzZ/15AnLn9c1x0
-	 9FjLDpggXsTEEPFMIIcExSyaTY05ea2egXyDG177jrQ/UHYM3LRHu8ZgsWJYSfD/rg
-	 CYetr7N0fKckpLtdXbP90s5mIi0gz090uWZLejjnowWHU5Dp+spYBJGJ0CqxiBSlQy
-	 HmiqcdOabvGAE/HkWuU3IbFhmX8gnJo/lt80JSqesTvlKvADEY3b8tPMmt/hHjVYuo
-	 vkDp9vbFztSnQ==
-Message-ID: <sashiko-outbox-211072@kernel.org>
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH] ext4: wait for tail page commit before truncating a
- failed write
-Reply-To: sashiko-reviews@lists.linux.dev
-To: diasyzhangqing@gmail.com
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-In-Reply-To: <20261112115906.17915-1-diasyzhangqing@gmail.com>
-References: <20261112115906.17915-1-diasyzhangqing@gmail.com>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Thu, 12 Nov 2026 12:11:54 +0000
+	dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.a=rsa-sha256 header.s=Intel header.b=Au9KcP8Y
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
+  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
+  t=1794485748; x=1826021748;
+  h=date:from:cc:subject:message-id;
+  bh=53cYN7cjKApnoPY/sQkvqc+xQOOxjz8y1UKG4Qfd1zU=;
+  b=Au9KcP8YKK8uOjHnnny5WOrn0QJSQEgnB5n25aMFwYoQGZRSj9al5FCC
+   E+P0vJ4DqZqQAl0U0jOoy3pMsqQa0Bzeim5I5SHsxtwPsFM7lUSaddtcm
+   q9EbQCnkTXkAwM20kdNrsRni3VHuCRPV3nJQhcodNx0uzrhDxUAZFbEc6
+   Hitf+bgKh1E9MkfUCOkquvrMBd63Zu8SzHfFUwXapVLKQM5LLloByBPJ0
+   +HKd9jjZ5xkYfsGwipExq/1qqVzUAkpr+hmoqc9ReHaLsM7plWVF5NstX
+   OJlFoKjTzUFzoC+nnXKk5zLd53xI4MXxaTk83AA9NTTlxlGKyDIr9VNmT
+   g==;
+X-CSE-ConnectionGUID: YrvGl+89Qt6L+ZFOtjlR2Q==
+X-CSE-MsgGUID: xYH6P8MnTtaEVoeZkdSroA==
+X-IronPort-AV: E=McAfee;i="6800,10657,11963"; a="3164836"
+X-IronPort-AV: E=Sophos;i="6.27,209,1787036400"; 
+   d="scan'208";a="3164836"
+Received: from orviesa009.jf.intel.com ([10.64.159.149])
+  by orvoesa106.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 12 Nov 2026 04:15:47 -0800
+X-CSE-ConnectionGUID: TzHNxX1MRTOHIBmaPvNl2A==
+X-CSE-MsgGUID: vwGo8wPZQ2uWFddpRSQD1g==
+X-ExtLoop1: 1
+X-IronPort-AV: E=Sophos;i="6.27,209,1787036400"; 
+   d="scan'208";a="8830144"
+Received: from igk-lkp-server01.igk.intel.com (HELO 1073a420ae3a) ([10.211.93.152])
+  by orviesa009.jf.intel.com with ESMTP; 12 Nov 2026 04:15:45 -0800
+Received: from kbuild by 1073a420ae3a with local (Exim 4.98.2)
+	(envelope-from <lkp@intel.com>)
+	id 1xRTiR-000000000sF-0pGK;
+	Thu, 12 Nov 2026 12:15:43 +0000
+Date: Thu, 12 Nov 2026 13:14:55 +0100
+From: kernel test robot <lkp@intel.com>
+Cc: oe-kbuild-all@lists.linux.dev, linux-ext4@vger.kernel.org,
+ "Theodore Ts'o" <tytso@mit.edu>
+Subject: [tytso-ext4:ext4-kunit-tests-merge 26/26]
+ fs/ext4/namei-test.c:2088:13: warning: stack frame size (2144) exceeds limit
+ (2048) in 'test_namei_rename_and_exchange'
+Message-ID: <202611121317.WUkb3qE7-lkp@intel.com>
+User-Agent: s-nail v14.9.25
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -60,27 +81,196 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-> From: Qing Zhang <diasyzhang@tencent.com>
->=20
-> In data=3Djournal mode, a failed extending write can leave buffers beyond
-> i_size attached to the committing transaction. When blocksize < PAGE_SIZE,
-> invalidating these buffers in the partial tail folio returns -EBUSY,
-> triggering a warning in ext4_journalled_invalidate_folio() and leaving
-> invalidation incomplete.
->=20
-> Call ext4_wait_for_tail_page_commit() before truncating the page cache
-> in ext4_truncate_failed_write(), as is already done when shrinking a file
-> via ext4_setattr(). The helper releases the folio lock before waiting
-> for the commit to finish, then retries invalidation.
->=20
-> Fixes: 53e872681fed ("ext4: fix deadlock in journal_unmap_buffer()")
-> Reported-by: syzbot+f111db4cb2acd44eb2f4@syzkaller.appspotmail.com
-> Closes: https://syzbot.appspot.com/bug?extid=3Df111db4cb2acd44eb2f4
-> Signed-off-by: Qing Zhang <diasyzhang@tencent.com>
+Hi Theodore,
 
-Sashiko has reviewed this patch and found no issues.
+First bad commit (maybe != root cause):
 
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261112115906.1791=
-5-1-diasyzhangqing@gmail.com?part=3D1
+tree:   https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git ext4-kunit-tests-merge
+head:   dcc7bd2c6faf98be5a218685b4b969e95df06143
+commit: dcc7bd2c6faf98be5a218685b4b969e95df06143 [26/26] Merge tag 'v7.4-rc2' into ext4-kunit-tests-merge
+config: loongarch-allyesconfig (https://download.01.org/0day-ci/archive/20261112/202611121317.WUkb3qE7-lkp@intel.com/config)
+compiler: clang version 22.1.8 (https://github.com/llvm/llvm-project ca7933e47d3a3451d81e72ac174dcb5aa28b59d1)
+reproduce (this is a W=1 build): (https://download.01.org/0day-ci/archive/20261112/202611121317.WUkb3qE7-lkp@intel.com/reproduce)
 
+If you fix the issue in a separate patch/commit (i.e. not just a new version of
+the same patch/commit), kindly add following tags
+| Reported-by: kernel test robot <lkp@intel.com>
+| Closes: https://lore.kernel.org/oe-kbuild-all/202611121317.WUkb3qE7-lkp@intel.com/
+
+All warnings (new ones prefixed by >>):
+
+>> fs/ext4/namei-test.c:2088:13: warning: stack frame size (2144) exceeds limit (2048) in 'test_namei_rename_and_exchange' [-Wframe-larger-than]
+    2088 | static void test_namei_rename_and_exchange(struct kunit *test)
+         |             ^
+   1 warning generated.
+--
+   fs/ext4/fast_commit-test.c:1090:13: warning: stack frame size (2880) exceeds limit (2048) in 'test_fc_init_and_eligibility' [-Wframe-larger-than]
+    1090 | static void test_fc_init_and_eligibility(struct kunit *test)
+         |             ^
+>> fs/ext4/fast_commit-test.c:2174:13: warning: stack frame size (2240) exceeds limit (2048) in 'test_fc_replay_inode_and_dentries' [-Wframe-larger-than]
+    2174 | static void test_fc_replay_inode_and_dentries(struct kunit *test)
+         |             ^
+   2 warnings generated.
+
+
+vim +/test_namei_rename_and_exchange +2088 fs/ext4/namei-test.c
+
+171d9555beee6b Theodore Ts'o 2026-11-05  2082  
+171d9555beee6b Theodore Ts'o 2026-11-05  2083  /*
+171d9555beee6b Theodore Ts'o 2026-11-05  2084   * Test 14: Rename, overwrite rename, cross-directory subdirectory rename,
+171d9555beee6b Theodore Ts'o 2026-11-05  2085   * RENAME_EXCHANGE (ext4_cross_rename), and slow symlink block initialization
+171d9555beee6b Theodore Ts'o 2026-11-05  2086   * (ext4_init_symlink_block_test).
+171d9555beee6b Theodore Ts'o 2026-11-05  2087   */
+171d9555beee6b Theodore Ts'o 2026-11-05 @2088  static void test_namei_rename_and_exchange(struct kunit *test)
+171d9555beee6b Theodore Ts'o 2026-11-05  2089  {
+171d9555beee6b Theodore Ts'o 2026-11-05  2090  	struct namei_test_ctx *ctx = test->priv;
+171d9555beee6b Theodore Ts'o 2026-11-05  2091  	struct inode *root_dir = get_mock_inode(ctx, TEST_ROOT_INO);
+171d9555beee6b Theodore Ts'o 2026-11-05  2092  	struct inode *dir1 = get_mock_inode(ctx, TEST_DIR_INO);
+171d9555beee6b Theodore Ts'o 2026-11-05  2093  	struct inode *dir2 = get_mock_inode(ctx, TEST_DIR2_INO);
+171d9555beee6b Theodore Ts'o 2026-11-05  2094  	struct inode *subdir = get_mock_inode(ctx, TEST_SUBDIR_INO);
+171d9555beee6b Theodore Ts'o 2026-11-05  2095  	struct inode *file1 = get_mock_inode(ctx, TEST_FILE1_INO);
+171d9555beee6b Theodore Ts'o 2026-11-05  2096  	struct inode *file2 = get_mock_inode(ctx, TEST_FILE2_INO);
+171d9555beee6b Theodore Ts'o 2026-11-05  2097  	struct inode *symlink_inode = get_mock_inode(ctx, TEST_FILE3_INO);
+171d9555beee6b Theodore Ts'o 2026-11-05  2098  	struct dentry d1_dentry, d2_dentry;
+171d9555beee6b Theodore Ts'o 2026-11-05  2099  	struct dentry old_dentry, new_dentry, sub_dentry;
+171d9555beee6b Theodore Ts'o 2026-11-05  2100  	struct buffer_head *bh;
+171d9555beee6b Theodore Ts'o 2026-11-05  2101  	struct ext4_dir_entry_2 *de = NULL;
+171d9555beee6b Theodore Ts'o 2026-11-05  2102  	const char *sym_target = "/very/long/symlink/target/path/for/ext4/test";
+171d9555beee6b Theodore Ts'o 2026-11-05  2103  	struct fscrypt_str disk_link = {
+171d9555beee6b Theodore Ts'o 2026-11-05  2104  		.name = (unsigned char *)sym_target,
+171d9555beee6b Theodore Ts'o 2026-11-05  2105  		.len = strlen(sym_target) + 1,
+171d9555beee6b Theodore Ts'o 2026-11-05  2106  	};
+171d9555beee6b Theodore Ts'o 2026-11-05  2107  	int err;
+171d9555beee6b Theodore Ts'o 2026-11-05  2108  
+171d9555beee6b Theodore Ts'o 2026-11-05  2109  	ctx->es.s_feature_ro_compat |=
+171d9555beee6b Theodore Ts'o 2026-11-05  2110  		cpu_to_le32(EXT4_FEATURE_RO_COMPAT_METADATA_CSUM);
+171d9555beee6b Theodore Ts'o 2026-11-05  2111  
+171d9555beee6b Theodore Ts'o 2026-11-05  2112  	KUNIT_ASSERT_EQ(test, ext4_init_new_dir(NULL, root_dir, dir1), 0);
+171d9555beee6b Theodore Ts'o 2026-11-05  2113  	KUNIT_ASSERT_EQ(test, ext4_init_new_dir(NULL, root_dir, dir2), 0);
+171d9555beee6b Theodore Ts'o 2026-11-05  2114  	KUNIT_ASSERT_EQ(test, ext4_init_new_dir(NULL, dir1, subdir), 0);
+171d9555beee6b Theodore Ts'o 2026-11-05  2115  	set_nlink(dir1, 3); /* '.', '..', and subdir */
+171d9555beee6b Theodore Ts'o 2026-11-05  2116  	set_nlink(dir2, 2);
+171d9555beee6b Theodore Ts'o 2026-11-05  2117  
+171d9555beee6b Theodore Ts'o 2026-11-05  2118  	init_mock_dentry(&d1_dentry, NULL, "dir1", dir1, &ctx->sb);
+171d9555beee6b Theodore Ts'o 2026-11-05  2119  	init_mock_dentry(&d2_dentry, NULL, "dir2", dir2, &ctx->sb);
+171d9555beee6b Theodore Ts'o 2026-11-05  2120  
+171d9555beee6b Theodore Ts'o 2026-11-05  2121  	/* Invalid rename flags are rejected with -EINVAL */
+171d9555beee6b Theodore Ts'o 2026-11-05  2122  	init_mock_dentry(&old_dentry, &d1_dentry, "f1", file1, &ctx->sb);
+171d9555beee6b Theodore Ts'o 2026-11-05  2123  	init_mock_dentry(&new_dentry, &d1_dentry, "f1_new", NULL, &ctx->sb);
+171d9555beee6b Theodore Ts'o 2026-11-05  2124  	KUNIT_EXPECT_EQ(test,
+171d9555beee6b Theodore Ts'o 2026-11-05  2125  		ext4_dir_inode_operations.rename(&nop_mnt_idmap, dir1,
+171d9555beee6b Theodore Ts'o 2026-11-05  2126  			&old_dentry, dir1, &new_dentry, ~0U), -EINVAL);
+171d9555beee6b Theodore Ts'o 2026-11-05  2127  
+171d9555beee6b Theodore Ts'o 2026-11-05  2128  	/* Add f1 and f2 in dir1, and subdir in dir1 */
+171d9555beee6b Theodore Ts'o 2026-11-05  2129  	KUNIT_ASSERT_EQ(test,
+171d9555beee6b Theodore Ts'o 2026-11-05  2130  			ext4_add_entry_test(NULL, &old_dentry, file1), 0);
+171d9555beee6b Theodore Ts'o 2026-11-05  2131  	init_mock_dentry(&sub_dentry, &d1_dentry, "sub", subdir, &ctx->sb);
+171d9555beee6b Theodore Ts'o 2026-11-05  2132  	KUNIT_ASSERT_EQ(test,
+171d9555beee6b Theodore Ts'o 2026-11-05  2133  			ext4_add_entry_test(NULL, &sub_dentry, subdir), 0);
+171d9555beee6b Theodore Ts'o 2026-11-05  2134  
+171d9555beee6b Theodore Ts'o 2026-11-05  2135  	/* 1) Same-directory rename: f1 -> f1_renamed */
+171d9555beee6b Theodore Ts'o 2026-11-05  2136  	err = ext4_dir_inode_operations.rename(&nop_mnt_idmap, dir1,
+171d9555beee6b Theodore Ts'o 2026-11-05  2137  					       &old_dentry, dir1, &new_dentry,
+171d9555beee6b Theodore Ts'o 2026-11-05  2138  					       0);
+171d9555beee6b Theodore Ts'o 2026-11-05  2139  	KUNIT_ASSERT_EQ(test, err, 0);
+171d9555beee6b Theodore Ts'o 2026-11-05  2140  	KUNIT_EXPECT_NULL(test,
+171d9555beee6b Theodore Ts'o 2026-11-05  2141  		ext4_find_entry_test(dir1, &old_dentry.d_name, &de, NULL));
+171d9555beee6b Theodore Ts'o 2026-11-05  2142  	bh = ext4_find_entry_test(dir1, &new_dentry.d_name, &de, NULL);
+171d9555beee6b Theodore Ts'o 2026-11-05  2143  	KUNIT_ASSERT_FALSE(test, IS_ERR_OR_NULL(bh));
+171d9555beee6b Theodore Ts'o 2026-11-05  2144  	KUNIT_EXPECT_EQ(test, le32_to_cpu(de->inode), TEST_FILE1_INO);
+171d9555beee6b Theodore Ts'o 2026-11-05  2145  	brelse(bh);
+171d9555beee6b Theodore Ts'o 2026-11-05  2146  
+171d9555beee6b Theodore Ts'o 2026-11-05  2147  	/* 2) Overwrite rename: f1_renamed overwrites existing f2 in dir1 */
+171d9555beee6b Theodore Ts'o 2026-11-05  2148  	init_mock_dentry(&old_dentry, &d1_dentry, "f1_new", file1, &ctx->sb);
+171d9555beee6b Theodore Ts'o 2026-11-05  2149  	init_mock_dentry(&new_dentry, &d1_dentry, "f2", file2, &ctx->sb);
+171d9555beee6b Theodore Ts'o 2026-11-05  2150  	KUNIT_ASSERT_EQ(test,
+171d9555beee6b Theodore Ts'o 2026-11-05  2151  			ext4_add_entry_test(NULL, &new_dentry, file2), 0);
+171d9555beee6b Theodore Ts'o 2026-11-05  2152  	ctx->orphan_add_calls = 0;
+171d9555beee6b Theodore Ts'o 2026-11-05  2153  	err = ext4_dir_inode_operations.rename(&nop_mnt_idmap, dir1,
+171d9555beee6b Theodore Ts'o 2026-11-05  2154  					       &old_dentry, dir1, &new_dentry,
+171d9555beee6b Theodore Ts'o 2026-11-05  2155  					       0);
+171d9555beee6b Theodore Ts'o 2026-11-05  2156  	KUNIT_ASSERT_EQ(test, err, 0);
+171d9555beee6b Theodore Ts'o 2026-11-05  2157  	KUNIT_EXPECT_EQ(test, file2->i_nlink, 0U);
+171d9555beee6b Theodore Ts'o 2026-11-05  2158  	KUNIT_EXPECT_EQ(test, ctx->orphan_add_calls, 1U);
+171d9555beee6b Theodore Ts'o 2026-11-05  2159  	KUNIT_EXPECT_EQ(test, ctx->last_orphan_add_ino, TEST_FILE2_INO);
+171d9555beee6b Theodore Ts'o 2026-11-05  2160  
+171d9555beee6b Theodore Ts'o 2026-11-05  2161  	/* 3) Cross-directory subdir move: dir1/sub -> dir2/sub_moved */
+171d9555beee6b Theodore Ts'o 2026-11-05  2162  	init_mock_dentry(&new_dentry, &d2_dentry, "sub_moved", NULL, &ctx->sb);
+171d9555beee6b Theodore Ts'o 2026-11-05  2163  	err = ext4_dir_inode_operations.rename(&nop_mnt_idmap, dir1,
+171d9555beee6b Theodore Ts'o 2026-11-05  2164  					       &sub_dentry, dir2, &new_dentry,
+171d9555beee6b Theodore Ts'o 2026-11-05  2165  					       0);
+171d9555beee6b Theodore Ts'o 2026-11-05  2166  	KUNIT_ASSERT_EQ(test, err, 0);
+171d9555beee6b Theodore Ts'o 2026-11-05  2167  	KUNIT_EXPECT_EQ(test, dir1->i_nlink, 2U);
+171d9555beee6b Theodore Ts'o 2026-11-05  2168  	KUNIT_EXPECT_EQ(test, dir2->i_nlink, 3U);
+171d9555beee6b Theodore Ts'o 2026-11-05  2169  
+171d9555beee6b Theodore Ts'o 2026-11-05  2170  	/* Verify subdir's '..' now points to dir2 */
+171d9555beee6b Theodore Ts'o 2026-11-05  2171  	bh = map_and_get_dir_bh(ctx, subdir, 0);
+171d9555beee6b Theodore Ts'o 2026-11-05  2172  	de = ext4_next_entry((struct ext4_dir_entry_2 *)bh->b_data,
+171d9555beee6b Theodore Ts'o 2026-11-05  2173  			     TEST_BLK_SIZE);
+171d9555beee6b Theodore Ts'o 2026-11-05  2174  	KUNIT_EXPECT_EQ(test, le32_to_cpu(de->inode), TEST_DIR2_INO);
+171d9555beee6b Theodore Ts'o 2026-11-05  2175  
+171d9555beee6b Theodore Ts'o 2026-11-05  2176  	/*
+171d9555beee6b Theodore Ts'o 2026-11-05  2177  	 * 4) RENAME_EXCHANGE (ext4_cross_rename): exchange regular file
+171d9555beee6b Theodore Ts'o 2026-11-05  2178  	 *    dir1/f2 with directory dir2/sub_moved across parents!
+171d9555beee6b Theodore Ts'o 2026-11-05  2179  	 */
+171d9555beee6b Theodore Ts'o 2026-11-05  2180  	init_mock_dentry(&old_dentry, &d1_dentry, "f2", file1, &ctx->sb);
+171d9555beee6b Theodore Ts'o 2026-11-05  2181  	init_mock_dentry(&new_dentry, &d2_dentry, "sub_moved", subdir,
+171d9555beee6b Theodore Ts'o 2026-11-05  2182  			 &ctx->sb);
+171d9555beee6b Theodore Ts'o 2026-11-05  2183  
+171d9555beee6b Theodore Ts'o 2026-11-05  2184  	/* Cross-project RENAME_EXCHANGE and normal rename return -EXDEV */
+171d9555beee6b Theodore Ts'o 2026-11-05  2185  	ext4_set_inode_flag(dir2, EXT4_INODE_PROJINHERIT);
+171d9555beee6b Theodore Ts'o 2026-11-05  2186  	EXT4_I(dir2)->i_projid = make_kprojid(&init_user_ns, 77);
+171d9555beee6b Theodore Ts'o 2026-11-05  2187  	KUNIT_EXPECT_EQ(test,
+171d9555beee6b Theodore Ts'o 2026-11-05  2188  		ext4_dir_inode_operations.rename(&nop_mnt_idmap, dir1,
+171d9555beee6b Theodore Ts'o 2026-11-05  2189  			&old_dentry, dir2, &new_dentry, RENAME_EXCHANGE),
+171d9555beee6b Theodore Ts'o 2026-11-05  2190  		-EXDEV);
+171d9555beee6b Theodore Ts'o 2026-11-05  2191  	KUNIT_EXPECT_EQ(test,
+171d9555beee6b Theodore Ts'o 2026-11-05  2192  		ext4_dir_inode_operations.rename(&nop_mnt_idmap, dir1,
+171d9555beee6b Theodore Ts'o 2026-11-05  2193  			&old_dentry, dir2, &new_dentry, 0),
+171d9555beee6b Theodore Ts'o 2026-11-05  2194  		-EXDEV);
+171d9555beee6b Theodore Ts'o 2026-11-05  2195  	ext4_clear_inode_flag(dir2, EXT4_INODE_PROJINHERIT);
+171d9555beee6b Theodore Ts'o 2026-11-05  2196  	EXT4_I(dir2)->i_projid = make_kprojid(&init_user_ns, EXT4_DEF_PROJID);
+171d9555beee6b Theodore Ts'o 2026-11-05  2197  
+171d9555beee6b Theodore Ts'o 2026-11-05  2198  	err = ext4_dir_inode_operations.rename(&nop_mnt_idmap, dir1,
+171d9555beee6b Theodore Ts'o 2026-11-05  2199  					       &old_dentry, dir2, &new_dentry,
+171d9555beee6b Theodore Ts'o 2026-11-05  2200  					       RENAME_EXCHANGE);
+171d9555beee6b Theodore Ts'o 2026-11-05  2201  	KUNIT_ASSERT_EQ(test, err, 0);
+171d9555beee6b Theodore Ts'o 2026-11-05  2202  	KUNIT_EXPECT_EQ(test, dir1->i_nlink, 3U);
+171d9555beee6b Theodore Ts'o 2026-11-05  2203  	KUNIT_EXPECT_EQ(test, dir2->i_nlink, 2U);
+171d9555beee6b Theodore Ts'o 2026-11-05  2204  	de = ext4_next_entry((struct ext4_dir_entry_2 *)bh->b_data,
+171d9555beee6b Theodore Ts'o 2026-11-05  2205  			     TEST_BLK_SIZE);
+171d9555beee6b Theodore Ts'o 2026-11-05  2206  	KUNIT_EXPECT_EQ(test, le32_to_cpu(de->inode), TEST_DIR_INO);
+171d9555beee6b Theodore Ts'o 2026-11-05  2207  
+171d9555beee6b Theodore Ts'o 2026-11-05  2208  	/*
+171d9555beee6b Theodore Ts'o 2026-11-05  2209  	 * Overwriting a target inode whose i_nlink == 0 returns -EFSCORRUPTED
+171d9555beee6b Theodore Ts'o 2026-11-05  2210  	 * (in dir2, "sub_moved" now points to file1 after the exchange).
+171d9555beee6b Theodore Ts'o 2026-11-05  2211  	 */
+171d9555beee6b Theodore Ts'o 2026-11-05  2212  	init_mock_dentry(&old_dentry, &d1_dentry, "f2", subdir, &ctx->sb);
+171d9555beee6b Theodore Ts'o 2026-11-05  2213  	init_mock_dentry(&new_dentry, &d2_dentry, "sub_moved", file1, &ctx->sb);
+171d9555beee6b Theodore Ts'o 2026-11-05  2214  	set_nlink(file1, 0);
+171d9555beee6b Theodore Ts'o 2026-11-05  2215  	KUNIT_EXPECT_EQ(test,
+171d9555beee6b Theodore Ts'o 2026-11-05  2216  		ext4_dir_inode_operations.rename(&nop_mnt_idmap, dir2,
+171d9555beee6b Theodore Ts'o 2026-11-05  2217  			&new_dentry, dir2, &new_dentry, 0),
+171d9555beee6b Theodore Ts'o 2026-11-05  2218  		-EFSCORRUPTED);
+171d9555beee6b Theodore Ts'o 2026-11-05  2219  	set_nlink(file1, 1);
+171d9555beee6b Theodore Ts'o 2026-11-05  2220  
+171d9555beee6b Theodore Ts'o 2026-11-05  2221  	/* 5) Test ext4_init_symlink_block_test */
+171d9555beee6b Theodore Ts'o 2026-11-05  2222  	err = ext4_init_symlink_block_test(NULL, symlink_inode, &disk_link);
+171d9555beee6b Theodore Ts'o 2026-11-05  2223  	KUNIT_ASSERT_EQ(test, err, 0);
+171d9555beee6b Theodore Ts'o 2026-11-05  2224  	KUNIT_EXPECT_EQ(test, symlink_inode->i_size,
+171d9555beee6b Theodore Ts'o 2026-11-05  2225  			(loff_t)strlen(sym_target));
+171d9555beee6b Theodore Ts'o 2026-11-05  2226  	bh = map_and_get_dir_bh(ctx, symlink_inode, 0);
+171d9555beee6b Theodore Ts'o 2026-11-05  2227  	KUNIT_ASSERT_NOT_NULL(test, bh);
+171d9555beee6b Theodore Ts'o 2026-11-05  2228  	KUNIT_EXPECT_STREQ(test, bh->b_data, sym_target);
+171d9555beee6b Theodore Ts'o 2026-11-05  2229  }
+171d9555beee6b Theodore Ts'o 2026-11-05  2230  
+
+:::::: The code at line 2088 was first introduced by commit
+:::::: 171d9555beee6b445eb465dcbe657dd99ddf24b8 ext4: add KUnit tests for fs/ext4/namei.c
+
+:::::: TO: Theodore Ts'o <tytso@mit.edu>
+:::::: CC: Theodore Ts'o <tytso@mit.edu>
+
+--
+0-DAY CI Kernel Test Service
+https://github.com/intel/lkp-tests/wiki
