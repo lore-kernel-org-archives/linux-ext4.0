@@ -1,55 +1,56 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794456972;
-	b=W1oycmTBrTZEhyMxmD10GVQGlKwNYJ2LwiTrZ6Ffcp6S61cX+bKiv8BVLEeQf7D5e4Hw
-	 XVMmyc/rSgRLg+tRXzeoE56C8tvmdX5I7c4JUO18smg/OGPBxCfzroyVolNUG2xIIFSOR
-	 bll9rMhtZp78PPFaEsiUjh5wVWnhGF+a3aneqCLwkfl7MnWicJvOA7Ig2nmzASl93+DZV
-	 A7fs1FvTTssU6VYvNUwc5zokHaNJKXG01m9FE7rJHSHlWQB1OtnHwXHlbvCQF4Kd23gkX
-	 jdv3tZD9vbqtfU4Z0pAUkf2+pTQI88X45rx+Zva2A2Vfyppgi258WkBtwko1M8WUADA==
+	t=1794457005;
+	b=FqdFFozPdpNsswUARzzthlSGWXNnaU+tmTSV896y2XFQwDZKlCU27Y+VvlN58ZuCS7VK
+	 qzTkJ1JNMbSjOJXjL5w3tC6tSHaHMlYOJ5/Y0rpqdi3KtgHbQKwbCpW/OZnawfUVoLIsf
+	 diKWSzgZD41ZtCdcSyh34D6eGGX5uPnrA0r27+mjMMUzZeHzp2OS+K6gZqlKXUEe8ykma
+	 JXZdsBMRx23NCvuF3PM+DgmzaOqXKYlWZKhniM4F9NhO6DnsaEJULsYzDSRw2mzGs3beM
+	 MllpKT3TMhpRc3IlO8CB1fJG36MMN+7zR8VYOsw5apFAI9eXqCrp/fKE15shGKKDtKg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794456972;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794457005;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=+3+rvaN7a4NHNs+ZbvtmfkaefErhVWa0YAR6D2WAiXY=;
-	b=DwI6HxbA7tS5nv7AYOA9Mm5WWi+uQRGYR6VSqaK98RNIBvKkknJdhpY/I+JB8X7nk8Tq
-	 uHRhxVZ+gGfq8Y+y5elTb2zvT4gGrEIiqckczBi1jawP6dKggiZrhzCfsZCKhZIIsIpK5
-	 fUkqO+6XJD/0DyXpl/FbdTVgomE6Gr83mE6WxXvBOoCeFsxy4Hf9mHM+mmC7df3RbekQ4
-	 hGiEeAF+qmVkG+G0jPK71JoWqWl8Y/a+5PxKi4n4hCe5gkrupmdPfWrjfLgSZW+8zUU3p
-	 oqqKGHypu7rweGKOPlD7zX2QE5KuuwHuoIyN4JY+WG/Ryt5Wco7mMTI3nMOoxeeoQbA==
+	bh=NPinxNrgqhhOwTcTygVDbonKQ//XTcODyloMqhzSlqY=;
+	b=nErPIT4OsOGMFxR1KgExgSwSsajnVK5lyND6DfYfqvoch2dRkjYF0lMtAPXzDA/qukfR
+	 D+W+S03rEDWAuTTVLKLaLdhnt1Nh785RkTBa9XtecMwbXn/vKabuEPAW4BWnT4SVRQfI3
+	 qGjE5oc3TtCxLFL+mgi8bhgVOguO9A7ErpgpV+axczOkv7L0QFaLAg6kCPJ9J+ZKXmSAb
+	 H2vQ4LiM4wTEghTf+sknQK94mNua+hA/PSU6LwtOQnzWIla5Om0YPMouZzTQpkqEGxqIP
+	 QYmLbrQ5jXRnwIYrfwOm/EMYS+GNNN9UAgzpDr6W63CZJKje6aSMWg7vWPVPdOr93vA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=RHF6AwI4;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=EAeNovCp;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 50657606A321
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Nov 2026 04:16:12 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AA6D9606A327
+	for <linux-ext4@vger.kernel.org>; Thu, 12 Nov 2026 04:16:45 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=RHF6AwI4
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0B31E1F00A05;
-	Thu, 12 Nov 2026 04:16:12 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=EAeNovCp
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id BE77D1F00A05;
+	Thu, 12 Nov 2026 04:16:43 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794456972;
-	bh=+3+rvaN7a4NHNs+ZbvtmfkaefErhVWa0YAR6D2WAiXY=;
+	s=k20260515; t=1794457005;
+	bh=NPinxNrgqhhOwTcTygVDbonKQ//XTcODyloMqhzSlqY=;
 	h=From:Subject:Reply-To:To:In-Reply-To:References:Date;
-	b=RHF6AwI4TEBkBOM2mAACP1seZ8CD6KdZ1E3BFAooeBgOgocqJf5iitVd7Dr/PzLH2
-	 QJb2cCz0E5Xo9QuCFAAOPQq14Gllhjx4bOXehh7KiiSgWSw5Ez5CvoWgh2IhH7o+uU
-	 tL/mQBT4Sp9NhfMo1bL/IvmEmZsfgv7E5cQ2EAi4uXxmlxPC04VVU+nNWEHTEIErMd
-	 XXSHhJiIXIKaizDfEspmkbtjCoRXRqulSZbE84VtnHrpI1kd/IBe+lCiGyz6Qk8icZ
-	 oVK7CZOpHO47Hxoj7rUFkCuKX3JkxUzf1TlBSQvIiIl4QILYLF026HgPCW7F6F7P7n
-	 3ZwqMypndZNCw==
-Message-ID: <sashiko-outbox-210316@kernel.org>
+	b=EAeNovCpA7fvzqGNLZPH7WSMsTS3f27Zo8DzA0/Ewp+8gw55z1/CiF7ldCq4hEm0j
+	 gWzAtpDRMRaq9x8dqxSqxz7uDN8rMnrM9ZI5QGypJZ+PA6EOffT50PcSfQ/nXz6RCW
+	 llzQyyYbPl0qiNoYfIMfaRvbxkCojiL/hdQSFGbW8jI4rvVTYVSzzVo42LYZUWJtfR
+	 mVE/joAVeiyQ7hCB7jAeSB0990E3jrcxRmH4FOd+hk+u9SUNKFKnZAI+IrNi8Ek2hZ
+	 XOEKJm/SjLQuTSDOLAeVPFUlz7T8MIp6m9H8Nn17E7QfWnn8zF6YNPnO5GFAE41OvK
+	 oJqZN2Nf2QqaQ==
+Message-ID: <sashiko-outbox-210317@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH 12/27] ext4: add KUnit tests for fs/ext4/balloc.c
+Subject: Re: [PATCH 08/27] ext4: zero s_fc_replay_state in
+ ext4_fc_replay_cleanup()
 Reply-To: sashiko-reviews@lists.linux.dev
 To: =?utf-8?b?VGhlb2RvcmUgVHMnbw==?= <tytso@mit.edu>, "Ext4 Developers List" <linux-ext4@vger.kernel.org>
-In-Reply-To: <20261112040638.1576836-13-tytso@mit.edu>
+In-Reply-To: <20261112040638.1576836-9-tytso@mit.edu>
 References: <20261112040638.1576836-1-tytso@mit.edu>
- <20261112040638.1576836-13-tytso@mit.edu>
+ <20261112040638.1576836-9-tytso@mit.edu>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Thu, 12 Nov 2026 04:16:11 +0000
+Date: Thu, 12 Nov 2026 04:16:43 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -59,31 +60,80 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-> Add the ext4_balloc_test KUnit test suite in fs/ext4/balloc-test.c (29
-> test cases, 43 subtests total) to comprehensively exercise block bitmap
-> management, group descriptor and overhead calculations, cluster pool
-> reservation, allocation retry policy, metadata block allocation, and
-> goal block selection in fs/ext4/balloc.c using an in-memory VFS
-> superblock, mock block device, and deterministic block pool without
-> requiring a mounted block device:
->=20
-> - Block-to-group and cluster-offset mapping (ext4_get_group_number and
->   ext4_get_group_no_and_offset) across 1K and 4K block sizes, standard
->   shift-based vs. non-standard do_div group geometries, bigalloc
->   multi-block clusters, s_first_data_block offsets, >32-bit physical
->   block numbers, and optional NULL output pointers.
-> - Backup superblock placement (ext4_bg_has_super) across dense
->   filesystems, sparse_super powers of 3, 5, and 7, and sparse_super2
-> [ ... ]
-> through ext4_sb_getblk() so KUnit tests can intercept buffer-cache
-> lookups via its existing static stub hook, and export the remaining
-> non-static balloc.c entry points with EXPORT_SYMBOL_FOR_EXT4_TEST.
->=20
-> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Thank you for your contribution! Sashiko AI review found no new issues
+in this patch, but noticed 1 related pre-existing issue it does not
+introduce:
+- [High] ext4: missing s_ea_inode_work flush before
+  ext4_fc_replay_cleanup() [1]
+--
 
-Sashiko has reviewed this patch and found no issues.
+commit a4ccfbc7c2db4e8403230f07464457a51d148eaa
+Author: Theodore Ts'o <tytso@mit.edu>
+
+ext4: zero s_fc_replay_state in ext4_fc_replay_cleanup()
+
+This commit zeroes sbi->s_fc_replay_state in ext4_fc_replay_cleanup()
+after freeing fc_regions and fc_modified_inodes so that repeated calls to
+ext4_fc_replay_cleanup() are idempotent.
+
+> diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
+> index 0cac890cf3702..15bd040c2329b 100644
+> --- a/fs/ext4/fast_commit.c
+> +++ b/fs/ext4/fast_commit.c
+> @@ -2398,6 +2398,7 @@ void ext4_fc_replay_cleanup(struct super_block *sb)
+>  	sbi->s_mount_state &=3D ~EXT4_FC_REPLAY;
+>  	kfree(sbi->s_fc_replay_state.fc_regions);
+>  	kfree(sbi->s_fc_replay_state.fc_modified_inodes);
+> +	memset(&sbi->s_fc_replay_state, 0, sizeof(sbi->s_fc_replay_state));
+>  }
+
+[Severity: High]
+This problem wasn't introduced by this patch, but can
+ext4_fc_replay_cleanup() clear EXT4_FC_REPLAY before sbi->s_ea_inode_work
+is flushed [1]?
+
+When fast-commit replay unlinks an inode that owns an extended attribute
+inode, ext4_xattr_inode_dec_ref_all() -> ext4_put_ea_inode() queues the EA
+inode onto sbi->s_ea_inode_to_free and schedules sbi->s_ea_inode_work.
+Unlike the failed_mount3a error path, the normal mount path in
+__ext4_fill_super() calls ext4_fc_replay_cleanup() without flushing
+sbi->s_ea_inode_work first, clearing EXT4_FC_REPLAY before ext4_mb_init()
+initializes sbi->s_group_info:
+
+fs/ext4/super.c:__ext4_fill_super() {
+	...
+	ext4_fc_replay_cleanup(sb);
+
+	ext4_ext_init(sb);
+
+	/* Register extent status tree shrinker */
+	err =3D ext4_es_register_shrinker(sbi);
+	if (err)
+		goto failed_mount3;
+
+	err =3D ext4_Inode_table_init(sb);
+	...
+	err =3D ext4_mb_init(sb);
+	...
+failed_mount3a:
+	/* Drain deferred EA inode iputs from journal replay */
+	flush_delayed_work(&sbi->s_ea_inode_work);
+	ext4_fc_replay_cleanup(sb);
+	...
+}
+
+If ext4_ea_inode_work() runs before ext4_mb_init() populates
+sbi->s_group_info (or when mount failure jumps to failed_mount_wq after
+ext4_mb_release()), ext4_evict_inode() -> ext4_free_inode() runs with
+EXT4_FC_REPLAY cleared and ext4_get_group_info() returning NULL, which
+triggers ext4_std_error(sb, -EFSCORRUPTED).
+
+Should ext4_fc_replay_cleanup() (or __ext4_fill_super() right before it)
+call flush_delayed_work(&sbi->s_ea_inode_work) before clearing
+EXT4_FC_REPLAY?
+
+[1] https://sashiko.dev/#/bug/linux-f893d2ed-6353-413a-8dd1-c6bc439b880a
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261112040638.1576=
-836-1-tytso@mit.edu?part=3D12
-
+836-1-tytso@mit.edu?part=3D8
