@@ -1,63 +1,60 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=18.9.28.11
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
 	t=1794458843;
-	b=xA7wZs6EZngfpHbpTsFji65LSdRjPisyoBW+M540gWYKemGUilNzeXt8o6xZzWqQHiBq
-	 1Lp+cXHv6dNlGPB0ByKhFq4OBtTSf5tl3srqq8Bm13jsEXRTLj+YMRnBBRk/Bu2RJpjEU
-	 8j6ddd9vLIIspQYO2Q8Bij1fOkok3qNuwG/SVyIpDUtIb7Ncg1GqsFZoDVN0WIvuI+Iv9
-	 ym1MtkqSwksduAiC72R/XVHE6CJbjC5O81Ks1tJo04k9iKtMHkNivRuhe5ACDzeLGj1Y9
-	 M87Ijkn/25m4rz1dXgnjIHETP/2Tr45TDk+rkotgFTnKXWyiAmxnCmtjF2DpqLap15A==
+	b=lh0zPAF96xw9DC2GCtGhhKqYsp5dqzmp4hZwsLJph6t7A2sLhZq1Lb2Jm8KOd5rDCNDN
+	 /palbrGoA4d3lr9Xx/yYRGNJY3BrY8p2tEEFW4Yh9Vu44npV+Om0UpqH0XdbNUJRvZlJQ
+	 azXDRIAf3A0ZV/ZbW10gxMTLpymvNoMdjNEJtgs0YAZ9zSWF5gqnWcAbDr4yiK6YlpdoE
+	 5F/HjK7YO1u1PKca1tK6EeAhz/h6AyYBCB1O3NJb2pSZ61q+nbYwcYc9VMR9Td9zhgEgt
+	 AtRq0DQogwKJzqrAjRcIiimV1Kuwhg+fNROPEDXFRByMk6V16wvjsSncWCvVWjrsprg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
 	a=rsa-sha256; c=relaxed/relaxed; t=1794458843;
 	h=DMARC-Filter:Received:DKIM-Signature:Received:From:To:Cc:Subject:
-	 Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
-	 Content-Transfer-Encoding;
-	bh=O/4A7m7PLLF6aUbYHoMofYLwN8WFF7EuJN7FFAWbiG0=;
-	b=jRuiuku0wdfWNZQfKFjgvCxEqyGpWXb4G7hqmhWSb5HLGjq1onf9D6hHXhOEi+zkqaVB
-	 dPmVdPgF1A2nwAi4XNC64bZ6Ez0tYttWjq1hEXT7FouqMzww2mQxHUh6uDPoTWsUyykrn
-	 jKxyP4wa63Ek6jx79WAB4SVzfAnZFA76iAeFY4GgahFDyeqD3X3/LM24HxLOpYEe+UW0d
-	 0E/hNf4qnVXQpZmtcTfrfQa9g0+TOMzsm6si8dJe3qYhuRQpy298DXdJb14IOwMzxgn2I
-	 w57vIFcQG5Wv2blvLLWrh0gSycwSZ9wOH7Jr+X1Vg13H7dC4UHQfMO5+oxbdQJnTbig==
+	 Date:Message-ID:X-Mailer:MIME-Version:Content-Transfer-Encoding;
+	bh=wfAtadED3NJM9aYMVROVlR72SwrHmn90J5E5Nv+ArQo=;
+	b=qQC/7hoacQFDA4Y7L1kKpQUn/Neo0ktP2UL1BNCtAKzf6seLQpGWGw0xBJWOoBViGEF5
+	 apc0hDVgKe3EQFCZTTI3jFp1HkB1ow6o5lW13XtPJJdCux7rDh2i+7oi1PHKpDrfmpH8U
+	 tqyqr0PnkgfbRfzq+aats+YUQCJ76p9IDR1H2RDQJd1GF5z3UZCMTEec0R6kYwwl4cBR0
+	 /3+dT8CmW/sYOE9u9osi/W/rPWdSQmQDp3YCbm/vUckuXN1Psso9FIfy5qPR0j3VPjz/h
+	 YYVP/4VjeUg6s83solVTxVDueZmooh4sJDplThDvoQ6Fhlhhac4wZVgBAtX7BXvYZ0w==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=mit.edu;
 	spf=pass smtp.mailfrom=mit.edu;
-	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=lB+hYb20;
+	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=CD649tWU;
 	arc=none smtp.remote-ip=18.9.28.11
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B3E5B606A339
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D9B5E606A890
 	for <linux-ext4@vger.kernel.org>; Thu, 12 Nov 2026 04:47:22 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org B3E5B606A339
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org D9B5E606A890
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=lB+hYb20
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=CD649tWU
 Received: from trampoline.thunk.org (pool-173-48-111-191.bstnma.fios.verizon.net [173.48.111.191])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AC4lJH2031147
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AC4lJFp031130
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
 	Wed, 11 Nov 2026 23:47:20 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1794458840; bh=O/4A7m7PLLF6aUbYHoMofYLwN8WFF7EuJN7FFAWbiG0=;
+	t=1794458840; bh=wfAtadED3NJM9aYMVROVlR72SwrHmn90J5E5Nv+ArQo=;
 	h=From:Subject:Date:Message-ID:MIME-Version;
-	b=lB+hYb2043V3daHPBgq8a98sqQSg0B465YbxsHwnnBUWPoMi68cSe5vifTLtT3Qol
-	 2v+ct8VQuqQn73z/J4dOcf9D2RC6T1B2fq/OGkcq5OnZmXgzZ6vsO7hxvc7wy74hte
-	 rfBJdZLa5Jd6VGpeYSFu3o12J2YWkJtBQHU5zJQMBdwpUiQEJRgw6Ze3/RzNjxA1xB
-	 +7mkho5S0Ve3yHbAx7rQtvJ2FxlIL1T4I1naav/anWeBFiJuurI+XifndZRCKdAI5E
-	 rPzagVsJA0AoLPAe1IlkxWTKNaALS08ZbBIczcGFHheUoeHNqN5+60bmaMX0YPBQXp
-	 9MW+uNESBT8aA==
+	b=CD649tWUB6UyTeSQ3VcWg1ywtdyGMYHsjJrxiymgRDvOSyFiRSlvUhpLtECk1mgyf
+	 f3Oegq2CUekqn8f2HI+JL++gIQUC2E+fc84B0WucDyQhjK2Y5VUoJAB9TXeVRK8HR5
+	 JdEWOlbajifKnUq89aiTVWenUE6BT2j6ahpkjmBVmf1VwoXrwZkMntbsRjj4uSpGHi
+	 hZRXUqdAuOBIhqwiSAt6Cd9PV0U6QGPHaldKAX6+jOHu4wwR/8AbwBAiosPLMMX4AM
+	 hZCoKW0kQ2S91U3v4qzyfyJM7qF2ZEX5JWbxAJHhTv/unFS15vGsN5o16rK7xKG3dU
+	 /hft/7uU3OgsA==
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id 2D5662E0146; Wed, 11 Nov 2026 23:47:19 -0500 (EST)
+	id 21CC42E00BB; Wed, 11 Nov 2026 23:47:19 -0500 (EST)
 From: "Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Cc: "Theodore Ts'o" <tytso@mit.edu>
-Subject: [PATCH 04/23] ext4: persist the htree hash seed when enabling dir_index online
-Date: Wed, 11 Nov 2026 23:46:53 -0500
-Message-ID: <20261112044712.1577296-5-tytso@mit.edu>
+Subject: [PATCH 00/23] ext4: lots of misc bug fixes 
+Date: Wed, 11 Nov 2026 23:46:49 -0500
+Message-ID: <20261112044712.1577296-1-tytso@mit.edu>
 X-Mailer: git-send-email 2.53.0
-In-Reply-To: <20261112044712.1577296-1-tytso@mit.edu>
-References: <20261112044712.1577296-1-tytso@mit.edu>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -69,161 +66,76 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-When EXT4_IOC_SET_TUNE_SB_PARAM enables the dir_index feature,
-ext4_validate_tune_sb_params() generates a random sbi->s_hash_seed if
-the current one is all zeroes, and picks the hash signedness in
-sbi->s_hash_unsigned.  However, ext4_sb_setparams() only copies
-s_def_hash_version to the superblocks; the hash seed and the
-EXT2_FLAGS_{UNSIGNED,SIGNED}_HASH flag are never written out.
+While an LLM was creating a whole batch of KUnit tests for ext4[1],
+the AI found a large number of potential bugs.  After validating the
+list of bugs using a smarter LLM, the fixes for the valid bugs are in
+this patch set.  A summary of all the bugs, how they are fixed, and
+their criticality level --- e.g., "Critical (data loss)", "High
+(metadata corruption)", "Low (32-bit compat)", etc. --- can be found
+in report-bugfixes.md[2].
 
-Any directory converted to an htree before the next unmount has its
-names hashed with the random in-memory seed.  After a remount the seed
-is reloaded from the (still all-zero) on-disk superblock, so lookups in
-those directories compute different hashes and fail with -ENOENT, and
-new entries are inserted into the wrong leaf blocks.
+[1] https://lore.kernel.org/r/20261112040638.1576836-1-tytso@mit.edu
+[2] https://drive.google.com/file/d/1pnTKAVf9pAoCK27619uP4_3_hpE04SkR/view
 
-In addition, if the superblock already has EXT2_FLAGS_UNSIGNED_HASH
-set (e.g. it was created by mke2fs on an unsigned-char platform with
-dir_index disabled), sbi->s_hash_unsigned is left at 0, so names
-containing bytes >= 0x80 are hashed differently than they will be
-after the next mount, which honors the flag.
+Some of these bug fixes may be duplicative of the backlog of AI slop
+patch backlog (sorry, submitters; I'll be processing them now that the
+merge window is closed).
 
-Write the hash seed and, if neither flag is present, the signedness
-flag matching sbi->s_hash_unsigned to the primary and backup
-superblocks, and set sbi->s_hash_unsigned from an existing
-EXT2_FLAGS_UNSIGNED_HASH flag just like ext4_fill_super() does.
+Of course, these patches are *also* potentially AI slop, so while I've
+given them a very light review, we'll have to see what Sashiko has to
+say, and they need a more in-depth review before they get landed.
 
-The in-memory values are still set up before the superblocks are
-updated, since htree directories may be created as soon as the
-feature bit is visible in the primary superblock.
 
-Fixes: 04a91570ac67 ("ext4: implemet new ioctls to set and get superblock parameters")
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
----
- fs/ext4/ioctl-test.c | 60 ++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/ioctl.c      | 23 +++++++++++++----
- 2 files changed, 78 insertions(+), 5 deletions(-)
+Theodore Ts'o (23):
+  ext4: only update s_mount_opts when EXT4_TUNE_FL_MOUNT_OPTS is set
+  ext4: return -EFSBADCRC when skipping a corrupt backup superblock
+  ext4: don't allow enabling casefold via EXT4_IOC_SET_TUNE_SB_PARAM
+  ext4: persist the htree hash seed when enabling dir_index online
+  ext4: enforce feature prerequisites when tuning a mounted fs
+  ext4: handle s_lastcheck_hi in the get/set tune superblock ioctls
+  ext4: pass missing ioctls through ext4_compat_ioctl
+  ext4: fix inverted err_report_sec check in ext4_update_super()
+  ext4: fix err_report_sec_store() timer and value handling
+  ext4: fix inode table accounting in count_overhead()
+  ext4: handle flex groups straddling s_first_meta_bg in online resize
+  ext4: reject EXT4_IOC_GROUP_ADD inputs larger than a block group
+  ext4: propagate ext4_alloc_group_tables() errors from ext4_resize_fs()
+  ext4: reject online shrink before probing the device size
+  ext4: cap migrated extents at EXT_INIT_MAX_LEN
+  ext4: don't treat a handle restart as an error in finish_range()
+  ext4: don't clobber the migration result in ext4_ext_migrate()
+  ext4: fix EOF clamping of the range in mext_check_adjust_range()
+  ext4: bound the MMP update and check intervals
+  ext4: fix MMP claim of a cleanly unmounted filesystem
+  ext4: fix device comparison overflow in ext4_getfsmap_dev_compare()
+  ext4: don't allocate over indirect branches that failed to load
+  ext4: don't stop EXT4_IOC_GET_ES_CACHE at uncached ranges
 
-diff --git a/fs/ext4/ioctl-test.c b/fs/ext4/ioctl-test.c
-index fab2b9f8ff35..4641ba7b31ff 100644
---- a/fs/ext4/ioctl-test.c
-+++ b/fs/ext4/ioctl-test.c
-@@ -736,6 +736,65 @@ static void test_tune_sb_mount_opts_guard(struct kunit *test)
- 	KUNIT_EXPECT_STREQ(test, (char *)es->s_mount_opts, "nodelalloc");
- }
- 
-+/*
-+ * Verify that enabling DIR_INDEX online persists the (possibly freshly
-+ * generated) hash seed and the hash signedness flag to the superblock, and
-+ * that an existing signedness flag in s_flags is honored in memory.
-+ */
-+static void test_tune_sb_dir_index_hash_state(struct kunit *test)
-+{
-+	struct ioctl_test_ctx *ctx = test->priv;
-+	struct super_block *sb = ctx->sb;
-+	struct ext4_sb_info *sbi = &ctx->sbi;
-+	struct ext4_super_block *es = ctx->es;
-+	struct ext4_tune_sb_params params;
-+	__le32 hash_flags;
-+	uuid_t uu;
-+	int i;
-+
-+	memset(sbi->s_hash_seed, 0, sizeof(sbi->s_hash_seed));
-+	memset(es->s_hash_seed, 0, sizeof(es->s_hash_seed));
-+	sbi->s_def_hash_version = 0;
-+	es->s_flags = 0;
-+
-+	memset(&params, 0, sizeof(params));
-+	params.set_flags = EXT4_TUNE_FL_FEATURES;
-+	params.feature_compat = le32_to_cpu(es->s_feature_compat) |
-+				EXT4_FEATURE_COMPAT_DIR_INDEX;
-+	params.feature_incompat = le32_to_cpu(es->s_feature_incompat);
-+	params.feature_ro_compat = le32_to_cpu(es->s_feature_ro_compat);
-+	KUNIT_ASSERT_EQ(test, ext4_validate_tune_sb_params_test(sb, &params),
-+			0);
-+	ext4_sb_setparams_test(sbi, es, &params);
-+
-+	KUNIT_EXPECT_TRUE(test, ext4_has_feature_dir_index(sb));
-+	KUNIT_EXPECT_EQ(test, es->s_def_hash_version, DX_HASH_HALF_MD4);
-+	memcpy(&uu, es->s_hash_seed, UUID_SIZE);
-+	KUNIT_EXPECT_FALSE(test, uuid_is_null(&uu));
-+	for (i = 0; i < ARRAY_SIZE(es->s_hash_seed); i++)
-+		KUNIT_EXPECT_EQ(test, le32_to_cpu(es->s_hash_seed[i]),
-+				sbi->s_hash_seed[i]);
-+	hash_flags = es->s_flags & cpu_to_le32(EXT2_FLAGS_UNSIGNED_HASH |
-+					       EXT2_FLAGS_SIGNED_HASH);
-+	KUNIT_EXPECT_EQ(test, le32_to_cpu(hash_flags),
-+			sbi->s_hash_unsigned ? EXT2_FLAGS_UNSIGNED_HASH :
-+					       EXT2_FLAGS_SIGNED_HASH);
-+
-+	/* An existing unsigned-hash flag must be honored in memory */
-+	ext4_clear_feature_dir_index(sb);
-+	es->s_flags = cpu_to_le32(EXT2_FLAGS_UNSIGNED_HASH);
-+	sbi->s_hash_unsigned = 0;
-+	memset(&params, 0, sizeof(params));
-+	params.set_flags = EXT4_TUNE_FL_EDIT_FEATURES;
-+	params.set_feature_compat_mask = EXT4_FEATURE_COMPAT_DIR_INDEX;
-+	KUNIT_ASSERT_EQ(test, ext4_validate_tune_sb_params_test(sb, &params),
-+			0);
-+	KUNIT_EXPECT_EQ(test, sbi->s_hash_unsigned, 3U);
-+	ext4_sb_setparams_test(sbi, es, &params);
-+	KUNIT_EXPECT_EQ(test, le32_to_cpu(es->s_flags),
-+			EXT2_FLAGS_UNSIGNED_HASH);
-+}
-+
- /*
-  * Verify ext4_update_backup_sb, ext4_update_superblocks_fn, and
-  * ext4_update_overhead across primary + 4 sparse_super backup groups (1, 3,
-@@ -1243,6 +1302,7 @@ static struct kunit_case ioctl_test_cases[] = {
- 	KUNIT_CASE(test_sb_callbacks_and_setparams),
- 	KUNIT_CASE(test_validate_tune_sb_params),
- 	KUNIT_CASE(test_tune_sb_mount_opts_guard),
-+	KUNIT_CASE(test_tune_sb_dir_index_hash_state),
- 	KUNIT_CASE(test_update_superblocks_and_overhead),
- 	KUNIT_CASE(test_update_backup_sb_bad_csum),
- 	KUNIT_CASE(test_swap_inode_data_and_seed),
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 8537d5766732..e2a5713a4562 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -1392,8 +1392,20 @@ static void ext4_sb_setparams(struct ext4_sb_info *sbi,
- 		es->s_feature_ro_compat &=
- 			~cpu_to_le32(params->clear_feature_ro_compat_mask);
- 		if (params->set_feature_compat_mask &
--		    EXT4_FEATURE_COMPAT_DIR_INDEX)
-+		    EXT4_FEATURE_COMPAT_DIR_INDEX) {
-+			int i;
-+
- 			es->s_def_hash_version = sbi->s_def_hash_version;
-+			for (i = 0; i < ARRAY_SIZE(es->s_hash_seed); i++)
-+				es->s_hash_seed[i] =
-+					cpu_to_le32(sbi->s_hash_seed[i]);
-+			if (!(es->s_flags &
-+			      cpu_to_le32(EXT2_FLAGS_UNSIGNED_HASH |
-+					  EXT2_FLAGS_SIGNED_HASH)))
-+				es->s_flags |= sbi->s_hash_unsigned ?
-+					cpu_to_le32(EXT2_FLAGS_UNSIGNED_HASH) :
-+					cpu_to_le32(EXT2_FLAGS_SIGNED_HASH);
-+		}
- 		if (params->set_feature_incompat_mask &
- 		    EXT4_FEATURE_INCOMPAT_CSUM_SEED)
- 			es->s_checksum_seed = cpu_to_le32(sbi->s_csum_seed);
-@@ -1488,10 +1500,11 @@ static int ext4_validate_tune_sb_params(struct super_block *sb,
- 				sbi->s_def_hash_version = params->def_hash_alg;
- 			else if (sbi->s_def_hash_version == 0)
- 				sbi->s_def_hash_version = DX_HASH_HALF_MD4;
--			if (!(es->s_flags &
--			      cpu_to_le32(EXT2_FLAGS_UNSIGNED_HASH)) &&
--			    !(es->s_flags &
--			      cpu_to_le32(EXT2_FLAGS_SIGNED_HASH))) {
-+			if (es->s_flags &
-+			    cpu_to_le32(EXT2_FLAGS_UNSIGNED_HASH)) {
-+				sbi->s_hash_unsigned = 3;
-+			} else if (!(es->s_flags &
-+				     cpu_to_le32(EXT2_FLAGS_SIGNED_HASH))) {
- #ifdef __CHAR_UNSIGNED__
- 				sbi->s_hash_unsigned = 3;
- #else
+ fs/ext4/ext4.h                |   8 +
+ fs/ext4/extents-test.c        |  30 +++
+ fs/ext4/extents.c             |  13 +-
+ fs/ext4/extents_status-test.c |  17 +-
+ fs/ext4/extents_status.c      |  23 +++
+ fs/ext4/fsmap-test.c          |  56 ++++++
+ fs/ext4/fsmap.c               |   2 +-
+ fs/ext4/indirect-test.c       |  90 ++++++++-
+ fs/ext4/indirect.c            |  19 +-
+ fs/ext4/ioctl-test.c          | 356 ++++++++++++++++++++++++++++++++--
+ fs/ext4/ioctl.c               | 145 +++++++++-----
+ fs/ext4/migrate-test.c        | 210 +++++++++++++++++++-
+ fs/ext4/migrate.c             |  20 +-
+ fs/ext4/mmp-test.c            | 222 ++++++++++++++++++++-
+ fs/ext4/mmp.c                 |  67 +++++--
+ fs/ext4/move_extent-test.c    |  21 ++
+ fs/ext4/move_extent.c         |   4 +-
+ fs/ext4/resize-test.c         | 118 +++++++++++
+ fs/ext4/resize.c              |  70 +++++--
+ fs/ext4/super-test.c          |  37 ++++
+ fs/ext4/super.c               |  28 ++-
+ fs/ext4/sysfs-test.c          |  55 ++++++
+ fs/ext4/sysfs.c               |  21 +-
+ 23 files changed, 1504 insertions(+), 128 deletions(-)
+
 -- 
 2.56.0.542.g3ef89b7020-goog
 
