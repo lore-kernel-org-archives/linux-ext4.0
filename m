@@ -1,76 +1,73 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=192.198.163.12
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794491331;
-	b=Hib26MiYIclaNdY3NiL9plgtGqsDEz608roQYTX+EY66BSMs/FyCVPyUch1EVFJ2qDky
-	 83hOGN2NswKFF6/eYtCUTNysUcw9h8bkn0DeNAqklQboGkr94L1YM3V7GJA3xAZ3Z/u8S
-	 oCV35P6fyuWp82vmy8vtKhV8gXc1AEYhv5DQCfWJNThz3VlzI5Ko1Eb9sFIBRh7sQbyB9
-	 WFoXBcT8ij2vv46DRm29i6CjhquDg/xY614LBi05mWSCb2ibI+okv0xp2j7OAFFlFnhGD
-	 tMdNab/Ht8ytfIJE/4dQT1S+pDk7WRCOWOZk3fp72O/DUwe6+bvquYS4RLDjvwxcSzA==
+	t=1794491388;
+	b=tP/nGZjPeGN4dNdcyAnFEDCeXRStkcJIJgHYcOaBtamCAUcj7U4qSnKZOymHyZ7BNvHL
+	 m11PFJJBjTKHCCg1Q9I3jkG2idaJo/8XmDA/jQbHYTbjIkCULtG80GqAxyVUhfm81FDy+
+	 dEAhhx7fTiiC7XGWVH1eTpm1/W8OfT9b+z0f4098U9uFSyvAenN4WkCmatcTPPMqPFVyh
+	 gpIPd5OJTWcztZz9QNXQaYKBU5ixqRBOuAPXHOsmkC/48MuGTInVXMOJVk6SsRf0gyM+a
+	 qm7Ty+shSInz+bW+vKMTlwjyWMKmaJ9qGKRHhjPZNkWgg7/Cvo1C6HbUE1aLiqRheWA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794491331;
-	h=DMARC-Filter:DKIM-Signature:X-CSE-ConnectionGUID:X-CSE-MsgGUID:
-	 X-IronPort-AV:X-IronPort-AV:Received:X-CSE-ConnectionGUID:
-	 X-CSE-MsgGUID:X-ExtLoop1:X-IronPort-AV:Received:Received:Date:From:To:
-	 Cc:Subject:Message-ID:User-Agent;
-	bh=FhLHD+aursl9S7rg8JY7lsFF78TbfiMCMHRpNez3BFw=;
-	b=W/wWUYaKHkLISrXWpWb2Qc7AwK6rSJxfjqFGkE03oNcXx/uz/aanzELHSFbTYIGkVGlK
-	 YDE1Pvas00Z8ms2+g8S6FT6ESw9EwnOa4If30IRL6ybhbICw2cBua/j8pPRjGxbCaYPlS
-	 KRVX+1oYH16N9Kw9O53W0rEomTfjvAlsXDSrXYstCesA9rL8EQDVdABt5XNaRMLZXXfkM
-	 310CTN6tRsA6GHoN/IYqcD8rLen0D0xCJFYCsQl0Fa4QynlzETTBm9EAezq964jp8RMO3
-	 lqawqIck/W/6fwRtci7S1a+egIC7AWoorj0Cro42T7qwDN1jMXBBksFONiuyA8+fnyw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794491388;
+	h=Received:DKIM-Signature:Received:Received:X-ME-Sender:
+	 X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:X-Mailer:
+	 MIME-Version:X-ThreadId:Date:From:To:Cc:Message-Id:In-Reply-To:
+	 References:Subject:Content-Type:Content-Transfer-Encoding;
+	bh=XJqHaA+Lr6uyDKV49/9jNpG7MBF6VeHh5SiagRGqoAE=;
+	b=PKlJ2NYdTeA06bLHE03SOB/Fl8u11QNDOivRLaUkOQMTcTqyGrfQiCtdLtq5qHrdP+lr
+	 lR9Jsd+ukhssXzINeIg3FUSMRgAfyX6d5lYueUEzMwzH6uU0Vl6jpljsS4tdmDDLrM45F
+	 1NOjnbRXPj7X7rFfa631hNHCJ7JaInvC2E5qHKDcdtdsCK5ibLIWkyyh1CsTE1rGbwhcg
+	 qGMl3omZNbS5QoznSawccQbKT0O48evWBKhTxHVPFmjHEF0h3Wn1R2Ayso652VC9pipfo
+	 ffhZ8nafsuC1MVBQOYXL/3T9b+ZqhJ/QZCDdEqc0a36xAd0LCvm8QwG8YJY1Kx3FHOA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=intel.com;
-	spf=pass smtp.mailfrom=intel.com;
-	dkim=pass header.d=intel.com header.i=@intel.com header.a=rsa-sha256 header.s=Intel header.b=ZBD8adyR;
-	arc=none smtp.remote-ip=192.198.163.12
-Received: from mgamail.intel.com (mgamail.intel.com [192.198.163.12])
-	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=b1tPCf1V;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3A5CD606A323
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Nov 2026 13:48:50 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 3A5CD606A323
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=intel.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 15DB0606A330
+	for <linux-ext4@vger.kernel.org>; Thu, 12 Nov 2026 13:49:47 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.a=rsa-sha256 header.s=Intel header.b=ZBD8adyR
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
-  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
-  t=1794491330; x=1826027330;
-  h=date:from:to:cc:subject:message-id;
-  bh=KEHMJvRNWkXH373wKpVpi8GGf2Sm+0uRF3Mz65Gvh+w=;
-  b=ZBD8adyRHOwfBYJ4CRPk1iLavPW7VLbe8oXRlBhwNfqv1thGHInluBob
-   R+MhfMIFQ5b8qvYQ/XrX1HLUWRHQG6e5kNzwkr/HzyarCM/Ec4sdIPZeA
-   EYZwJB26aLaAglpNQYD846qvhM4Xy2nHvtVZqY89cEEO0dQuHzF5Eva1h
-   AvHe2IwOoxZZo1LIoiYZMM5M4c0eB1dhDklQhiQXpb8FXj5UYgUIxWCKv
-   U3/Xj/+v/T8eficbV6vFN/PdBYpzmu+jipA9I3FHXzLYR8d2urLDni7E2
-   L348yitobnUlM3qgPVOaf1tJFFwLAx+KSbsRyv/lZeFx/8EeghyUdmsb9
-   g==;
-X-CSE-ConnectionGUID: RrHrI5N5QWygmo7PNZ+PyA==
-X-CSE-MsgGUID: jSJkNnhgQemtAWvfLJUPSA==
-X-IronPort-AV: E=McAfee;i="6800,10657,11963"; a="3187688"
-X-IronPort-AV: E=Sophos;i="6.27,209,1787036400"; 
-   d="scan'208";a="3187688"
-Received: from fmviesa006.fm.intel.com ([10.60.135.146])
-  by fmvoesa106.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 12 Nov 2026 05:48:50 -0800
-X-CSE-ConnectionGUID: xjE0oVBIRe6hbdVZC4BalQ==
-X-CSE-MsgGUID: LjnGeu1/QpWpODDaiwWbHQ==
-X-ExtLoop1: 1
-X-IronPort-AV: E=Sophos;i="6.27,209,1787036400"; 
-   d="scan'208";a="8994344"
-Received: from igk-lkp-server01.igk.intel.com (HELO 1073a420ae3a) ([10.211.93.152])
-  by fmviesa006.fm.intel.com with ESMTP; 12 Nov 2026 05:48:49 -0800
-Received: from kbuild by 1073a420ae3a with local (Exim 4.98.2)
-	(envelope-from <lkp@intel.com>)
-	id 1xRVAU-000000000t4-0mjV;
-	Thu, 12 Nov 2026 13:48:46 +0000
-Date: Thu, 12 Nov 2026 14:48:32 +0100
-From: kernel test robot <lkp@intel.com>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Cc: oe-kbuild-all@lists.linux.dev, linux-ext4@vger.kernel.org
-Subject: [tytso-ext4:pu 21/50] fs/ext4/migrate-test.c:462:9: sparse:
- sparse: incompatible types in comparison expression (different base types):
-Message-ID: <202611121426.SgPY0H6k-lkp@intel.com>
-User-Agent: s-nail v14.9.25
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=b1tPCf1V
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 874991F00A07;
+	Thu, 12 Nov 2026 13:49:47 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1794491387;
+	bh=XJqHaA+Lr6uyDKV49/9jNpG7MBF6VeHh5SiagRGqoAE=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject;
+	b=b1tPCf1VxzXiNnJMh6LIZf2IORpr0Dh7m5q2wMKD3cUzVoBBLXXJu9VWHMpK4ija3
+	 g3X2GddW4aWHIE5k3eEswKf+0IZz+B3TOqC6ZGmQMA8jh9Loz/qLltzitvti8s0BDJ
+	 TisNh/NnoL0iablhiZxonjLK0InZC5SquaC+0eOTnGK5D8gkQuLsR1NuMxfE3ZrnzB
+	 qTP95fzqC6ARPoB4dbEo0kjtJTu367ekqu+lLB17pmbMlnvCXsO1Q38fRd0Qg1ybht
+	 NtLLOMUh71cYdxzQsWgsqfR4bsZdkzxOWZWemCReNtXGVQVtTJLKkfSeKxo66bkT3F
+	 jTWi7S8HpQzbQ==
+Received: from stl-compute-04.internal (stl-compute-04.internal [10.204.2.64])
+	by mailfauth.stl.internal (Postfix) with ESMTP id E4F01780043;
+	Thu, 12 Nov 2026 08:49:46 -0500 (EST)
+Received: from stl-imap-13 ([10.204.2.104])
+  by stl-compute-04.internal (MEProxy); Thu, 12 Nov 2026 08:49:46 -0500
+X-ME-Sender: <xms:-sP1arbnQ8vrUBzxhL5ZL_QdoZ8hvOPk1yXi7QaKCHgqy5x1dX4f9w>
+    <xme:-sP1alMAbtn37yFwAS8RbgpqKHwj10JWYFDRz1JhOc9ly8C01CiQM6EJzvnpbw9Oq
+    k1rD3U88C_xdrJKQlFGACvQ_kmq9YZ-9sZh91o7NuWAnXNSe7gVF_Tl>
+X-ME-Proxy-Cause: dmFkZTF7Teehb4i+tE2VRse8X8CSV5y16KOINGMs2bfeu4Buft52gdF/iP0EmGw5gcGxlF
+    WeWYCIwThVVpPLZDOg6TFwR9LuZCcj0eL/waoShAXXvs4yPhZ3BMgh5ocROVlUoRaewptI
+    9aE1SJ/or7/cBJBgPjp1d+dn7+ppMefsJCKATl/nZTc9JkDJOdctvha8kS8EPbzr7jTQOR
+    OZhgKn0OxKUndMw3jg+VdPNobrX0iASnGiP2qFgNwu1fXhTjA/q2OHnlA6MIH1T0w1OpL8
+    yRoOD+gELg2190E+LxuwkIpdg4reNKGCgO4vMD1229T2sX8Krvj1q0xx9xChTmSZPCfYNt
+    Y9kdCRdCJUz8QtschlLU83pnRXyMk+vtaUS4sx/JqCpHDSXnN0XnmEzdUrXmqP02ybvrcM
+    hd0O+J+6O6LNEUCplZiunr0fHXLpoA2xqguRpmmAOHEviOHQNV6BV1pw2b8MYox0ec6PEM
+    FS+v1dDAigxi1woP6V4cbZ2OjYJogTSIosaJEDSglVvo1tG6PIUmrLbuh5FU5wubQ3yLPH
+    AS4x1ymSfYX9ylqgP+3iSexG7EnJO/Q0NTt8UU22clsUbLVFk0FOgWKX2nSLELd0q32v6P
+    IDTNp2BlHv5iiYRovLdwjN2DUzXe/kDZePXgMyKIh53KPPWOHUh17iliVh8A
+X-ME-Proxy: <xmx:-sP1anVY0CPrqxcZFQ3PkhHfHmcZn5NPDHFHPMbSQ1HZ6p_OSIQqGA>
+    <xmx:-sP1al9GdcMV5QtCQwEqPCDrhQUk459trMI8y5dMJqzB60e2YoXQfA>
+    <xmx:-sP1avpxrFTtwtMkDdt6zvzjOwCoYwDPiAYrhzhBhj77dfkzbtWxOw>
+    <xmx:-sP1agLDuD-2DgwDXh7BsYRAo6USrUvCJfSWDkLUhBVxyPb3dJY26Q>
+    <xmx:-sP1aqPeoDtd3EeyKz3Pry-POGYG6HPKZIkfSduWTBU3dL9s1dJd8D06>
+Feedback-ID: iccae4b50:Fastmail
+Received: by mailuser.stl.internal (Postfix, from userid 501)
+	id 9A381F60084; Thu, 12 Nov 2026 08:49:46 -0500 (EST)
+X-Mailer: MessagingEngine.com Webmail Interface
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -79,218 +76,42 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
+MIME-Version: 1.0
+X-ThreadId: A7TH_TkPFIbc
+Date: Thu, 12 Nov 2026 08:49:26 -0500
+From: "Chris Mason" <mason@kernel.org>
+To: "Christoph Hellwig" <hch@lst.de>
+Cc: "Theodore Tso" <tytso@mit.edu>, "Carlos Maiolino" <cem@kernel.org>,
+ "Dave Chinner" <david@fromorbit.com>, "Jan Kara" <jack@suse.cz>,
+ "Darrick J. Wong" <djwong@kernel.org>, "Josef Bacik" <josef@toxicpanda.com>,
+ linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+ linux-ext4@vger.kernel.org, "Tal Zussman" <tz2294@columbia.edu>,
+ "Christian Brauner" <brauner@kernel.org>
+Message-Id: <b1d12342-ea96-4a4e-9049-af5345fe9b30@app.fastmail.com>
+In-Reply-To: <20261112133555.GC22165@lst.de>
+References: <20261112010229.51029-1-mason@kernel.org>
+ <20261112010229.51029-14-mason@kernel.org> <20261112133555.GC22165@lst.de>
+Subject: Re: [PATCH v8 13/15] xfs: resample the extsize hint after taking the ILOCK
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
-tree:   https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git pu
-head:   246d715a48c25a74ac372dda5e10d8f69f89b50a
-commit: dd357969500928cd46fd524d98194afaaeb18d0b [21/50] ext4: add KUnit tests for fs/ext4/migrate.c
-config: s390-randconfig-r2305-20261112 (https://download.01.org/0day-ci/archive/20261112/202611121426.SgPY0H6k-lkp@intel.com/config)
-compiler: clang version 24.0.0git (https://github.com/llvm/llvm-project 8621950157210c1fa68f20f0614cb51310ec9dff)
-sparse: v0.6.5-rc1-21-g84ec0658
-reproduce (this is a W=1 build): (https://download.01.org/0day-ci/archive/20261112/202611121426.SgPY0H6k-lkp@intel.com/reproduce)
+On Thu, Nov 12, 2026, at 8:35 AM, Christoph Hellwig wrote:
+> On Wed, Nov 11, 2026 at 08:02:42PM -0500, Chris Mason wrote:
+>> A write fault on a file with an extent size hint can overrun its block
+>> reservation and shut down the filesystem, if it races with a change of
+>> the hint or of the realtime flag.
+>> 
+>> xfs_iomap_write_direct() sizes the reservation from the hint and the
+>> flag before xfs_trans_alloc_inode() takes the ILOCK, and the allocator
+>> reads both again under it. But a write fault only holds the MMAPLOCK,
+>> and FS_IOC_FSSETXATTR changes both on a file with no blocks without it:
+>> 
+>
+> ... and my previous suggestion of taking the mmlock in fileattr_set
+> would take care of this as well.
 
-If you fix the issue in a separate patch/commit (i.e. not just a new version of
-the same patch/commit), kindly add following tags
-| Reported-by: kernel test robot <lkp@intel.com>
-| Closes: https://lore.kernel.org/oe-kbuild-all/202611121426.SgPY0H6k-lkp@intel.com/
+Yes, it would simplify a lot of this.  I went this route because I thought it was
+nicer to have just the ILOCK control these things, but it would be easy to respin
+with the mmlock.
 
-sparse warnings: (new ones prefixed by >>)
->> fs/ext4/migrate-test.c:462:9: sparse: sparse: incompatible types in comparison expression (different base types):
-   fs/ext4/migrate-test.c:462:9: sparse:    struct disk_stats [noderef] __percpu *
-   fs/ext4/migrate-test.c:462:9: sparse:    void *
-   fs/ext4/migrate-test.c:711:9: sparse: sparse: restricted __le16 degrades to integer
-   fs/ext4/migrate-test.c:711:9: sparse: sparse: incorrect type in initializer (different base types) @@     expected long long right_value @@     got restricted __le16 const __right @@
-   fs/ext4/migrate-test.c:947:17: sparse: sparse: restricted __le32 degrades to integer
-   fs/ext4/migrate-test.c:947:17: sparse: sparse: incorrect type in initializer (different base types) @@     expected long long left_value @@     got restricted __le32 const __left @@
-   fs/ext4/migrate-test.c:969:17: sparse: sparse: restricted __le32 degrades to integer
-   fs/ext4/migrate-test.c:969:17: sparse: sparse: incorrect type in initializer (different base types) @@     expected long long left_value @@     got restricted __le32 const __left @@
-   fs/ext4/migrate-test.c:974:17: sparse: sparse: restricted __le32 degrades to integer
-   fs/ext4/migrate-test.c:974:17: sparse: sparse: incorrect type in initializer (different base types) @@     expected long long left_value @@     got restricted __le32 const __left @@
-   fs/ext4/migrate-test.c: note: in included file:
-   fs/ext4/ext4.h:3708:33: sparse: sparse: cast truncates bits from constant value (100000063 becomes 63)
-
-vim +462 fs/ext4/migrate-test.c
-
-   443	
-   444	static int migrate_test_init(struct kunit *test)
-   445	{
-   446		struct migrate_test_ctx *ctx;
-   447		struct fs_context *fc;
-   448		struct super_block *sb;
-   449		struct ext4_sb_info *sbi;
-   450		struct buffer_head *sbh;
-   451		struct inode *root_inode;
-   452		int ret;
-   453	
-   454		ctx = kunit_kzalloc(test, sizeof(*ctx), GFP_KERNEL);
-   455		KUNIT_ASSERT_NOT_NULL(test, ctx);
-   456		INIT_LIST_HEAD(&ctx->blks);
-   457		ctx->device_blocks = MIGRATE_TEST_TOTAL_BLKS;
-   458		ctx->next_alloc_pblk = 900;
-   459		test->priv = ctx;
-   460	
-   461		ctx->bdev.bd_stats = alloc_percpu(struct disk_stats);
- > 462		KUNIT_ASSERT_NOT_NULL(test, ctx->bdev.bd_stats);
-   463	
-   464		ctx->bh_folio = folio_alloc(GFP_KERNEL, 0);
-   465		if (!ctx->bh_folio) {
-   466			free_percpu(ctx->bdev.bd_stats);
-   467			ctx->bdev.bd_stats = NULL;
-   468			KUNIT_FAIL_AND_ABORT(test, "folio_alloc failed");
-   469		}
-   470	
-   471		fc = fs_context_for_mount(&migrate_test_fs_type, 0);
-   472		if (IS_ERR(fc)) {
-   473			folio_put(ctx->bh_folio);
-   474			ctx->bh_folio = NULL;
-   475			free_percpu(ctx->bdev.bd_stats);
-   476			ctx->bdev.bd_stats = NULL;
-   477			KUNIT_FAIL_AND_ABORT(test, "fs_context_for_mount failed: %ld",
-   478					     PTR_ERR(fc));
-   479		}
-   480		sb = sget_fc(fc, NULL, migrate_test_set_super);
-   481		put_fs_context(fc);
-   482		if (IS_ERR(sb)) {
-   483			folio_put(ctx->bh_folio);
-   484			ctx->bh_folio = NULL;
-   485			free_percpu(ctx->bdev.bd_stats);
-   486			ctx->bdev.bd_stats = NULL;
-   487			KUNIT_FAIL_AND_ABORT(test, "sget_fc failed: %ld", PTR_ERR(sb));
-   488		}
-   489		ctx->sb = sb;
-   490		up_write(&sb->s_umount);
-   491	
-   492		ret = kunit_add_action_or_reset(test, migrate_test_cleanup_action, ctx);
-   493		KUNIT_ASSERT_EQ(test, ret, 0);
-   494	
-   495		sbi = &ctx->sbi;
-   496		sb->s_fs_info = sbi;
-   497		sb->s_op = &migrate_test_sops;
-   498		sb->s_flags |= SB_ACTIVE;
-   499		sb->s_blocksize = MIGRATE_TEST_BLK_SIZE;
-   500		sb->s_blocksize_bits = MIGRATE_TEST_BLK_BITS;
-   501		sb->s_magic = EXT4_SUPER_MAGIC;
-   502		sb->s_maxbytes = MAX_LFS_FILESIZE;
-   503		INIT_LIST_HEAD(&sb->s_inodes);
-   504	#ifdef CONFIG_FS_ENCRYPTION
-   505		sb->s_cop = &ext4_cryptops;
-   506	#endif
-   507	
-   508		strscpy(sb->s_id, "ext4_migrate_kunit", sizeof(sb->s_id));
-   509		inode_init_once(&ctx->bd_inode);
-   510		ctx->bd_inode.i_sb = sb;
-   511		ctx->bd_inode.i_blkbits = MIGRATE_TEST_BLK_BITS;
-   512		ctx->bd_inode.i_mapping = &ctx->bd_inode.i_data;
-   513		ctx->bd_inode.i_data.host = &ctx->bd_inode;
-   514		ctx->bdev_disk.part0 = &ctx->bdev;
-   515		ctx->bdev_disk.queue = &ctx->bdev_queue;
-   516		ctx->bdev.bd_disk = &ctx->bdev_disk;
-   517		ctx->bdev.bd_queue = &ctx->bdev_queue;
-   518		ctx->bdev.bd_mapping = &ctx->bd_inode.i_data;
-   519		bdev_clear_flag(&ctx->bdev, BD_READ_ONLY);
-   520		sb->s_bdev = &ctx->bdev;
-   521	
-   522		sbi->s_sb = sb;
-   523		sbi->s_blockgroup_lock = &ctx->bgl;
-   524		bgl_lock_init(&ctx->bgl);
-   525		INIT_WORK(&sbi->s_sb_upd_work, migrate_test_sb_upd_work);
-   526		timer_setup(&sbi->s_err_report, migrate_test_err_timer, 0);
-   527		spin_lock_init(&sbi->s_error_lock);
-   528		spin_lock_init(&sbi->s_md_lock);
-   529		spin_lock_init(&sbi->s_bdev_wb_lock);
-   530		spin_lock_init(&sbi->s_es_lock);
-   531		INIT_LIST_HEAD(&sbi->s_es_list);
-   532		mutex_init(&sbi->s_fc_lock);
-   533		INIT_LIST_HEAD(&sbi->s_fc_q[FC_Q_MAIN]);
-   534		INIT_LIST_HEAD(&sbi->s_fc_q[FC_Q_STAGING]);
-   535		INIT_LIST_HEAD(&sbi->s_fc_dentry_q[FC_Q_MAIN]);
-   536		INIT_LIST_HEAD(&sbi->s_fc_dentry_q[FC_Q_STAGING]);
-   537		ratelimit_state_init(&sbi->s_err_ratelimit_state, 5 * HZ, 10);
-   538		ratelimit_state_init(&sbi->s_warning_ratelimit_state, 5 * HZ, 10);
-   539		ratelimit_state_init(&sbi->s_msg_ratelimit_state, 5 * HZ, 10);
-   540	
-   541		ret = percpu_init_rwsem(&sbi->s_writepages_rwsem);
-   542		KUNIT_ASSERT_EQ(test, ret, 0);
-   543		ctx->rwsem_inited = true;
-   544	
-   545		ret = percpu_counter_init(&sbi->s_freeclusters_counter, 4096,
-   546					  GFP_KERNEL);
-   547		KUNIT_ASSERT_EQ(test, ret, 0);
-   548		ret = percpu_counter_init(&sbi->s_dirtyclusters_counter, 0, GFP_KERNEL);
-   549		KUNIT_ASSERT_EQ(test, ret, 0);
-   550		ret = percpu_counter_init(&sbi->s_freeinodes_counter, 200, GFP_KERNEL);
-   551		KUNIT_ASSERT_EQ(test, ret, 0);
-   552		ctx->counters_inited = true;
-   553	
-   554		ret = ext4_es_register_shrinker(sbi);
-   555		KUNIT_ASSERT_EQ(test, ret, 0);
-   556		ctx->es_shrinker_inited = true;
-   557	
-   558		sbi->s_blocks_per_group = MIGRATE_TEST_BLOCKS_PER_GRP;
-   559		sbi->s_clusters_per_group = MIGRATE_TEST_BLOCKS_PER_GRP;
-   560		sbi->s_cluster_ratio = 1;
-   561		sbi->s_cluster_bits = 0;
-   562		sbi->s_groups_count = MIGRATE_TEST_NGROUPS;
-   563		sbi->s_inodes_per_group = MIGRATE_TEST_INODES_PER_GRP;
-   564		sbi->s_inode_size = MIGRATE_TEST_INODE_SIZE;
-   565		sbi->s_inodes_per_block = MIGRATE_TEST_BLK_SIZE /
-   566					  MIGRATE_TEST_INODE_SIZE;
-   567		sbi->s_first_ino = 11;
-   568		sbi->s_mount_state = EXT4_VALID_FS;
-   569		set_opt(sb, ERRORS_CONT);
-   570	
-   571		sbh = migrate_get_or_create_bh(ctx, MIGRATE_TEST_FIRST_DATA_BLK);
-   572		KUNIT_ASSERT_NOT_NULL(test, sbh);
-   573		brelse(sbh);
-   574		sbi->s_sbh = sbh;
-   575		ctx->es = (struct ext4_super_block *)sbh->b_data;
-   576		sbi->s_es = ctx->es;
-   577	
-   578		ctx->es->s_magic = cpu_to_le16(EXT4_SUPER_MAGIC);
-   579		ctx->es->s_rev_level = cpu_to_le32(EXT4_DYNAMIC_REV);
-   580		ctx->es->s_first_data_block = cpu_to_le32(MIGRATE_TEST_FIRST_DATA_BLK);
-   581		ctx->es->s_blocks_per_group = cpu_to_le32(MIGRATE_TEST_BLOCKS_PER_GRP);
-   582		ctx->es->s_clusters_per_group =
-   583			cpu_to_le32(MIGRATE_TEST_BLOCKS_PER_GRP);
-   584		ctx->es->s_inodes_per_group = cpu_to_le32(MIGRATE_TEST_INODES_PER_GRP);
-   585		ctx->es->s_inodes_count = cpu_to_le32(MIGRATE_TEST_NGROUPS *
-   586						      MIGRATE_TEST_INODES_PER_GRP);
-   587		ctx->es->s_inode_size = cpu_to_le16(MIGRATE_TEST_INODE_SIZE);
-   588		ctx->es->s_checksum_type = EXT4_CRC32C_CHKSUM;
-   589		generate_random_uuid(ctx->es->s_uuid);
-   590		ext4_blocks_count_set(ctx->es, MIGRATE_TEST_TOTAL_BLKS);
-   591		ext4_set_feature_extents(sb);
-   592		ext4_set_feature_64bit(sb);
-   593		ext4_set_feature_metadata_csum(sb);
-   594		sbi->s_csum_seed = ext4_chksum(~0, ctx->es->s_uuid,
-   595					       sizeof(ctx->es->s_uuid));
-   596		ext4_superblock_csum_set(sb);
-   597	
-   598		root_inode = migrate_make_test_inode(test, EXT4_ROOT_INO,
-   599						     S_IFDIR | 0755);
-   600		sb->s_root = d_make_root(root_inode);
-   601		KUNIT_ASSERT_NOT_NULL(test, sb->s_root);
-   602	
-   603		active_migrate_test = test;
-   604		kunit_activate_static_stub(test, ext4_sb_bread, migrate_sb_bread_stub);
-   605		kunit_activate_static_stub(test, ext4_ext_getblk,
-   606					   migrate_ext_getblk_stub);
-   607		kunit_activate_static_stub(test, __ext4_ext_dirty,
-   608					   migrate_ext_dirty_stub);
-   609		kunit_activate_static_stub(test, __ext4_handle_dirty_metadata,
-   610					   migrate_handle_dirty_metadata_stub);
-   611		kunit_activate_static_stub(test, __ext4_mark_inode_dirty,
-   612					   migrate_mark_inode_dirty_stub);
-   613		kunit_activate_static_stub(test, __ext4_new_inode,
-   614					   migrate_new_inode_stub);
-   615		kunit_activate_static_stub(test, ext4_mb_new_blocks,
-   616					   migrate_mb_new_blocks_stub);
-   617		kunit_activate_static_stub(test, ext4_free_blocks,
-   618					   migrate_free_blocks_stub);
-   619	
-   620		return 0;
-   621	}
-   622	
-
---
-0-DAY CI Kernel Test Service
-https://github.com/intel/lkp-tests/wiki
+-chris
