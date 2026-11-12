@@ -1,60 +1,60 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=18.9.28.11
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
 	t=1794458845;
-	b=d/+u5ipOxSAwa21IT4eUHFh/o6kwEhxDMs2twoq74Emcd0AwBGhSbOa6sOlUlZ/melMk
-	 621wo4RgnGKxQ8DUZFPmVuLrIrUtI1+tZSJ7k36Y43Rwa9WiqHfO1dQ5JFoeumNO9ljx9
-	 EdZ4VuFHSjYAMNfC2PKgLEDU8fXgYnFjORusIaZeeSPjQhVX+2RhsgG1/kBg3gEt54Y//
-	 7TLz2hXIx1l4xc7T62jbYCv3LRPvMFFRMvFNLtBCkjgo1B3BUq46bUaSqOV8RIerLNlxx
-	 iYgNDqGzazfLWR6mbTfrjrmX07qckD4evGYg1+sVvxxrQ0p5FGjAoAPSewbZjmhhU5w==
+	b=e+uQj1pZSgnq0tYl/dNZoN3qfJMAZvqdIoEsHIXJCc4kZp07gEe0byeDxcQYGlgoQdBe
+	 b8gZnnyJ4TeS7zNJxiZ6YnDclK5+DdmhUYOXofKYXy0m1WeoIjU6IdHyMHe9AB8QaqgnG
+	 Jdp3HtOVdV3FQjlChbJ0FB15LC+eQ/rtzWMJLt9BUg8xthT8IRtUVutcUPAom5cFpvsXd
+	 4qGr5vqSEQfmq4aIheK2fCcCpbmZCqbcfD+5A4Bk6shPHfRAPB66hFkbiTWJgdraiwlH7
+	 o/RsKjs7Q6f0WTaBtY/i5cG3zw4RAWtSbcUE/9YS7RL5vjejA177rzfa+pZyR8/djrQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
 	a=rsa-sha256; c=relaxed/relaxed; t=1794458845;
 	h=DMARC-Filter:Received:DKIM-Signature:Received:From:To:Cc:Subject:
 	 Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
 	 Content-Transfer-Encoding;
-	bh=7PBD4lC+fgQap3VnBACnP+7Lk0O+RNcNFMi88IcbhNk=;
-	b=iyTh6wv7CD35IqkzPThCU2H5pQbfzOgogYWJqNFObJOh3DnfZ8yCY9LsQVaKjd5seGyL
-	 /lbAsoMxSBDBw5azl4LdH/pIIVvmOBBEKHXarfmofWN9EDHsB8j1xNv3kvklbUB79AFfY
-	 TbewvTFcghi59E+Kd5LMhrNgu75YHozIfVC/ORYnxIjiTXzPPDSzb64F4b8iqw7Rkm1gx
-	 FHDtOn3pk8ygr52wCtE8o0qTkX3WNnr4e7A4hGN5Zls+d04lZdQQXY5CKEEg/npw6YtSm
-	 Xr6JoZbK6ZGLyGwKplJFmrRTpSfYiTdTXc6f6RQeBEPbWOioqKvNeVaLD1aHv0iY7FQ==
+	bh=K7dgkiCb1Gt7wKOmEVhssLryrd31Lyy1dkkLE17iyZU=;
+	b=TpHIw3WhLQrb9NnCACMZzL1zGnBqQgzUEjxJ/gLaW7/0Uoeeo2anDfXFpGmrgvwrSOsX
+	 50Je++cwFgMyWNpvDLBCz18I0oRN5FpMh0OwpNInyLOMelFuQD2UUHopabMWPifrTcGmH
+	 wM9u8XzVB+oggmmMDrpG44s5Q6x46BTjbK5F4MZ0nBCI8DkIXSxHu4mHvAqJ9ZCKEZI/c
+	 xJ4wzxkYHipR5hbdEK/EOO8S1EwNYjZvKqmfLPchrVsOY7faKpe0SuWEc1FSqGkZpgq+b
+	 TxVRrlt4LxmH/YfP7pDXHn1qDOcXcbNUF/e9brh0t9I1B3MQq+Q8MKx0orhvPK0EuVA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=mit.edu;
 	spf=pass smtp.mailfrom=mit.edu;
-	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=Pwtw08QN;
+	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=Izr4d4bZ;
 	arc=none smtp.remote-ip=18.9.28.11
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 681EF606A338
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C36F460A2611
 	for <linux-ext4@vger.kernel.org>; Thu, 12 Nov 2026 04:47:24 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 681EF606A338
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org C36F460A2611
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=Pwtw08QN
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=Izr4d4bZ
 Received: from trampoline.thunk.org (pool-173-48-111-191.bstnma.fios.verizon.net [173.48.111.191])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AC4lK5M031180
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AC4lK5n031190
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
 	Wed, 11 Nov 2026 23:47:21 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1794458842; bh=7PBD4lC+fgQap3VnBACnP+7Lk0O+RNcNFMi88IcbhNk=;
+	t=1794458842; bh=K7dgkiCb1Gt7wKOmEVhssLryrd31Lyy1dkkLE17iyZU=;
 	h=From:Subject:Date:Message-ID:MIME-Version;
-	b=Pwtw08QN4mONSW8eJREVO7aMF2Rh1/MiI0dgJ7NlZ77UAO+IYT0Bv70QjjqjnEIKW
-	 EV+4VJGwJnZ1MxS3TIxpsqlMGjV5gGwHm8U208s/KYg2AMf9rzEgAAkvCEGgFojIrj
-	 TwOOvpXNPgtr0JxJWQxXG6iYVHbtA+JUVU7QuLsna0FfmEwbQeaPVrf39tF/VXxcV3
-	 Ba6PTUmIrfBcHps2cUSGFbVzb4aHuitImufDYWcGOwIoZRhkKcWtWh4PoT9NoQB56R
-	 Lv7PpvRSnPFDyXyNRAVVBu1kDNcyAlYW1oMWDoQDa/OO/9kF3xm+fRixxMz4JQu5bq
-	 d6+VMyJmDO1cw==
+	b=Izr4d4bZCZY8LBzVaFvKG2sA6rB8rXmd9WoXhd2K508gp3AJw4niFF84d9r8mfQ8U
+	 a2g/lmEuedpFO9F8i0to8KPB7LBZCKbfphjO9PtMQhRr35YDuT743AIEenBxXkSXz6
+	 FjX3eGp3/2/zfOtSe4IdKZnS2xMlDVUdN5ztylPmOK/GgRg5FgKUVC56iG0lh4EtoL
+	 Ws+1l1yAPJH+XsxE+ITR4PEZeetUoeUsCd3+452UTE4MmVCVlNuPopn4kOhHLe4Ass
+	 j+/Z1lo5IsSSI1/KUayPiwYQdrlse7acF2aIvCSxLthcBJGjqlQmHUbsjj9Bpfx3bI
+	 IXSYK+biK+WFQ==
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id 332A92E0148; Wed, 11 Nov 2026 23:47:19 -0500 (EST)
+	id 395FA2E014A; Wed, 11 Nov 2026 23:47:19 -0500 (EST)
 From: "Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Cc: "Theodore Ts'o" <tytso@mit.edu>
-Subject: [PATCH 06/23] ext4: handle s_lastcheck_hi in the get/set tune superblock ioctls
-Date: Wed, 11 Nov 2026 23:46:55 -0500
-Message-ID: <20261112044712.1577296-7-tytso@mit.edu>
+Subject: [PATCH 08/23] ext4: fix inverted err_report_sec check in ext4_update_super()
+Date: Wed, 11 Nov 2026 23:46:57 -0500
+Message-ID: <20261112044712.1577296-9-tytso@mit.edu>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <20261112044712.1577296-1-tytso@mit.edu>
 References: <20261112044712.1577296-1-tytso@mit.edu>
@@ -69,160 +69,79 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-struct ext4_tune_sb_params exposes last_check_time as a __u64, and the
-superblock stores the time of the last check as a 40-bit value split
-between s_lastcheck and s_lastcheck_hi.  However,
-EXT4_IOC_GET_TUNE_SB_PARAM only reports s_lastcheck, and
-EXT4_IOC_SET_TUNE_SB_PARAM only writes s_lastcheck, leaving any
-existing s_lastcheck_hi in place.
+When the first error is copied into the on-disk superblock,
+ext4_update_super() is supposed to start the periodic error reporting
+timer if it is not already running and err_report_sec is non-zero, as
+the comment above the code says.  However, the check was inverted:
 
-So timestamps past 2106 are truncated when read, and setting the last
-check time on a file system whose s_lastcheck_hi is non-zero results
-in a timestamp that is off by a multiple of 2^32 seconds, which
-confuses the time-based fsck check in ext4_setup_super() and e2fsck.
+	if (!es->s_error_count && !sbi->s_err_report_sec)
 
-Read and write s_lastcheck_hi along with s_lastcheck, and reject
-values which don't fit in the 40-bit on-disk representation.
+With the default err_report_sec of 86400 the timer is therefore never
+started when a clean file system records its first error, so the
+"error count since last fsck" messages are not printed until the file
+system is remounted.  Conversely, if the administrator disabled the
+report by writing 0 to /sys/fs/ext4/<dev>/err_report_sec, the first
+error arms the timer to fire immediately.
 
-Fixes: 04a91570ac67 ("ext4: implemet new ioctls to set and get superblock parameters")
+Drop the stray negation.  Also read s_err_report_sec only once, with
+READ_ONCE(), since it can be changed concurrently via sysfs, so that
+the value tested is the value used to arm the timer.
+
+Fixes: d518215c2719 ("ext4: add sysfs attribute err_report_sec to control s_err_report timer")
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/ioctl-test.c | 62 ++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/ioctl.c      | 12 +++++++--
- 2 files changed, 72 insertions(+), 2 deletions(-)
+ fs/ext4/super-test.c | 12 ++++++++++++
+ fs/ext4/super.c      |  6 ++++--
+ 2 files changed, 16 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/ioctl-test.c b/fs/ext4/ioctl-test.c
-index fd7b4ff2cd81..831b7e032fad 100644
---- a/fs/ext4/ioctl-test.c
-+++ b/fs/ext4/ioctl-test.c
-@@ -17,6 +17,7 @@
- #include <linux/iversion.h>
- #include <linux/kernel.h>
- #include <linux/mm.h>
-+#include <linux/mman.h>
- #include <linux/module.h>
- #include <linux/mount.h>
- #include <linux/part_stat.h>
-@@ -27,6 +28,7 @@
- #include <linux/slab.h>
- #include <linux/string.h>
- #include <linux/timer.h>
-+#include <linux/uaccess.h>
- #include <linux/uuid.h>
- #include <linux/workqueue.h>
+diff --git a/fs/ext4/super-test.c b/fs/ext4/super-test.c
+index 3fd7a4d86f31..abd844c8c29f 100644
+--- a/fs/ext4/super-test.c
++++ b/fs/ext4/super-test.c
+@@ -1305,6 +1305,18 @@ static void test_error_recording_and_update_super(struct kunit *test)
+ 	KUNIT_EXPECT_EQ(test, le64_to_cpu(es->s_kbytes_written), 100ULL);
+ 	KUNIT_EXPECT_EQ(test, es->s_checksum, ext4_superblock_csum(es));
  
-@@ -889,6 +891,65 @@ static void test_tune_sb_feature_prereqs(struct kunit *test)
- 	KUNIT_EXPECT_EQ(test, sbi->s_csum_seed, seed);
- }
++	/* First recorded error arms the periodic error report timer */
++	KUNIT_EXPECT_TRUE(test, timer_pending(&sbi->s_err_report));
++
++	/* err_report_sec == 0 disables the timer even for a first error */
++	timer_delete_sync(&sbi->s_err_report);
++	es->s_error_count = 0;
++	sbi->s_err_report_sec = 0;
++	ext4_save_error_info_test(sb, EIO, 31, 4096, "third_fn", 333);
++	ext4_update_super_test(sb);
++	KUNIT_EXPECT_EQ(test, le32_to_cpu(es->s_error_count), 1U);
++	KUNIT_EXPECT_FALSE(test, timer_pending(&sbi->s_err_report));
++
+ 	/* Read-only superblock update must not touch s_wtime */
+ 	es->s_wtime = cpu_to_le32(123456U);
+ 	saved_wtime = es->s_wtime;
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 6cdcae00d569..5f704c43c901 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -6302,6 +6302,7 @@ static void ext4_update_super(struct super_block *sb)
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	struct ext4_super_block *es = sbi->s_es;
+ 	struct buffer_head *sbh = sbi->s_sbh;
++	unsigned long err_report_sec;
  
-+/*
-+ * Verify that last_check_time is validated against, stored to, and
-+ * reported from the 40-bit s_lastcheck / s_lastcheck_hi timestamp.
-+ */
-+static void test_tune_sb_last_check_time(struct kunit *test)
-+{
-+	struct ioctl_test_ctx *ctx = test->priv;
-+	struct super_block *sb = ctx->sb;
-+	struct ext4_sb_info *sbi = &ctx->sbi;
-+	struct ext4_super_block *es = ctx->es;
-+	struct ext4_tune_sb_params params;
-+	struct vfsmount mnt = {
-+		.mnt_root	= sb->s_root,
-+		.mnt_sb		= sb,
-+		.mnt_idmap	= &nop_mnt_idmap,
-+	};
-+	struct file filp = {
-+		.f_inode	= d_inode(sb->s_root),
-+		.f_path		= {
-+			.mnt	= &mnt,
-+			.dentry	= sb->s_root,
-+		},
-+		.f_mode		= FMODE_READ,
-+	};
-+	unsigned long uaddr;
-+
-+	memset(&params, 0, sizeof(params));
-+	params.set_flags = EXT4_TUNE_FL_LAST_CHECK_TIME;
-+	params.last_check_time = 1ULL << 40;
-+	KUNIT_EXPECT_EQ(test, ext4_validate_tune_sb_params_test(sb, &params),
-+			-EINVAL);
-+
-+	params.last_check_time = 0x123456789aULL;
-+	KUNIT_EXPECT_EQ(test, ext4_validate_tune_sb_params_test(sb, &params),
-+			0);
-+	es->s_lastcheck_hi = 0xff;
-+	ext4_sb_setparams_test(sbi, es, &params);
-+	KUNIT_EXPECT_EQ(test, le32_to_cpu(es->s_lastcheck), 0x3456789aU);
-+	KUNIT_EXPECT_EQ(test, es->s_lastcheck_hi, 0x12);
-+
-+	/* EXT4_IOC_GET_TUNE_SB_PARAM reports all 40 bits */
-+	uaddr = kunit_vm_mmap(test, NULL, 0, PAGE_SIZE,
-+			      PROT_READ | PROT_WRITE,
-+			      MAP_ANONYMOUS | MAP_PRIVATE, 0);
-+	KUNIT_ASSERT_NE_MSG(test, uaddr, 0UL, "Could not create user mm");
-+	KUNIT_ASSERT_LT_MSG(test, uaddr, (unsigned long)TASK_SIZE,
-+			    "Failed to allocate user memory");
-+
-+	KUNIT_ASSERT_EQ(test,
-+			ext4_ioctl(&filp, EXT4_IOC_GET_TUNE_SB_PARAM, uaddr),
-+			0);
-+	memset(&params, 0, sizeof(params));
-+	KUNIT_ASSERT_EQ(test,
-+			copy_from_user(&params, (void __user *)uaddr,
-+				       sizeof(params)),
-+			0UL);
-+	KUNIT_EXPECT_EQ(test, params.last_check_time, 0x123456789aULL);
-+}
-+
- /*
-  * Verify ext4_update_backup_sb, ext4_update_superblocks_fn, and
-  * ext4_update_overhead across primary + 4 sparse_super backup groups (1, 3,
-@@ -1398,6 +1459,7 @@ static struct kunit_case ioctl_test_cases[] = {
- 	KUNIT_CASE(test_tune_sb_mount_opts_guard),
- 	KUNIT_CASE(test_tune_sb_dir_index_hash_state),
- 	KUNIT_CASE(test_tune_sb_feature_prereqs),
-+	KUNIT_CASE(test_tune_sb_last_check_time),
- 	KUNIT_CASE(test_update_superblocks_and_overhead),
- 	KUNIT_CASE(test_update_backup_sb_bad_csum),
- 	KUNIT_CASE(test_swap_inode_data_and_seed),
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 8bd4958217e0..9e2bde83a033 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -1308,7 +1308,8 @@ static int ext4_ioctl_get_tune_sb(struct ext4_sb_info *sbi,
- 	ret.mnt_count = le16_to_cpu(es->s_mnt_count);
- 	ret.max_mnt_count = le16_to_cpu(es->s_max_mnt_count);
- 	ret.checkinterval = le32_to_cpu(es->s_checkinterval);
--	ret.last_check_time = le32_to_cpu(es->s_lastcheck);
-+	ret.last_check_time = ((u64)es->s_lastcheck_hi << 32) |
-+			      le32_to_cpu(es->s_lastcheck);
- 	ret.reserved_blocks = ext4_r_blocks_count(es);
- 	ret.blocks_count = ext4_blocks_count(es);
- 	ret.reserved_uid = ext4_get_resuid(es);
-@@ -1347,8 +1348,10 @@ static void ext4_sb_setparams(struct ext4_sb_info *sbi,
- 		es->s_max_mnt_count = cpu_to_le16(params->max_mnt_count);
- 	if (params->set_flags & EXT4_TUNE_FL_CHECKINTRVAL)
- 		es->s_checkinterval = cpu_to_le32(params->checkinterval);
--	if (params->set_flags & EXT4_TUNE_FL_LAST_CHECK_TIME)
-+	if (params->set_flags & EXT4_TUNE_FL_LAST_CHECK_TIME) {
- 		es->s_lastcheck = cpu_to_le32(params->last_check_time);
-+		es->s_lastcheck_hi = upper_32_bits(params->last_check_time);
-+	}
- 	if (params->set_flags & EXT4_TUNE_FL_RESERVED_BLOCKS) {
- 		ext4_fsblk_t blk = params->reserved_blocks;
- 
-@@ -1432,6 +1435,11 @@ static int ext4_validate_tune_sb_params(struct super_block *sb,
- 	    (params->errors_behavior > EXT4_ERRORS_PANIC))
- 		return -EINVAL;
- 
-+	/* s_lastcheck{,_hi} hold a 40-bit timestamp */
-+	if ((params->set_flags & EXT4_TUNE_FL_LAST_CHECK_TIME) &&
-+	    (params->last_check_time >> 40))
-+		return -EINVAL;
-+
- 	if ((params->set_flags & EXT4_TUNE_FL_RESERVED_BLOCKS) &&
- 	    (params->reserved_blocks > ext4_blocks_count(sbi->s_es) / 2))
- 		return -EINVAL;
+ 	lock_buffer(sbh);
+ 	/*
+@@ -6360,9 +6361,10 @@ static void ext4_update_super(struct super_block *sb)
+ 		 * Start the daily error reporting function if it hasn't been
+ 		 * started already and sbi->s_err_report_sec is not zero
+ 		 */
+-		if (!es->s_error_count && !sbi->s_err_report_sec)
++		err_report_sec = READ_ONCE(sbi->s_err_report_sec);
++		if (!es->s_error_count && err_report_sec)
+ 			mod_timer(&sbi->s_err_report,
+-					  jiffies + secs_to_jiffies(sbi->s_err_report_sec));
++				  jiffies + secs_to_jiffies(err_report_sec));
+ 		le32_add_cpu(&es->s_error_count, sbi->s_add_error_count);
+ 		sbi->s_add_error_count = 0;
+ 	}
 -- 
 2.56.0.542.g3ef89b7020-goog
 
