@@ -1,44 +1,44 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794519981;
-	b=ZRPmYzu+np2iFXaMNdGGHLgxO7Qj/9lUFIJlS5eF+RxeOrf5fURcnVHLA+JswTu7T5UZ
-	 WXJAlo6cIXTOCix7jrEP3KfUjpmlL0UAkvCC7bwarZ3ntJdAyAgHefo942E3+d6lNt0hR
-	 DxwvUpSLfO2U3YdxrTGb7PUsufvjnISFRQx+8P6cNHd0W2rZZayp6k2mg3NJ16XJ+meY3
-	 IwpjecXDaZxlXRj6Hb6DVBxvTZCkjFLZ8vdCs9Fzf+c9PLqqJjNQ6xrT+pUqvB6dmUTaM
-	 9YNh2efZ8tBjrXkCK/3xKB1PtX1An6JKR2lnmNlibRNxCXNIk47rNox2+3KGS0k3XNQ==
+	t=1794519987;
+	b=WFPQILHX15DBXdUapAYIMHtIkxeWruduEtRoSUXwXX1XHzNVwvUVxV9XC/BIw51hkSpl
+	 PQFobo+bbzVJycQSk9qA9BTw1eWFXZguRLAlah55iKWm2526muon/pKrOcsaWvA9zssGp
+	 ogowb6RnsKDPYuCIIB+o+Yba9QQXjbHieoIobjm4NOTZa6rBelkiP1UDIkcn/hYz0jGAe
+	 hs1Jtt8J4Zdk92VTqhOs98z7pxk3ewp7/Yl8nTOpcmzSo9XvoENUzTmHZlQ+gTat0YXC5
+	 MajmCftKRmxAwqkMe/6EVnCqukfyFQvQbooZ5uv2L7OamQFVKQETSvUf2BZ6aFqwSjQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794519981;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794519987;
 	h=Received:DKIM-Signature:From:To:Subject:Date:Message-ID:In-Reply-To:
 	 References:MIME-Version:Content-Type:Content-Transfer-Encoding;
-	bh=dhSFR2ubadcyXaAKett/4h+Z0PAEFKYZEE0yEgeDYgE=;
-	b=BnQ5nocC7zgzF6daqARLepL88WTZNZ8XeXZ5T6cjB3zw/KHylkQV07EinyZeKeBhQ6sO
-	 gKxnQq+TYmjCQsXaLbmUfZLNYNhZsqCFSCXuQWjMO81m4JV717m3TBvmDrpMq2SRMvrt9
-	 x7k4MHMZjiEomzx2tj+AYmhtUtqeb2b070Ws+j09Mv4AGVb3tPKCIE/rtByTxpOVWb1iS
-	 9dNcqRSp4RClCCUnakoLQ9gTe89TlQFIZTN7PEWJvFhVZXamwEp9bvTso/IchD2+mVfsl
-	 o4HQgiW4kwh/yDwpTNuXz3g+cZdXNmgDu8AWs1idySU2JVC0pgeP+Glj6ZvCn2dN4Yg==
+	bh=FwSZ6EZwDbjC6g0eYcq1DfB8oiXV4dgLC1WiPq1Ih5s=;
+	b=vpH/C+Mw2V4Aq78kUqrQAIqw4VGtMZxchURTJn6+7I89h7x79BGYvAFddaKqbtOs66wj
+	 v+JiIa+4XUTmZ6pdGm3m4IZkfEDLQpjaJWPIxAbGGtZGZfVGb/ZQckETu8d7Wh235wG84
+	 hQLWKLG5tCYeVqJfKsjUTJdZAQ8FX35QQpGPRAI6Xs3U4Hlaubtc2NocjK2DRx+9o438W
+	 MP++bp2w3AmXgfidIC4cm6Cp46mwnA5IIexgVEqJ0M/h3gb3lBQ6FK9SxPXTn82hYuQAa
+	 e01pqCZG2xndouQy5ZpZiZfcL5KYsoJlxuVPccFNnB/vk7GVYlaqCUPupxoecliVdfA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=lNcaDmma;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=XNSgWH97;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CE209606A880;
-	Thu, 12 Nov 2026 21:46:21 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 56BD1606A88F;
+	Thu, 12 Nov 2026 21:46:27 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=lNcaDmma
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3B97A1F000C5;
-	Thu, 12 Nov 2026 21:46:20 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=XNSgWH97
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7BC551F000D1;
+	Thu, 12 Nov 2026 21:46:25 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794519981;
-	bh=dhSFR2ubadcyXaAKett/4h+Z0PAEFKYZEE0yEgeDYgE=;
+	s=k20260515; t=1794519986;
+	bh=FwSZ6EZwDbjC6g0eYcq1DfB8oiXV4dgLC1WiPq1Ih5s=;
 	h=From:To:Subject:Date:In-Reply-To:References;
-	b=lNcaDmmajZ+lz1UoySq0J+MPCUW5U2mZloPcWxVju1g27w7T/lJA9klBfgEUgBIe/
-	 EV/D93SJ7Erw0v5orywlUlkCzmqMyD0XizsgoJFpm9gsnJfCgzu7GqhwkFyfAl7RvM
-	 dNfbQvB5P1dbX8u+j2jBIjlu9M/mYQZH4NF+UQqITJLZkFQWErGGPXKCJ0t/lNoV4+
-	 KUEAwjN1BKlSysBL8cmFJDq/NHSDzwKpNUnp1Bh8PwS3GH4U2aJFobmBZAR3kJ/OQU
-	 1N8BkM2EEMaP6bZTNt4ou3GSMwYrIxKUAGH+agbv8v/cDuWPahQuXYxSRiht7+WJR0
-	 L2TKyrJ4Ff18g==
+	b=XNSgWH97i2S7lg0p1jJ1yoBnSlxDofVGjxTQisr8j6iQ3LtJebLrsMnZFLPi/pwjU
+	 4zycl6f+Q4PPxFdRBWOMT6Wfogz+EYhQF992jeIhWYJeN8kGgz6DLJbddejqJkwFB6
+	 KkHmelTxpVDn020STuGNU/xaej5+fIZCv9t6BqcGtPgXgHRzY5OYLwRxbjPnDrTMHy
+	 iQQQntu02hKYcNAiU8hhl7f06WhZLtaDUWXYOCi+r4WbROjxcuBo3IhVRnyyLZpGBd
+	 bTs3V6pdJLV437GeSvYkVBR78thqKBVSs08I9QpVXwrEh7oeTuyw3ZPIqCqHUnKbYj
+	 ONO9ubkBxmNiw==
 From: Chris Mason <mason@kernel.org>
 To: mason@kernel.org,
 	tytso@mit.edu,
@@ -53,9 +53,9 @@ To: mason@kernel.org,
 	linux-ext4@vger.kernel.org,
 	tz2294@columbia.edu,
 	brauner@kernel.org
-Subject: [PATCH v9 08/14] xfs: refuse writes to files racing with realtime inode flag changes
-Date: Thu, 12 Nov 2026 16:46:12 -0500
-Message-ID: <20261112214604.67875-9-mason@kernel.org>
+Subject: [PATCH v9 11/14] xfs: take the MMAPLOCK in xfs_fileattr_set()
+Date: Thu, 12 Nov 2026 16:46:15 -0500
+Message-ID: <20261112214604.67875-12-mason@kernel.org>
 In-Reply-To: <20261112214604.67875-1-mason@kernel.org>
 References: <20261112214604.67875-1-mason@kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -70,60 +70,109 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 
-From: Christoph Hellwig <hch@lst.de>
+A store through a shared mapping can corrupt a realtime file system on
+disk, or shut a file system down, if FS_IOC_FSSETXATTR changes the
+realtime flag or an extent size hint of the file during the write fault.
 
-Zoned writes need to reserve space before taking the iolock to avoid
-deadlocks with garbage collection.  But this means that the realtime inode
-flag which indicates if the file will be placed on the zoned realtime
-device or the main data device can be flipped after taking the reservation
-and before taking the write, or after deciding to go down the regular
-write path, both of which can't work.
+A write fault reads the flag and the hints more than once: to choose
+delayed allocation, to size the block reservation, and again in the
+allocator. All of these have to see the same values. System calls that
+write do the same, but they hold the IOLOCK, which keeps the ioctl out.
+A fault only holds the MMAPLOCK, which the ioctl does not take:
 
-Re-sample the realtime flag just before the actual write, and refuse the
-write if the flag changed.  Do not retry the write using the now correct
-path, as switching the flag under a write is not a normal use case, and
-trying to flip between the zoned and regular path is an inherent life
-lock as it could be switched around again the next time this check is
-performed.
+    write fault                         FS_IOC_FSSETXATTR
+    ===========                         =================
+    takes the MMAPLOCK
+    xfs_iomap_write_direct()
+      reserves blocks for the old hint
+                                        takes the ILOCK
+                                        raises the hint
+                                        drops the ILOCK
+      takes the ILOCK
+      xfs_bmapi_write()
+        allocates for the new hint
+        /* more than was reserved */
 
-Fixes: 058dd70c65ab ("xfs: implement buffered writes to zoned RT devices")
-Fixes: 2e2383405824 ("xfs: implement direct writes to zoned RT devices")
-Reported-by: Chris Mason <mason@kernel.org>
-Signed-off-by: Christoph Hellwig <hch@lst.de>
+The fix used here is to make the ioctl take the MMAPLOCK of a regular
+file as well.
+
 Signed-off-by: Chris Mason <mason@kernel.org>
-Reviewed-by: Carlos Maiolino <cmaiolino@redhat.com>
 ---
 
 Notes:
-    v6->v9: no change
+    v8->v9:
+    - New patch.
 
- fs/xfs/xfs_file.c | 13 +++++++++++++
- 1 file changed, 13 insertions(+)
+ fs/xfs/xfs_inode.c |  3 ++-
+ fs/xfs/xfs_ioctl.c | 17 +++++++++++++++--
+ 2 files changed, 17 insertions(+), 3 deletions(-)
 
-diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
-index d888470d092a..515ddafc6673 100644
---- a/fs/xfs/xfs_file.c
-+++ b/fs/xfs/xfs_file.c
-@@ -441,6 +441,19 @@ xfs_file_write_checks(
- 		goto restart;
- 	}
+diff --git a/fs/xfs/xfs_inode.c b/fs/xfs/xfs_inode.c
+index cb61305e4b80..0584ad11f92b 100644
+--- a/fs/xfs/xfs_inode.c
++++ b/fs/xfs/xfs_inode.c
+@@ -134,7 +134,8 @@ xfs_lock_flags_assert(
+  * take both the i_rwsem and the invalidate_lock. These locks should *only* be
+  * both taken in places where we need to invalidate the page cache in a race
+  * free manner (e.g. truncate, hole punch and other extent manipulation
+- * functions).
++ * functions), or where we change inode attributes that both kinds of IO rely
++ * on (xfs_fileattr_set).
+  */
+ void
+ xfs_ilock(
+diff --git a/fs/xfs/xfs_ioctl.c b/fs/xfs/xfs_ioctl.c
+index f81b6e52ac40..af13ad6784b7 100644
+--- a/fs/xfs/xfs_ioctl.c
++++ b/fs/xfs/xfs_ioctl.c
+@@ -757,6 +757,7 @@ xfs_fileattr_set(
+ 	struct xfs_trans	*tp;
+ 	struct xfs_dquot	*pdqp = NULL;
+ 	struct xfs_dquot	*olddquot = NULL;
++	bool			isreg = S_ISREG(VFS_I(ip)->i_mode);
+ 	int			error;
+ 
+ 	trace_xfs_ioctl_setattr(ip);
+@@ -804,10 +805,18 @@ xfs_fileattr_set(
+ 
+ 	xfs_ioctl_setattr_prepare_dax(ip, fa);
  
 +	/*
-+	 * Now that we are in the same IOLOCK critical section as the actual
-+	 * write, check that the inode still has the realtime flag in the state
-+	 * that the caller expects.  If not, some deliberately cleared it while
-+	 * I/O is ongoing, so bail out.
++	 * A write fault only holds the MMAPLOCK, and it looks at the realtime
++	 * flag and at the extent size hints more than once.  Only regular files
++	 * have write faults.
 +	 */
-+	if (xfs_is_zoned_inode(XFS_I(inode)) != !!ac) {
-+		xfs_warn_ratelimited(XFS_I(inode)->i_mount,
-+			"RT flag modifying during write for inode 0x%llx.",
-+			inode->i_ino);
-+		return -EINVAL;
-+	}
++	if (isreg)
++		xfs_ilock(ip, XFS_MMAPLOCK_EXCL);
 +
+ 	tp = xfs_ioctl_setattr_get_trans(ip, pdqp);
+ 	if (IS_ERR(tp)) {
+ 		error = PTR_ERR(tp);
+-		goto error_free_dquots;
++		goto error_unlock;
+ 	}
+ 
+ 	error = xfs_ioctl_setattr_check_extsize(ip, fa);
+@@ -864,6 +873,8 @@ xfs_fileattr_set(
+ 
+ skip_xattr:
+ 	error = xfs_trans_commit(tp);
++	if (isreg)
++		xfs_iunlock(ip, XFS_MMAPLOCK_EXCL);
+ 
  	/*
- 	 * If the offset is beyond the size of the file, we need to zero all
- 	 * blocks that fall between the existing EOF and the start of this
+ 	 * Release any dquot(s) the inode had kept before chown.
+@@ -875,7 +886,9 @@ xfs_fileattr_set(
+ 
+ error_trans_cancel:
+ 	xfs_trans_cancel(tp);
+-error_free_dquots:
++error_unlock:
++	if (isreg)
++		xfs_iunlock(ip, XFS_MMAPLOCK_EXCL);
+ 	xfs_qm_dqrele(pdqp);
+ 	return error;
+ }
 -- 
 2.55.0
 
