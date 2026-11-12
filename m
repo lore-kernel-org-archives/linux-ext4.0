@@ -1,60 +1,60 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=18.9.28.11
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
 	t=1794458844;
-	b=XAb7EvAZJMXOBfpD4RznLDjA+vw1T8RMd0BfIEuV6mQUjjkvtNEqg8b1+LWW16Mk0IbY
-	 DtL8cf17xC4Zr7VWKBdWB14zBpTfC0DzkxbiWYettS4JOdTe3EaWP8ZNGuK1zqJvW4K0w
-	 J8wz9FExw4GGF/7E3pDI6eQR2U6e/md90dYZWiRte462//m0uBXYJTuwxJf9oka4QOwTs
-	 FtzyIXPA7xre1fBcCOy8EwwFnwhFxPBroJcQbi5j7qnAyOFEfuukWvn7QeHkiVW5t5DyW
-	 aeyfRgZ8SqJtOonATFKJKcp06OEZ/N26E8W3uFCrjaFU3v15sxKbaS0jXMMin2G63ZA==
+	b=jpEmSlUjb48cepL9DcPZ/NkL7tm+9DY1CPqdvF+JT7Gq5eQqgjU6ksahwcS1CFWyKzdP
+	 WMN7/tnszfk11OwyUgAH9mS/Z+sXNALayV5epJEkGjbCYUUlr7ayoT+jobilwnRxwNJ3Z
+	 d4SX95a3j8e/G0Il8yozUmKj7lS+QgEzuQaZaAoz49yuyZRz5K8nluk/ODTGvKUNyAeDd
+	 t1Ozu9hY/Mci+IcYDGCf64X9cUchNnV0bNvrEv7XNtFI/eYfX/F+UCmeqFpRyPlcMQgAx
+	 p04khHETkJRRgWioyqAaBPWiB1Hgi4hFkcMG5gNht3YI41wZ8e/fp4wmYdbDlESZtJw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
 	a=rsa-sha256; c=relaxed/relaxed; t=1794458844;
 	h=DMARC-Filter:Received:DKIM-Signature:Received:From:To:Cc:Subject:
 	 Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
 	 Content-Transfer-Encoding;
-	bh=hy/kWSaLAkWFfjrUs6iXY2SOe33zEgtNxCzg5XGDGPI=;
-	b=AFIJd0iIWdWcYZmB3L4odtynTn3AdMT7r7we39N/z3vi2U+7teMcNKmZQ+gewTl12prU
-	 UWtzuPb04kCGr8oivurMtPKD18n2kdRm3hHKWJ2c5ZJOoLKBLnRwFJsITPjX6GDyb/1+4
-	 FO2XJwxGsPJ9CuCqYg2EtE3zGntjwHz/FK+oKLeFlmH+0NnTIA0Bp1xxk9PJ3zsI6YoDd
-	 txE1oSIqEfSrrsvk+nY7Gi2zCZgtwsowoMTvJY2i3cGOYW9LewFH081y0XRYCTQDDVRib
-	 VF8aRiGvih92EpNmneKn+jOhILKOMncjd5+JBP5vT7ltJhtb4R/DPiSPN1HOt934mUQ==
+	bh=cfkBvm5oX4zF11M63v5qm8AzQHPwbop9sORuXDZDCqI=;
+	b=vE56YPCVB+4x7eIBKMGBo0H7XotpinnQl8hwYOdGoOAEJv2YiiuM+F3xsBXAhYVvWGTR
+	 nla+2pIwjDTPscCOW+eJWx1was9P1CpiGXbBMpOCfrgAomuGXJpQgSD/QN3T7DMwe6x6v
+	 6NoihbIVd/PFMzKGZDacbWoJfnBtum4gT/NqxcfwWZT6N9bbuGE+g/FjA/a1edj+U9wVJ
+	 RZskCtUGsA3kJaFM+JpLcYVgVPhe6EpSVIbq/jOrgU17k9jfvW+ohgma2hBLUVGhyT4xO
+	 QdSeqWwkincC5DEn+Uib5eexEMrnGRCb8yQsxLzTX2FIVTRxWE7nDg5WvKootc9I4nw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=mit.edu;
 	spf=pass smtp.mailfrom=mit.edu;
-	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=Dl8iLi4B;
+	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=MnhiCu3U;
 	arc=none smtp.remote-ip=18.9.28.11
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3401B60A2608
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 413DA60A260C
 	for <linux-ext4@vger.kernel.org>; Thu, 12 Nov 2026 04:47:24 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 3401B60A2608
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 413DA60A260C
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=Dl8iLi4B
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=MnhiCu3U
 Received: from trampoline.thunk.org (pool-173-48-111-191.bstnma.fios.verizon.net [173.48.111.191])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AC4lKFF031189
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AC4lKjv031191
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
 	Wed, 11 Nov 2026 23:47:21 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1794458842; bh=hy/kWSaLAkWFfjrUs6iXY2SOe33zEgtNxCzg5XGDGPI=;
+	t=1794458842; bh=cfkBvm5oX4zF11M63v5qm8AzQHPwbop9sORuXDZDCqI=;
 	h=From:Subject:Date:Message-ID:MIME-Version;
-	b=Dl8iLi4BirnCZLKyXTOuLsqXbVvfIqZHismbYv7frRKTikTwMa5Lfv2/6B4xFP7NT
-	 9fRbI0VJrPpPqIguoQjBIZ/LNngqPAMwTOVuAQphMLxU6utvIFpIhZ1mYcdaYxD6jh
-	 jmLuXbG/7AQakjXKNNPjyVVtxYtcOFXCMJdgpApiP/a95MXqQaaH1Cls6hkA0XPgbG
-	 uF21noJouI6onacWrfai2X/YpDB2sSzroos7mPJBkGJPtwVqMDtN0sxlnUlBfWoQXM
-	 MiJphkkHxULBXBvej2ZiZtCM+FLswBa5jCaYo0oc7TnZCzNAOPsef2yGaJ+LSZ9zjz
-	 oCo9Z5h2c6sMw==
+	b=MnhiCu3UsTMXHAKE0FRp8Ax6HqRVtY3qxW5OJMOIYvRHim95C+FkXDMR/m7q3YKqj
+	 +xIaRjYe8J3VUBfh7aAW2ol7iEJWsgH50itP4N9gXFjMHc7ByZj5wNlBLWwkVm4Il5
+	 rsDclVgjomx4V66co5m8JDjwhg2NLdBCBsXK4dPVu66mfQ3sc2zoYhj/SExnYS//Zt
+	 namR0CcZA21n6JxpFm3u645x6b3yNDb3eeK6av+6ozx7RgD0Eszzi9+h5PNhsCV6pF
+	 h28beK1NUnRsrMtxU8D+otBXfaqOYePC18b6XRhXv0Kz6MzHuMvMDIQv8yPNLyMV9O
+	 ZumYfnhI0FBqw==
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id 363F72E0149; Wed, 11 Nov 2026 23:47:19 -0500 (EST)
+	id 3F9C52E014F; Wed, 11 Nov 2026 23:47:19 -0500 (EST)
 From: "Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Cc: "Theodore Ts'o" <tytso@mit.edu>
-Subject: [PATCH 07/23] ext4: pass missing ioctls through ext4_compat_ioctl
-Date: Wed, 11 Nov 2026 23:46:56 -0500
-Message-ID: <20261112044712.1577296-8-tytso@mit.edu>
+Subject: [PATCH 10/23] ext4: fix inode table accounting in count_overhead()
+Date: Wed, 11 Nov 2026 23:46:59 -0500
+Message-ID: <20261112044712.1577296-11-tytso@mit.edu>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <20261112044712.1577296-1-tytso@mit.edu>
 References: <20261112044712.1577296-1-tytso@mit.edu>
@@ -69,89 +69,104 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-ext4_compat_ioctl() only forwards an explicit allow-list of commands
-to ext4_ioctl() and returns -ENOIOCTLCMD for everything else.  Several
-commands were never added to that list:
+count_overhead() computes the per-group overhead of bigalloc file
+systems which do not have s_overhead_clusters set in the superblock.
+It only counts a group's inode table if the whole table lies inside
+the block group being examined, using
 
-  EXT4_IOC_MIGRATE
-  EXT4_IOC_ALLOC_DA_BLKS
-  EXT4_IOC_SWAP_BOOT
-  EXT4_IOC_GET_TUNE_SB_PARAM
-  EXT4_IOC_SET_TUNE_SB_PARAM
+	b >= first_block && b + sbi->s_itb_per_group <= last_block
 
-As a result, 32-bit userspace running on a 64-bit kernel (for example
-a 32-bit tune2fs or e4defrag) gets -ENOTTY for these ioctls, even
-though they work for native 64-bit callers.
+where last_block is the (inclusive) last block of the group.  This
+has two problems:
 
-None of these commands needs any translation: MIGRATE, ALLOC_DA_BLKS
-and SWAP_BOOT are _IO() commands that ignore their argument, and
-struct ext4_tune_sb_params consists only of fixed-size __u8/__u16/
-__u32/__u64 members whose layout is identical for 32-bit and 64-bit
-ABIs (its __u64 members are naturally aligned at offsets 16, 24 and
-32, and the structure size is 232 bytes on both).  The ioctl numbers
-therefore encode the same size, and the commands can simply be passed
-through to ext4_ioctl() with compat_ptr() applied to the argument.
+ - The end check is off by one: an inode table occupying the last
+   s_itb_per_group blocks of the group is not counted at all.
 
-Add the missing commands to the pass-through list and extend the
-ioctl dispatch KUnit test to check that the compat handler forwards
-them (when CONFIG_COMPAT is enabled).
+ - With flex_bg, mke2fs and online resize pack the inode tables of a
+   flex group back to back, so an inode table can straddle the
+   boundary between two block groups.  Such a table is not entirely
+   contained in either group and so is not counted in either.
 
-Fixes: c14c6fd5c56a ("ext4: Add EXT4_IOC_MIGRATE ioctl")
-Fixes: ccd2506bd431 ("ext4: add EXT4_IOC_ALLOC_DA_BLKS ioctl")
-Fixes: 393d1d1d7693 ("ext4: implementation of a new ioctl called EXT4_IOC_SWAP_BOOT")
-Fixes: 04a91570ac67 ("ext4: implemet new ioctls to set and get superblock parameters")
+In both cases the overhead is underestimated, so statfs(2) reports
+f_blocks (and thus the file system size and used space shown by df)
+as larger than it should be.
+
+Fix this by counting the intersection of the inode table with the
+block group, which handles both cases.
+
+Fixes: 952fc18ef9ec ("ext4: fix overhead calculation used by ext4_statfs()")
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/ioctl-test.c | 19 +++++++++++++++++++
- fs/ext4/ioctl.c      |  5 +++++
- 2 files changed, 24 insertions(+)
+ fs/ext4/super-test.c | 25 +++++++++++++++++++++++++
+ fs/ext4/super.c      | 15 +++++++++++++--
+ 2 files changed, 38 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/ioctl-test.c b/fs/ext4/ioctl-test.c
-index 831b7e032fad..8afeccc755f6 100644
---- a/fs/ext4/ioctl-test.c
-+++ b/fs/ext4/ioctl-test.c
-@@ -1423,6 +1423,25 @@ static void test_force_shutdown_and_ioctl_dispatch(struct kunit *test)
- 				-EBADF);
- 		KUNIT_EXPECT_EQ(test, ext4_ioctl(&filp, EXT4_IOC_SWAP_BOOT, 0),
- 				-EBADF);
-+#ifdef CONFIG_COMPAT
-+		/*
-+		 * Architecture-neutral commands must be passed through by
-+		 * the compat handler instead of failing with -ENOIOCTLCMD.
-+		 */
-+		KUNIT_EXPECT_EQ(test,
-+				ext4_compat_ioctl(&filp, EXT4_IOC_SWAP_BOOT, 0),
-+				-EBADF);
-+		KUNIT_EXPECT_EQ(test,
-+				ext4_compat_ioctl(&filp,
-+						  EXT4_IOC_GET_TUNE_SB_PARAM,
-+						  0),
-+				-EFAULT);
-+		KUNIT_EXPECT_EQ(test,
-+				ext4_compat_ioctl(&filp,
-+						  EXT4_IOC_SET_TUNE_SB_PARAM,
-+						  0),
-+				-EFAULT);
-+#endif
- 		filp.f_mode = FMODE_READ | FMODE_WRITE;
+diff --git a/fs/ext4/super-test.c b/fs/ext4/super-test.c
+index abd844c8c29f..72115c141986 100644
+--- a/fs/ext4/super-test.c
++++ b/fs/ext4/super-test.c
+@@ -1077,6 +1077,31 @@ static void test_overhead_and_statfs(struct kunit *test)
+ 	/* Cluster 0 holds super+gdb+bbitmap+ibitmap; clusters 1..2 hold itb */
+ 	KUNIT_EXPECT_EQ(test, ext4_count_overhead_test(sb, 0, buf), 3);
  
- 		/* EXT4_IOC_CLEAR_ES_CACHE empties inode extent status tree */
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 9e2bde83a033..d6f47ff00e61 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -2064,6 +2064,11 @@ long ext4_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
- 	case FS_IOC_SETFSLABEL:
- 	case EXT4_IOC_GETFSUUID:
- 	case EXT4_IOC_SETFSUUID:
-+	case EXT4_IOC_GET_TUNE_SB_PARAM:
-+	case EXT4_IOC_SET_TUNE_SB_PARAM:
-+	case EXT4_IOC_MIGRATE:
-+	case EXT4_IOC_ALLOC_DA_BLKS:
-+	case EXT4_IOC_SWAP_BOOT:
- 		break;
- 	default:
- 		return -ENOIOCTLCMD;
++	/* Inode table ending on the group's last block: clusters 254..255 */
++	ext4_inode_table_set(sb, &ctx->gdps[0], SUPER_TEST_BLOCKS_PER_GRP - 8);
++	memset(buf, 0, SUPER_TEST_BLK_SIZE);
++	KUNIT_EXPECT_EQ(test, ext4_count_overhead_test(sb, 0, buf), 3);
++
++	/*
++	 * flex_bg style layout where group 1's inode table (2044..2051)
++	 * straddles the boundary between group 1 (1024..2047) and group 2
++	 * (2048..3071); each group must count its own part of it.
++	 */
++	sbi->s_groups_count = 3;
++	ext4_inode_table_set(sb, &ctx->gdps[0], 4);
++	ext4_block_bitmap_set(sb, &ctx->gdps[1], 1028);
++	ext4_inode_bitmap_set(sb, &ctx->gdps[1], 1029);
++	ext4_inode_table_set(sb, &ctx->gdps[1], 2044);
++	ext4_block_bitmap_set(sb, &ctx->gdps[2], 2056);
++	ext4_inode_bitmap_set(sb, &ctx->gdps[2], 2057);
++	ext4_inode_table_set(sb, &ctx->gdps[2], 2060);
++	/* Group 1: super+gdb, bitmaps, and the head of its inode table */
++	memset(buf, 0, SUPER_TEST_BLK_SIZE);
++	KUNIT_EXPECT_EQ(test, ext4_count_overhead_test(sb, 1, buf), 3);
++	/* Group 2: tail of group 1's inode table, bitmaps, own inode table */
++	memset(buf, 0, SUPER_TEST_BLK_SIZE);
++	KUNIT_EXPECT_EQ(test, ext4_count_overhead_test(sb, 2, buf), 4);
++
+ 	/* Restore 1:1 geometry and verify ext4_statfs accounting & clamping */
+ 	ext4_clear_feature_bigalloc(sb);
+ 	ctx->es.s_first_data_block = cpu_to_le32(SUPER_TEST_FIRST_DATA_BLK);
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index e89f37419266..00d430e6e794 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -4266,12 +4266,23 @@ static int count_overhead(struct super_block *sb, ext4_group_t grp,
+ 			count++;
+ 		}
+ 		b = ext4_inode_table(sb, gdp);
+-		if (b >= first_block && b + sbi->s_itb_per_group <= last_block)
+-			for (j = 0; j < sbi->s_itb_per_group; j++, b++) {
++		/*
++		 * The inode table is s_itb_per_group blocks long and, with
++		 * flex_bg, may straddle a block group boundary.  Only count
++		 * the part of it which lies inside this block group.
++		 */
++		if (b <= last_block &&
++		    b + sbi->s_itb_per_group - 1 >= first_block) {
++			ext4_fsblk_t start = max(b, first_block);
++			ext4_fsblk_t end = min(b + sbi->s_itb_per_group - 1,
++					       last_block);
++
++			for (b = start; b <= end; b++) {
+ 				int c = EXT4_B2C(sbi, b - first_block);
+ 				ext4_set_bit(c, buf);
+ 				count++;
+ 			}
++		}
+ 		if (i != grp)
+ 			continue;
+ 		s = 0;
 -- 
 2.56.0.542.g3ef89b7020-goog
 
