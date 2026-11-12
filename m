@@ -1,60 +1,60 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=18.9.28.11
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
 	t=1794458846;
-	b=yJNWeUKU/1NMdxi1MPlur82OOTlK21T0LmAt5fonvabmdA/xFVjtKplqAB5X/WTI2J4S
-	 3Rkd2NJmrKFUMlcvgUtOa7nSc0L1fZWL8Yz9vVxtqJKHMeefNA8cS4mSXuh48iv4viyDi
-	 6o7/kMijV4zGuGZXiCeJM7jL5b6jRszzi71jtxyMA73hRTOZ3RXb+QdnDhxEmE+FVY3KZ
-	 k9xk4RYSyX094+BMtawhX6I8254kNkVso88UVTsFAx1TIE9QEJvwUbEpEfrcdJtvA80Zs
-	 J6WAHEC2X0Zy64d6YCYlTD/4L1DECcWjEjbC1BBExPd8AxlPkF0ynniscfTL7fwEkRA==
+	b=jKALwrkf30bxVQqNs5F5XbiAck7VfoTb+bwpDZeq+uC/BS+9Xn7oODcYnTabrboVS0UN
+	 mzGrYCtYLR3UC0BrwlmwsJ6OQ0A0/XURyQHCBRTlWbON/rkIkfOZ1gqXx/ijB3RkaVwxF
+	 ATop69ArgN80JJmPCduJdLbqxlNrqlTg+sDBBjcZ2/TY8wuOtv5OZ2SZGNnLi3Hxfp/7O
+	 isHIhSju/OpKEmFXW1AX55baigUrK84Bg116P8Zopx0pcSSzFNMuluG2CmX0qjgFafF8H
+	 urzs+y7XlC7iQfoSyxRCU/NovNqEGw412Zmh+4Qi/uKCz23EjMhA8yYtgsa5A9EYnZQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
 	a=rsa-sha256; c=relaxed/relaxed; t=1794458846;
 	h=DMARC-Filter:Received:DKIM-Signature:Received:From:To:Cc:Subject:
 	 Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
 	 Content-Transfer-Encoding;
-	bh=QNJScpC28zHNkmznSaRCulzM/aKXOxbZtqQaTEq6uEo=;
-	b=F8FI+K4x55nGOTFSkICIvH7zgTOzk76LmIjEoj3+qGG1jL4ltvvO5S+8/MKxU4kFCgQy
-	 8f7iuoKUmL+MmMYaNG6pLQezyIGCNB+ICxUbW4BydflgJGPLRJGfo8vvWNqiP1YlUs5jl
-	 YTVwuBpvPh+a+/P8gVTwg5+Xv2UZapUXfD8IgHyu4JvdZEY2LoDY8KkvXnKXlovqeJ95R
-	 z4+V9EOyTorf1q0DMU0+25ysdcaWIZgryvDeYVrye2+ntuUfKPyEfoj4XFaVzh800InOi
-	 cgaQmwfNVT9DKGd04cQ1Zv4v1G3tVQ37kKIzVLFCzgTI3HZuaZ5sbfw+zshUGtBAchA==
+	bh=lxcoS8gpJX3Tczd7p7zvxhZiqAIhnaRi3EwVoHs1Spc=;
+	b=TY9kY9w30lHSN1zyVfRAXcLEiYED/ppFHZR8siEUoDlp2MhCLyHcRgtDi3TKw5zeUdLX
+	 EUzAHs4PbpkStF212nhHAEy+5FWGUUVj3Kn7o5rDQbq+XrJ+yAXuRgoeFnTeF104ZoG3h
+	 /gLe9Ibnn2B/pkFQFTP7f8CEQ1Gvb0Hwx+ZEUrCLAfyO3J/0LqaryARmk6wbcd63Z3fFx
+	 o+CtR/kKRPFmJyilxjy/oF9/hjUMrlceOwq1nZCL5u7Y7LQCdSVbcfGZXS8wiz4rBvtRM
+	 UM9wdfSZsCZPz6jDpZf+f+kW4QtzIFbuCj2Iap509IQTPYuhdYmXD2BRnxb3T0vUEnw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=mit.edu;
 	spf=pass smtp.mailfrom=mit.edu;
-	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=Ta3GV9Xd;
+	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=kuD1L2Dz;
 	arc=none smtp.remote-ip=18.9.28.11
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 742F760A262C
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 872E360A262E
 	for <linux-ext4@vger.kernel.org>; Thu, 12 Nov 2026 04:47:25 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 742F760A262C
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 872E360A262E
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=Ta3GV9Xd
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=kuD1L2Dz
 Received: from trampoline.thunk.org (pool-173-48-111-191.bstnma.fios.verizon.net [173.48.111.191])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AC4lM1o031257
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AC4lMP9031290
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
 	Wed, 11 Nov 2026 23:47:23 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1794458844; bh=QNJScpC28zHNkmznSaRCulzM/aKXOxbZtqQaTEq6uEo=;
+	t=1794458843; bh=lxcoS8gpJX3Tczd7p7zvxhZiqAIhnaRi3EwVoHs1Spc=;
 	h=From:Subject:Date:Message-ID:MIME-Version;
-	b=Ta3GV9XdfmyCJF+e821uDHzIFG8NPtcHobZf9oBrmUsQJqHxQX+szKPSq/VohfTYq
-	 ONA0rtIw138aFPAbKhiMqloiJFBzwv2nm9CvBsGdpR1eVB3o5tZSEyHpcycd/knSM5
-	 l2br1ckyBkZopGHSPFqbJKSG1PqDcefi8V5vkE2ty22rSngoCcqMmEnXDnKmzD5Ory
-	 STJ6q3wQF9ErQ58ZSYMqkRcOWs0XD/noUECZ3RnwlbLEaRYD1iUbWz+jQuPNMXUOep
-	 Pbp+Ia6tlMfo4+qjuKRLdzFdY/QFFymPAN59hwrp4YWvhP7O4Jfel2AOf77O5bcAyM
-	 vixsmKhUUie8A==
+	b=kuD1L2DzKvlc6k7NL4AZxb67c4GQLDSD8u4DvtCR3ih0UPDZ9iPouDUu5O7QeBtLt
+	 q4bMb+fxXnS4SQaqogXrfh0R+svRLdxBO29gtnv/IyORF8OSQUmvfWCkjsKiM/7tkS
+	 Mr4AZ3MpR1ekk7z2tXLedoXu6zlonFmxRER3lyttK6206iBg9YTQpP+Jjq/DJeb29Y
+	 2HtiNkTaxfvkpM7ouHTtNo8SO7HgqxHKXtfFcptDbpCyqdGdXNtz/8HpzCvDRWABtC
+	 2eFK6WD0DpONrXiOsRqFojeS1LBIPu3bdZQlWS0kXcPWs2fJnsCmBanXfPGBmEwR8x
+	 iADqk/z/3y2jA==
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id 55FB32E0156; Wed, 11 Nov 2026 23:47:19 -0500 (EST)
+	id 62C852E015A; Wed, 11 Nov 2026 23:47:19 -0500 (EST)
 From: "Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Cc: "Theodore Ts'o" <tytso@mit.edu>
-Subject: [PATCH 17/23] ext4: don't clobber the migration result in ext4_ext_migrate()
-Date: Wed, 11 Nov 2026 23:47:06 -0500
-Message-ID: <20261112044712.1577296-18-tytso@mit.edu>
+Subject: [PATCH 21/23] ext4: fix device comparison overflow in ext4_getfsmap_dev_compare()
+Date: Wed, 11 Nov 2026 23:47:10 -0500
+Message-ID: <20261112044712.1577296-22-tytso@mit.edu>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <20261112044712.1577296-1-tytso@mit.edu>
 References: <20261112044712.1577296-1-tytso@mit.edu>
@@ -69,160 +69,122 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-After building the extent tree and (on success) swapping it into the
-inode, ext4_ext_migrate() makes sure the handle has a credit left for
-resetting tmp_inode, storing the result of ext4_journal_ensure_credits()
-in retval.  This throws away the outcome of the migration itself:
+ext4_getfsmap_dev_compare() returns the difference of two u32 encoded
+device numbers as an int.  new_encode_dev() places bits 8-19 of the
+minor number in bits 20-31, so any device with a minor number of
+0x80000 or higher encodes to a value with bit 31 set, and the
+difference of such a value and a smaller one does not fit in an int.
+The comparison then has the wrong sign.
 
- - If anything failed before (an I/O error reading an indirect block,
-   ENOSPC while growing the temporary extent tree, or EAGAIN from
-   ext4_ext_swap_inode_data() because a block was allocated
-   concurrently), the error is replaced by 0 and EXT4_IOC_MIGRATE or
-   "chattr +e" reports success although the inode is still
-   indirect-mapped.
+With an external journal on a low-numbered device and the filesystem
+on such a high-minor device, sort() orders the handlers as
+[data device, log device].  ext4_getfsmap() relies on the handlers
+being sorted in ascending device order: a query covering only the
+log device hits "fmh_keys[1].fmr_device < handlers[i].gfd_dev" on
+the data device first and breaks out of the loop, so no mappings are
+returned for the journal device, and a full query reports the devices
+in descending order, which breaks pagination with the last returned
+record as the next low key.
 
- - If the handle had to be restarted to obtain the credit,
-   ext4_journal_ensure_credits() returns 1, which is then returned to
-   userspace from EXT4_IOC_MIGRATE and treated as a failure by
-   ext4_ioctl_setflags().
+Use cmp_int() so that the comparison cannot overflow.
 
-Use a separate variable for the credit check and only let its error
-override retval if the migration itself succeeded.
+Add a KUnit test with a high-minor data device and an external
+journal device.
 
-Fixes: a413036791d0 ("ext4: Provide function to handle transaction restarts")
+Fixes: 0c9ec4beecac ("ext4: support GETFSMAP ioctls")
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/migrate-test.c | 53 +++++++++++++++++++++++++++++++++++++++---
- fs/ext4/migrate.c      |  9 ++++---
- 2 files changed, 56 insertions(+), 6 deletions(-)
+ fs/ext4/fsmap-test.c | 56 ++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/fsmap.c      |  2 +-
+ 2 files changed, 57 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext4/migrate-test.c b/fs/ext4/migrate-test.c
-index 1cc7c6fe3b80..59e34c2fd0db 100644
---- a/fs/ext4/migrate-test.c
-+++ b/fs/ext4/migrate-test.c
-@@ -68,6 +68,7 @@ struct migrate_test_ctx {
- 	ext4_fsblk_t freed_blks[MIGRATE_MAX_FREED_REC];
- 	unsigned int freed_cnt;
- 	unsigned int datasem_restarts;
-+	struct inode *race_inode;
- 	bool rwsem_inited;
- 	bool es_shrinker_inited;
- 	bool counters_inited;
-@@ -382,6 +383,20 @@ static int migrate_datasem_restart_stub(handle_t *handle, struct inode *inode,
- 	return 1;
+diff --git a/fs/ext4/fsmap-test.c b/fs/ext4/fsmap-test.c
+index 63a1061b413a..ef7681cf9964 100644
+--- a/fs/ext4/fsmap-test.c
++++ b/fs/ext4/fsmap-test.c
+@@ -765,6 +765,61 @@ static void test_getfsmap_external_logdev_and_multi_device(struct kunit *test)
+ 	KUNIT_EXPECT_EQ(test, head.fmh_entries, 0U);
  }
  
 +/*
-+ * Emulate a block allocation racing with the migration of
-+ * ctx->race_inode, which clears EXT4_STATE_EXT_MIGRATE on it.
++ * A data device whose encoded dev_t has bit 31 set (minor >= 0x80000) must
++ * still sort after a lower-numbered external journal device, so that devices
++ * are reported in ascending order and log-device-only queries work.
 + */
-+static int migrate_datasem_race_stub(handle_t *handle, struct inode *inode,
-+				     int check_cred, int restart_cred,
-+				     int revoke_cred)
++static void test_getfsmap_high_encoded_datadev_order(struct kunit *test)
 +{
-+	struct migrate_test_ctx *ctx = active_migrate_test->priv;
++	struct fsmap_test_ctx *ctx;
++	struct ext4_fsmap_head head;
++	struct fsmap_rec_sink *sink;
++	u32 datadev, logdev = new_encode_dev(FSMAP_TEST_LOGDEV);
++	int err;
 +
-+	ext4_clear_inode_state(ctx->race_inode, EXT4_STATE_EXT_MIGRATE);
-+	return 0;
++	sink = kunit_kzalloc(test, sizeof(*sink), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, sink);
++	ctx = fsmap_create_ctx(test, 12, 0, 1, 128);
++	fsmap_set_group_tables(ctx, 0, 2, 3, 4);
++	fsmap_mark_clusters_used(ctx, 0, 0, 12);
++
++	ctx->data_bdev.bdev.bd_dev = MKDEV(259, 0x80000);
++	datadev = new_encode_dev(ctx->data_bdev.bdev.bd_dev);
++	KUNIT_ASSERT_GE(test, datadev, 0x80000000U);
++	KUNIT_ASSERT_LT(test, logdev, datadev);
++
++	ctx->mock_journal.j_blk_offset = 16;
++	ctx->mock_journal.j_total_len = 64;
++	ctx->sbi.s_journal = &ctx->mock_journal;
++	ctx->sbi.s_journal_bdev_file = &ctx->log_bdev_file;
++
++	/* Multi-device query reports logdev (2 recs) before datadev (6) */
++	fsmap_init_full_range_head(&head, FSMAP_TEST_MAX_RECS);
++	err = ext4_getfsmap(ctx->sb, &head, fsmap_collect_cb, sink);
++	KUNIT_ASSERT_EQ(test, err, 0);
++	KUNIT_ASSERT_EQ(test, head.fmh_entries, 8U);
++	fsmap_expect_rec(test, &sink->recs[0], logdev, 0, 16,
++			 EXT4_FMR_OWN_UNKNOWN);
++	fsmap_expect_rec(test, &sink->recs[1], logdev, 16, 64,
++			 EXT4_FMR_OWN_LOG);
++	KUNIT_EXPECT_EQ(test, (u32)sink->recs[2].fmr_device, datadev);
++	KUNIT_EXPECT_EQ(test, (u32)sink->recs[7].fmr_device, datadev);
++
++	/* Targeted query against only logdev */
++	memset(sink, 0, sizeof(*sink));
++	fsmap_init_full_range_head(&head, FSMAP_TEST_MAX_RECS);
++	head.fmh_keys[0].fmr_device = logdev;
++	head.fmh_keys[1].fmr_device = logdev;
++	err = ext4_getfsmap(ctx->sb, &head, fsmap_collect_cb, sink);
++	KUNIT_ASSERT_EQ(test, err, 0);
++	KUNIT_ASSERT_EQ(test, head.fmh_entries, 2U);
++	fsmap_expect_rec(test, &sink->recs[0], logdev, 0, 16,
++			 EXT4_FMR_OWN_UNKNOWN);
++	fsmap_expect_rec(test, &sink->recs[1], logdev, 16, 64,
++			 EXT4_FMR_OWN_LOG);
 +}
 +
- static struct inode *migrate_make_test_inode(struct kunit *test, unsigned long ino,
- 					     umode_t mode)
- {
-@@ -859,8 +874,8 @@ static void test_ext_migrate_dind_tind_and_multilevel_tree(struct kunit *test)
- /*
-  * Test 4: When reading an indirect block fails midway after tmp_inode has
-  * already grown a depth-1 extent tree, free_ext_block() / free_ext_idx()
-- * frees the allocated temporary extent metadata block and leaves the original
-- * inode untouched.
-+ * frees the allocated temporary extent metadata block, leaves the original
-+ * inode untouched, and ext4_ext_migrate() returns the error.
-  */
- static void test_ext_migrate_error_rollback_frees_tmp_extent_blocks(struct kunit *test)
- {
-@@ -886,7 +901,8 @@ static void test_ext_migrate_error_rollback_frees_tmp_extent_blocks(struct kunit
- 	EXT4_I(inode)->i_data[EXT4_IND_BLOCK] =
- 		cpu_to_le32(MIGRATE_TEST_TOTAL_BLKS + 50);
- 
--	(void)ext4_ext_migrate(inode);
-+	/* The read error is reported to the caller, not swallowed */
-+	KUNIT_EXPECT_EQ(test, ext4_ext_migrate(inode), -EIO);
- 
- 	/* Temporary extent leaf block allocated during build must be freed */
- 	KUNIT_EXPECT_TRUE(test, migrate_was_freed(ctx, expected_leaf_blk));
-@@ -1196,6 +1212,36 @@ static void test_ext_migrate_survives_handle_restart(struct kunit *test)
- 	iput(inode);
- }
- 
-+/*
-+ * Test 10: If a concurrent block allocation invalidates the migration,
-+ * ext4_ext_migrate() reports -EAGAIN instead of claiming success, and the
-+ * inode keeps its indirect block map.
-+ */
-+static void test_ext_migrate_reports_concurrent_allocation(struct kunit *test)
-+{
-+	struct migrate_test_ctx *ctx = test->priv;
-+	struct inode *inode;
-+
-+	kunit_activate_static_stub(test, ext4_datasem_ensure_credits,
-+				   migrate_datasem_race_stub);
-+
-+	inode = migrate_make_test_inode(test, 24, S_IFREG | 0644);
-+	i_size_write(inode, 4 * MIGRATE_TEST_BLK_SIZE);
-+	inode->i_blocks = 2 * (MIGRATE_TEST_BLK_SIZE >> 9);
-+	EXT4_I(inode)->i_data[0] = cpu_to_le32(100);
-+	EXT4_I(inode)->i_data[3] = cpu_to_le32(200);
-+	ctx->race_inode = inode;
-+
-+	KUNIT_EXPECT_EQ(test, ext4_ext_migrate(inode), -EAGAIN);
-+	KUNIT_EXPECT_FALSE(test,
-+			   ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS));
-+	KUNIT_EXPECT_EQ(test, le32_to_cpu(EXT4_I(inode)->i_data[0]), 100U);
-+	KUNIT_EXPECT_EQ(test, le32_to_cpu(EXT4_I(inode)->i_data[3]), 200U);
-+
-+	ctx->race_inode = NULL;
-+	iput(inode);
-+}
-+
- static struct kunit_case ext4_migrate_test_cases[] = {
- 	KUNIT_CASE(test_ext_migrate_precondition_checks_and_fast_symlink),
- 	KUNIT_CASE(test_ext_migrate_direct_and_ind_coalescing_and_holes),
-@@ -1206,6 +1252,7 @@ static struct kunit_case ext4_migrate_test_cases[] = {
- 	KUNIT_CASE(test_ind_migrate_rejections),
- 	KUNIT_CASE(test_ext_migrate_caps_long_run_at_init_max_len),
- 	KUNIT_CASE(test_ext_migrate_survives_handle_restart),
-+	KUNIT_CASE(test_ext_migrate_reports_concurrent_allocation),
+ static struct kunit_case fsmap_test_cases[] = {
+ 	KUNIT_CASE(test_fsmap_unit_conversions),
+ 	KUNIT_CASE(test_getfsmap_invalid_flags_devices_and_keys),
+@@ -773,6 +828,7 @@ static struct kunit_case fsmap_test_cases[] = {
+ 	KUNIT_CASE(test_getfsmap_1k_bofs_bigalloc_and_meta_bg),
+ 	KUNIT_CASE(test_getfsmap_count_only_pagination_and_abort),
+ 	KUNIT_CASE(test_getfsmap_external_logdev_and_multi_device),
++	KUNIT_CASE(test_getfsmap_high_encoded_datadev_order),
  	{}
  };
  
-diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
-index dd132a6b6060..c80710f5a43d 100644
---- a/fs/ext4/migrate.c
-+++ b/fs/ext4/migrate.c
-@@ -417,7 +417,7 @@ static int free_ext_block(handle_t *handle, struct inode *inode)
- int ext4_ext_migrate(struct inode *inode)
- {
- 	handle_t *handle;
--	int retval = 0, i;
-+	int retval = 0, err, i;
- 	__le32 *i_data;
- 	struct ext4_inode_info *ei;
- 	struct inode *tmp_inode = NULL;
-@@ -574,9 +574,12 @@ int ext4_ext_migrate(struct inode *inode)
- 	}
+diff --git a/fs/ext4/fsmap.c b/fs/ext4/fsmap.c
+index f41c2298d196..dd465b27f879 100644
+--- a/fs/ext4/fsmap.c
++++ b/fs/ext4/fsmap.c
+@@ -69,7 +69,7 @@ static int ext4_getfsmap_dev_compare(const void *p1, const void *p2)
+ 	const struct ext4_getfsmap_dev *d1 = p1;
+ 	const struct ext4_getfsmap_dev *d2 = p2;
  
- 	/* We mark the tmp_inode dirty via ext4_ext_tree_init. */
--	retval = ext4_journal_ensure_credits(handle, 1, 0);
--	if (retval < 0)
-+	err = ext4_journal_ensure_credits(handle, 1, 0);
-+	if (err < 0) {
-+		if (!retval)
-+			retval = err;
- 		goto out_stop;
-+	}
- 	/*
- 	 * Mark the tmp_inode as of size zero
- 	 */
+-	return d1->gfd_dev - d2->gfd_dev;
++	return cmp_int(d1->gfd_dev, d2->gfd_dev);
+ }
+ 
+ /* Compare a record against our starting point */
 -- 
 2.56.0.542.g3ef89b7020-goog
 
