@@ -1,54 +1,62 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.210.72
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794484762;
-	b=c3BU3VfxW709yxL23n7o6hH30S2258exD3RpX+SIpxJ8rbTNT+wYBz2frR58A5Hbma13
-	 KPrf4rrDyNCJO3uNPD2UmTgfVrMA4QZfmMzfWWPEacGqixbM6RV+m3i8l82Coyb5pLFKH
-	 5xiiyRiTakFf1wTitMkV15nLlK4QNWDolM0qipBuk8sl6uEiJcc8ZE/tqwO9IxZSt2lGG
-	 48qUWg2hg+gGpOt9w5xRbq+poKyaBjPpCyI8bOdSCnmKuyaXLBSc7MEomrtunlZceVt5H
-	 aVUA+QdeUHjV6bqGb9WwWgivdo2//nNYjddI9Zn9KnI77hEmB5eIDFX+mObGWl09PMA==
+	t=1794484901;
+	b=bmDDCcw77wIxWcFvO2VZsmtypk3dBAY68z1q5/YO/KXz9bZgorLr5x4PUnyx++QGF2Kx
+	 4lfBBKQl0LP5jhx0Jfn2UFMk90O5IfMagFW4rFSOvc4Sh5PaMdXdn6bCHOWn78palPH2J
+	 UobA+bOjXZSY2sHQyRbzeVmAGKDdV6bJUa6UVhHYApoXxe8VbnS3FlNUFYGNb3w+Uiqae
+	 AqHLu6eDCeuuPzn04luG9VJgsX3sKW8xkDur03hmXB7BxdJr4xVHS5CKt94Y9XmFuYdfb
+	 LuYzotHiM3GbX6UYzlGnBc3x1Bg3yeTWAu9acgdaZD9GwrE+K/SUV406qHNrHNmv1AQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794484762;
-	h=DMARC-Filter:Received:X-Google-DKIM-Signature:X-Forwarded-Encrypted:
-	 X-Gm-Message-State:MIME-Version:X-Received:Date:In-Reply-To:
-	 X-Google-Appengine-App-Id:X-Google-Appengine-App-Id-Alias:Message-ID:
-	 Subject:From:To:Cc:Content-Type;
-	bh=8Exqu4NcRdV/N84WhnKHI+8tv0Q8pqFx+3FzcBJtyiQ=;
-	b=0agEDB6SV2y8Ybk96Jl2CgMFym3l3oMam4XunKjeYkbdKOi3/3hr0+7WsX6I/0W7ilEl
-	 UFwjlvDeShsZZnk8pOp2yopfPRx0nFhj6x1MFKtbGARL9ZRohqzjqBJgXgI/Dj8unTQZ2
-	 N3iYtrxYD6uzbXXuOEKf4Ba4qmBSPuTMe1Oonkdy6Dg9OAOTyGRxxNrA+BDrq05I6BM9C
-	 aTYjT8kMD3cJZLg9K6DLoH7KD8SbKHHSp+/BAY9+4gnpUg5TFB1VbP+GtfAQ7lMW5XBFA
-	 elKgJED7eXPdNXQFh2MO9V3B3DQutj07BC3cScaN9ep2ZsjBkq7Liz7Y+GVoTZNQlBQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794484901;
+	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
+	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
+	bh=54I5bKtP4WSw79RGADSyevDuBquelpIbRaI3K1RVgo8=;
+	b=SRdLbN+3Cdgn7G6uU6Wy5X/mMytQ0PVlRRGvvyzwEvlrwK3LCpuwXLf5AiEjlIDRHpEQ
+	 28EFvUZmSiH862dBo56Ij/dFwcwJsPw0ukS5uJoG4ogVoE5a50kuwUH/RJIvzZ+zKt+iE
+	 +q1LXx52aQIvRwhY/EL6oEor1I8UGSk4Jx4Ba+1BDJcFo16wBBBqCpuho05pyzjQQmFMR
+	 AJ5uBJ0gDGtitPZaFIVjEGTbX4J8WeLtboI0IeoSvTpyzdQW51wlmoibI7HFQLp2DhHp+
+	 /duaZWrejqy4h36Ma3Xer0Js3HwvW/I44CEirOzwZWdYAEjaBWYHfhSkX9viXij5Crw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=fail header.from=syzkaller.appspotmail.com;
-	spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com;
-	arc=none smtp.remote-ip=209.85.210.72
-Received: from mail-ot1-f72.google.com (mail-ot1-f72.google.com [209.85.210.72])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=QprEbjuf;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B567B606A32E
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Nov 2026 11:59:21 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org B567B606A32E
-Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
-Received: by mail-ot1-f72.google.com with SMTP id 46e09a7af769-8615cc92488so306760a34.2
-        for <linux-ext4@vger.kernel.org>; Thu, 12 Nov 2026 03:59:21 -0800 (PST)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1794484761; x=1795089561;
-        h=content-type:cc:to:from:subject:message-id:in-reply-to:date
-         :mime-version:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to:content-type;
-        bh=8Exqu4NcRdV/N84WhnKHI+8tv0Q8pqFx+3FzcBJtyiQ=;
-        b=ElZpd0FEbpbpZQd6cVM+VkE5tEbO6TSYT2rjE4XIUrtujQ9lOQGEZH82qmCVrbAHyE
-         qFK3ZKImZxOHsQCUSFYnYgwoI1rMNHZzN0PHEnSzpIXP8oO641/pP+tBTv5L5tdi3zbe
-         cA4rY8dvh6TdFFoq/nPvuP4pq0Edr7UKCUBVt/F31MH8fVmoToK7eFl0vTFLlcOh522X
-         IoU/GJqiBC9YJukeOKSRfZDJNgXvwfdEvhraExG7sFyZbeZkMjgvuLSc88azewEdHXHZ
-         njjOejIWpzvoHE6Td5CSJNgQhSEW/mXJslSgWEK/JDPN3lBGS9Diefhchn9Qy1Rpeo+S
-         HyLg==
-X-Forwarded-Encrypted: i=1; AL+hErEvBJgOCr36FJIyWFfYQoYJ0wTBEyUeaERtjbJx7+td/VAC4mVZc92IUR5SCIoLv1eXaIZv0UbuJ6FQ@vger.kernel.org
-X-Gm-Message-State: APuU4Z8ONl8VnItzfA3aBXCUg/GPxxv4ikSYWIR1m6XbW0At17vR9o9W
-	/sVrew4Lb5QUu+qUOG/QigmNBl31vkE9zGkJkxeesHlupEqjbPw8O42QQSXLuczzHGeS9GFSaCw
-	Am3+dAC+57YPUCmRdqnEtCcMjVTbxjlXY/82cQdQByTTqcXqEgfkh3brFDao=
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 77299606A896;
+	Thu, 12 Nov 2026 12:01:41 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=QprEbjuf
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id EFA7E1F00A06;
+	Thu, 12 Nov 2026 12:01:36 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1794484900;
+	bh=54I5bKtP4WSw79RGADSyevDuBquelpIbRaI3K1RVgo8=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=QprEbjufNb+tvrOa7rBrGmxplqbmNy39Rmf2KUfr+AHg8IrdqKnppWAi/6c1jQ5lw
+	 1qQwMsR8fpHwFmAmOjHt6xx/GSD6lfIfUEbOqwxFxYqpUqqxaGguK/FgeQ9b4yse7n
+	 X5Gu+V8HvIKolxJnQl0GAY0dMopIoY1Zswfa1hVJnxH54H1V2CcTIR0C3XNIO1kYQQ
+	 jb08MOlodWLAKvfmxQBVrfP5uY0qBjF050j5MxuY9KrdgN1iuTLU+0ziIbWc5XAA1N
+	 31t4iwXyBD3El+zm85fqmePh/BsB9Y9+wkUwIt81ymt+t2A7BgUdE1+/gxOp3PTE+D
+	 sGRcdsQZ5uAtA==
+Date: Thu, 12 Nov 2026 13:01:34 +0100
+From: Christian Brauner <brauner@kernel.org>
+To: Jan Kara <jack@suse.cz>
+Cc: linux-fsdevel@vger.kernel.org, Jan Kara <jack@suse.com>, 
+	Al Viro <viro@zeniv.linux.org.uk>, ecryptfs@vger.kernel.org, linux-ext4@vger.kernel.org, 
+	jfs-discussion@lists.sourceforge.net, linux-nilfs@vger.kernel.org, exfat@lists.linux.dev, 
+	linux-mm@kvack.org, ntfs@lists.linux.dev, ocfs2-devel@lists.linux.dev, 
+	linux-btrfs@vger.kernel.org, gfs2@lists.linux.dev, linux-efi@vger.kernel.org, 
+	linux-mtd@lists.infradead.org, linux-xfs@vger.kernel.org, 
+	Karl Mehltretter <kmehltretter@gmail.com>, Dave Kleikamp <shaggy@kernel.org>
+Subject: Re: [PATCH v2 04/34] ext2: don't set SB_RDONLY after filesystem
+ errors
+Message-ID: <20261112-wohncontainer-saurier-wonnen-91f30c3b3ae2@brauner>
+References: <20261029-work-fs-sb_rdonly-v2-0-2f44f64f0b66@kernel.org>
+ <20261029-work-fs-sb_rdonly-v2-4-2f44f64f0b66@kernel.org>
+ <5qefa4mracb3x2z4vsdejmkyyfrhdcrixmmnooz4rzwcdfoejm@mqkvixj6afwp>
+ <20261110-kargheit-impfen-pausieren-881763d28b19@brauner>
+ <za33axmgzmuzsj3zmfeh43fkphtcsqtkhhrauwuvs7aiftelgp@dzl6z322st5f>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -58,92 +66,51 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-X-Received: by 2002:a05:6808:1a09:b0:53a:ad3c:17aa with SMTP id
- 5614622812f47-56b98620830mr5072770b6e.55.1794484760823; Thu, 12 Nov 2026
- 03:59:20 -0800 (PST)
-Date: Thu, 12 Nov 2026 03:59:20 -0800
-In-Reply-To: <20261112115906.17915-1-diasyzhangqing@gmail.com>
-X-Google-Appengine-App-Id: s~syzkaller
-X-Google-Appengine-App-Id-Alias: syzkaller
-Message-ID: <6af5aa18.41d0a7c9.ab0b9.0108.GAE@google.com>
-Subject: Re: [PATCH] ext4: wait for tail page commit before truncating a
- failed write
-From: syzbot <syzbot+f111db4cb2acd44eb2f4@syzkaller.appspotmail.com>
-To: diasyzhangqing@gmail.com
-Cc: adilger.kernel@dilger.ca, diasyzhang@tencent.com, diasyzhangqing@gmail.com, 
-	jack@suse.cz, libaokun@linux.alibaba.com, linux-ext4@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, ojaswin@linux.ibm.com, ritesh.list@gmail.com, 
-	tytso@mit.edu, yi.zhang@huawei.com, syzkaller-bugs@googlegroups.com
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+In-Reply-To: <za33axmgzmuzsj3zmfeh43fkphtcsqtkhhrauwuvs7aiftelgp@dzl6z322st5f>
 
-> From: Qing Zhang <diasyzhang@tencent.com>
+On Wed, Nov 11, 2026 at 03:15:11PM +0100, Jan Kara wrote:
+> OK, so instead of BUGing in jfs_evict_inode(), shouldn't JFS just do
+> something like:
 >
-> In data=journal mode, a failed extending write can leave buffers beyond
-> i_size attached to the committing transaction. When blocksize < PAGE_SIZE,
-> invalidating these buffers in the partial tail folio returns -EBUSY,
-> triggering a warning in ext4_journalled_invalidate_folio() and leaving
-> invalidation incomplete.
->
-> Call ext4_wait_for_tail_page_commit() before truncating the page cache
-> in ext4_truncate_failed_write(), as is already done when shrinking a file
-> via ext4_setattr(). The helper releases the folio lock before waiting
-> for the commit to finish, then retries invalidation.
->
-> Fixes: 53e872681fed ("ext4: fix deadlock in journal_unmap_buffer()")
-> Reported-by: syzbot+f111db4cb2acd44eb2f4@syzkaller.appspotmail.com
-> Closes: https://syzbot.appspot.com/bug?extid=f111db4cb2acd44eb2f4
-> Signed-off-by: Qing Zhang <diasyzhang@tencent.com>
-> ---
-> #syz test: git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master
+> -	BUG_ON(!list_empty(&ji->anon_inode_list));
+> +	if (!list_empty(&ji->anon_inode_list)) {
+> +		WARN_ON_ONCE(!sb_emergency_ro(inode->i_sb));
+> +		/* This needs helper in fs/jfs/jfs_txnmgr.c */
+> +		TXN_LOCK();
+> +		list_del_init(&ji->anon_inode_list);
+> +		TXN_UNLOCK();
+> +	}
 
-Patch testing via #syz test is temporarily disabled.
-See https://github.com/google/syzkaller/issues/8122 for details.
+Fwiw, this leaks the inode's anonymous tlocks. They're from TxLock which
+is shared by all jfs mounts. txLock() also sets mp->lid and pinned the
+metapages with metapage_nohomeok().
 
->
->  fs/ext4/ext4.h    | 1 +
->  fs/ext4/inode.c   | 2 +-
->  fs/ext4/truncate.h |  2 ++
->  3 files changed, 4 insertions(+), 1 deletion(-)
->
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index f38fec3167fb..505ec38fa508 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -3214,6 +3214,7 @@ int ext4_get_fc_inode_loc(struct super_block *sb, unsigned int ino,
->  extern int ext4_inode_attach_jinode(struct inode *inode);
->  extern int ext4_can_truncate(struct inode *inode);
->  extern int ext4_truncate(struct inode *);
-> +extern void ext4_wait_for_tail_page_commit(struct inode *inode);
->  extern int ext4_break_layouts(struct inode *);
->  extern int ext4_truncate_page_cache_block_range(struct inode *inode,
->  						loff_t start, loff_t end);
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 10cd85d4c721..f59c4a5b7561 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -6845,7 +6845,7 @@ int ext4_sync_inode_metadata(struct inode *inode, struct writeback_control *wbc)
->   * buffers that are attached to a folio straddling i_size and are undergoing
->   * commit. In that case we have to wait for commit to finish and try again.
->   */
-> -static void ext4_wait_for_tail_page_commit(struct inode *inode)
-> +void ext4_wait_for_tail_page_commit(struct inode *inode)
->  {
->  	unsigned offset;
->  	journal_t *journal = EXT4_SB(inode->i_sb)->s_journal;
-> diff --git a/fs/ext4/truncate.h b/fs/ext4/truncate.h
-> index ce84aa2786c7..c10e4ab4242e 100644
-> --- a/fs/ext4/truncate.h
-> +++ b/fs/ext4/truncate.h
-> @@ -17,6 +17,8 @@ static inline void ext4_truncate_failed_write(struct inode *inode)
->  	 * We don't need to call ext4_break_layouts() because the blocks we
->  	 * are truncating were never visible to userspace.
->  	 */
->  	filemap_invalidate_lock(mapping);
-> +	if (ext4_should_journal_data(inode))
-> +		ext4_wait_for_tail_page_commit(inode);
->  	truncate_inode_pages(mapping, inode->i_size);
->  	ext4_truncate(inode);
->  	filemap_invalidate_unlock(mapping);
-> -- 
-> 2.43.0
->
+So the helper would have to tear all of that down like txAbort() does
+and drop the pins. Doable, I guess not sure if this belongs into the
+series.
+
+> So that JFS doesn't block everybody else? Because conceptually, once sb is
+> marked as emergency read-only, we really want to stop writeback so letting
+> sync_inodes() run seems moot.
+
+Meh, but a check in sync_filesystem() doesn't stop writeback? The
+flusher doesn't know about the emergency state and keeps calling
+->writepages() and ->write_inode().
+
+And kill_block_super() calls sync_blockdev() after
+generic_shutdown_super() so everything in the bdev mapping
+(FAT, bitmaps, inode table blocks) gets writeback anyway. All the check
+does is make syncfs() return without writing anything and make unmount
+drop whatever the flusher hasn't gotten to yet. Which might be the goal
+you're after?
+
+> Argh, also NFS I assume. OK, that won't be easy to get rid of AFAICT (we
+> generally don't have mount available there).
+
+So nfsd_setxattr() takes write access to the export's mount via
+fh_want_write(). So this would get EROFS from the VFS. Afaict it's
+ecryptfs and IMA? ima_fix_xattr() only checks IS_RDONLY().
+
+-- 
