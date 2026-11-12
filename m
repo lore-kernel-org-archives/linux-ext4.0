@@ -1,48 +1,57 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794520585;
-	b=GZNT864//qdtHot5Zn4UhGblPvIqAqEbs3S0uJXaoVA0BO8Qn/wRZ1/6kUZsndhSmjHL
-	 0a5otpbh2Jg5qHAW0GcvrRexH2iG5BwJmFtj0m8RxQ4K0buPJ8Yhk6jhgkwQQiswokgXf
-	 PXJDXm1fyKHlFTucE5S8CXq6AHwqu6b+XLmq2hwuDFyPM8qFlJmHJ/HaCiS8s87zhoqSH
-	 6mmItQuswt92H/qO3IqAa/aJvDgZ+ZXULOnqPj4diXqmiVwJvnTDpaZZiDReSfvmW6TgL
-	 S143+yaPPP2cbYdFLE2+/1Myzt7WiBrUkHyINT8bkAReTmw/ZnD5ejQk5BXSMhwOIAg==
+	t=1794520945;
+	b=U1Yg0mZsnuDKB6mV3E+luCLymFwO74ltqlSUrO7bwux26LcuH7SZoKwRzkp/PU9h+DU3
+	 mM+2maoOpTcqP2KrK8/H8RyzFpKx6eE82V2FZFSiSNZx/Jeoa25m+SeSfMDKnnorAbuLY
+	 oeQVj4jfhnYvY5oQDosUspUie60IJ9SsgUdyNuHe/zXaLuKXwLjZnMqVOLi0blqJDs2R1
+	 /V3GKElOWOeRwR57YwMrmP/QQ+uxgGERuy9HSMQm4ypakVjtbzz6IZfRelRJrzDuhhDn7
+	 fSSLsIWrmSvJegKCIdFoveKKosdsgcrXO8dnVbTHK1cnn7nP8O6aPqTBwVIF6Pe76zQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794520585;
-	h=Received:DKIM-Signature:Received:Content-Type:MIME-Version:
-	 Content-Transfer-Encoding:Subject:From:Message-Id:Date:To;
-	bh=auPGYgQC9XHyx+ZsYcCGJqtkye6wBIi1wHZOKS0mVLk=;
-	b=RvoXBsSiQxcSjP+8ogy2FRuPKqoY2Xm+S+OM27zd1jRjoim4RmWbKtLXBVj07vZU9Cyl
-	 nA/tuSZF29w5w2KGgMIwV+z7zyAddOf73GRbWcSWM/Cy1O/sNpw3A6/DV/34V2WgspGAU
-	 r5CEICx97tAj8/FGe8ZpOREeGuBBThGXc4dm2fYAGf8oitOY/0vBSWsewHtVlJyzI+CQk
-	 sWlQ+FuA4F/hMTXz7q06IJ3IG2+NUF1K4HZ7n0Kj87bX4rbBMPLEBi2cY3geyrP6U99qW
-	 FXBNqINytzXtGWxsENx6YjOHAuyii0KWRq02RLdSTwY4+wSibBUDSpbdeVkdp6xbP0w==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794520945;
+	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
+	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
+	bh=GKqX21QLv7a/4+EGalRm04dk9CAqnQgY+VLIYfbJcxo=;
+	b=h9g62o8Z0K50EMfKt9pqb8AiDlputBIi+bbnt8L57uf9Ih7aK6G/6THCEYwnhxRrYyf7
+	 +jLk9bLRLI2ApgHaET8bC0iSaZTu04HCOnqa+CE2P7tlt5DGAjKb1GALiPm3hOf5658qa
+	 KMGaniUfbJLqAZ10l5YIIdb+hLpswBlSR8xOFICCVkzXrVeoiNwV/n6xxEpR7VFf7PoSM
+	 KY53zKVbc0jjVq6R9EvGkZ/xmbyO73f25/5TZd7sbAiwTIhnbz1ePZmIUuZue+3/sSJDe
+	 BrNq4hG+7YGeHvCKbihMQEzVaa8PtFMV3Bj0CM6qXkDXTuSbIvicTkCAQbQP06ngZYQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gsk5ZyJ+;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="HKJA/e28";
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A3FD8606A31C
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Nov 2026 21:56:25 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AB8C1606A33A
+	for <linux-ext4@vger.kernel.org>; Thu, 12 Nov 2026 22:02:25 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gsk5ZyJ+
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 814CB1F000C4
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Nov 2026 21:56:25 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=HKJA/e28
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2C98F1F000C7;
+	Thu, 12 Nov 2026 22:02:25 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794520585;
-	bh=auPGYgQC9XHyx+ZsYcCGJqtkye6wBIi1wHZOKS0mVLk=;
-	h=Subject:From:Date:To;
-	b=gsk5ZyJ++oBi03skzsUC6uFkFceDc4GvkevW1EFVlCZUjp2J6R5tOO97KAByQGo6N
-	 c5VX7zPdU4mIRPWQg5hFEHhXWihQ2TO5GfYP17D/PCPO59+UnbdBtNwwOVqfUdPgNY
-	 ZfhvCX3FUAWYYenkmNhzKKO+91RnA1GZpGZoeUsMpmExBpnnxacjviZDSo2tOWXZNX
-	 jAMRZO2LzETyImRSJmrjLi9PT+WgYSG1fhKNnTH8/z3dmtM5zZMcbE87PuD9vAtrUy
-	 Gwq+1Z5OUOGsjBc73QoewVVpUTcz2O6pPzEjRYzy1n1gV+/5TV17iF3hOHAp2Cpsay
-	 BUrQbEPasUoug==
-Received: from [10.30.226.235] (localhost [IPv6:::1])
-	by aws-us-west-2-korg-oddjob-rhel9-1.codeaurora.org (Postfix) with ESMTP id 775E8392626A
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Nov 2026 21:56:25 +0000 (UTC)
-Content-Type: text/plain; charset="utf-8"
+	s=k20260515; t=1794520945;
+	bh=GKqX21QLv7a/4+EGalRm04dk9CAqnQgY+VLIYfbJcxo=;
+	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
+	b=HKJA/e28etC1A9bp2y9NBzkhDp+TwwZdGAmzuT4pfOywJ+JPNhn1DFVeV1+u5GAnp
+	 ogtErfa8+6pXVGn9I6IJlD6Ac19IPvR2wPP/XzpPVQgnnqw/5xFVAPPvZNrUS3UVo4
+	 iiKPR3mgaHj1IGSc/jlB9aOBLVOKysJd9edPJH6YqlqcPI/DntbnAeDRaU9NbgAFvN
+	 xtAGUhi+gIJLpo5fJxjkj7DBWnC0qtd9dEGKZix6kju9YgW2Z7gGr84Y0k72S5Iehl
+	 4UqFKr3qPJnJGMhBd5qWDTGIdSRZJxI3WERkMGM4v8uUYDxNJdQbYoS/py2BiU0Bdr
+	 mXfkIzqa4X/6w==
+Message-ID: <sashiko-outbox-211884@kernel.org>
+From: sashiko-bot@kernel.org
+Subject: Re: [PATCH v9 14/14] xfs: test for realtime and reflink under the
+ pNFS locks
+Reply-To: sashiko-reviews@lists.linux.dev
+To: "Chris Mason" <mason@kernel.org>, linux-ext4@vger.kernel.org
+Cc: tytso@mit.edu
+In-Reply-To: <20261112214604.67875-15-mason@kernel.org>
+References: <20261112214604.67875-1-mason@kernel.org>
+ <20261112214604.67875-15-mason@kernel.org>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+Date: Thu, 12 Nov 2026 22:02:24 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -51,38 +60,32 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-Subject: Patchwork housekeeping for: ext4
-From: patchwork-bot+linux-ext4@kernel.org
-Message-Id: 
- <179452058419.668222.4324479456692872781.git-patchwork-housekeeping@kernel.org>
-Date: Thu, 12 Nov 2026 21:56:24 +0000
-To: linux-ext4@vger.kernel.org
 
-Latest series: [v9] reflink and atomic write bugs (2026-11-12T21:46:05)
-  Superseding: [v8] reflink and atomic write bugs (2026-11-12T01:02:29):
-    [v8,01/15] xfs: don't skip the flush before shifting extents
-    [v8,02/15] xfs: flush the shifted range before changing the file
-    [v8,03/15] xfs: don't change the block map under a dirty folio
-    [v8,04/15] iomap: don't punch delalloc under a dirty EOF block
-    [v8,05/15] fs: validate atomic writes after O_APPEND and limits
-    [v8,06/15] xfs: recheck direct write alignment after write checks
-    [v8,07/15] xfs: test for reflink after the dio write checks
-    [v8,08/15] xfs: refuse writes to files racing with realtime inode flag changes
-    [v8,09/15] xfs: test for always COW after the dio write checks
-    [v8,10/15] xfs: refuse fallocate racing with realtime flag changes
-    [v8,11/15] xfs: restart faults racing with realtime flag changes
-    [v8,12/15] xfs: test for an extsize hint again under the ILOCK
-    [v8,13/15] xfs: resample the extsize hint after taking the ILOCK
-    [v8,14/15] xfs: resample the COW extsize hint after cycling ILOCK
-    [v8,15/15] xfs: don't enable DAX on zoned inodes
+> A pNFS client can write to blocks that its file shares with another
+> file, or that are no part of its file, if a LAYOUTGET races with a clone
+> or with FS_IOC_FSSETXATTR.
+>=20
+> xfs_fs_map_blocks() hands out no layout for a reflinked or a realtime
+> inode, since the client writes in place and only knows the data device.
+> But it tests for both before it takes the IOLOCK, and both flags are set
+> under that lock:
+>=20
+>     LAYOUTGET                           clone
+>     =3D=3D=3D=3D=3D=3D=3D=3D=3D                           =3D=3D=3D=3D=3D
+>                                         takes the IOLOCK
+>                                         breaks the layouts
+>     xfs_fs_map_blocks()
+>       sees no reflink flag
+> [ ... ]
+> The fix used here is to test for both once the locks are held.
+>=20
+> Fixes: e54b5bf9d7ae ("xfs: recognize the reflink feature bit")
+> Fixes: 527851124d10 ("xfs: implement pNFS export operations")
+> Signed-off-by: Chris Mason <mason@kernel.org>
 
-Checked 39 series in 2.43 seconds.
-This project currently has 431 active patches.
+Sashiko has reviewed this patch and found no issues.
 
-
--- 
-Deet-doot-dot, I am a bot.
-https://korg.docs.kernel.org/patchwork/pwbot.html
+--=20
+Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261112214604.6787=
+5-1-mason@kernel.org?part=3D14
 
