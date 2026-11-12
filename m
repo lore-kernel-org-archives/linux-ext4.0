@@ -1,44 +1,44 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794519974;
-	b=YIlGPSOVxOEQ4SjdCJncd1jtgt/hAmgTnj6tEcyZ3nvME1TwQf5PXFrH1fiNPvqlt60h
-	 bloC/IpBxok5rZEP/gS8+OL/4DnK7bZFNlfzdeMb3XrS3/f8kA32dVuaZyNOINdne3KoG
-	 YQV/QDkoZ2u5cjXXNDOJoeIRZN6VgV4DzFwG1f7d72UIv7ENvNr27d9OgZG81hzRHEGrK
-	 AlY5MByrJutdaU1XBD0K2pY4N6YliKxAVF39GRKF2jr7sEM6gXzh8uEghqA8/T2vvOvR+
-	 7oR69tYwwUHv846TAioNbmH87v/h14zvBphh1eUIsJpWQ6kCqBqWr+dcnmTSOYOfVyQ==
+	t=1794519978;
+	b=dFC6/14xAusKjOV8DjJbbXxi1g79T0YJ7ykn75dF8yQV1ZjxOniPGHv+jpGqrvUqa561
+	 nZOuhKw2I6gUsgSQ/5aKbPH+QsFI3914hk0DK1A0u344/92J12thFnDbIgWR+VQm8Jski
+	 Er2wpTx+2u4bn0RDFCXmXblSe+JhEvimBtUah6Qckc4AypR/NjLpYp8TXhoEFECW5CCDh
+	 Cv67Zjs8KfdTI83TI59mNUyXSxd8F8H4okOoLuij27tVTR3O82DkbtLMyNqG1Kl9NU8Tl
+	 IQfgJtAjrz5OhxA5C3RZiivpVSC+6Zjk96T3QxakD7oNM/Q7SktN3Jrxx/bpr0m2taw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794519974;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794519978;
 	h=Received:DKIM-Signature:From:To:Subject:Date:Message-ID:In-Reply-To:
 	 References:MIME-Version:Content-Type:Content-Transfer-Encoding;
-	bh=C3hb7Mizp+9AW+C3MfKeLR69A8Bj7z1Yqo/IjZCkVfQ=;
-	b=wgrqaugdJiuq3v1DLQdiul5h63wBVXVcyz9SkYSIn6ekAjuuo8giWgm447KG//YNnbvP
-	 er8kU6S/UBAm9/PE9G3CBaIwAcG5TGUYSYk8V3Sd+jF07A99i+3tztBemmCqkwivvKI6i
-	 c5uqRNVqDclfX9gL/7Mh8xn6p4D7+gqJ7IDECqbcvmNmioMJzUQ89smFOnP4x/4/A6Q6D
-	 jm9KTmMm3FGRKFWquGZgOLMvC5F3COlvm6c5NfOq3u9aiePYHqECLa5rr8NZBnHADWDva
-	 jdPwYgiqC3hoFDwRD91rjMMj2AisoeePUjYGUKe4608889TtowgEMA6EczuwCFvTD7w==
+	bh=rl/PbKsTJF0pJDZxebmQ7rtJpHMrnVDAE4d6qabG+6Y=;
+	b=AXRhHvF6Rg1QswQcWDANSprZ5FxW4NuCP8DEYBMyLz2UtiNM0lo97duzXBNJm66B6U3R
+	 I0S+G+ImBzFdPXLVGqy3Q9OjqZmK/7T+60HQwo7I3cj04dvznc+t6rO0VRXjzYkA4wWzG
+	 0nMakx8gI3aggECHxdGinqsyv7xluKO7IB4B56z7nO2AF3x89QznxyhhAgV4jqTWa5x+/
+	 6W1tkhVIeBwDS3AEkVYz3F0CzAVe1x9BrJoemjEsNPSZrU70kPV9UwZ9vAKplfeER3P+u
+	 eGWVzdxElDBvfwq3o9sALDUA3U2XMXoZq1BqJBWI6cpFPhP2fllHAUPnoR0cMkkaWjA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=K6PuyKJv;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=KrjQv6la;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C605B606A32D;
-	Thu, 12 Nov 2026 21:46:14 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 52B5E60A2605;
+	Thu, 12 Nov 2026 21:46:18 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=K6PuyKJv
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 24EA61F000CA;
-	Thu, 12 Nov 2026 21:46:13 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=KrjQv6la
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id B42A71F000C7;
+	Thu, 12 Nov 2026 21:46:16 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794519974;
-	bh=C3hb7Mizp+9AW+C3MfKeLR69A8Bj7z1Yqo/IjZCkVfQ=;
+	s=k20260515; t=1794519978;
+	bh=rl/PbKsTJF0pJDZxebmQ7rtJpHMrnVDAE4d6qabG+6Y=;
 	h=From:To:Subject:Date:In-Reply-To:References;
-	b=K6PuyKJvMoFeUO6XMKSDVtJS0ZKS/ZospKHmQUpO1J9WuUcLDu2NDpgVkclKWrbGP
-	 GjSlX67hhTdTVD2Ef6k2Mcc3KAI87m9jwHA6I1HnFvr5RGNkWNXeeXR3Lrp992epIZ
-	 prCZfO97SLy8jkW6ShYtuCtH5RuJ1RX0sjkrykHyhO1tT1ISt6yJsfT+VCFKYz1Qkg
-	 3Ln8xPLuhd7G5ZRuDMU3DwTUAhjOt6FQb/C3edaRLNPSMJlaEfdrXOwSSVWg8Zo/dN
-	 u/HF7fmfuB8UDv8IZ+3aB8NTOYyRzixsfRuJu1viSH5+WWp2SMu2xQRWmiF4MTXMXK
-	 hElsfPf9hn6uw==
+	b=KrjQv6lab2KH2JzsfKl0r6Td2nUO38RHztNAhP0dgZkwyoD3siyDsWts9QABX4j3l
+	 K3QuU308unReJL+jqLsFxZ8BnaGLTwCHuZ5kPeYDD5VYNXffMAdiTRa/Ere4V7fmU9
+	 /I3wHWUYZybf6gRzTwQEkTEjRo/vJba3H09e9W9kL03YsPk+XCBLeJe5kw+E41d7aC
+	 nUUikl9ygoWbaDVtNH9LnMzvGHLxCBSkE2jzBnWCCxdCRNSbWmPh/AZnfsHsoygOOb
+	 0LQ/A6r/aR8yBA0ZqSsuf8WqJcSYu0z35gwgvrQdAsgkeee1naeqUQ89Qb9oscereR
+	 xb7dmFsLs+H8Q==
 From: Chris Mason <mason@kernel.org>
 To: mason@kernel.org,
 	tytso@mit.edu,
@@ -53,9 +53,9 @@ To: mason@kernel.org,
 	linux-ext4@vger.kernel.org,
 	tz2294@columbia.edu,
 	brauner@kernel.org
-Subject: [PATCH v9 04/14] iomap: don't punch delalloc under a dirty EOF block
-Date: Thu, 12 Nov 2026 16:46:08 -0500
-Message-ID: <20261112214604.67875-5-mason@kernel.org>
+Subject: [PATCH v9 06/14] xfs: recheck direct write alignment after write checks
+Date: Thu, 12 Nov 2026 16:46:10 -0500
+Message-ID: <20261112214604.67875-7-mason@kernel.org>
 In-Reply-To: <20261112214604.67875-1-mason@kernel.org>
 References: <20261112214604.67875-1-mason@kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -70,27 +70,27 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 
-After a failed buffered write, writeback on XFS can write in place to
-the shared block that contains EOF, and corrupt the other file that
-shares it.
+A direct write to a reflinked file on XFS can expose stale disk contents
+if O_APPEND or RLIMIT_FSIZE leaves it sector aligned but not block
+aligned.
 
-After a failed buffered write, iomap_write_delalloc_release() punches
-the delalloc reservation of the write, except under dirty folios, which
-still need it. It looks for dirty folios only up to i_size, and punches
-the rest unconditionally. But XFS rounds that punch down to a block
-boundary, so the block that contains EOF loses its COW fork reservation,
-and writeback goes to the shared block:
+A direct write cannot fill only a part of a shared block, so XFS does
+such a write through the page cache. xfs_file_dio_write() decides that
+from the range that the caller passed. But O_APPEND and RLIMIT_FSIZE
+change the range later, in xfs_file_write_checks():
 
-    block size 4096, i_size 5000, reservation 4096 to 8192
-    searched for dirty folios:  4096 to 5000
-    punched unconditionally:    5000 to 8192
-    rounded to blocks by XFS:   4096 to 8192
+    block size 4096, i_size 4608, O_APPEND, block 1 is shared
+    checked:        0 to 4095, block aligned
+    written:        4608 to 8703
+    new COW block:  4096 to 8191
+    never written:  4096 to 4607
 
-The fix used here is to look for dirty folios up to the end of the block
-that contains EOF.
+The fix used here is to check the alignment again once the range is
+final, and to start over on the unaligned path if it no longer holds. A
+zoned file now falls back to buffered I/O ahead of that path.
 
-Fixes: f43dc4dc3eff ("iomap: buffered write failure should not truncate the page cache")
-Fixes: f6f91d290c8b ("xfs: punch delalloc extents from the COW fork for COW writes")
+Fixes: 0613f16cd201 ("xfs: implement CoW for directio writes")
+Fixes: 3c68d44a2b49 ("xfs: allocate direct I/O COW blocks in iomap_begin")
 Signed-off-by: Chris Mason <mason@kernel.org>
 Reviewed-by: Christoph Hellwig <hch@lst.de>
 ---
@@ -98,61 +98,78 @@ Reviewed-by: Christoph Hellwig <hch@lst.de>
 Notes:
     v6->v9: no change
 
- fs/iomap/buffered-io.c | 34 ++++++++++++++++++++++++++++++----
- 1 file changed, 30 insertions(+), 4 deletions(-)
+ fs/xfs/xfs_file.c | 44 ++++++++++++++++++++++++++++++++++++++------
+ 1 file changed, 38 insertions(+), 6 deletions(-)
 
-diff --git a/fs/iomap/buffered-io.c b/fs/iomap/buffered-io.c
-index d6e2f1ded5ca..d0980a7f27d1 100644
---- a/fs/iomap/buffered-io.c
-+++ b/fs/iomap/buffered-io.c
-@@ -1495,9 +1495,34 @@ static void iomap_write_delalloc_scan(struct inode *inode,
-  * mapping_seek_hole_data() will return it, and we will skip the punch because
-  * the folio is dirty. THis is incorrect - we always need to punch out delalloc
-  * beyond EOF in this case as writeback will never write back and covert that
-- * delalloc block beyond EOF. Hence we limit the cached data scan range to EOF,
-- * resulting in always punching out the range from the EOF to the end of the
-- * range the iomap spans.
-+ * delalloc block beyond EOF. Hence we limit the cached data scan range, and
-+ * always punch out the range from the end of the scan to the end of the range
-+ * the iomap spans.
-+ *
-+ * The scan cannot simply end at EOF, because EOF is a byte offset and a
-+ * delalloc reservation covers whole blocks. If EOF lies inside a block, it
-+ * splits that block in two:
-+ *
-+ *	[block start, EOF)	File data. If it is dirty it will be written
-+ *				back, so the block must keep its delalloc
-+ *				backing.
-+ *	[EOF, block end)	Beyond EOF. By the rule above, this would always
-+ *				be punched out.
-+ *
-+ * Both parts share one reservation, and it cannot be split: a punch of a part
-+ * of a block takes away the reservation for the whole block. If the scan ended
-+ * at EOF, we would skip the punch for the first part because it is dirty, and
-+ * then punch the second part, which takes the reservation away from under the
-+ * dirty data in the first part. On XFS, writeback that has lost a COW fork
-+ * reservation like this writes in place, over a block that is shared with
-+ * another file.
-+ *
-+ * Hence we treat the EOF block as a whole, and let the cached data over it
-+ * decide: the scan range is rounded up to the end of the block that EOF lies
-+ * in. If the data over the EOF block is dirty, the scan moves the punch start
-+ * past the block. If it is clean, the block is punched like any other block in
-+ * the range. Only blocks that start at or beyond EOF are punched
-+ * unconditionally. If EOF is block aligned, the round up changes nothing.
-  *
-  * Intervals are of the form [start_byte, end_byte) (i.e. open ended) because it
-  * matches the intervals returned by mapping_seek_hole_data(). i.e. SEEK_DATA
-@@ -1511,7 +1536,8 @@ void iomap_write_delalloc_release(struct inode *inode, loff_t start_byte,
- 		iomap_punch_t punch)
- {
- 	loff_t punch_start_byte = start_byte;
--	loff_t scan_end_byte = min(i_size_read(inode), end_byte);
-+	loff_t scan_end_byte = min_t(u64, end_byte,
-+			round_up((u64)i_size_read(inode), i_blocksize(inode)));
+diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
+index 153f53f964b9..8ee88910b487 100644
+--- a/fs/xfs/xfs_file.c
++++ b/fs/xfs/xfs_file.c
+@@ -710,6 +710,17 @@ xfs_file_dio_write_aligned(
+ 	if (ret)
+ 		goto out_unlock;
  
++	/*
++	 * O_APPEND moves the position and the file size limits shorten the
++	 * write, so only now is the range final.  If it is not block aligned,
++	 * this is the wrong path for it.  Return -EAGAIN to
++	 * xfs_file_dio_write(), which picks the path.
++	 */
++	if ((iocb->ki_pos | iov_iter_count(from)) & ip->i_mount->m_blockmask) {
++		ret = -EAGAIN;
++		goto out_unlock;
++	}
++
  	/*
- 	 * The caller must hold invalidate_lock to avoid races with page faults
+ 	 * We don't need to hold the IOLOCK exclusively across the IO, so demote
+ 	 * the iolock back to shared if we had to take the exclusive lock in
+@@ -921,6 +932,7 @@ xfs_file_dio_write(
+ 	struct xfs_inode	*ip = XFS_I(file_inode(iocb->ki_filp));
+ 	struct xfs_buftarg      *target = xfs_inode_buftarg(ip);
+ 	size_t			count = iov_iter_count(from);
++	ssize_t			ret;
+ 
+ 	/* direct I/O must be aligned to device logical sector size */
+ 	if ((iocb->ki_pos | count) & target->bt_logical_sectormask)
+@@ -937,12 +949,32 @@ xfs_file_dio_write(
+ 		return xfs_file_dio_write_atomic(ip, iocb, from);
+ 	}
+ 
+-	if ((iocb->ki_pos | count) & ip->i_mount->m_blockmask)
+-		return xfs_file_dio_write_unaligned(ip, iocb, from);
+-	if (xfs_is_zoned_inode(ip))
+-		return xfs_file_dio_write_zoned(ip, iocb, from);
+-	return xfs_file_dio_write_aligned(ip, iocb, from,
+-			&xfs_direct_write_iomap_ops, &xfs_dio_write_ops, NULL);
++	/*
++	 * O_APPEND and the file size limits can still change the range, in
++	 * xfs_file_write_checks().  So a range that is block aligned here may
++	 * not stay so, and the write then comes back with -EAGAIN.  If we are
++	 * doing nonblocking user I/O, propagate the error.
++	 */
++	if (!((iocb->ki_pos | count) & ip->i_mount->m_blockmask)) {
++		if (xfs_is_zoned_inode(ip))
++			ret = xfs_file_dio_write_zoned(ip, iocb, from);
++		else
++			ret = xfs_file_dio_write_aligned(ip, iocb, from,
++					&xfs_direct_write_iomap_ops,
++					&xfs_dio_write_ops, NULL);
++		if (ret != -EAGAIN || (iocb->ki_flags & IOCB_NOWAIT))
++			return ret;
++	}
++
++	/*
++	 * Zoned inodes always write out of place, which does not work for a
++	 * part of a block.  Fall back to buffered I/O.
++	 */
++	if (xfs_is_zoned_inode(ip)) {
++		trace_xfs_reflink_bounce_dio_write(iocb, from);
++		return -ENOTBLK;
++	}
++	return xfs_file_dio_write_unaligned(ip, iocb, from);
+ }
+ 
+ static noinline ssize_t
 -- 
 2.55.0
 
