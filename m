@@ -1,60 +1,60 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=18.9.28.11
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
 	t=1794458844;
-	b=rrYmwV9b1Nr7yEOrBwSGz1Lq6kG5afqBejJDG1NJaSbY6b90jqkLly7fRbKUMuD9neWW
-	 mMzv4GipqD0Xc0BfEYrIAMPa2z784IfrUdlFIkkeH3DsDv4tCBG7ihxidSxVluK1a2mf0
-	 fq8fOIq2JebLnRGjrouyzkt5biwMUrje/ZlpnNgtNRYzUayJykd3I2URm/Mr86METTFL5
-	 qLihTPNFo8b8g9JTI2p9gWcK6zE0CB/Dg1hvbiFiipvhOoCEA+CdFNe3Q22Ppk1NGMsll
-	 1MpRiTrqk9dLqzw+6K7AwmOLAUBHE9YRTX485QNulD5ku2nUKfG68ff42FbHLEyUUFg==
+	b=XAb7EvAZJMXOBfpD4RznLDjA+vw1T8RMd0BfIEuV6mQUjjkvtNEqg8b1+LWW16Mk0IbY
+	 DtL8cf17xC4Zr7VWKBdWB14zBpTfC0DzkxbiWYettS4JOdTe3EaWP8ZNGuK1zqJvW4K0w
+	 J8wz9FExw4GGF/7E3pDI6eQR2U6e/md90dYZWiRte462//m0uBXYJTuwxJf9oka4QOwTs
+	 FtzyIXPA7xre1fBcCOy8EwwFnwhFxPBroJcQbi5j7qnAyOFEfuukWvn7QeHkiVW5t5DyW
+	 aeyfRgZ8SqJtOonATFKJKcp06OEZ/N26E8W3uFCrjaFU3v15sxKbaS0jXMMin2G63ZA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
 	a=rsa-sha256; c=relaxed/relaxed; t=1794458844;
 	h=DMARC-Filter:Received:DKIM-Signature:Received:From:To:Cc:Subject:
 	 Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
 	 Content-Transfer-Encoding;
-	bh=iO1h+JkV6iFvoRRxGZterDtynF4YgT4FFyh3pZiVtwc=;
-	b=lULlJFH0ZDJMXbTlQ4uJSw4Nv6OgSNiP/sn7UGXniuhtS1YTy8YboretlaOPLkowuRqU
-	 I3RuBaF+0tNP9bx1+JJoXATmYHbOTVCaLBPwG6cj20SRZWnPqXO39Z2sxzugoNW8+H7ts
-	 j4Jm1mohLD6RmjN2yDLEd1YUf5mqpVKNmn4QJI1Puex7TxEts7awf8dS6gd5yuaB/YuLN
-	 2q4TbXcet6TJaS4lE6Vjo1gG39uWeAeQGt18Bex3ajlmk5HrsgIiwRSzKzunZqH2Rze1M
-	 kl34jygzq9zx5vG+GabtRSb9eJEBIXakVMaoLGv7xgZLdJhAQEE4DVegjkwg5ig76sQ==
+	bh=hy/kWSaLAkWFfjrUs6iXY2SOe33zEgtNxCzg5XGDGPI=;
+	b=AFIJd0iIWdWcYZmB3L4odtynTn3AdMT7r7we39N/z3vi2U+7teMcNKmZQ+gewTl12prU
+	 UWtzuPb04kCGr8oivurMtPKD18n2kdRm3hHKWJ2c5ZJOoLKBLnRwFJsITPjX6GDyb/1+4
+	 FO2XJwxGsPJ9CuCqYg2EtE3zGntjwHz/FK+oKLeFlmH+0NnTIA0Bp1xxk9PJ3zsI6YoDd
+	 txE1oSIqEfSrrsvk+nY7Gi2zCZgtwsowoMTvJY2i3cGOYW9LewFH081y0XRYCTQDDVRib
+	 VF8aRiGvih92EpNmneKn+jOhILKOMncjd5+JBP5vT7ltJhtb4R/DPiSPN1HOt934mUQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=mit.edu;
 	spf=pass smtp.mailfrom=mit.edu;
-	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=FaTabNPo;
+	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=Dl8iLi4B;
 	arc=none smtp.remote-ip=18.9.28.11
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F15BA606A8BD
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Nov 2026 04:47:23 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org F15BA606A8BD
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3401B60A2608
+	for <linux-ext4@vger.kernel.org>; Thu, 12 Nov 2026 04:47:24 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 3401B60A2608
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=FaTabNPo
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=Dl8iLi4B
 Received: from trampoline.thunk.org (pool-173-48-111-191.bstnma.fios.verizon.net [173.48.111.191])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AC4lKW7031193
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AC4lKFF031189
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
 	Wed, 11 Nov 2026 23:47:21 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1794458842; bh=iO1h+JkV6iFvoRRxGZterDtynF4YgT4FFyh3pZiVtwc=;
+	t=1794458842; bh=hy/kWSaLAkWFfjrUs6iXY2SOe33zEgtNxCzg5XGDGPI=;
 	h=From:Subject:Date:Message-ID:MIME-Version;
-	b=FaTabNPoqP5RaLZIXDHJ6DfC+AmWO+okFP1qZM/h06A0VpFMW3VwAsOaM3frUsNfj
-	 nBmP9RTOKtPERxO0ac36HOGH5S90cpbDYs7Dr6+UEizC80G7lj40jeSFO0BPwShvqx
-	 KAWSDcCiOupdI2Azcl1baxebzbUxqaYJ7PgE1MikU2llcVGm3ewHPqOFRzFlCurr4o
-	 XavGL1nvBJ2myDm8W2RMWjNNE/7P1PQlXmpTzdBUqtbLoWfqy4rJBnY6hAv9g1rOwS
-	 tXzI6n7km3SgR6bRJJ2/N3PDkcESwJkekB5WKKGhkcwi1+k3OVH5wbgCvBUCOQ/jDZ
-	 ye/gvDiOPZA1A==
+	b=Dl8iLi4BirnCZLKyXTOuLsqXbVvfIqZHismbYv7frRKTikTwMa5Lfv2/6B4xFP7NT
+	 9fRbI0VJrPpPqIguoQjBIZ/LNngqPAMwTOVuAQphMLxU6utvIFpIhZ1mYcdaYxD6jh
+	 jmLuXbG/7AQakjXKNNPjyVVtxYtcOFXCMJdgpApiP/a95MXqQaaH1Cls6hkA0XPgbG
+	 uF21noJouI6onacWrfai2X/YpDB2sSzroos7mPJBkGJPtwVqMDtN0sxlnUlBfWoQXM
+	 MiJphkkHxULBXBvej2ZiZtCM+FLswBa5jCaYo0oc7TnZCzNAOPsef2yGaJ+LSZ9zjz
+	 oCo9Z5h2c6sMw==
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id 3C77B2E014E; Wed, 11 Nov 2026 23:47:19 -0500 (EST)
+	id 363F72E0149; Wed, 11 Nov 2026 23:47:19 -0500 (EST)
 From: "Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Cc: "Theodore Ts'o" <tytso@mit.edu>
-Subject: [PATCH 09/23] ext4: fix err_report_sec_store() timer and value handling
-Date: Wed, 11 Nov 2026 23:46:58 -0500
-Message-ID: <20261112044712.1577296-10-tytso@mit.edu>
+Subject: [PATCH 07/23] ext4: pass missing ioctls through ext4_compat_ioctl
+Date: Wed, 11 Nov 2026 23:46:56 -0500
+Message-ID: <20261112044712.1577296-8-tytso@mit.edu>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <20261112044712.1577296-1-tytso@mit.edu>
 References: <20261112044712.1577296-1-tytso@mit.edu>
@@ -69,190 +69,89 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-err_report_sec_store() has several problems:
+ext4_compat_ioctl() only forwards an explicit allow-list of commands
+to ext4_ioctl() and returns -ENOIOCTLCMD for everything else.  Several
+commands were never added to that list:
 
- - Writing 0 calls timer_delete_sync() and then jumps past the
-   assignment, so s_err_report_sec keeps its old value.  Reading the
-   attribute still returns the old interval, writing the old interval
-   back to re-enable reporting is treated as a no-op, and the periodic
-   report is restarted by the next error even though it was disabled.
+  EXT4_IOC_MIGRATE
+  EXT4_IOC_ALLOC_DA_BLKS
+  EXT4_IOC_SWAP_BOOT
+  EXT4_IOC_GET_TUNE_SB_PARAM
+  EXT4_IOC_SET_TUNE_SB_PARAM
 
- - Changing the interval from 0 to a non-zero value calls
-   timer_setup() on s_err_report.  The timer is already initialized at
-   mount time, and it may still be pending (e.g. armed by
-   ext4_update_super() or the timer callback racing with the store), in
-   which case re-initializing it corrupts the timer list.
+As a result, 32-bit userspace running on a 64-bit kernel (for example
+a 32-bit tune2fs or e4defrag) gets -ENOTTY for these ioctls, even
+though they work for native 64-bit callers.
 
- - Any non-zero write arms the timer even if no errors have ever been
-   recorded, so print_daily_error_info() wakes up and re-arms itself
-   forever without having anything to report.
+None of these commands needs any translation: MIGRATE, ALLOC_DA_BLKS
+and SWAP_BOOT are _IO() commands that ignore their argument, and
+struct ext4_tune_sb_params consists only of fixed-size __u8/__u16/
+__u32/__u64 members whose layout is identical for 32-bit and 64-bit
+ABIs (its __u64 members are naturally aligned at offsets 16, 24 and
+32, and the structure size is 232 bytes on both).  The ioctl numbers
+therefore encode the same size, and the commands can simply be passed
+through to ext4_ioctl() with compat_ptr() applied to the argument.
 
- - Concurrent writers are not serialized, so the timer state can end
-   up inconsistent with the stored interval.
+Add the missing commands to the pass-through list and extend the
+ioctl dispatch KUnit test to check that the compat handler forwards
+them (when CONFIG_COMPAT is enabled).
 
-Rework the function to always store the new value (with WRITE_ONCE(),
-since the timer callback and ext4_update_super() read it locklessly),
-drop the timer_setup() call, delete the timer when the interval is set
-to 0, and otherwise only (re)arm it when errors have been recorded;
-ext4_update_super() starts it when the first error is recorded.
-Serialize writers with a function-local mutex.  s_error_notify_mutex
-cannot be used for this, since ext4_unregister_sysfs() holds it across
-kobject_del(), which waits for active sysfs store callbacks to finish.
-
-Also read s_err_report_sec once with READ_ONCE() in
-print_daily_error_info(), so the value tested is the value used to
-re-arm the timer.
-
-Fixes: d518215c2719 ("ext4: add sysfs attribute err_report_sec to control s_err_report timer")
+Fixes: c14c6fd5c56a ("ext4: Add EXT4_IOC_MIGRATE ioctl")
+Fixes: ccd2506bd431 ("ext4: add EXT4_IOC_ALLOC_DA_BLKS ioctl")
+Fixes: 393d1d1d7693 ("ext4: implementation of a new ioctl called EXT4_IOC_SWAP_BOOT")
+Fixes: 04a91570ac67 ("ext4: implemet new ioctls to set and get superblock parameters")
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/super.c      |  7 ++++--
- fs/ext4/sysfs-test.c | 55 ++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/sysfs.c      | 21 ++++++++++-------
- 3 files changed, 73 insertions(+), 10 deletions(-)
+ fs/ext4/ioctl-test.c | 19 +++++++++++++++++++
+ fs/ext4/ioctl.c      |  5 +++++
+ 2 files changed, 24 insertions(+)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 5f704c43c901..e89f37419266 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3756,6 +3756,7 @@ void print_daily_error_info(struct timer_list *t)
- 	struct ext4_sb_info *sbi = timer_container_of(sbi, t, s_err_report);
- 	struct super_block *sb = sbi->s_sb;
- 	struct ext4_super_block *es = sbi->s_es;
-+	unsigned long err_report_sec;
+diff --git a/fs/ext4/ioctl-test.c b/fs/ext4/ioctl-test.c
+index 831b7e032fad..8afeccc755f6 100644
+--- a/fs/ext4/ioctl-test.c
++++ b/fs/ext4/ioctl-test.c
+@@ -1423,6 +1423,25 @@ static void test_force_shutdown_and_ioctl_dispatch(struct kunit *test)
+ 				-EBADF);
+ 		KUNIT_EXPECT_EQ(test, ext4_ioctl(&filp, EXT4_IOC_SWAP_BOOT, 0),
+ 				-EBADF);
++#ifdef CONFIG_COMPAT
++		/*
++		 * Architecture-neutral commands must be passed through by
++		 * the compat handler instead of failing with -ENOIOCTLCMD.
++		 */
++		KUNIT_EXPECT_EQ(test,
++				ext4_compat_ioctl(&filp, EXT4_IOC_SWAP_BOOT, 0),
++				-EBADF);
++		KUNIT_EXPECT_EQ(test,
++				ext4_compat_ioctl(&filp,
++						  EXT4_IOC_GET_TUNE_SB_PARAM,
++						  0),
++				-EFAULT);
++		KUNIT_EXPECT_EQ(test,
++				ext4_compat_ioctl(&filp,
++						  EXT4_IOC_SET_TUNE_SB_PARAM,
++						  0),
++				-EFAULT);
++#endif
+ 		filp.f_mode = FMODE_READ | FMODE_WRITE;
  
- 	if (es->s_error_count)
- 		/* fsck newer than v1.41.13 is needed to clean this condition. */
-@@ -3792,8 +3793,10 @@ void print_daily_error_info(struct timer_list *t)
- 		printk(KERN_CONT "\n");
- 	}
- 
--	if (sbi->s_err_report_sec)
--		mod_timer(&sbi->s_err_report, jiffies + secs_to_jiffies(sbi->s_err_report_sec));
-+	err_report_sec = READ_ONCE(sbi->s_err_report_sec);
-+	if (err_report_sec)
-+		mod_timer(&sbi->s_err_report,
-+			  jiffies + secs_to_jiffies(err_report_sec));
- }
- 
- /* Find next suitable group and run ext4_init_inode_table */
-diff --git a/fs/ext4/sysfs-test.c b/fs/ext4/sysfs-test.c
-index c13785420aa1..4aefcdc4480a 100644
---- a/fs/ext4/sysfs-test.c
-+++ b/fs/ext4/sysfs-test.c
-@@ -477,6 +477,60 @@ static void test_validated_rw_attrs(struct kunit *test)
- 			(ssize_t)-EINVAL);
- }
- 
-+static void test_err_report_sec_timer(struct kunit *test)
-+{
-+	struct sysfs_test_ctx *ctx = test->priv;
-+	struct ext4_sb_info *sbi = &ctx->sbi;
-+	struct ext4_super_block *es = &ctx->es;
-+	char *buf;
-+
-+	buf = kunit_kzalloc(test, PAGE_SIZE, GFP_KERNEL);
-+	KUNIT_ASSERT_NOT_NULL(test, buf);
-+
-+	/* Mount-time default; no errors recorded yet */
-+	sbi->s_err_report_sec = 86400;
-+	es->s_error_count = 0;
-+
-+	/* Changing the interval on a clean fs must not arm the timer */
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_sysfs_attr_store_test(sbi, "err_report_sec",
-+						   "3600", 4),
-+			(ssize_t)4);
-+	KUNIT_EXPECT_EQ(test, sbi->s_err_report_sec, 3600UL);
-+	KUNIT_EXPECT_FALSE(test, timer_pending(&sbi->s_err_report));
-+
-+	/* With recorded errors a new interval (re)arms the timer */
-+	es->s_error_count = cpu_to_le32(1);
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_sysfs_attr_store_test(sbi, "err_report_sec",
-+						   "7200", 4),
-+			(ssize_t)4);
-+	KUNIT_EXPECT_EQ(test, sbi->s_err_report_sec, 7200UL);
-+	KUNIT_EXPECT_TRUE(test, timer_pending(&sbi->s_err_report));
-+
-+	/* Writing 0 disables the timer and is reflected on read */
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_sysfs_attr_store_test(sbi, "err_report_sec",
-+						   "0", 1),
-+			(ssize_t)1);
-+	KUNIT_EXPECT_EQ(test, sbi->s_err_report_sec, 0UL);
-+	KUNIT_EXPECT_FALSE(test, timer_pending(&sbi->s_err_report));
-+	KUNIT_EXPECT_GT(test,
-+			ext4_sysfs_attr_show_test(sbi, "err_report_sec", buf),
-+			(ssize_t)0);
-+	KUNIT_EXPECT_STREQ(test, buf, "0\n");
-+
-+	/* Re-enabling with the old value re-arms the existing timer */
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_sysfs_attr_store_test(sbi, "err_report_sec",
-+						   "7200", 4),
-+			(ssize_t)4);
-+	KUNIT_EXPECT_EQ(test, sbi->s_err_report_sec, 7200UL);
-+	KUNIT_EXPECT_TRUE(test, timer_pending(&sbi->s_err_report));
-+	KUNIT_EXPECT_TRUE(test,
-+			  sbi->s_err_report.function == sysfs_test_err_timer);
-+}
-+
- static void test_computed_ro_and_error_time_attrs(struct kunit *test)
- {
- 	struct sysfs_test_ctx *ctx = test->priv;
-@@ -635,6 +689,7 @@ static void test_sysfs_register_notify_and_unregister(struct kunit *test)
- static struct kunit_case ext4_sysfs_test_cases[] = {
- 	KUNIT_CASE(test_generic_pointer_attrs),
- 	KUNIT_CASE(test_validated_rw_attrs),
-+	KUNIT_CASE(test_err_report_sec_timer),
- 	KUNIT_CASE(test_computed_ro_and_error_time_attrs),
- 	KUNIT_CASE(test_feature_attrs_and_trigger_error),
- 	KUNIT_CASE(test_sysfs_register_notify_and_unregister),
-diff --git a/fs/ext4/sysfs.c b/fs/ext4/sysfs.c
-index faa76f021099..0168ea6faac7 100644
---- a/fs/ext4/sysfs.c
-+++ b/fs/ext4/sysfs.c
-@@ -134,6 +134,7 @@ static ssize_t trigger_test_error(struct ext4_sb_info *sbi,
- static ssize_t err_report_sec_store(struct ext4_sb_info *sbi,
- 				    const char *buf, size_t count)
- {
-+	static DEFINE_MUTEX(err_report_sec_mutex);
- 	unsigned long t;
- 	int ret;
- 
-@@ -145,19 +146,23 @@ static ssize_t err_report_sec_store(struct ext4_sb_info *sbi,
- 	if (t > (365*24*60*60))
- 		return -EINVAL;
- 
-+	mutex_lock(&err_report_sec_mutex);
- 	if (sbi->s_err_report_sec == t)		/*nothing to do*/
- 		goto out;
--	else if (!sbi->s_err_report_sec && t) {
--		timer_setup(&sbi->s_err_report, print_daily_error_info, 0);
--	} else if (sbi->s_err_report_sec && !t) {
--		timer_delete_sync(&sbi->s_err_report);
--		goto out;
--	}
- 
--	sbi->s_err_report_sec = t;
--	mod_timer(&sbi->s_err_report, jiffies + secs_to_jiffies(sbi->s_err_report_sec));
-+	WRITE_ONCE(sbi->s_err_report_sec, t);
-+	/*
-+	 * The timer is initialized at mount time.  Only (re)arm it if errors
-+	 * have been recorded; otherwise ext4_update_super() will start it
-+	 * when the first error is written to the superblock.
-+	 */
-+	if (!t)
-+		timer_delete_sync(&sbi->s_err_report);
-+	else if (sbi->s_es->s_error_count)
-+		mod_timer(&sbi->s_err_report, jiffies + secs_to_jiffies(t));
- 
- out:
-+	mutex_unlock(&err_report_sec_mutex);
- 	return count;
- }
- 
+ 		/* EXT4_IOC_CLEAR_ES_CACHE empties inode extent status tree */
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 9e2bde83a033..d6f47ff00e61 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -2064,6 +2064,11 @@ long ext4_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+ 	case FS_IOC_SETFSLABEL:
+ 	case EXT4_IOC_GETFSUUID:
+ 	case EXT4_IOC_SETFSUUID:
++	case EXT4_IOC_GET_TUNE_SB_PARAM:
++	case EXT4_IOC_SET_TUNE_SB_PARAM:
++	case EXT4_IOC_MIGRATE:
++	case EXT4_IOC_ALLOC_DA_BLKS:
++	case EXT4_IOC_SWAP_BOOT:
+ 		break;
+ 	default:
+ 		return -ENOIOCTLCMD;
 -- 
 2.56.0.542.g3ef89b7020-goog
 
