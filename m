@@ -1,44 +1,44 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794519985;
-	b=wKkTVbrXOMzfe1uMWijBwFCdy3RUgOFg6KCAqTw16H8oRLTam4+h9KRrz3hnXcxkcDH+
-	 +T8MSaQBNzkSiQy/VM0n5sNzJh06zZTI3IO+5xQ0APlAWt5FehSAmJuDs2C+6aoPHsejZ
-	 eCWkk4ZEFYKQ7AhnXDoOXkQU51t8hSZnKaS1nGQHfGLbn6isF7N1w5YXMuIsumdqBXxMr
-	 89Pn3A4J+BrQP/nLiolHGE+deUJTpZQ+HDq81KTpM4DvWrxixJ5LnvFk5HV6NkF30S/5z
-	 KzoUKoVoPm+2vwKdPNZ5OR4qZzW1Ed61FcRsyocak9t1SJz3dxYeg4WfsQ4TcpIvcBg==
+	t=1794519981;
+	b=ZRPmYzu+np2iFXaMNdGGHLgxO7Qj/9lUFIJlS5eF+RxeOrf5fURcnVHLA+JswTu7T5UZ
+	 WXJAlo6cIXTOCix7jrEP3KfUjpmlL0UAkvCC7bwarZ3ntJdAyAgHefo942E3+d6lNt0hR
+	 DxwvUpSLfO2U3YdxrTGb7PUsufvjnISFRQx+8P6cNHd0W2rZZayp6k2mg3NJ16XJ+meY3
+	 IwpjecXDaZxlXRj6Hb6DVBxvTZCkjFLZ8vdCs9Fzf+c9PLqqJjNQ6xrT+pUqvB6dmUTaM
+	 9YNh2efZ8tBjrXkCK/3xKB1PtX1An6JKR2lnmNlibRNxCXNIk47rNox2+3KGS0k3XNQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794519985;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794519981;
 	h=Received:DKIM-Signature:From:To:Subject:Date:Message-ID:In-Reply-To:
 	 References:MIME-Version:Content-Type:Content-Transfer-Encoding;
-	bh=1mHPLrOS3OArzUqJuavd9J77wJ97SanHQHyuHIlePfA=;
-	b=A94iDKHW/4iz4DGJVjvBDNSzo/E+lgJUKY/iq1YX40aqn4hfT0DOwFRNIp09aAmw2GuC
-	 5H4OCdr6sMwK1GnTNELl9NlmvkwA8WJdx+od/goaaoNgCRDZnDplp3aTd24at8drus0TH
-	 j0SQKAHeEvfXrM00G9649qL7EwoabK6o9T17+WzdMZ0dkcIhrLwnomnkwGBcxf6HrK0NO
-	 8zIaWsYdQWBv0CCwQuhoEKcUeqiFqGslOwMgvJSX8WEodDxEhGn8bLN/u3BDxKjrhbKaK
-	 ABn6btS4bFFZ3kd7J1Syon50H8+NyTA99Rep3xGpO0QnmPxuxzpQh1efyJUNfcih7KQ==
+	bh=dhSFR2ubadcyXaAKett/4h+Z0PAEFKYZEE0yEgeDYgE=;
+	b=BnQ5nocC7zgzF6daqARLepL88WTZNZ8XeXZ5T6cjB3zw/KHylkQV07EinyZeKeBhQ6sO
+	 gKxnQq+TYmjCQsXaLbmUfZLNYNhZsqCFSCXuQWjMO81m4JV717m3TBvmDrpMq2SRMvrt9
+	 x7k4MHMZjiEomzx2tj+AYmhtUtqeb2b070Ws+j09Mv4AGVb3tPKCIE/rtByTxpOVWb1iS
+	 9dNcqRSp4RClCCUnakoLQ9gTe89TlQFIZTN7PEWJvFhVZXamwEp9bvTso/IchD2+mVfsl
+	 o4HQgiW4kwh/yDwpTNuXz3g+cZdXNmgDu8AWs1idySU2JVC0pgeP+Glj6ZvCn2dN4Yg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=T2m4uqwe;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=lNcaDmma;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9EAEF606A88A;
-	Thu, 12 Nov 2026 21:46:25 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CE209606A880;
+	Thu, 12 Nov 2026 21:46:21 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=T2m4uqwe
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id BA8011F000C5;
-	Thu, 12 Nov 2026 21:46:23 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=lNcaDmma
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3B97A1F000C5;
+	Thu, 12 Nov 2026 21:46:20 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794519985;
-	bh=1mHPLrOS3OArzUqJuavd9J77wJ97SanHQHyuHIlePfA=;
+	s=k20260515; t=1794519981;
+	bh=dhSFR2ubadcyXaAKett/4h+Z0PAEFKYZEE0yEgeDYgE=;
 	h=From:To:Subject:Date:In-Reply-To:References;
-	b=T2m4uqwemM7yRTOm6LyhhtbwM/72QDRcgksnmYRZ9b1Oqb2ErIHNBisZdxSpQWISj
-	 A2brGh+OSq/aUQUkY0dfg1mlb59YNKEg9RbvzMbhWL44eiyRP7g0x+Xc1L1nxZX9k6
-	 9My3+Jxyife1yNiVHX4weMTfcEN1XvbxpMG8HLNnfaDKgWytc2VuIjbRTuu98A+OJm
-	 gHpU8m8oHE+MuwzeyQ+fvjEaUS+KELHBAqa+sp5pdMLOqZiddpzAw/LhF2IcW13ueb
-	 QvXuH9UM4LucQeRMpNCeDoVwWzXGGqZRcrLl3x+TJYOL3ohWZeIbbRA3OmxjYoWB5H
-	 TB6P/15PRLR8Q==
+	b=lNcaDmmajZ+lz1UoySq0J+MPCUW5U2mZloPcWxVju1g27w7T/lJA9klBfgEUgBIe/
+	 EV/D93SJ7Erw0v5orywlUlkCzmqMyD0XizsgoJFpm9gsnJfCgzu7GqhwkFyfAl7RvM
+	 dNfbQvB5P1dbX8u+j2jBIjlu9M/mYQZH4NF+UQqITJLZkFQWErGGPXKCJ0t/lNoV4+
+	 KUEAwjN1BKlSysBL8cmFJDq/NHSDzwKpNUnp1Bh8PwS3GH4U2aJFobmBZAR3kJ/OQU
+	 1N8BkM2EEMaP6bZTNt4ou3GSMwYrIxKUAGH+agbv8v/cDuWPahQuXYxSRiht7+WJR0
+	 L2TKyrJ4Ff18g==
 From: Chris Mason <mason@kernel.org>
 To: mason@kernel.org,
 	tytso@mit.edu,
@@ -53,9 +53,9 @@ To: mason@kernel.org,
 	linux-ext4@vger.kernel.org,
 	tz2294@columbia.edu,
 	brauner@kernel.org
-Subject: [PATCH v9 10/14] xfs: refuse fallocate racing with realtime flag changes
-Date: Thu, 12 Nov 2026 16:46:14 -0500
-Message-ID: <20261112214604.67875-11-mason@kernel.org>
+Subject: [PATCH v9 08/14] xfs: refuse writes to files racing with realtime inode flag changes
+Date: Thu, 12 Nov 2026 16:46:12 -0500
+Message-ID: <20261112214604.67875-9-mason@kernel.org>
 In-Reply-To: <20261112214604.67875-1-mason@kernel.org>
 References: <20261112214604.67875-1-mason@kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -70,111 +70,60 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 
-On a zoned XFS, fallocate() can dereference a NULL pointer if the
-realtime flag of the file is set during the call.
+From: Christoph Hellwig <hch@lst.de>
 
-xfs_file_fallocate() reserves zoned space only for a zoned inode, and
-tests for that before it takes the iolock. FS_IOC_FSSETXATTR can change
-the realtime flag of a file with no blocks in that gap.
-xfs_falloc_force_zero() then sees a zoned inode and reads the
-reservation, which is NULL:
+Zoned writes need to reserve space before taking the iolock to avoid
+deadlocks with garbage collection.  But this means that the realtime inode
+flag which indicates if the file will be placed on the zoned realtime
+device or the main data device can be flipped after taking the reservation
+and before taking the write, or after deciding to go down the regular
+write path, both of which can't work.
 
-    fallocate(FALLOC_FL_ZERO_RANGE)     FS_IOC_FSSETXATTR
-    ===============================     =================
-                                        takes the iolock
-    sees that the inode is not zoned
-    waits for the iolock
-                                        sets the realtime flag
-                                        drops the iolock
-    xfs_falloc_force_zero()
-      sees that the inode is zoned
-      /* ac is NULL */
-
-The fix used here is to test again under the iolock, and to fail the
-call with -EINVAL if the answer has changed, as the write path does.
+Re-sample the realtime flag just before the actual write, and refuse the
+write if the flag changed.  Do not retry the write using the now correct
+path, as switching the flag under a write is not a normal use case, and
+trying to flip between the zoned and regular path is an inherent life
+lock as it could be switched around again the next time this check is
+performed.
 
 Fixes: 058dd70c65ab ("xfs: implement buffered writes to zoned RT devices")
+Fixes: 2e2383405824 ("xfs: implement direct writes to zoned RT devices")
+Reported-by: Chris Mason <mason@kernel.org>
+Signed-off-by: Christoph Hellwig <hch@lst.de>
 Signed-off-by: Chris Mason <mason@kernel.org>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+Reviewed-by: Carlos Maiolino <cmaiolino@redhat.com>
 ---
 
 Notes:
-    v7->v9: no change
-    
-    v6->v7:
-    - No change.
-    - Was 9/10.
+    v6->v9: no change
 
- fs/xfs/xfs_file.c | 41 ++++++++++++++++++++++++++++++++---------
- 1 file changed, 32 insertions(+), 9 deletions(-)
+ fs/xfs/xfs_file.c | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
 
 diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
-index 5fa8b07a779d..78c9668c806b 100644
+index d888470d092a..515ddafc6673 100644
 --- a/fs/xfs/xfs_file.c
 +++ b/fs/xfs/xfs_file.c
-@@ -1573,6 +1573,21 @@ xfs_falloc_allocate_range(
- 		 FALLOC_FL_ZERO_RANGE |	FALLOC_FL_INSERT_RANGE |	\
- 		 FALLOC_FL_UNSHARE_RANGE | FALLOC_FL_WRITE_ZEROES)
- 
-+/*
-+ * For zoned file systems, zeroing the first and last block of a hole punch
-+ * requires allocating a new block to rewrite the remaining data and new zeroes
-+ * out of place, which needs a space reservation.
-+ */
-+static inline bool
-+xfs_falloc_needs_zoned_resv(
-+	struct xfs_inode	*ip,
-+	int			mode)
-+{
-+	return xfs_is_zoned_inode(ip) &&
-+		(mode & (FALLOC_FL_PUNCH_HOLE | FALLOC_FL_ZERO_RANGE |
-+			 FALLOC_FL_COLLAPSE_RANGE));
-+}
-+
- STATIC long
- __xfs_file_fallocate(
- 	struct file		*file,
-@@ -1591,6 +1606,19 @@ __xfs_file_fallocate(
- 	if (error)
- 		goto out_unlock;
+@@ -441,6 +441,19 @@ xfs_file_write_checks(
+ 		goto restart;
+ 	}
  
 +	/*
-+	 * The caller looked at the realtime flag before we took the IOLOCK, to
-+	 * decide if it has to reserve space.  Bail out if the flag has changed
-+	 * since.
++	 * Now that we are in the same IOLOCK critical section as the actual
++	 * write, check that the inode still has the realtime flag in the state
++	 * that the caller expects.  If not, some deliberately cleared it while
++	 * I/O is ongoing, so bail out.
 +	 */
-+	if (xfs_falloc_needs_zoned_resv(ip, mode) != !!ac) {
-+		xfs_warn_ratelimited(ip->i_mount,
-+			"RT flag modifying during fallocate for inode 0x%llx.",
++	if (xfs_is_zoned_inode(XFS_I(inode)) != !!ac) {
++		xfs_warn_ratelimited(XFS_I(inode)->i_mount,
++			"RT flag modifying during write for inode 0x%llx.",
 +			inode->i_ino);
-+		error = -EINVAL;
-+		goto out_unlock;
++		return -EINVAL;
 +	}
 +
  	/*
- 	 * Must wait for all AIO to complete before we continue as AIO can
- 	 * change the file size on completion without holding any locks we
-@@ -1686,16 +1714,11 @@ xfs_file_fallocate(
- 		return -EOPNOTSUPP;
- 
- 	/*
--	 * For zoned file systems, zeroing the first and last block of a hole
--	 * punch requires allocating a new block to rewrite the remaining data
--	 * and new zeroes out of place.  Get a reservations for those before
--	 * taking the iolock.  Dip into the reserved pool because we are
--	 * expected to be able to punch a hole even on a completely full
--	 * file system.
-+	 * Get the reservation before taking the iolock.  Dip into the reserved
-+	 * pool because we are expected to be able to punch a hole even on a
-+	 * completely full file system.
- 	 */
--	if (xfs_is_zoned_inode(XFS_I(inode)) &&
--	    (mode & (FALLOC_FL_PUNCH_HOLE | FALLOC_FL_ZERO_RANGE |
--		     FALLOC_FL_COLLAPSE_RANGE)))
-+	if (xfs_falloc_needs_zoned_resv(XFS_I(inode), mode))
- 		return xfs_file_zoned_fallocate(file, mode, offset, len);
- 	return __xfs_file_fallocate(file, mode, offset, len, NULL);
- }
+ 	 * If the offset is beyond the size of the file, we need to zero all
+ 	 * blocks that fall between the existing EOF and the start of this
 -- 
 2.55.0
 
