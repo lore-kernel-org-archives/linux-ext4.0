@@ -1,56 +1,63 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794488580;
-	b=PxYJhuZmyBuQpF9paT+I/woaGRUD19B313/Iavpm/KmslYwvmeie8wS3xocTXNy90dxj
-	 06xX9xLTNtIn23JFdOj8NDgiitz8xEDqUEGE1ykJ97K7tC2IH9XmjtWqVzBEYoUWphF/D
-	 TiRHVIJaZVrMIyfs0lPEUtPhDlK3fjGhrvRR3akLhomYgIRW1TrIVJ5PaKao/ki8ciwO7
-	 frtkZl+4O/F7g+mU3KpqJ8UuNo7bljaUZSq4fSAP07El8oamwVDn6dOeMfuhOu4Z1JS1r
-	 Omq7vX5/JsqS3CEOpflGObP2c9kxasrnWpJSV5u6nWVaQhl9xPaSH3jNGJmF9t4l6Qw==
+	t=1794489665;
+	b=r4/y09Y2V67qI+fvpyDaSffrCmwLQz6YeLUoxdKM+gh10n2qf3YFMEWHYe6vwJvlPrRY
+	 wrT8Xu2LvKxuA0rW5gv4o9d8PXLur9WsEv4ovA+AGfBABY9U7qK+1S6vh3jlALtef3cjK
+	 DC5FgoKxHKOFynv9LwsOovbgcu3GPVMhr8Hvz3+criX48oshWcH+QWvE+h1V+ESwlACro
+	 eIPK+j32lU9cXcHVoGvF6Q20tS0b7qAGzrAF4TEWAaaJuUEl1NAOAvh3aA1lj5x9RKOsI
+	 9ui4Y+1KSnMyOGJhAsouTXF7cudH7oIr7orpzefYuMU5/fPcJTdYVXXMvJiOgrQhKLw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794488580;
-	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
-	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=Nw+mvrlrOPI3+3A+8ccM3zcb4JjIkLm62XodB8tpOb0=;
-	b=x1a4hQiVBZpV7Rz+/BWnadYCrpAvG5vrpNY+Gzh0ZW9UwGwhP+bddWhz6wEkMoIYUpgW
-	 xQj8u6Tp1Z+VS10BhAX2aY3AhAHV7ZV7mwEgXnDWgQnQCQnj9ovQ74Y4iPnuY1PfnVWw8
-	 5ztuOoTeu7SDLfJQP2NYcC6hbDzdfLojQubpcKWb2etjDZsy0uft/azO8ofwhT7enWl2j
-	 mYTwwPUYBRFNHyb8m+HzN5oxWIdq3dmpUx2uQLbLk0+bpV2iPcbdRYc5VUyjQWpf+d9TG
-	 8J9ESatBMCiUXzUob6btov/Ohjlg766fBom5if1b5on9TXQOne1r6cUD8X3r+wWb6cw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794489665;
+	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
+	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
+	bh=2TVb8qDZ4KT/CTu1G3B1wlWvG0RXp8XP3qjnuNYzjOg=;
+	b=u700fACwqvVEU56bLfh8WQT77aVbb9Za0mlXenYTObhpIcmBSILWk40+I6+1h1NmC+RF
+	 huz/poklpHrmwoDwgjybIIh0AmKpa0U41NrHSPjR8+IclCi5MfsGF61glld/l+Eowd+Ki
+	 NqG1oKHSm1vx2uyvO6EJ/DOtfSZ46Y10owoeHL3UDF4vTu/MzdlaIRy+UIEMb00dQuWcQ
+	 q4pMD/AEwkxECTtg575SYulwVJEOw2SllwI0Sy4Wzr54DvYBG+SRV88Wi+4gPevbxGbzR
+	 ppOKyqwrSFE/arHyDwL3EpG1mFzRmJmrxXYkQG2GLtEBORkFaP1qaC15uaT2hEzc9rg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="Kc/Kjahg";
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=MmvF84R0;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3D80F606A31C
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Nov 2026 13:03:00 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 08BC2606A330;
+	Thu, 12 Nov 2026 13:21:04 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Kc/Kjahg
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id AC0D61F00A06;
-	Thu, 12 Nov 2026 13:02:59 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=MmvF84R0
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A0D581F00A05;
+	Thu, 12 Nov 2026 13:21:00 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794488579;
-	bh=Nw+mvrlrOPI3+3A+8ccM3zcb4JjIkLm62XodB8tpOb0=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=Kc/KjahgBnN+IokrkSBcIXB6Zc2sEkKnM1rzxqmyHzcQHeul68ML7AhYi9SBaJVul
-	 QsPG8edjRQC0hD0QkSI7c2gK/Q/MI7fQW8v2m1DsdoPjik6bEoranHfIc85By77+0g
-	 ZudEOd0ID5NjWbZVf8TxB1cpTVLtTIUoYWhORQlATc4av856Q1nc1IxPGcZnVq/Taw
-	 Tb4PH4p0+UwudeajXKOWO2z8j5dHswO0nxgjkbUzfRAuCn6vgqTpAk5rMpZ6PgJStV
-	 o07ZD/C6F3npjnVqzwsPjd1Vrg9p7cU2mdsixv122w2IAKfO0UWcquXxesoolsn+N/
-	 UN8HU8l4ISGaw==
-Message-ID: <sashiko-outbox-211134@kernel.org>
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH] ext4: wait for tail page commit in
- ext4_truncate_failed_write()
-Reply-To: sashiko-reviews@lists.linux.dev
-To: "Chandradhar Kumar" <chandradhar.2003@gmail.com>, linux-ext4@vger.kernel.org
-Cc: tytso@mit.edu
-In-Reply-To: <20261112124835.114888-1-chandradhar.2003@gmail.com>
-References: <20261112124835.114888-1-chandradhar.2003@gmail.com>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Thu, 12 Nov 2026 13:02:59 +0000
+	s=k20260515; t=1794489664;
+	bh=2TVb8qDZ4KT/CTu1G3B1wlWvG0RXp8XP3qjnuNYzjOg=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=MmvF84R0gtLndw24gzSFT3ub5yJmtlvjtQewwlBkOj3aPXQTksQ4drEzrc46OvL/z
+	 wo9GRa3UsS1F1xzmaEOQVjwk+tWBf2XT/7mCHBb8HSswe2CPaa8KtfXoHjL9Y0GbyO
+	 1efF5XqnKzznSG9DEGEO7OMYE2iaaSETCJ8OFamxUwQlBUJWVpDt1tjvUs4hkM1QL2
+	 IWFg+ih4NX2foIqjeWjsniqTNNlHAD8H5+koYNsWz+ArokDl49tjta/Dn88XnGLkGJ
+	 3S6OKico8mJafJNwprIMppBt+ZwOOYREUSFE9sMr0CwvZQk9NrRSiDsIISSMrUCwF/
+	 4a2UthzwC3fuQ==
+Date: Thu, 12 Nov 2026 14:20:58 +0100
+From: Christian Brauner <brauner@kernel.org>
+To: Jan Kara <jack@suse.cz>
+Cc: linux-fsdevel@vger.kernel.org, Jan Kara <jack@suse.com>, 
+	Al Viro <viro@zeniv.linux.org.uk>, ecryptfs@vger.kernel.org, linux-ext4@vger.kernel.org, 
+	jfs-discussion@lists.sourceforge.net, linux-nilfs@vger.kernel.org, exfat@lists.linux.dev, 
+	linux-mm@kvack.org, ntfs@lists.linux.dev, ocfs2-devel@lists.linux.dev, 
+	linux-btrfs@vger.kernel.org, gfs2@lists.linux.dev, linux-efi@vger.kernel.org, 
+	linux-mtd@lists.infradead.org, linux-xfs@vger.kernel.org, 
+	Karl Mehltretter <kmehltretter@gmail.com>, Dave Kleikamp <shaggy@kernel.org>
+Subject: Re: [PATCH v2 04/34] ext2: don't set SB_RDONLY after filesystem
+ errors
+Message-ID: <20261112-besorgen-nobel-handschuhe-fb3373259b5f@brauner>
+References: <20261029-work-fs-sb_rdonly-v2-0-2f44f64f0b66@kernel.org>
+ <20261029-work-fs-sb_rdonly-v2-4-2f44f64f0b66@kernel.org>
+ <5qefa4mracb3x2z4vsdejmkyyfrhdcrixmmnooz4rzwcdfoejm@mqkvixj6afwp>
+ <20261110-kargheit-impfen-pausieren-881763d28b19@brauner>
+ <za33axmgzmuzsj3zmfeh43fkphtcsqtkhhrauwuvs7aiftelgp@dzl6z322st5f>
+ <20261112-wohncontainer-saurier-wonnen-91f30c3b3ae2@brauner>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -59,35 +66,47 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+In-Reply-To: <20261112-wohncontainer-saurier-wonnen-91f30c3b3ae2@brauner>
 
-> When a buffered write fails partially (e.g., due to a user page fault)
-> on an ext4 filesystem mounted in data=3Djournal mode with blocksize <
-> PAGE_SIZE, ext4_journalled_write_end() invokes ext4_truncate_failed_write=
-()
-> to discard newly allocated blocks beyond inode->i_size.
->=20
-> If the updated inode->i_size straddles a folio whose buffers are currently
-> being committed to the journal, truncate_inode_pages() attempts to
-> partially invalidate that folio via ext4_journalled_invalidate_folio().
-> Because JBD2 cannot unmap buffers belonging to a committing transaction
-> on a partial folio, journal_unmap_buffer() returns -EBUSY, triggering
-> the WARN_ON() in ext4_journalled_invalidate_folio().
->=20
-> Unlike the standard truncate path in ext4_truncate_down(),
-> ext4_truncate_failed_write() does not wait for the committing
-> transaction on the tail page to finish before truncating the page cache.
-> Export ext4_wait_for_tail_page_commit() and call it in
-> ext4_truncate_failed_write() when data=3Djournal is enabled before
-> acquiring filemap_invalidate_lock() and calling truncate_inode_pages().
->=20
-> Fixes: 53e872681fed ("ext4: fix deadlock in journal_unmap_buffer()")
-> Reported-by: syzbot+f111db4cb2acd44eb2f4@syzkaller.appspotmail.com
-> Closes: https://syzbot.org/bug?extid=3Df111db4cb2acd44eb2f4
-> Signed-off-by: Chandradhar Kumar <chandradhar.2003@gmail.com>
+On Thu, Nov 12, 2026 at 01:01:34PM +0100, Christian Brauner wrote:
+> Fwiw, this leaks the inode's anonymous tlocks. They're from TxLock which
+> is shared by all jfs mounts. txLock() also sets mp->lid and pinned the
+> metapages with metapage_nohomeok().
+>
+> So the helper would have to tear all of that down like txAbort() does
+> and drop the pins. Doable, I guess not sure if this belongs into the
+> series.
 
-Sashiko has reviewed this patch and found no issues.
+So ok, I tried to do this in a vm. With jfs.nTxLock=256 three rounds of
+error + umount leaked 163 tlocks and the next writer on a fresh jfs hung
+in txBeginAnon().
 
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261112124835.1148=
-88-1-chandradhar.2003@gmail.com?part=3D1
+I think txAbort() might be the wrong model. It only drops the pin when
+mp->lsn is set and doesn't free linelocks. So this would need a helper
+modelled on txUnlock().
 
+Fwiw, the BUG_ON() also triggers without this series. The error sets
+SB_RDONLY, sync_filesystem() bails at umount and nothing commits the
+anonymous tlocks. This series fixes that as a side effect because
+sync_filesystem() keeps running.
+
+> All the check
+> does is make syncfs() return without writing anything and make unmount
+> drop whatever the flusher hasn't gotten to yet. Which might be the goal
+> you're after?
+
+I tried that too on fat and ext2. With the check and an umount right
+after the error new files are gone on both. If the flusher ran first
+nothing is lost. That's exactly what happens without this series. If
+writeback is allowed to finish nothing is lost either way.
+
+Skipping these superblocks in the flusher is no better. ext4
+effectively does that in its emergency state (ext4_writepages() bails)
+and the stuck dirty pages throttle everyone else from testing. with 1.4G
+stuck on ext4 a dd to ext2 on another disk crawled at ~1MB/s until ext4
+was unmounted (cf. [1]).
+
+[1]: https://lore.kernel.org/r/ZEnb7KuOWmu5P+V9@ovpn-8-24.pek2.redhat.com
