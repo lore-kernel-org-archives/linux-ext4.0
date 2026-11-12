@@ -1,55 +1,63 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=18.9.28.11
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794458761;
-	b=5PXVRTZ+Cs9sWG7kQ22Jmb4tLfPXb/BapW/lI3EtmCXQQGu268HruVKxwWuXl+HZ1/cg
-	 Ozqzl/9ob5Q/fMWEJGfpYpRvAcm5IJhPmdn6vb1nkBdDMkTquPauiXo7/wkVSFwdPkOpq
-	 Hp5fHVhXHu9HZu+EYkJg1odgbMnO8AngjM4CF5lbwL+eL1EQ9xZbMPUSk93D8n4SVnjVd
-	 SVEopjBIebHQYBgueCn724vKBf0/njlXUVI2axdIWtC8KsS8Km+La3j7Y8hU5MQpWLwUS
-	 RHWBgoVufC5B09q7peY+nwjVS8xtDGKYQGHn1PjE8tyhxUkgRIc9+wAAAnPNCM2QtnQ==
+	t=1794458843;
+	b=xA7wZs6EZngfpHbpTsFji65LSdRjPisyoBW+M540gWYKemGUilNzeXt8o6xZzWqQHiBq
+	 1Lp+cXHv6dNlGPB0ByKhFq4OBtTSf5tl3srqq8Bm13jsEXRTLj+YMRnBBRk/Bu2RJpjEU
+	 8j6ddd9vLIIspQYO2Q8Bij1fOkok3qNuwG/SVyIpDUtIb7Ncg1GqsFZoDVN0WIvuI+Iv9
+	 ym1MtkqSwksduAiC72R/XVHE6CJbjC5O81Ks1tJo04k9iKtMHkNivRuhe5ACDzeLGj1Y9
+	 M87Ijkn/25m4rz1dXgnjIHETP/2Tr45TDk+rkotgFTnKXWyiAmxnCmtjF2DpqLap15A==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794458761;
-	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:
-	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=k+P/WfjUMhGRObjnaicvKOikEGDduWe9NJ2yb9xHwTo=;
-	b=BIS54wrfkJJfqYCyT8FZ9M5rSc6le/+vMGusOIGiaZtC+eyw/DYC5gNfeKglw4CRgNwl
-	 VU6RuNuRQS0P/zNdrMT6jbA365oHkmwORUR67ZyaQwqCAj8oHj97IZeML+uTn/OJ78UoG
-	 K5/2L/9C3+mqpnx+dt+ppfYoxTUUIdDjlmuSNCtLJJFPhhV7Tq2+OGJgW0pg/gnEpZYdO
-	 7J+/qmTCsKNmqMli6k5+d9KcDOtknztHC0/LcRBnzhSsZpWtxsgwfWpWNl9skof2GNnd6
-	 9Ria2Px6IMYNX4GLH/btx50M5F7EwaqbCvFE83+i/Ti6GhQCmcUC0x6dn9oIUb9QUHg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794458843;
+	h=DMARC-Filter:Received:DKIM-Signature:Received:From:To:Cc:Subject:
+	 Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
+	 Content-Transfer-Encoding;
+	bh=O/4A7m7PLLF6aUbYHoMofYLwN8WFF7EuJN7FFAWbiG0=;
+	b=jRuiuku0wdfWNZQfKFjgvCxEqyGpWXb4G7hqmhWSb5HLGjq1onf9D6hHXhOEi+zkqaVB
+	 dPmVdPgF1A2nwAi4XNC64bZ6Ez0tYttWjq1hEXT7FouqMzww2mQxHUh6uDPoTWsUyykrn
+	 jKxyP4wa63Ek6jx79WAB4SVzfAnZFA76iAeFY4GgahFDyeqD3X3/LM24HxLOpYEe+UW0d
+	 0E/hNf4qnVXQpZmtcTfrfQa9g0+TOMzsm6si8dJe3qYhuRQpy298DXdJb14IOwMzxgn2I
+	 w57vIFcQG5Wv2blvLLWrh0gSycwSZ9wOH7Jr+X1Vg13H7dC4UHQfMO5+oxbdQJnTbig==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=mv0xLbuw;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=pass header.from=mit.edu;
+	spf=pass smtp.mailfrom=mit.edu;
+	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=lB+hYb20;
+	arc=none smtp.remote-ip=18.9.28.11
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4F8B7606A31C
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Nov 2026 04:46:01 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B3E5B606A339
+	for <linux-ext4@vger.kernel.org>; Thu, 12 Nov 2026 04:47:22 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org B3E5B606A339
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=mv0xLbuw
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 01D661F00A05;
-	Thu, 12 Nov 2026 04:46:00 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794458761;
-	bh=k+P/WfjUMhGRObjnaicvKOikEGDduWe9NJ2yb9xHwTo=;
-	h=From:Subject:Reply-To:To:In-Reply-To:References:Date;
-	b=mv0xLbuw5IdU629FuCsQ8MjFJVqC2MLd3PKIXHXseMoC140EMvRinj8e1A4BdU9tu
-	 0B5vbugwjXwdmWxRoE0PR4cadvWhtrlriGDpK+ED33yGZ3oXcIJDJYZw6g13kxg55j
-	 ZB9+2cxQgUOmC+xwDKGtpg24/P6xv7+vjet6xkusCf5jTcC7S4IugnwLnr79yZY9G8
-	 VY/1XLIaDeQ0ItxPtzxxUqVCxSzPWl+iBbg0Gk19lDQTBIwAPzGhphFw1bGicpelki
-	 yERT5uqS8TiiuhE2iPLjg27omuAjLCsdp65Et1KDVAHYMe6474HQFGmSERYf5hG5Ts
-	 sGi9bXz0IgrVw==
-Message-ID: <sashiko-outbox-210391@kernel.org>
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH 22/27] ext4: add KUnit tests for fs/ext4/indirect.c
-Reply-To: sashiko-reviews@lists.linux.dev
-To: =?utf-8?b?VGhlb2RvcmUgVHMnbw==?= <tytso@mit.edu>, "Ext4 Developers List" <linux-ext4@vger.kernel.org>
-In-Reply-To: <20261112040638.1576836-23-tytso@mit.edu>
-References: <20261112040638.1576836-1-tytso@mit.edu>
- <20261112040638.1576836-23-tytso@mit.edu>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Thu, 12 Nov 2026 04:46:00 +0000
+	dkim=pass (2048-bit key, unprotected) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=lB+hYb20
+Received: from trampoline.thunk.org (pool-173-48-111-191.bstnma.fios.verizon.net [173.48.111.191])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AC4lJH2031147
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Wed, 11 Nov 2026 23:47:20 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1794458840; bh=O/4A7m7PLLF6aUbYHoMofYLwN8WFF7EuJN7FFAWbiG0=;
+	h=From:Subject:Date:Message-ID:MIME-Version;
+	b=lB+hYb2043V3daHPBgq8a98sqQSg0B465YbxsHwnnBUWPoMi68cSe5vifTLtT3Qol
+	 2v+ct8VQuqQn73z/J4dOcf9D2RC6T1B2fq/OGkcq5OnZmXgzZ6vsO7hxvc7wy74hte
+	 rfBJdZLa5Jd6VGpeYSFu3o12J2YWkJtBQHU5zJQMBdwpUiQEJRgw6Ze3/RzNjxA1xB
+	 +7mkho5S0Ve3yHbAx7rQtvJ2FxlIL1T4I1naav/anWeBFiJuurI+XifndZRCKdAI5E
+	 rPzagVsJA0AoLPAe1IlkxWTKNaALS08ZbBIczcGFHheUoeHNqN5+60bmaMX0YPBQXp
+	 9MW+uNESBT8aA==
+Received: by trampoline.thunk.org (Postfix, from userid 15806)
+	id 2D5662E0146; Wed, 11 Nov 2026 23:47:19 -0500 (EST)
+From: "Theodore Ts'o" <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Subject: [PATCH 04/23] ext4: persist the htree hash seed when enabling dir_index online
+Date: Wed, 11 Nov 2026 23:46:53 -0500
+Message-ID: <20261112044712.1577296-5-tytso@mit.edu>
+X-Mailer: git-send-email 2.53.0
+In-Reply-To: <20261112044712.1577296-1-tytso@mit.edu>
+References: <20261112044712.1577296-1-tytso@mit.edu>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -58,160 +66,164 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 
-Thank you for your contribution! Sashiko AI review found 2 potential
-issues to consider:
-- [Medium] ext4: indirect-test: UAF in ind_test_free_inode() after RCU
-  grace period
-- [Low] ext4: uncleaned percpu_counter and uninited work/timer in
-  ind_test_init()
-It also noticed 1 related pre-existing issue this patch does not
-introduce:
-- [Critical] ext4: incomplete error check in ext4_ind_map_blocks() [1]
---
+When EXT4_IOC_SET_TUNE_SB_PARAM enables the dir_index feature,
+ext4_validate_tune_sb_params() generates a random sbi->s_hash_seed if
+the current one is all zeroes, and picks the hash signedness in
+sbi->s_hash_unsigned.  However, ext4_sb_setparams() only copies
+s_def_hash_version to the superblocks; the hash seed and the
+EXT2_FLAGS_{UNSIGNED,SIGNED}_HASH flag are never written out.
 
-commit ebeb5ffec6cf1b1539b939ab7329a1923d9ae24c
-Author: Theodore Ts'o <tytso@mit.edu>
+Any directory converted to an htree before the next unmount has its
+names hashed with the random in-memory seed.  After a remount the seed
+is reloaded from the (still all-zero) on-disk superblock, so lookups in
+those directories compute different hashes and fail with -ENOENT, and
+new entries are inserted into the wrong leaf blocks.
 
-ext4: add KUnit tests for fs/ext4/indirect.c
+In addition, if the superblock already has EXT2_FLAGS_UNSIGNED_HASH
+set (e.g. it was created by mke2fs on an unsigned-char platform with
+dir_index disabled), sbi->s_hash_unsigned is left at 0, so names
+containing bytes >= 0x80 are hashed differently than they will be
+after the next mount, which honors the flag.
 
-This commit adds the ext4_indirect_test KUnit test suite for indirect block
-mapping, truncation, and hole punching, and routes indirect block buffer
-lookups through ext4_sb_getblk().
+Write the hash seed and, if neither flag is present, the signedness
+flag matching sbi->s_hash_unsigned to the primary and backup
+superblocks, and set sbi->s_hash_unsigned from an existing
+EXT2_FLAGS_UNSIGNED_HASH flag just like ext4_fill_super() does.
 
-> diff --git a/fs/ext4/indirect-test.c b/fs/ext4/indirect-test.c
-> new file mode 100644
-> index 0000000000000..add5662adc3ba
-> --- /dev/null
-> +++ b/fs/ext4/indirect-test.c
+The in-memory values are still set up before the superblocks are
+updated, since htree directories may be created as soon as the
+feature bit is visible in the primary superblock.
 
-[ ... ]
+Fixes: 04a91570ac67 ("ext4: implemet new ioctls to set and get superblock parameters")
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ fs/ext4/ioctl-test.c | 60 ++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/ioctl.c      | 23 +++++++++++++----
+ 2 files changed, 78 insertions(+), 5 deletions(-)
 
-> +static void ind_test_free_inode(struct inode *inode)
-> +{
-> +	ext4_es_remove_extent(inode, 0, EXT_MAX_BLOCKS);
-> +	kfree(EXT4_I(inode));
-> +}
-> +
-> +static void ind_test_evict_inode(struct inode *inode)
-> +{
-> +	truncate_inode_pages_final(&inode->i_data);
-> +	clear_inode(inode);
-> +}
+diff --git a/fs/ext4/ioctl-test.c b/fs/ext4/ioctl-test.c
+index fab2b9f8ff35..4641ba7b31ff 100644
+--- a/fs/ext4/ioctl-test.c
++++ b/fs/ext4/ioctl-test.c
+@@ -736,6 +736,65 @@ static void test_tune_sb_mount_opts_guard(struct kunit *test)
+ 	KUNIT_EXPECT_STREQ(test, (char *)es->s_mount_opts, "nodelalloc");
+ }
+ 
++/*
++ * Verify that enabling DIR_INDEX online persists the (possibly freshly
++ * generated) hash seed and the hash signedness flag to the superblock, and
++ * that an existing signedness flag in s_flags is honored in memory.
++ */
++static void test_tune_sb_dir_index_hash_state(struct kunit *test)
++{
++	struct ioctl_test_ctx *ctx = test->priv;
++	struct super_block *sb = ctx->sb;
++	struct ext4_sb_info *sbi = &ctx->sbi;
++	struct ext4_super_block *es = ctx->es;
++	struct ext4_tune_sb_params params;
++	__le32 hash_flags;
++	uuid_t uu;
++	int i;
++
++	memset(sbi->s_hash_seed, 0, sizeof(sbi->s_hash_seed));
++	memset(es->s_hash_seed, 0, sizeof(es->s_hash_seed));
++	sbi->s_def_hash_version = 0;
++	es->s_flags = 0;
++
++	memset(&params, 0, sizeof(params));
++	params.set_flags = EXT4_TUNE_FL_FEATURES;
++	params.feature_compat = le32_to_cpu(es->s_feature_compat) |
++				EXT4_FEATURE_COMPAT_DIR_INDEX;
++	params.feature_incompat = le32_to_cpu(es->s_feature_incompat);
++	params.feature_ro_compat = le32_to_cpu(es->s_feature_ro_compat);
++	KUNIT_ASSERT_EQ(test, ext4_validate_tune_sb_params_test(sb, &params),
++			0);
++	ext4_sb_setparams_test(sbi, es, &params);
++
++	KUNIT_EXPECT_TRUE(test, ext4_has_feature_dir_index(sb));
++	KUNIT_EXPECT_EQ(test, es->s_def_hash_version, DX_HASH_HALF_MD4);
++	memcpy(&uu, es->s_hash_seed, UUID_SIZE);
++	KUNIT_EXPECT_FALSE(test, uuid_is_null(&uu));
++	for (i = 0; i < ARRAY_SIZE(es->s_hash_seed); i++)
++		KUNIT_EXPECT_EQ(test, le32_to_cpu(es->s_hash_seed[i]),
++				sbi->s_hash_seed[i]);
++	hash_flags = es->s_flags & cpu_to_le32(EXT2_FLAGS_UNSIGNED_HASH |
++					       EXT2_FLAGS_SIGNED_HASH);
++	KUNIT_EXPECT_EQ(test, le32_to_cpu(hash_flags),
++			sbi->s_hash_unsigned ? EXT2_FLAGS_UNSIGNED_HASH :
++					       EXT2_FLAGS_SIGNED_HASH);
++
++	/* An existing unsigned-hash flag must be honored in memory */
++	ext4_clear_feature_dir_index(sb);
++	es->s_flags = cpu_to_le32(EXT2_FLAGS_UNSIGNED_HASH);
++	sbi->s_hash_unsigned = 0;
++	memset(&params, 0, sizeof(params));
++	params.set_flags = EXT4_TUNE_FL_EDIT_FEATURES;
++	params.set_feature_compat_mask = EXT4_FEATURE_COMPAT_DIR_INDEX;
++	KUNIT_ASSERT_EQ(test, ext4_validate_tune_sb_params_test(sb, &params),
++			0);
++	KUNIT_EXPECT_EQ(test, sbi->s_hash_unsigned, 3U);
++	ext4_sb_setparams_test(sbi, es, &params);
++	KUNIT_EXPECT_EQ(test, le32_to_cpu(es->s_flags),
++			EXT2_FLAGS_UNSIGNED_HASH);
++}
++
+ /*
+  * Verify ext4_update_backup_sb, ext4_update_superblocks_fn, and
+  * ext4_update_overhead across primary + 4 sparse_super backup groups (1, 3,
+@@ -1243,6 +1302,7 @@ static struct kunit_case ioctl_test_cases[] = {
+ 	KUNIT_CASE(test_sb_callbacks_and_setparams),
+ 	KUNIT_CASE(test_validate_tune_sb_params),
+ 	KUNIT_CASE(test_tune_sb_mount_opts_guard),
++	KUNIT_CASE(test_tune_sb_dir_index_hash_state),
+ 	KUNIT_CASE(test_update_superblocks_and_overhead),
+ 	KUNIT_CASE(test_update_backup_sb_bad_csum),
+ 	KUNIT_CASE(test_swap_inode_data_and_seed),
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 8537d5766732..e2a5713a4562 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -1392,8 +1392,20 @@ static void ext4_sb_setparams(struct ext4_sb_info *sbi,
+ 		es->s_feature_ro_compat &=
+ 			~cpu_to_le32(params->clear_feature_ro_compat_mask);
+ 		if (params->set_feature_compat_mask &
+-		    EXT4_FEATURE_COMPAT_DIR_INDEX)
++		    EXT4_FEATURE_COMPAT_DIR_INDEX) {
++			int i;
++
+ 			es->s_def_hash_version = sbi->s_def_hash_version;
++			for (i = 0; i < ARRAY_SIZE(es->s_hash_seed); i++)
++				es->s_hash_seed[i] =
++					cpu_to_le32(sbi->s_hash_seed[i]);
++			if (!(es->s_flags &
++			      cpu_to_le32(EXT2_FLAGS_UNSIGNED_HASH |
++					  EXT2_FLAGS_SIGNED_HASH)))
++				es->s_flags |= sbi->s_hash_unsigned ?
++					cpu_to_le32(EXT2_FLAGS_UNSIGNED_HASH) :
++					cpu_to_le32(EXT2_FLAGS_SIGNED_HASH);
++		}
+ 		if (params->set_feature_incompat_mask &
+ 		    EXT4_FEATURE_INCOMPAT_CSUM_SEED)
+ 			es->s_checksum_seed = cpu_to_le32(sbi->s_csum_seed);
+@@ -1488,10 +1500,11 @@ static int ext4_validate_tune_sb_params(struct super_block *sb,
+ 				sbi->s_def_hash_version = params->def_hash_alg;
+ 			else if (sbi->s_def_hash_version == 0)
+ 				sbi->s_def_hash_version = DX_HASH_HALF_MD4;
+-			if (!(es->s_flags &
+-			      cpu_to_le32(EXT2_FLAGS_UNSIGNED_HASH)) &&
+-			    !(es->s_flags &
+-			      cpu_to_le32(EXT2_FLAGS_SIGNED_HASH))) {
++			if (es->s_flags &
++			    cpu_to_le32(EXT2_FLAGS_UNSIGNED_HASH)) {
++				sbi->s_hash_unsigned = 3;
++			} else if (!(es->s_flags &
++				     cpu_to_le32(EXT2_FLAGS_SIGNED_HASH))) {
+ #ifdef __CHAR_UNSIGNED__
+ 				sbi->s_hash_unsigned = 3;
+ #else
+-- 
+2.56.0.542.g3ef89b7020-goog
 
-[Severity: Medium]
-Can ind_test_free_inode() trigger a use-after-free on ctx->sbi after the
-test finishes?
-
-At the end of each test, iput() runs ind_test_evict_inode() synchronously
-and queues i_callback() -> ind_test_free_inode() via call_rcu().  KUnit
-then runs ind_test_cleanup() without an rcu_barrier() and frees ctx, so
-when the RCU callback later runs ext4_es_remove_extent(), it dereferences
-EXT4_SB(inode->i_sb) inside the freed ctx.
-
-Moving ext4_es_remove_extent() into ind_test_evict_inode() and calling
-rcu_barrier() in ind_test_cleanup() before deactivating sb would avoid
-this.
-
-[ ... ]
-
-> +static void ind_test_cleanup(struct ind_test_ctx *ctx)
-> +{
-> +	struct super_block *sb =3D ctx->sb;
-> +	struct ext4_sb_info *sbi =3D &ctx->sbi;
-> +	struct ind_mock_blk *blk, *tmp;
-> +
-> +	if (sb) {
-> +		cancel_work_sync(&sbi->s_sb_upd_work);
-> +		timer_delete_sync(&sbi->s_err_report);
-> +	}
-> +
-> +	if (ctx->es_shrinker_inited) {
-> +		ext4_es_unregister_shrinker(sbi);
-> +		ctx->es_shrinker_inited =3D false;
-> +	}
-> +
-> +	if (ctx->counters_inited) {
-> +		percpu_counter_destroy(&sbi->s_freeclusters_counter);
-> +		percpu_counter_destroy(&sbi->s_dirtyclusters_counter);
-> +		percpu_counter_destroy(&sbi->s_freeinodes_counter);
-> +		ctx->counters_inited =3D false;
-> +	}
-
-[ ... ]
-
-> +	ctx->sb =3D sb;
-> +	up_write(&sb->s_umount);
-> +
-> +	ret =3D kunit_add_action_or_reset(test, ind_test_cleanup_action, ctx);
-> +	KUNIT_ASSERT_EQ(test, ret, 0);
-
-[ ... ]
-
-> +	INIT_WORK(&sbi->s_sb_upd_work, ind_test_sb_upd_work);
-> +	timer_setup(&sbi->s_err_report, ind_test_err_timer, 0);
-
-[ ... ]
-
-> +	ret =3D percpu_counter_init(&sbi->s_freeclusters_counter, 4096,
-> +				  GFP_KERNEL);
-> +	KUNIT_ASSERT_EQ(test, ret, 0);
-> +	ret =3D percpu_counter_init(&sbi->s_dirtyclusters_counter, 0, GFP_KERNE=
-L);
-> +	KUNIT_ASSERT_EQ(test, ret, 0);
-> +	ret =3D percpu_counter_init(&sbi->s_freeinodes_counter, 200, GFP_KERNEL=
-);
-> +	KUNIT_ASSERT_EQ(test, ret, 0);
-> +	ctx->counters_inited =3D true;
-
-[Severity: Low]
-If the second or third percpu_counter_init() fails, does KUNIT_ASSERT_EQ()
-abort while ctx->counters_inited is still false?  ind_test_cleanup() then
-skips percpu_counter_destroy(), leaking the earlier counter and leaving it
-linked in the global percpu_counters list when ctx is freed.
-
-Also, ctx->sb is set before kunit_add_action_or_reset(), whereas
-s_sb_upd_work and s_err_report are initialized later, so if
-kunit_add_action_or_reset() fails, ind_test_cleanup() calls
-cancel_work_sync() and timer_delete_sync() on uninitialized structures.
-
-[ ... ]
-
-> diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-> index 5aec759eed705..5b2b2be73a90a 100644
-> --- a/fs/ext4/indirect.c
-> +++ b/fs/ext4/indirect.c
-> @@ -163,7 +163,7 @@ static Indirect *ext4_get_branch(struct inode *inode,=
- int depth,
->  			ret =3D -EFSCORRUPTED;
->  			goto failure;
->  		}
-> -		bh =3D sb_getblk(sb, key);
-> +		bh =3D ext4_sb_getblk(sb, key);
->  		if (unlikely(!bh)) {
->  			ret =3D -ENOMEM;
->  			goto failure;
-
-[Severity: Critical]
-This problem wasn't introduced by this patch, but when ext4_get_branch()
-fails with -EFSCORRUPTED or -ENOMEM [1], doesn't
-ext4_ind_map_blocks() miss the error when EXT4_GET_BLOCKS_CREATE is set?
-
-fs/ext4/indirect.c:ext4_ind_map_blocks() {
-	...
-	/* Failed read of indirect block */
-	if (err =3D=3D -EIO)
-		goto cleanup;
-	...
-}
-
-Because ext4_ind_map_blocks() only checks for err =3D=3D -EIO, it treats the
-partial chain returned on -ENOMEM or -EFSCORRUPTED as a hole, allocates new
-blocks, and splices them over the existing indirect block pointer,
-orphaning the original subtree and corrupting the file.
-
-[1] https://sashiko.dev/#/bug/linux-2bfbc9ba-6121-45d3-a664-11e7452ad5d6
-
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261112040638.1576=
-836-1-tytso@mit.edu?part=3D22
