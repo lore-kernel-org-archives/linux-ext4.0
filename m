@@ -1,60 +1,60 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=18.9.28.11
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
 	t=1794458844;
-	b=OXEDHjPBQvj6bEMGKW0WH9sjohlVe2Mx8tjaZ22D1NVMp0MoObYpU0pf43lSIa6Gifji
-	 MCuRC9GLI/YvfWlyfHfl5jJbXfOZQBDR9PAlPQOGGKB8oGOCDGd3Wb3CmagGYudsNXXir
-	 DRE0Yd7aUUUnmzir4jmCQTy/xA5O9g0o7bubmuZMC7njSuYGv5wGZdaACyUhvFP1hmNsg
-	 zeCdios3nIiSQAOuLt6w5RwyRj76l+Qbqu7MII/RVjR0qPcO9iSdcYhglat4rIsb7xxn7
-	 4I0Uyu9qLScM5cAro/8SGMe5KsuKloq5aNSAnemTBXbKDn5YnI1taHAcamv21C7EI6g==
+	b=rrYmwV9b1Nr7yEOrBwSGz1Lq6kG5afqBejJDG1NJaSbY6b90jqkLly7fRbKUMuD9neWW
+	 mMzv4GipqD0Xc0BfEYrIAMPa2z784IfrUdlFIkkeH3DsDv4tCBG7ihxidSxVluK1a2mf0
+	 fq8fOIq2JebLnRGjrouyzkt5biwMUrje/ZlpnNgtNRYzUayJykd3I2URm/Mr86METTFL5
+	 qLihTPNFo8b8g9JTI2p9gWcK6zE0CB/Dg1hvbiFiipvhOoCEA+CdFNe3Q22Ppk1NGMsll
+	 1MpRiTrqk9dLqzw+6K7AwmOLAUBHE9YRTX485QNulD5ku2nUKfG68ff42FbHLEyUUFg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
 	a=rsa-sha256; c=relaxed/relaxed; t=1794458844;
 	h=DMARC-Filter:Received:DKIM-Signature:Received:From:To:Cc:Subject:
 	 Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
 	 Content-Transfer-Encoding;
-	bh=WCdOdIPVIDRbB7zs5S0BxDq95dJdRjePOmootpL7sQE=;
-	b=WVhUfXRhlXyxjLK8eqZg5i29cu3lkpCgDw89gkMcr1WEsS8TTv5a6zexcCuRE2Y9aTEA
-	 6OtECgyqNZM4eE+T3NCktNOlrN+frFOkbPVtZaAxHQwpd7dWU0dKj9RLGl6i1ZAdCuTQi
-	 xJsmPoIDYVrVxowqBPwpjxBehkZvcTCOJKhYMp6sMB5ut1EIvd5h2Agg2114oEEq34utt
-	 MgDDoh7ob4hS79DdASbeAGAOOulZuLX4TzH6O+FVt0en4JvyCu63x9B2nQvqEUkTHTQ+U
-	 TRYnOGdCkRLJS5HqrPFZrMXY+m46iN+Ps5OvlWaoXNe2j4fdHunHygB5rsIzpAYN04g==
+	bh=iO1h+JkV6iFvoRRxGZterDtynF4YgT4FFyh3pZiVtwc=;
+	b=lULlJFH0ZDJMXbTlQ4uJSw4Nv6OgSNiP/sn7UGXniuhtS1YTy8YboretlaOPLkowuRqU
+	 I3RuBaF+0tNP9bx1+JJoXATmYHbOTVCaLBPwG6cj20SRZWnPqXO39Z2sxzugoNW8+H7ts
+	 j4Jm1mohLD6RmjN2yDLEd1YUf5mqpVKNmn4QJI1Puex7TxEts7awf8dS6gd5yuaB/YuLN
+	 2q4TbXcet6TJaS4lE6Vjo1gG39uWeAeQGt18Bex3ajlmk5HrsgIiwRSzKzunZqH2Rze1M
+	 kl34jygzq9zx5vG+GabtRSb9eJEBIXakVMaoLGv7xgZLdJhAQEE4DVegjkwg5ig76sQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=mit.edu;
 	spf=pass smtp.mailfrom=mit.edu;
-	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=TfTjNL4Y;
+	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=FaTabNPo;
 	arc=none smtp.remote-ip=18.9.28.11
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B3E93606A88F
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Nov 2026 04:47:22 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org B3E93606A88F
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F15BA606A8BD
+	for <linux-ext4@vger.kernel.org>; Thu, 12 Nov 2026 04:47:23 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org F15BA606A8BD
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=TfTjNL4Y
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=FaTabNPo
 Received: from trampoline.thunk.org (pool-173-48-111-191.bstnma.fios.verizon.net [173.48.111.191])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AC4lJFW031128
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AC4lKW7031193
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Wed, 11 Nov 2026 23:47:20 -0500
+	Wed, 11 Nov 2026 23:47:21 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1794458840; bh=WCdOdIPVIDRbB7zs5S0BxDq95dJdRjePOmootpL7sQE=;
+	t=1794458842; bh=iO1h+JkV6iFvoRRxGZterDtynF4YgT4FFyh3pZiVtwc=;
 	h=From:Subject:Date:Message-ID:MIME-Version;
-	b=TfTjNL4YBMPyk6zxULHsM/urCMS2z1pTxM/850hqrWR4WEiXGUzxalNcmM5pM/q6V
-	 sbMEr+YeIMZTIDFW8x1etibny+1u6bpl/B4br+TLB4aZNG/Kvvv48uLmpWOqVeg41k
-	 eVR5RCAOQP1ALrWPkvLSMBlLCPYbHv7UzmmxVChuSGhp6W1NFeQHlM7g0RQELXz9+w
-	 i7wVSjGUvQkc7SoRXBGIWM1gFDkOzz6Eh9Y0/sdU27RhwGuVao1xjQHsjkwEDMfA7/
-	 bMJgi0oLnk2nyP6cYbJWXSc2RxGxh7ijycUim2emWYjsLDIKLw0qqu54zTGGtYWhuu
-	 tUTMaJJ5rPhBA==
+	b=FaTabNPoqP5RaLZIXDHJ6DfC+AmWO+okFP1qZM/h06A0VpFMW3VwAsOaM3frUsNfj
+	 nBmP9RTOKtPERxO0ac36HOGH5S90cpbDYs7Dr6+UEizC80G7lj40jeSFO0BPwShvqx
+	 KAWSDcCiOupdI2Azcl1baxebzbUxqaYJ7PgE1MikU2llcVGm3ewHPqOFRzFlCurr4o
+	 XavGL1nvBJ2myDm8W2RMWjNNE/7P1PQlXmpTzdBUqtbLoWfqy4rJBnY6hAv9g1rOwS
+	 tXzI6n7km3SgR6bRJJ2/N3PDkcESwJkekB5WKKGhkcwi1+k3OVH5wbgCvBUCOQ/jDZ
+	 ye/gvDiOPZA1A==
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id 2744B2E013B; Wed, 11 Nov 2026 23:47:19 -0500 (EST)
+	id 3C77B2E014E; Wed, 11 Nov 2026 23:47:19 -0500 (EST)
 From: "Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Cc: "Theodore Ts'o" <tytso@mit.edu>
-Subject: [PATCH 02/23] ext4: return -EFSBADCRC when skipping a corrupt backup superblock
-Date: Wed, 11 Nov 2026 23:46:51 -0500
-Message-ID: <20261112044712.1577296-3-tytso@mit.edu>
+Subject: [PATCH 09/23] ext4: fix err_report_sec_store() timer and value handling
+Date: Wed, 11 Nov 2026 23:46:58 -0500
+Message-ID: <20261112044712.1577296-10-tytso@mit.edu>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <20261112044712.1577296-1-tytso@mit.edu>
 References: <20261112044712.1577296-1-tytso@mit.edu>
@@ -69,123 +69,190 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Commit 9a8c5b0d0615 ("ext4: update the backup superblock's at the end
-of the online resize") stopped setting err = -EFSBADCRC when
-ext4_update_backup_sb() finds a backup superblock with an invalid
-checksum, so that ext4_std_error() would not mark the file system as
-corrupted.  However, it left err at 0, so the function now returns 1,
-claiming that the backup superblock was successfully updated.
+err_report_sec_store() has several problems:
 
-This makes the "Ignore bad checksum; try to update next sb" check in
-ext4_update_superblocks_fn() dead code, and the skipped backup is
-counted towards the two backup superblocks which are supposed to be
-updated through the journal.  If one of the first backups is corrupt,
-fewer than two backup superblocks get journalled updates.
+ - Writing 0 calls timer_delete_sync() and then jumps past the
+   assignment, so s_err_report_sec keeps its old value.  Reading the
+   attribute still returns the old interval, writing the old interval
+   back to re-enable reporting is treated as a no-op, and the periodic
+   report is restarted by the next error even though it was disabled.
 
-Release the buffer and return -EFSBADCRC directly, bypassing
-ext4_std_error(), so the caller skips the corrupt backup without
-counting it and without aborting the update.
+ - Changing the interval from 0 to a non-zero value calls
+   timer_setup() on s_err_report.  The timer is already initialized at
+   mount time, and it may still be pending (e.g. armed by
+   ext4_update_super() or the timer callback racing with the store), in
+   which case re-initializing it corrupts the timer list.
 
-Fixes: 9a8c5b0d0615 ("ext4: update the backup superblock's at the end of the online resize")
+ - Any non-zero write arms the timer even if no errors have ever been
+   recorded, so print_daily_error_info() wakes up and re-arms itself
+   forever without having anything to report.
+
+ - Concurrent writers are not serialized, so the timer state can end
+   up inconsistent with the stored interval.
+
+Rework the function to always store the new value (with WRITE_ONCE(),
+since the timer callback and ext4_update_super() read it locklessly),
+drop the timer_setup() call, delete the timer when the interval is set
+to 0, and otherwise only (re)arm it when errors have been recorded;
+ext4_update_super() starts it when the first error is recorded.
+Serialize writers with a function-local mutex.  s_error_notify_mutex
+cannot be used for this, since ext4_unregister_sysfs() holds it across
+kobject_del(), which waits for active sysfs store callbacks to finish.
+
+Also read s_err_report_sec once with READ_ONCE() in
+print_daily_error_info(), so the value tested is the value used to
+re-arm the timer.
+
+Fixes: d518215c2719 ("ext4: add sysfs attribute err_report_sec to control s_err_report timer")
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/ioctl-test.c | 47 ++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/ioctl.c      | 10 ++++++++--
- 2 files changed, 55 insertions(+), 2 deletions(-)
+ fs/ext4/super.c      |  7 ++++--
+ fs/ext4/sysfs-test.c | 55 ++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/sysfs.c      | 21 ++++++++++-------
+ 3 files changed, 73 insertions(+), 10 deletions(-)
 
-diff --git a/fs/ext4/ioctl-test.c b/fs/ext4/ioctl-test.c
-index ebe4a87f17e1..c3eee774bcfa 100644
---- a/fs/ext4/ioctl-test.c
-+++ b/fs/ext4/ioctl-test.c
-@@ -817,6 +817,52 @@ static void test_update_superblocks_and_overhead(struct kunit *test)
- 	KUNIT_EXPECT_EQ(test, ctx->sync_bh_calls, 5);
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 5f704c43c901..e89f37419266 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -3756,6 +3756,7 @@ void print_daily_error_info(struct timer_list *t)
+ 	struct ext4_sb_info *sbi = timer_container_of(sbi, t, s_err_report);
+ 	struct super_block *sb = sbi->s_sb;
+ 	struct ext4_super_block *es = sbi->s_es;
++	unsigned long err_report_sec;
+ 
+ 	if (es->s_error_count)
+ 		/* fsck newer than v1.41.13 is needed to clean this condition. */
+@@ -3792,8 +3793,10 @@ void print_daily_error_info(struct timer_list *t)
+ 		printk(KERN_CONT "\n");
+ 	}
+ 
+-	if (sbi->s_err_report_sec)
+-		mod_timer(&sbi->s_err_report, jiffies + secs_to_jiffies(sbi->s_err_report_sec));
++	err_report_sec = READ_ONCE(sbi->s_err_report_sec);
++	if (err_report_sec)
++		mod_timer(&sbi->s_err_report,
++			  jiffies + secs_to_jiffies(err_report_sec));
  }
  
-+/*
-+ * Verify that a backup superblock with an invalid checksum is reported as
-+ * -EFSBADCRC (and left untouched) rather than counted as updated, and that
-+ * ext4_update_superblocks_fn still updates the remaining backups.
-+ */
-+static void test_update_backup_sb_bad_csum(struct kunit *test)
+ /* Find next suitable group and run ext4_init_inode_table */
+diff --git a/fs/ext4/sysfs-test.c b/fs/ext4/sysfs-test.c
+index c13785420aa1..4aefcdc4480a 100644
+--- a/fs/ext4/sysfs-test.c
++++ b/fs/ext4/sysfs-test.c
+@@ -477,6 +477,60 @@ static void test_validated_rw_attrs(struct kunit *test)
+ 			(ssize_t)-EINVAL);
+ }
+ 
++static void test_err_report_sec_timer(struct kunit *test)
 +{
-+	struct ioctl_test_ctx *ctx = test->priv;
-+	struct super_block *sb = ctx->sb;
-+	static const ext4_group_t good_grps[] = { 1, 5, 7 };
-+	char new_label[EXT4_LABEL_MAX] = "csum_label";
-+	struct ext4_super_block *bad;
-+	int i;
++	struct sysfs_test_ctx *ctx = test->priv;
++	struct ext4_sb_info *sbi = &ctx->sbi;
++	struct ext4_super_block *es = &ctx->es;
++	char *buf;
 +
-+	bad = (struct ext4_super_block *)ctx->backup_sb_bufs[3];
-+	bad->s_checksum = cpu_to_le32(~le32_to_cpu(bad->s_checksum));
++	buf = kunit_kzalloc(test, PAGE_SIZE, GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, buf);
 +
-+	ctx->sync_bh_calls = 0;
++	/* Mount-time default; no errors recorded yet */
++	sbi->s_err_report_sec = 86400;
++	es->s_error_count = 0;
++
++	/* Changing the interval on a clean fs must not arm the timer */
 +	KUNIT_EXPECT_EQ(test,
-+			ext4_update_backup_sb_test(sb, NULL, 3,
-+						   ext4_sb_setlabel_test,
-+						   new_label),
-+			-EFSBADCRC);
-+	KUNIT_EXPECT_EQ(test, ctx->sync_bh_calls, 0);
-+	KUNIT_EXPECT_MEMNEQ(test, bad->s_volume_name, new_label,
-+			    EXT4_LABEL_MAX);
++			ext4_sysfs_attr_store_test(sbi, "err_report_sec",
++						   "3600", 4),
++			(ssize_t)4);
++	KUNIT_EXPECT_EQ(test, sbi->s_err_report_sec, 3600UL);
++	KUNIT_EXPECT_FALSE(test, timer_pending(&sbi->s_err_report));
 +
-+	/* Primary + backups 1, 5 and 7 are updated; backup 3 is skipped */
++	/* With recorded errors a new interval (re)arms the timer */
++	es->s_error_count = cpu_to_le32(1);
 +	KUNIT_EXPECT_EQ(test,
-+			ext4_update_superblocks_fn_test(sb,
-+							ext4_sb_setlabel_test,
-+							new_label),
-+			0);
-+	KUNIT_EXPECT_EQ(test, ctx->sync_bh_calls, 4);
-+	KUNIT_EXPECT_MEMNEQ(test, bad->s_volume_name, new_label,
-+			    EXT4_LABEL_MAX);
-+	for (i = 0; i < ARRAY_SIZE(good_grps); i++) {
-+		struct ext4_super_block *bes;
++			ext4_sysfs_attr_store_test(sbi, "err_report_sec",
++						   "7200", 4),
++			(ssize_t)4);
++	KUNIT_EXPECT_EQ(test, sbi->s_err_report_sec, 7200UL);
++	KUNIT_EXPECT_TRUE(test, timer_pending(&sbi->s_err_report));
 +
-+		bes = (struct ext4_super_block *)
-+			ctx->backup_sb_bufs[good_grps[i]];
-+		KUNIT_EXPECT_MEMEQ(test, bes->s_volume_name, new_label,
-+				   EXT4_LABEL_MAX);
-+	}
++	/* Writing 0 disables the timer and is reflected on read */
++	KUNIT_EXPECT_EQ(test,
++			ext4_sysfs_attr_store_test(sbi, "err_report_sec",
++						   "0", 1),
++			(ssize_t)1);
++	KUNIT_EXPECT_EQ(test, sbi->s_err_report_sec, 0UL);
++	KUNIT_EXPECT_FALSE(test, timer_pending(&sbi->s_err_report));
++	KUNIT_EXPECT_GT(test,
++			ext4_sysfs_attr_show_test(sbi, "err_report_sec", buf),
++			(ssize_t)0);
++	KUNIT_EXPECT_STREQ(test, buf, "0\n");
++
++	/* Re-enabling with the old value re-arms the existing timer */
++	KUNIT_EXPECT_EQ(test,
++			ext4_sysfs_attr_store_test(sbi, "err_report_sec",
++						   "7200", 4),
++			(ssize_t)4);
++	KUNIT_EXPECT_EQ(test, sbi->s_err_report_sec, 7200UL);
++	KUNIT_EXPECT_TRUE(test, timer_pending(&sbi->s_err_report));
++	KUNIT_EXPECT_TRUE(test,
++			  sbi->s_err_report.function == sysfs_test_err_timer);
 +}
 +
- /*
-  * Verify swap_inode_data swaps i_data, i_disksize, i_size, i_version,
-  * atime/mtime, and EXT4_FL_SHOULD_SWAP flags while preserving non-swapped
-@@ -1191,6 +1237,7 @@ static struct kunit_case ioctl_test_cases[] = {
- 	KUNIT_CASE(test_validate_tune_sb_params),
- 	KUNIT_CASE(test_tune_sb_mount_opts_guard),
- 	KUNIT_CASE(test_update_superblocks_and_overhead),
-+	KUNIT_CASE(test_update_backup_sb_bad_csum),
- 	KUNIT_CASE(test_swap_inode_data_and_seed),
- 	KUNIT_CASE(test_immutable_dax_and_fileattr),
- 	KUNIT_CASE(test_force_shutdown_and_ioctl_dispatch),
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 286f4a3e459a..37ad549ad693 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -110,7 +110,8 @@ int ext4_update_primary_sb(struct super_block *sb, handle_t *handle,
-  *
-  * Returns: 0 when no modification was done (no superblock in the group)
-  *	    1 when the modification was successful
-- *	   <0 on error
-+ *	   <0 on error (-EFSBADCRC if the backup superblock has an invalid
-+ *	      checksum and was skipped)
-  */
- static int ext4_update_backup_sb(struct super_block *sb,
- 				 handle_t *handle, ext4_group_t grp,
-@@ -159,7 +160,12 @@ static int ext4_update_backup_sb(struct super_block *sb,
- 		ext4_msg(sb, KERN_ERR, "Invalid checksum for backup "
- 		"superblock %llu", sb_block);
- 		unlock_buffer(bh);
--		goto out_bh;
-+		/*
-+		 * Let the caller skip this backup; don't report it via
-+		 * ext4_std_error() since it must not abort the update.
-+		 */
-+		brelse(bh);
-+		return -EFSBADCRC;
- 	}
- 	func(EXT4_SB(sb), es, arg);
- 	if (ext4_has_feature_metadata_csum(sb))
+ static void test_computed_ro_and_error_time_attrs(struct kunit *test)
+ {
+ 	struct sysfs_test_ctx *ctx = test->priv;
+@@ -635,6 +689,7 @@ static void test_sysfs_register_notify_and_unregister(struct kunit *test)
+ static struct kunit_case ext4_sysfs_test_cases[] = {
+ 	KUNIT_CASE(test_generic_pointer_attrs),
+ 	KUNIT_CASE(test_validated_rw_attrs),
++	KUNIT_CASE(test_err_report_sec_timer),
+ 	KUNIT_CASE(test_computed_ro_and_error_time_attrs),
+ 	KUNIT_CASE(test_feature_attrs_and_trigger_error),
+ 	KUNIT_CASE(test_sysfs_register_notify_and_unregister),
+diff --git a/fs/ext4/sysfs.c b/fs/ext4/sysfs.c
+index faa76f021099..0168ea6faac7 100644
+--- a/fs/ext4/sysfs.c
++++ b/fs/ext4/sysfs.c
+@@ -134,6 +134,7 @@ static ssize_t trigger_test_error(struct ext4_sb_info *sbi,
+ static ssize_t err_report_sec_store(struct ext4_sb_info *sbi,
+ 				    const char *buf, size_t count)
+ {
++	static DEFINE_MUTEX(err_report_sec_mutex);
+ 	unsigned long t;
+ 	int ret;
+ 
+@@ -145,19 +146,23 @@ static ssize_t err_report_sec_store(struct ext4_sb_info *sbi,
+ 	if (t > (365*24*60*60))
+ 		return -EINVAL;
+ 
++	mutex_lock(&err_report_sec_mutex);
+ 	if (sbi->s_err_report_sec == t)		/*nothing to do*/
+ 		goto out;
+-	else if (!sbi->s_err_report_sec && t) {
+-		timer_setup(&sbi->s_err_report, print_daily_error_info, 0);
+-	} else if (sbi->s_err_report_sec && !t) {
+-		timer_delete_sync(&sbi->s_err_report);
+-		goto out;
+-	}
+ 
+-	sbi->s_err_report_sec = t;
+-	mod_timer(&sbi->s_err_report, jiffies + secs_to_jiffies(sbi->s_err_report_sec));
++	WRITE_ONCE(sbi->s_err_report_sec, t);
++	/*
++	 * The timer is initialized at mount time.  Only (re)arm it if errors
++	 * have been recorded; otherwise ext4_update_super() will start it
++	 * when the first error is written to the superblock.
++	 */
++	if (!t)
++		timer_delete_sync(&sbi->s_err_report);
++	else if (sbi->s_es->s_error_count)
++		mod_timer(&sbi->s_err_report, jiffies + secs_to_jiffies(t));
+ 
+ out:
++	mutex_unlock(&err_report_sec_mutex);
+ 	return count;
+ }
+ 
 -- 
 2.56.0.542.g3ef89b7020-goog
 
