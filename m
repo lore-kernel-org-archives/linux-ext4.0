@@ -1,77 +1,63 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=198.175.65.10
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794512280;
-	b=Bm9JYyEchXMnv8VllFk6hFn3ZMzDcqNx/31rfu1hbLuLItj5x1tilXqTFMZGAxt2I6+w
-	 ng6UP9qyVzXt8toXfJQpt8BlJJzLFO2w4H5EsQMThWFKCz5LnnJWqXp2U2I+H5vF9Rgyt
-	 xF+HOB1ZfFQQblH+X92STPByBfNaBOTh7ucz5wQ4cw4NN/mXM+T0WSnsaozg8h1830/MP
-	 pHe3uexuU+PXWOmsk0OUc7uPaUHmdFs10kKR60RMZteFVMZsbsR7QMxGKe0qH51Ml753M
-	 rjO9zBOmVUGBdHlXcM/SAO5kszW99I/NdRNHNpzJxLZJx7autEDs0WOwGg1lND4UDgg==
+	t=1794519969;
+	b=hsq80MvfSpzXW9HHuAScN44potmVuT2wjayk9jrt7jGIhfEIXo1OHd5O65mcpc+6x6hA
+	 EiXjIzYRmDWBX+mageXw5gCldkkJm1aZkSPtQBRSChffL5LikRLADgXh8j/D6qzhqpT0a
+	 RxGcRM+jywuBlgCUsA9guxSt9gdRpxt/8S5M0PHcgQ0UaV2H731CIOlpe2q/EuooJQ7iJ
+	 pC2B+3g8q0bFqPIqFrzjUcaoulCxASrMuNN5r0MMV6kr2viATcZBoEpDq14/XzQr8exvs
+	 CU1XUvRqRaYnOpIKJw1vWMRnmgj66ds5YMsLp+FZAstFD9xEdhbC4qEY32ACn8Fy+iA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794512280;
-	h=DMARC-Filter:DKIM-Signature:X-CSE-ConnectionGUID:X-CSE-MsgGUID:
-	 X-IronPort-AV:X-IronPort-AV:Received:X-CSE-ConnectionGUID:
-	 X-CSE-MsgGUID:X-ExtLoop1:X-IronPort-AV:Received:Received:Date:From:To:
-	 Cc:Subject:Message-ID:User-Agent;
-	bh=9t9o3HStro6dwwCfC9ZUy8fA2TnqgsoWOJGbtf6mFSk=;
-	b=yENhVMlJ2uv4T4kvHZ2CJx36aV99wFidjL9Oyjq8QhDbjw6g9vtxGq6MByLvBO2U6NZn
-	 t7PvBT0UJhOuv9ufvv4i/iYKvDrxglDAACUWbPOZkt8nN7yiQJMnn+X7r6aniba1piRV/
-	 KvQZW+og4GPSY4ia+5YOM78VoG/CqllTAqeLruom/2Avy/QH95xheXN6KQpRC10F9vxxa
-	 DcIThoqwbKwd2vZ7SfHqxX77ZF29wCMSes1BUX+tVQCqX0Ct0YXCltfIlORbGr5DWZhe+
-	 yZL7g4OGOpUK7DDXVjKopgkKzYRz0cT1PnREmkmwq11W6Fstc4pis1Tc5JsBq6gJ5ww==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794519969;
+	h=Received:DKIM-Signature:From:To:Subject:Date:Message-ID:In-Reply-To:
+	 References:MIME-Version:Content-Type:Content-Transfer-Encoding;
+	bh=VlC7l+lvdhqvniJEYM0bym0+IQSPQAdz8J8PY4r+AoQ=;
+	b=BusGTWwmsl7p17pXSdrMlDlk6IdTy9lFBc/VnmaIBo0+ck/JwyIxqkpuU2UctFsvpWWB
+	 iQwSzfD6CopFKU35Z9/g+4wQxcp1pia88ugjlmDVq9pIedtJckqsZGlk3N8/8hF21UJF2
+	 2Bue+UecsDuOIwZ5wdzDEO7pXBmspCMc0wrV66q825es33ngmpgXsr8nGbLZ3zhVm25e3
+	 +79ttjK9P/8kEn6fLMyu+FC7KYkAFtbXVp5+GgJs84dPoUS140ao68qhp3EgI+cs8PinQ
+	 kuN0cj4c/56+E0km7FW99aYnMWOwU24DvKBzqPvmTMvUFPYrhO3/ZuDlgtqhvm06XPw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=intel.com;
-	spf=pass smtp.mailfrom=intel.com;
-	dkim=pass header.d=intel.com header.i=@intel.com header.a=rsa-sha256 header.s=Intel header.b=Ul6Q4qiu;
-	arc=none smtp.remote-ip=198.175.65.10
-Received: from mgamail.intel.com (mgamail.intel.com [198.175.65.10])
-	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=KW849d+N;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 16C20606A31C
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Nov 2026 19:37:58 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 16C20606A31C
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=intel.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6E084606A338;
+	Thu, 12 Nov 2026 21:46:09 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.a=rsa-sha256 header.s=Intel header.b=Ul6Q4qiu
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
-  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
-  t=1794512279; x=1826048279;
-  h=date:from:to:cc:subject:message-id;
-  bh=2ZeUqdUDEEgJpyK3JJysJVFO8s+Na2eSILqQysD05Qk=;
-  b=Ul6Q4qiuEaIQ28vh6iynXICwnIq5gatY/dCCO7wPcdR5dA1a9lt9bnIB
-   1tAs5X3qI3zVFxFFKkE4RDdB8HGMWGPJQFXADWa1hm4gjW2/Z9dkPggqZ
-   gWtYhKeRyZHS1qjhaE4P1sk+KH3plwmozyl9JMsVuNO62P8TkjJe+mlWq
-   c8LA1CwdRJYFQGxtx4zO91BOLhBWA7lzL4UUiWR5p2b5yGuzYUh+WdXCj
-   +vPWEEWW1wH4z4KSdTytehZ+pzX3lHip6U1xCFesSFswo6WtZrhu9Toxp
-   FFgF/LQHcAGCaX0spGc4LRDZFVrltRK1+grNlEAig7DfvhMwNVaUchrVW
-   g==;
-X-CSE-ConnectionGUID: OkvFYF+/RJ6YINfFCedPXg==
-X-CSE-MsgGUID: jIp44tdDTeetDhZitihPuA==
-X-IronPort-AV: E=McAfee;i="6800,10657,11964"; a="3218137"
-X-IronPort-AV: E=Sophos;i="6.27,210,1787036400"; 
-   d="scan'208";a="3218137"
-Received: from fmviesa001.fm.intel.com ([10.60.135.141])
-  by orvoesa102.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 12 Nov 2026 11:37:59 -0800
-X-CSE-ConnectionGUID: DlgxbB/wTvacdTWpnn7dTQ==
-X-CSE-MsgGUID: 1pZKl0CkT3ieLWEBvzcDWw==
-X-ExtLoop1: 1
-X-IronPort-AV: E=Sophos;i="6.27,210,1787036400"; 
-   d="scan'208";a="9069281"
-Received: from igk-lkp-server01.igk.intel.com (HELO 1073a420ae3a) ([10.211.93.152])
-  by fmviesa001.fm.intel.com with ESMTP; 12 Nov 2026 11:37:57 -0800
-Received: from kbuild by 1073a420ae3a with local (Exim 4.98.2)
-	(envelope-from <lkp@intel.com>)
-	id 1xRacM-000000000vx-2zvs;
-	Thu, 12 Nov 2026 19:37:54 +0000
-Date: Thu, 12 Nov 2026 20:37:38 +0100
-From: kernel test robot <lkp@intel.com>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Cc: oe-kbuild-all@lists.linux.dev, linux-ext4@vger.kernel.org
-Subject: [tytso-ext4:pu 17/50] WARNING: modpost: vmlinux: EXPORT
- symbol 'ext4_free_group_clusters' version generation failed, symbol will not
- be versioned.
-Message-ID: <202611122037.vD5jQNAi-lkp@intel.com>
-User-Agent: s-nail v14.9.25
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=KW849d+N
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C8A8C1F000C5;
+	Thu, 12 Nov 2026 21:46:07 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1794519969;
+	bh=VlC7l+lvdhqvniJEYM0bym0+IQSPQAdz8J8PY4r+AoQ=;
+	h=From:To:Subject:Date:In-Reply-To:References;
+	b=KW849d+NoetwiiyZu9EnGYam22FiemNJ/xWT1W0Fo0oME02yQ3yXBMzk7al5fzN5b
+	 lxZEGJHfiYnViL0V0PT3O48PyltbclekBjwSLUZeVeTariRtvQ3mbz4MvEnMln0jqc
+	 Gy0SF/iYG6skydXWXcPVOo/cwu9hNY4giE/Wx7Uror4CYSWQq6ds5qOFRLbYlBw1pw
+	 /Ql4ybEdtYZgXCqpWvjvpTaUmdVfJ4DJD5xQUPKBCxk5LxW6setGasl7cvFNIIVWz2
+	 JS/yoBP/WO3gHVPYNPbBp3JBvp5K8Va3DQF/bgN9EHm86q2Xy8TAhAeKVBlFcrbH/I
+	 E331cRC3ce+Qw==
+From: Chris Mason <mason@kernel.org>
+To: mason@kernel.org,
+	tytso@mit.edu,
+	cem@kernel.org,
+	david@fromorbit.com,
+	jack@suse.cz,
+	djwong@kernel.org,
+	josef@toxicpanda.com,
+	hch@lst.de,
+	linux-xfs@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org,
+	tz2294@columbia.edu,
+	brauner@kernel.org
+Subject: [PATCH v9 01/14] xfs: don't skip the flush before shifting extents
+Date: Thu, 12 Nov 2026 16:46:05 -0500
+Message-ID: <20261112214604.67875-2-mason@kernel.org>
+In-Reply-To: <20261112214604.67875-1-mason@kernel.org>
+References: <20261112214604.67875-1-mason@kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -80,28 +66,50 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 
-tree:   https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git pu
-head:   246d715a48c25a74ac372dda5e10d8f69f89b50a
-commit: 1cec1055be7fc2b602f1cde94d772ec822ad6d74 [17/50] ext4: add KUnit tests for fs/ext4/super.c
-config: i386-randconfig-2102-20261112 (https://download.01.org/0day-ci/archive/20261112/202611122037.vD5jQNAi-lkp@intel.com/config)
-compiler: clang version 22.1.8 (https://github.com/llvm/llvm-project ca7933e47d3a3451d81e72ac174dcb5aa28b59d1)
-reproduce (this is a W=1 build): (https://download.01.org/0day-ci/archive/20261112/202611122037.vD5jQNAi-lkp@intel.com/reproduce)
+On an XFS file larger than 4 EiB, collapse range and insert range can
+drop dirty data without writing it back, and then fail with
+EFSCORRUPTED.
 
-If you fix the issue in a separate patch/commit (i.e. not just a new version of
-the same patch/commit), kindly add following tags
-| Reported-by: kernel test robot <lkp@intel.com>
-| Closes: https://lore.kernel.org/oe-kbuild-all/202611122037.vD5jQNAi-lkp@intel.com/
+xfs_prepare_shift() flushes the page cache from its offset to EOF, but
+passes i_size as the length. Above 4 EiB the end of that range can
+overflow and turn negative. filemap_write_and_wait_range() then writes
+nothing, but truncate_pagecache_range() takes the end as unsigned and
+drops every folio from the start of the range onward.
 
-All warnings (new ones prefixed by >>, old ones prefixed by <<):
+A delalloc extent under a dropped folio stays in the data fork, and the
+shift returns -EFSCORRUPTED for it.
 
-ERROR: modpost: vmlinux: symbol 'ext4_free_group_clusters' exported twice. Previous export was in vmlinux
-ERROR: modpost: vmlinux: symbol 'ext4_free_group_clusters_set' exported twice. Previous export was in vmlinux
->> WARNING: modpost: vmlinux: EXPORT symbol 'ext4_free_group_clusters' version generation failed, symbol will not be versioned.
-Is 'ext4_free_group_clusters' prototyped in <asm/asm-prototypes.h>?
-WARNING: modpost: vmlinux: EXPORT symbol 'ext4_free_group_clusters_set' version generation failed, symbol will not be versioned.
-Is 'ext4_free_group_clusters_set' prototyped in <asm/asm-prototypes.h>?
+The fix used here is to pass i_size - offset as the length.
 
---
-0-DAY CI Kernel Test Service
-https://github.com/intel/lkp-tests/wiki
+Fixes: 7f9f71be84bc ("xfs: extent shifting doesn't fully invalidate page cache")
+Fixes: feeb9b269523 ("filemap: skip write and wait if end offset precedes start")
+Signed-off-by: Chris Mason <mason@kernel.org>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+---
+
+Notes:
+    v6->v9: no change
+
+ fs/xfs/xfs_bmap_util.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/xfs/xfs_bmap_util.c b/fs/xfs/xfs_bmap_util.c
+index 865aec3ae5ab..537c6b29417c 100644
+--- a/fs/xfs/xfs_bmap_util.c
++++ b/fs/xfs/xfs_bmap_util.c
+@@ -980,7 +980,7 @@ xfs_prepare_shift(
+ 	 * Writeback and invalidate cache for the remainder of the file as we're
+ 	 * about to shift down every extent from offset to EOF.
+ 	 */
+-	error = xfs_flush_unmap_range(ip, offset, XFS_ISIZE(ip));
++	error = xfs_flush_unmap_range(ip, offset, XFS_ISIZE(ip) - offset);
+ 	if (error)
+ 		return error;
+ 
+-- 
+2.55.0
+
