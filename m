@@ -1,60 +1,60 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=18.9.28.11
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
 	t=1794456423;
-	b=ACoeeyRUwG0MPCaxeD3iI8ZEdZR+2Vu22DQreMe+Lc8jwA81O1ZigbNIcDBRYqEXt6Bx
-	 3Z9CXwaz41Ab08/7wY8ZSSNWZOzmlR4srMjHCcboaXknLFJ7Kv7jPWOGjXjCvT9bFJL+A
-	 2VHJdqNtqBgNbEjqRqhIPc594rkSaOR54SPa1cvDv4b28pp0JJaDmpP5Eko6sga9A8uDS
-	 LECIOLdLgY0eQkZwDL5X0JiHEi0/iYMK2NOqlt6xbEOF9vGbs4A7KXfeRME/oBNVshYmc
-	 EUUX+L/qeVdFckr/T+cXXB8zruIqcxrWehZjQ2L3Qr2E8kqRqYHytJjtly6T+MNiqcg==
+	b=nayE8FWPwB5Pyny/kakLV18k+8Z8u0CMwgjSYkHcb//sQRRCym/jKb9fMPVcY+eYEfHC
+	 wcUS0XPUQjomUm49q6bmGHSjeducNeDtr10/U4OWOb/sHUtC5VXbYCvDqShX68Zp7RYJY
+	 2EetK37L9n7I1aJAR0H5L51B0ysaug2W7k4INBRk3BOjG9GhYoltYM54HyXMLBkhmagKs
+	 NuXdaOrN1huX2boHEqB9MLoncECD6+XXSeNX6uDgMMZ2aUJdffw/zxjUZ2bD3SUQJZolr
+	 vtkPedEisdbBPifwSchU3S8uP3hUR2A5asZYugYVpn5451UJ7uYZmowg4U6SqlohuJQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
 	a=rsa-sha256; c=relaxed/relaxed; t=1794456423;
 	h=DMARC-Filter:Received:DKIM-Signature:Received:From:To:Cc:Subject:
 	 Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
 	 Content-Transfer-Encoding;
-	bh=6sWOp4hWNVqJFHurrjNmnw68OWYNbYzUNu5FRGCP1BM=;
-	b=c46aRD8vBaVsQltl6yhdwZ8EkBmEyNIZ3KuMVVSGaPcUz60E1eAJ+Z2D5dzDpb5UJvTo
-	 4KI2W6uub6JnGM46UeJZe1WJNqyVE/ALbiUdWJRkootrZMcnNeKS4Lm/i9lhsHvebQhyZ
-	 oNgKZxvhp0anVJAzLKukoO96sPLzGOot2myzW0lYFsbaU9GP3G7zQHOcFxWQAMtZM+Ch3
-	 fEAxvjjvi2wGolkKCHP0RF8ksXiYmirbfELJu5c3wpVBT73feTvjJ8ntTkGBuny+TNvBp
-	 CXDnEieWqCRHMv2NOJCRMWv6rgDOevsxZTrKru9JhFAj0pssUlKUW2T9ObrRG6tW6hQ==
+	bh=yXVX2ZEvm7wwGNaVjhhNVGPBuE/qK7w3BmYuhsDFTXQ=;
+	b=Tsd2bQNkv2of+6hjYpPXJN/ZI63krn3iSCHIZSf2HZroKZb8zJ877ls+Ucaij7j2oWa4
+	 QrGjGRXI/xmayehAE4djLxJlwe+U3YunUlVdiYOxVgyZD2Pd6LQVWCa+bIp85yHKloaBz
+	 90cCt0y5vHO6URjtWXAXxjtu5OnEmFt5a5t9S4oNGjzUR1XYlmazOdDTepyrc17oVbsCu
+	 XCfaYfBSeYH4SZrS3u/5Ry1M1YLXObpb3tEjrzf52Lf94IbceY+tYw+bpVeek6TDMqXLg
+	 brOCIwAu4ZaN+DmLYEwNmKfkJ0NTlO70btCjy5fHXxBr/vCTv7NEGUev0nPqnwDbp6Q==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=mit.edu;
 	spf=pass smtp.mailfrom=mit.edu;
-	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=iRtIixOG;
+	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=GUc9c5+J;
 	arc=none smtp.remote-ip=18.9.28.11
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EBA14606A31C
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Nov 2026 04:07:00 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org EBA14606A31C
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D4F76606A32E
+	for <linux-ext4@vger.kernel.org>; Thu, 12 Nov 2026 04:07:01 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org D4F76606A32E
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=iRtIixOG
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=GUc9c5+J
 Received: from trampoline.thunk.org (pool-173-48-111-191.bstnma.fios.verizon.net [173.48.111.191])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AC46p2s016782
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AC46qNd016805
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Wed, 11 Nov 2026 23:06:52 -0500
+	Wed, 11 Nov 2026 23:06:53 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1794456412; bh=6sWOp4hWNVqJFHurrjNmnw68OWYNbYzUNu5FRGCP1BM=;
+	t=1794456414; bh=yXVX2ZEvm7wwGNaVjhhNVGPBuE/qK7w3BmYuhsDFTXQ=;
 	h=From:Subject:Date:Message-ID:MIME-Version;
-	b=iRtIixOGtiBTGPK+x+ff2Yu4jkC+z5fEqcDIvJon3KJ+/qW8iLWnhcIrS5Y+D8VdF
-	 BIKUsHYXHRo6OoDmw7btwS2OaWs2z18ETnhhZTwkCT/juk/m4Dwylc5etmS8YDCB/O
-	 oMYeXpGfxpO6Ro2RclgSDZJf2uZb2h/uxVE+bKZvw5tuYLx37c4gfGxt+vKtOpGQzc
-	 VEWnMFzaajm6S3tXUJ8HGfd0HKfrNTqKcT9zOcp0m0iea6VIs/kTsMHNaYWg1GQZQd
-	 yr3H9wa1cpo5CrgTDPmnd0A+kLwOJOPjWI19Zn+/CUrPj04UQDEDfzsRxItiAAHX/K
-	 gaQx4degTE5Zg==
+	b=GUc9c5+JJa/L1JJXPDkOuTVku/j5o59yPYz9oIRTsYe8vQ53LaJ7H+XGUOg9jV37g
+	 kHazDFuuw1sw41FwaehaVVHOqUHoiKophX4TwFz2cLBBiqWuT9sof2mbuaTk+4e4xy
+	 bSddmGeVgfwH6hvU6X+YHPJIxeMaukSGyYLlswJhEXM4lOqaN1z63ktYVdrt+fpy6i
+	 ZFyZZo7Xchk4a+ePDtu2FZ01+igUrOXZOCHRw41a/BxolJEe0kSQBJ74EUATHYOxj8
+	 ajYw6dWMcsrfxpVsRbAwCvbgq/bMDHyf5B19ZOCH9GNlSBh99gufTnC3RG9M4Jhsr8
+	 RUW7rLG5WgOgA==
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id 460702E0146; Wed, 11 Nov 2026 23:06:51 -0500 (EST)
+	id 524122E0149; Wed, 11 Nov 2026 23:06:51 -0500 (EST)
 From: "Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Cc: "Theodore Ts'o" <tytso@mit.edu>
-Subject: [PATCH 04/27] ext4: add KUnit tests for fs/ext4/xattr.c
-Date: Wed, 11 Nov 2026 23:06:15 -0500
-Message-ID: <20261112040638.1576836-5-tytso@mit.edu>
+Subject: [PATCH 07/27] ext4: add KUnit tests for fs/ext4/inline.c
+Date: Wed, 11 Nov 2026 23:06:18 -0500
+Message-ID: <20261112040638.1576836-8-tytso@mit.edu>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <20261112040638.1576836-1-tytso@mit.edu>
 References: <20261112040638.1576836-1-tytso@mit.edu>
@@ -69,2307 +69,2024 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Add the ext4_xattr_test KUnit test suite in fs/ext4/xattr-test.c to
-exercise the core extended attribute operations in fs/ext4/xattr.c
-without requiring a mounted block device:
+Add the ext4_inline_test KUnit test suite in fs/ext4/inline-test.c to
+comprehensively exercise inline data operations for regular files,
+symlinks, and directories in fs/ext4/inline.c without requiring a
+mounted block device:
 
-- Entry/value sizing macros (EXT4_XATTR_LEN, EXT4_XATTR_SIZE,
-  EXT4_XATTR_MIN_LARGE_EA_SIZE), EXT4_INODE_HAS_XATTR_SPACE boundary
-  checks, and xattr_sem locking helpers (ext4_write_lock_xattr,
-  ext4_write_trylock_xattr, ext4_write_unlock_xattr) preserving
-  EXT4_STATE_NO_EXPAND.
-- In-inode xattr validation (xattr_check_inode / __xattr_check_inode)
-  across 11 parameterized valid and corrupted on-disk layouts (bad
-  magic, truncated headers, out-of-bounds names, unterminated entry
-  lists, non-zero offset on EA inode entries, and overlapping or
-  out-of-bounds value ranges).
-- In-inode (ibody) get/set operations (ext4_xattr_get,
-  ext4_xattr_ibody_get, ext4_xattr_set_handle, ext4_xattr_set),
-  XATTR_CREATE and XATTR_REPLACE flag enforcement, EXT4_STATE_NEW raw
-  inode initialization, superblock EXT4_FEATURE_COMPAT_EXT_ATTR update,
-  and the identical-value fastpath (ext4_xattr_value_same).
-- In-inode value replacement (same padded size vs. shifted offsets),
-  zero-length values, entry removal, and EXT4_I(inode)->i_inline_off
-  adjustment when system.data is present.
-- External xattr block allocation, entry sorting by (e_name_index,
-  e_name_len, e_name), migration from ibody to external block,
-  EXT4_XATTR_BLOCK_RESERVE enforcement when ea_inode is enabled, and
-  external block header and metadata CRC32C checksum verification.
-- External xattr block mb_cache deduplication across inodes,
-  copy-on-write cloning when modifying a shared block, and
-  EXT4_XATTR_REFCOUNT_MAX reuse bit transitions.
-- Attribute listing (ext4_listxattr) across ibody and external block
-  entries, and user/hurd/trusted xattr handler prefix and mount-option
-  filtering.
-- Large xattr inode (EXT4_FEATURE_INCOMPAT_EA_INODE) multi-block
-  write/read, 64-bit refcount and hash encoding, mb_cache deduplication,
-  reference decrement to zero, and ext4_evict_ea_inode() cache cleanup.
-- EA inode hash verification (including legacy signed-char name hash
-  fallback), ext4_xattr_inode_iget() corruption checks, and Lustre-style
-  EA inode compatibility.
-- Inode quota usage calculation (ext4_get_inode_usage), journal credit
-  estimation (__ext4_xattr_set_credits, ext4_xattr_set_credits), extra
-  isize expansion (ext4_expand_extra_isize_ea) for in-place shifts and
-  external block eviction, inode xattr deletion
-  (ext4_xattr_delete_inode), and error-injection rollback paths.
+- Inline capacity and discovery (ext4_get_max_inline_size and
+  ext4_find_inline_data_nolock) across fresh inodes, inodes with zero
+  extra_isize or 128-byte inode size, inodes with coexisting user
+  xattrs in ibody, 0-byte and non-empty system.data xattrs, and
+  corrupted xattr entries (e_name_len overflow and non-zero
+  e_value_inum).
+- Inline file creation, expansion, overwrite, and destruction
+  (ext4_try_to_write_inline_data, ext4_write_inline_data_end, and
+  ext4_destroy_inline_data) spanning i_block (< 60 bytes) and the
+  ibody system.data xattr (>= 60 bytes), short writes with failed-write
+  truncation, non-uptodate folios, emergency shutdown
+  (EXT4_FLAGS_SHUTDOWN), concurrent inline flag clearing, and corrupted
+  inline xattr state detection.
+- Inline page reading, symlinks, and iomap mapping
+  (ext4_readpage_inline on index 0 and index > 0, i_inline_size >
+  PAGE_SIZE corruption detection, ext4_read_inline_link for short and
+  long symlinks, and ext4_inline_data_iomap).
+- Inline file truncation (ext4_inline_data_truncate) across size
+  extensions, shrinking within system.data xattr, shrinking into
+  i_block with tail zeroing, truncating to zero, and clearing the
+  extent status tree when EXT4_STATE_MAY_INLINE_DATA is unset.
+- Inline-to-extent conversion for regular files
+  (ext4_convert_inline_data, ext4_convert_inline_data_to_extent, and
+  ext4_da_convert_inline_data_to_extent via
+  ext4_generic_write_inline_data), including DIOREAD_NOLOCK, DELALLOC,
+  and journaled data modes, plus error rollback via
+  ext4_restore_inline_data when block allocation, buffer lookup, or
+  metadata dirtying fails.
+- Inline directory operations (ext4_update_final_de,
+  ext4_try_create_inline_dir, ext4_get_first_inline_block,
+  ext4_try_add_inline_entry across i_block and system.data xattr,
+  duplicate -EEXIST handling, ext4_find_inline_entry,
+  ext4_read_inline_dir with cookie/iversion revalidation,
+  ext4_inlinedir_to_tree, ext4_delete_inline_entry, empty_inline_dir,
+  conversion of full inline directories to extent-mapped directory
+  blocks with rollback on allocation failure, and corrupted dirent
+  detection).
 
-Export the tested xattr entry points with EXPORT_SYMBOL_FOR_EXT4_TEST
-and add KUNIT_STATIC_STUB_REDIRECT hooks for ext4_xattr_getblk,
-ext4_sb_bread, ext4_map_blocks, ext4_getblk, ext4_get_inode_loc,
-ext4_mark_iloc_dirty, __ext4_iget, and __ext4_new_inode.
+Export the tested functions with EXPORT_SYMBOL_FOR_EXT4_TEST and add
+KUNIT_STATIC_STUB_REDIRECT hooks for ext4_inline_getblk,
+ext4_da_get_block_prep, and ext4_inode_journal_mode.
 
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/Makefile        |    2 +-
- fs/ext4/ext4.h          |    2 +
- fs/ext4/ialloc.c        |    9 +
- fs/ext4/inline.c        |    4 +
- fs/ext4/inode.c         |   17 +-
- fs/ext4/super.c         |   11 +-
- fs/ext4/xattr-test.c    | 1801 +++++++++++++++++++++++++++++++++++++++
- fs/ext4/xattr.c         |   30 +-
- fs/ext4/xattr.h         |    2 +
- fs/ext4/xattr_hurd.c    |    4 +
- fs/ext4/xattr_trusted.c |    4 +
- fs/ext4/xattr_user.c    |    4 +
- 12 files changed, 1886 insertions(+), 4 deletions(-)
- create mode 100644 fs/ext4/xattr-test.c
+ fs/ext4/Makefile      |    2 +-
+ fs/ext4/ext4.h        |    2 +
+ fs/ext4/ext4_jbd2.c   |    3 +
+ fs/ext4/inline-test.c | 1825 +++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/inline.c      |   30 +-
+ fs/ext4/inode.c       |    4 +
+ 6 files changed, 1864 insertions(+), 2 deletions(-)
+ create mode 100644 fs/ext4/inline-test.c
 
 diff --git a/fs/ext4/Makefile b/fs/ext4/Makefile
-index 74b485dbb229..13040b97d2ff 100644
+index 8fe7b512ebb4..5a90bf5b28e3 100644
 --- a/fs/ext4/Makefile
 +++ b/fs/ext4/Makefile
-@@ -16,7 +16,7 @@ ext4-$(CONFIG_EXT4_FS_POSIX_ACL)	+= acl.o
- ext4-$(CONFIG_EXT4_FS_SECURITY)		+= xattr_security.o
+@@ -17,7 +17,7 @@ ext4-$(CONFIG_EXT4_FS_SECURITY)		+= xattr_security.o
  ext4-test-objs				+= inode-test.o mballoc-test.o \
  					   extents-test.o hash-test.o \
--					   extents_status-test.o
-+					   extents_status-test.o xattr-test.o
+ 					   extents_status-test.o xattr-test.o \
+-					   namei-test.o
++					   namei-test.o inline-test.o
  obj-$(CONFIG_EXT4_KUNIT_TESTS)		+= ext4-test.o
  ext4-$(CONFIG_FS_VERITY)		+= verity.o
  ext4-$(CONFIG_FS_ENCRYPTION)		+= crypto.o
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 724a27e8be61..b57176b61d80 100644
+index b57176b61d80..bcb4eb10d363 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -4072,6 +4072,8 @@ extern int ext4_block_write_begin(handle_t *handle, struct folio *folio,
- #if IS_ENABLED(CONFIG_EXT4_KUNIT_TESTS)
- #define EXPORT_SYMBOL_FOR_EXT4_TEST(sym) \
- 	EXPORT_SYMBOL_FOR_MODULES(sym, "ext4-test")
-+#else
-+#define EXPORT_SYMBOL_FOR_EXT4_TEST(sym)
- #endif
- #endif	/* __KERNEL__ */
+@@ -3765,6 +3765,8 @@ extern const struct file_operations ext4_file_operations;
+ extern loff_t ext4_llseek(struct file *file, loff_t offset, int origin);
  
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index a5831fc536db..02f3ef05acaf 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -23,6 +23,7 @@
- #include <linux/bitops.h>
- #include <linux/blkdev.h>
- #include <linux/cred.h>
-+#include <kunit/static_stub.h>
+ /* inline.c */
++extern struct buffer_head *ext4_inline_getblk(struct super_block *sb,
++					      ext4_fsblk_t block);
+ extern int ext4_get_max_inline_size(struct inode *inode);
+ extern int ext4_find_inline_data_nolock(struct inode *inode);
+ extern int ext4_destroy_inline_data(handle_t *handle, struct inode *inode);
+diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
+index d6ffb6f08606..caba7ac68841 100644
+--- a/fs/ext4/ext4_jbd2.c
++++ b/fs/ext4/ext4_jbd2.c
+@@ -10,6 +10,8 @@
  
- #include <asm/byteorder.h>
- 
-@@ -953,6 +954,10 @@ struct inode *__ext4_new_inode(struct mnt_idmap *idmap,
- 	struct ext4_group_info *grp = NULL;
- 	bool encrypt = false;
- 
-+	KUNIT_STATIC_STUB_REDIRECT(__ext4_new_inode, idmap, handle, dir, mode,
-+				   qstr, goal, owner, i_flags, handle_type,
-+				   line_no, nblocks);
-+
- 	/* Cannot create files in a deleted directory */
- 	if (!dir || !dir->i_nlink)
- 		return ERR_PTR(-EPERM);
-@@ -1630,3 +1635,7 @@ int ext4_init_inode_table(struct super_block *sb, ext4_group_t group,
- out:
- 	return ret;
- }
-+
-+#if IS_ENABLED(CONFIG_EXT4_KUNIT_TESTS)
-+EXPORT_SYMBOL_FOR_EXT4_TEST(__ext4_new_inode);
-+#endif
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index ceee69a66482..0e662a9f7574 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -2016,3 +2016,7 @@ int ext4_convert_inline_data(struct inode *inode)
- 	brelse(iloc.bh);
- 	return error;
- }
-+
-+#if IS_ENABLED(CONFIG_EXT4_KUNIT_TESTS)
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_find_inline_data_nolock);
-+#endif
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 289f7fa35090..c8a06c455b3f 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -713,6 +713,8 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
- 	memcpy(&orig_map, map, sizeof(*map));
- #endif
- 
-+	KUNIT_STATIC_STUB_REDIRECT(ext4_map_blocks, handle, inode, map, flags);
-+
- 	map->m_flags = 0;
- 	ext_debug(inode, "flag 0x%x, max_blocks %u, logical block %lu\n",
- 		  flags, map->m_len, (unsigned long) map->m_lblk);
-@@ -863,6 +865,7 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
- 			    map->m_len - 1);
- 	return retval;
- }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_map_blocks);
- 
- /*
-  * Update EXT4_MAP_FLAGS in bh->b_state. For buffer heads attached to pages
-@@ -985,6 +988,9 @@ struct buffer_head *ext4_getblk(handle_t *handle, struct inode *inode,
- 	bool nowait = map_flags & EXT4_GET_BLOCKS_CACHED_NOWAIT;
- 	int err;
- 
-+	KUNIT_STATIC_STUB_REDIRECT(ext4_getblk, handle, inode, block,
-+				   map_flags);
-+
- 	ASSERT((EXT4_SB(inode->i_sb)->s_mount_state & EXT4_FC_REPLAY)
- 		    || handle != NULL || create == 0);
- 	ASSERT(create == 0 || !nowait);
-@@ -1047,6 +1053,7 @@ struct buffer_head *ext4_getblk(handle_t *handle, struct inode *inode,
- 	brelse(bh);
- 	return ERR_PTR(err);
- }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_getblk);
- 
- struct buffer_head *ext4_bread(handle_t *handle, struct inode *inode,
- 			       ext4_lblk_t block, int map_flags)
-@@ -5051,6 +5058,8 @@ int ext4_get_inode_loc(struct inode *inode, struct ext4_iloc *iloc)
- 	ext4_fsblk_t err_blk = 0;
- 	int ret;
- 
-+	KUNIT_STATIC_STUB_REDIRECT(ext4_get_inode_loc, inode, iloc);
-+
- 	ret = __ext4_get_inode_loc(inode->i_sb, inode->i_ino, inode, iloc,
- 					&err_blk);
- 
-@@ -5060,6 +5069,7 @@ int ext4_get_inode_loc(struct inode *inode, struct ext4_iloc *iloc)
- 
- 	return ret;
- }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_get_inode_loc);
- 
- /*
-  * ext4_get_inode_loc_noio() is a best-effort variant of ext4_get_inode_loc().
-@@ -5336,6 +5346,8 @@ struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
- 	gid_t i_gid;
- 	projid_t i_projid;
- 
-+	KUNIT_STATIC_STUB_REDIRECT(__ext4_iget, sb, ino, flags, function, line);
-+
- 	if ((!(flags & EXT4_IGET_SPECIAL) && is_special_ino(sb, ino)) ||
- 	    (ino < EXT4_ROOT_INO) ||
- 	    (ino > le32_to_cpu(es->s_inodes_count))) {
-@@ -5704,6 +5716,7 @@ struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
- 	iget_failed(inode);
- 	return ERR_PTR(ret);
- }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(__ext4_iget);
- 
- static void __ext4_update_other_inode_time(struct super_block *sb,
- 					   unsigned long orig_ino,
-@@ -6464,6 +6477,8 @@ int ext4_mark_iloc_dirty(handle_t *handle,
- 	struct super_block *sb = inode->i_sb;
- 	int err = 0;
- 
-+	KUNIT_STATIC_STUB_REDIRECT(ext4_mark_iloc_dirty, handle, inode, iloc);
-+
- 	err = ext4_emergency_state(sb);
- 	if (unlikely(err)) {
- 		put_bh(iloc->bh);
-@@ -6497,6 +6512,7 @@ int ext4_mark_iloc_dirty(handle_t *handle,
- 	}
- 	return err;
- }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_mark_iloc_dirty);
- 
- /*
-  * On success, We end up with an outstanding reference count against
-@@ -6986,5 +7002,4 @@ vm_fault_t ext4_page_mkwrite(struct vm_fault *vmf)
- EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_da_update_reserve_space);
- EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_da_release_space);
- EXPORT_SYMBOL_FOR_EXT4_TEST(__ext4_mark_inode_dirty);
--EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_map_blocks);
- #endif
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index bca0dc87d0b7..62ec5323bb25 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -49,6 +49,7 @@
- #include <linux/fs_context.h>
- #include <linux/fs_parser.h>
- #include <linux/fserror.h>
-+#include <kunit/static_stub.h>
- 
- #include "ext4.h"
- #include "ext4_extents.h"	/* Needed for trace points definition */
-@@ -251,7 +252,11 @@ static struct buffer_head *__ext4_sb_bread_gfp(struct super_block *sb,
- struct buffer_head *ext4_sb_bread(struct super_block *sb, sector_t block,
- 				   blk_opf_t op_flags)
+ int ext4_inode_journal_mode(struct inode *inode)
  {
--	gfp_t gfp = mapping_gfp_constraint(sb->s_bdev->bd_mapping,
-+	gfp_t gfp;
++	KUNIT_STATIC_STUB_REDIRECT(ext4_inode_journal_mode, inode);
 +
-+	KUNIT_STATIC_STUB_REDIRECT(ext4_sb_bread, sb, block, op_flags);
-+
-+	gfp = mapping_gfp_constraint(sb->s_bdev->bd_mapping,
- 			~__GFP_FS) | __GFP_MOVABLE;
+ 	if (EXT4_JOURNAL(inode) == NULL)
+ 		return EXT4_INODE_WRITEBACK_DATA_MODE;	/* writeback */
+ 	/* We do not support data journalling with delayed allocation */
+@@ -437,5 +439,6 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
+ }
  
- 	return __ext4_sb_bread_gfp(sb, block, op_flags, gfp);
-@@ -7639,3 +7644,7 @@ MODULE_DESCRIPTION("Fourth Extended Filesystem");
- MODULE_LICENSE("GPL");
- module_init(ext4_init_fs)
- module_exit(ext4_exit_fs)
-+
-+#if IS_ENABLED(CONFIG_EXT4_KUNIT_TESTS)
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_sb_bread);
-+#endif
-diff --git a/fs/ext4/xattr-test.c b/fs/ext4/xattr-test.c
+ #if IS_ENABLED(CONFIG_EXT4_KUNIT_TESTS)
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_inode_journal_mode);
+ EXPORT_SYMBOL_FOR_EXT4_TEST(__ext4_handle_dirty_metadata);
+ #endif
+diff --git a/fs/ext4/inline-test.c b/fs/ext4/inline-test.c
 new file mode 100644
-index 000000000000..35be150353a2
+index 000000000000..a75f46475c4a
 --- /dev/null
-+++ b/fs/ext4/xattr-test.c
-@@ -0,0 +1,1801 @@
++++ b/fs/ext4/inline-test.c
+@@ -0,0 +1,1825 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
-+ * KUnit tests for ext4 extended attributes (fs/ext4/xattr.c).
++ * KUnit tests for ext4 inline data operations (fs/ext4/inline.c)
 + */
 +
 +#include <kunit/test.h>
 +#include <kunit/static_stub.h>
-+#include <linux/blkdev.h>
++#include <linux/backing-dev.h>
 +#include <linux/buffer_head.h>
-+#include <linux/cred.h>
-+#include <linux/dcache.h>
++#include <linux/fs.h>
++#include <linux/iomap.h>
 +#include <linux/iversion.h>
-+#include <linux/mbcache.h>
-+#include <linux/quotaops.h>
-+#include <linux/slab.h>
-+#include <linux/string.h>
-+#include <linux/xattr.h>
++#include <linux/limits.h>
++#include <linux/mm.h>
++#include <linux/pagemap.h>
 +
 +#include "ext4.h"
 +#include "ext4_jbd2.h"
 +#include "xattr.h"
++#include "truncate.h"
++#include "namei.h"
 +
-+#define TEST_BLK_SIZE		1024
-+#define TEST_BLK_BITS		10
 +#define TEST_INODE_SIZE		256
-+#define TEST_EXTRA_ISIZE	(sizeof(struct ext4_inode) - \
-+				 EXT4_GOOD_OLD_INODE_SIZE)
-+#define TEST_FIRST_PBLK		100
-+#define TEST_MAX_BLOCKS		16
-+#define TEST_MAX_EA_INODES	8
-+#define TEST_PRIMARY_INO	12
-+#define TEST_SECONDARY_INO	13
-+#define TEST_FIRST_EA_INO	20
-+#define TEST_CSUM_SEED		0x87654321U
++#define TEST_EXTRA_ISIZE	32
++#define TEST_BLOCK_SIZE		1024
++#define TEST_BLOCK_BITS		10
++#define EXT4_MIN_INLINE_DATA_SIZE	((sizeof(__le32) * EXT4_N_BLOCKS))
++#define EXT4_INLINE_DOTDOT_SIZE		4
++/*
++ * For a 256-byte inode with 32-byte i_extra_isize:
++ *   EXT4_GOOD_OLD_INODE_SIZE (128) + 32 = 160 bytes fixed fields
++ *   Remaining ibody space = 96 bytes
++ *   4-byte xattr magic + 20-byte system.data entry + 4-byte gap = 28 bytes
++ *   Available xattr value space = 68 bytes
++ *   Plus 60 bytes in i_block (EXT4_MIN_INLINE_DATA_SIZE) = 128 bytes max inline size.
++ */
++#define TEST_MAX_INLINE_SIZE	128
 +
-+struct mock_block {
-+	bool in_use;
-+	struct buffer_head bh;
-+	char data[TEST_BLK_SIZE] __aligned(8);
-+};
++#define TEST_INO		12
++#define TEST_PARENT_INO		2
++#define TEST_PBLK		100
 +
-+struct mock_inode_slot {
-+	bool allocated;
-+	struct ext4_inode_info ei;
-+	struct buffer_head iloc_bh;
-+	char raw_buf[TEST_INODE_SIZE] __aligned(8);
-+	ext4_fsblk_t lblk_to_pblk[8];
-+};
-+
-+struct xattr_test_ctx {
++struct inline_test_ctx {
 +	struct super_block sb;
 +	struct ext4_sb_info sbi;
 +	struct ext4_super_block es;
 +	struct block_device bdev;
 +	struct address_space bd_mapping;
 +	struct buffer_head sb_bh;
-+	struct dentry root_dentry;
-+
-+	struct mock_inode_slot primary;
-+	struct mock_inode_slot secondary;
-+	struct mock_inode_slot ea_inodes[TEST_MAX_EA_INODES];
-+	struct mock_block blocks[TEST_MAX_BLOCKS];
-+
-+	int fail_get_inode_loc;
-+	int fail_mark_iloc_dirty;
-+	int fail_dirty_metadata;
-+	int fail_alloc_block;
-+	int fail_sb_bread;
-+	int fail_getblk;
-+	int fail_iget;
-+	int fail_new_inode;
-+	bool fail_xattr_getblk;
-+
-+	unsigned int alloc_block_calls;
-+	unsigned int free_block_calls;
-+	ext4_fsblk_t last_freed_block;
-+	unsigned int mark_iloc_dirty_calls;
-+	unsigned int mark_inode_dirty_calls;
-+	unsigned int dirty_metadata_calls;
++	struct ext4_inode_info ei;
++	struct buffer_head iloc_bh;
++	u8 raw_inode_buf[TEST_BLOCK_SIZE];
++	struct buffer_head data_bh;
++	u8 data_block_buf[PAGE_SIZE];
++	int get_inode_loc_err;
++	int map_blocks_ret;
++	ext4_fsblk_t map_pblk;
++	unsigned int map_flags;
++	bool getblk_fail;
++	int dirty_metadata_err;
++	int dirty_metadata_fail_on_call;
++	int dirty_metadata_calls;
++	int da_get_block_prep_err;
++	int journal_mode;
 +};
 +
-+static const struct super_operations xattr_test_sops = {};
++static struct inline_test_ctx *t_ctx;
 +
-+#ifdef CONFIG_QUOTA
-+static qsize_t *xattr_test_get_reserved_space(struct inode *inode)
++static const struct super_operations inline_test_sops = {};
++
++static bool test_release_folio(struct folio *folio, gfp_t wait)
 +{
-+	return &EXT4_I(inode)->i_reserved_quota;
++	return try_to_free_buffers(folio);
 +}
 +
-+static const struct dquot_operations xattr_test_qops = {
-+	.get_reserved_space = xattr_test_get_reserved_space,
++static const struct address_space_operations test_inline_aops = {
++	.dirty_folio		= noop_dirty_folio,
++	.invalidate_folio	= block_invalidate_folio,
++	.release_folio		= test_release_folio,
 +};
-+#endif
 +
-+static void init_mock_inode_slot(struct xattr_test_ctx *ctx,
-+				 struct mock_inode_slot *slot,
-+				 unsigned long ino)
++/* --- Static Stubs --- */
++
++static int stub_get_inode_loc(struct inode *inode, struct ext4_iloc *iloc)
 +{
-+	struct inode *inode = &slot->ei.vfs_inode;
-+	struct ext4_inode *raw_inode;
++	if (t_ctx->get_inode_loc_err)
++		return t_ctx->get_inode_loc_err;
 +
-+	memset(slot, 0, sizeof(*slot));
-+	slot->allocated = true;
-+
-+	inode->i_sb = &ctx->sb;
-+	inode->i_ino = ino;
-+	inode->i_mode = S_IFREG | 0644;
-+	inode->i_blkbits = TEST_BLK_BITS;
-+	inode->i_mapping = &inode->i_data;
-+	set_nlink(inode, 1);
-+	atomic_set(&inode->i_count, 1);
-+
-+	spin_lock_init(&inode->i_lock);
-+	init_rwsem(&inode->i_rwsem);
-+	INIT_LIST_HEAD(&inode->i_io_list);
-+	INIT_LIST_HEAD(&inode->i_wb_list);
-+	INIT_LIST_HEAD(&inode->i_lru);
-+	INIT_HLIST_NODE(&inode->i_hash);
-+	/*
-+	 * Pre-set all I_DIRTY flags so mark_inode_dirty() from quota helpers
-+	 * sees the flags already set and returns without touching global bdi
-+	 * writeback lists.
-+	 */
-+	inode_state_set_raw(inode, I_DIRTY);
-+
-+	init_rwsem(&slot->ei.xattr_sem);
-+	init_rwsem(&slot->ei.i_data_sem);
-+	spin_lock_init(&slot->ei.i_raw_lock);
-+	spin_lock_init(&slot->ei.i_block_reservation_lock);
-+	INIT_LIST_HEAD(&slot->ei.i_orphan);
-+	slot->ei.i_extra_isize = TEST_EXTRA_ISIZE;
-+	slot->ei.i_csum_seed = TEST_CSUM_SEED ^ (u32)ino;
-+
-+	slot->iloc_bh.b_data = slot->raw_buf;
-+	slot->iloc_bh.b_size = TEST_INODE_SIZE;
-+	slot->iloc_bh.b_blocknr = 10 + ino;
-+	slot->iloc_bh.b_bdev = &ctx->bdev;
-+	atomic_set(&slot->iloc_bh.b_count, 1);
-+	set_buffer_uptodate(&slot->iloc_bh);
-+	set_buffer_mapped(&slot->iloc_bh);
-+
-+	raw_inode = (struct ext4_inode *)slot->raw_buf;
-+	raw_inode->i_extra_isize = cpu_to_le16(slot->ei.i_extra_isize);
-+}
-+
-+static struct mock_block *alloc_mock_block(struct xattr_test_ctx *ctx)
-+{
-+	int i;
-+
-+	for (i = 0; i < TEST_MAX_BLOCKS; i++) {
-+		struct mock_block *blk = &ctx->blocks[i];
-+
-+		if (!blk->in_use) {
-+			memset(blk, 0, sizeof(*blk));
-+			blk->in_use = true;
-+			blk->bh.b_data = blk->data;
-+			blk->bh.b_size = TEST_BLK_SIZE;
-+			blk->bh.b_blocknr = TEST_FIRST_PBLK + i;
-+			blk->bh.b_bdev = &ctx->bdev;
-+			atomic_set(&blk->bh.b_count, 1);
-+			set_buffer_uptodate(&blk->bh);
-+			set_buffer_mapped(&blk->bh);
-+			return blk;
-+		}
-+	}
-+	return NULL;
-+}
-+
-+static struct mock_block *find_mock_block(struct xattr_test_ctx *ctx,
-+					  ext4_fsblk_t blocknr)
-+{
-+	int i;
-+
-+	for (i = 0; i < TEST_MAX_BLOCKS; i++) {
-+		if (ctx->blocks[i].in_use &&
-+		    ctx->blocks[i].bh.b_blocknr == blocknr)
-+			return &ctx->blocks[i];
-+	}
-+	return NULL;
-+}
-+
-+static int ext4_get_inode_loc_stub(struct inode *inode, struct ext4_iloc *iloc)
-+{
-+	struct kunit *test = kunit_get_current_test();
-+	struct xattr_test_ctx *ctx = test->priv;
-+	struct mock_inode_slot *slot;
-+
-+	if (ctx->fail_get_inode_loc)
-+		return ctx->fail_get_inode_loc;
-+
-+	slot = container_of(EXT4_I(inode), struct mock_inode_slot, ei);
-+	get_bh(&slot->iloc_bh);
-+	iloc->bh = &slot->iloc_bh;
++	memset(iloc, 0, sizeof(*iloc));
++	atomic_inc(&t_ctx->iloc_bh.b_count);
++	iloc->bh = &t_ctx->iloc_bh;
 +	iloc->offset = 0;
 +	iloc->block_group = 0;
 +	return 0;
 +}
 +
-+static int ext4_mark_iloc_dirty_stub(handle_t *handle, struct inode *inode,
-+				     struct ext4_iloc *iloc)
++static int stub_handle_dirty_metadata(const char *where, unsigned int line,
++				      handle_t *handle, struct inode *inode,
++				      struct buffer_head *bh)
 +{
-+	struct kunit *test = kunit_get_current_test();
-+	struct xattr_test_ctx *ctx = test->priv;
++	t_ctx->dirty_metadata_calls++;
++	if (t_ctx->dirty_metadata_fail_on_call > 0 &&
++	    t_ctx->dirty_metadata_calls == t_ctx->dirty_metadata_fail_on_call)
++		return t_ctx->dirty_metadata_err;
++	if (t_ctx->dirty_metadata_fail_on_call == 0 &&
++	    t_ctx->dirty_metadata_err)
++		return t_ctx->dirty_metadata_err;
++	set_buffer_dirty(bh);
++	return 0;
++}
 +
++static int stub_mark_iloc_dirty(handle_t *handle, struct inode *inode,
++				struct ext4_iloc *iloc)
++{
 +	brelse(iloc->bh);
-+	ctx->mark_iloc_dirty_calls++;
-+	if (ctx->fail_mark_iloc_dirty)
-+		return ctx->fail_mark_iloc_dirty;
 +	return 0;
 +}
 +
-+static int __ext4_mark_inode_dirty_stub(handle_t *handle, struct inode *inode,
-+					const char *func, unsigned int line)
++static int stub_mark_inode_dirty(handle_t *handle, struct inode *inode,
++				 const char *func, unsigned int line)
 +{
-+	struct kunit *test = kunit_get_current_test();
-+	struct xattr_test_ctx *ctx = test->priv;
-+
-+	ctx->mark_inode_dirty_calls++;
 +	return 0;
 +}
 +
-+static int __ext4_handle_dirty_metadata_stub(const char *where,
-+					     unsigned int line,
-+					     handle_t *handle,
-+					     struct inode *inode,
-+					     struct buffer_head *bh)
++static int stub_map_blocks(handle_t *handle, struct inode *inode,
++			   struct ext4_map_blocks *map, int flags)
 +{
-+	struct kunit *test = kunit_get_current_test();
-+	struct xattr_test_ctx *ctx = test->priv;
++	if (t_ctx->map_blocks_ret < 0)
++		return t_ctx->map_blocks_ret;
 +
-+	if (ctx->fail_dirty_metadata)
-+		return ctx->fail_dirty_metadata;
-+	if (bh)
-+		set_buffer_uptodate(bh);
-+	ctx->dirty_metadata_calls++;
-+	return 0;
++	map->m_pblk = t_ctx->map_pblk;
++	map->m_flags = t_ctx->map_flags;
++	if (t_ctx->map_blocks_ret > 0)
++		map->m_len = t_ctx->map_blocks_ret;
++	return t_ctx->map_blocks_ret;
 +}
 +
-+static ext4_fsblk_t ext4_mb_new_blocks_stub(handle_t *handle,
-+					    struct ext4_allocation_request *ar,
-+					    int *errp)
++static struct buffer_head *stub_inline_getblk(struct super_block *sb,
++					      ext4_fsblk_t block)
 +{
-+	struct kunit *test = kunit_get_current_test();
-+	struct xattr_test_ctx *ctx = test->priv;
-+	struct mock_block *blk;
-+
-+	if (ctx->fail_alloc_block) {
-+		*errp = ctx->fail_alloc_block;
-+		return 0;
-+	}
-+
-+	blk = alloc_mock_block(ctx);
-+	if (!blk) {
-+		*errp = -ENOSPC;
-+		return 0;
-+	}
-+
-+	ctx->alloc_block_calls++;
-+	*errp = 0;
-+	return blk->bh.b_blocknr;
-+}
-+
-+static void ext4_free_blocks_stub(handle_t *handle, struct inode *inode,
-+				  struct buffer_head *bh, ext4_fsblk_t block,
-+				  unsigned long count, int flags)
-+{
-+	struct kunit *test = kunit_get_current_test();
-+	struct xattr_test_ctx *ctx = test->priv;
-+	struct mock_block *blk;
-+
-+	if (bh) {
-+		if (!block)
-+			block = bh->b_blocknr;
-+		if (flags & EXT4_FREE_BLOCKS_FORGET)
-+			brelse(bh);
-+	}
-+	if (!(flags & EXT4_FREE_BLOCKS_NO_QUOT_UPDATE))
-+		dquot_free_block(inode,
-+				 EXT4_C2B(EXT4_SB(inode->i_sb), count));
-+
-+	blk = find_mock_block(ctx, block);
-+	if (blk)
-+		blk->in_use = false;
-+
-+	ctx->free_block_calls++;
-+	ctx->last_freed_block = block;
-+}
-+
-+static struct buffer_head *ext4_xattr_getblk_stub(struct super_block *sb,
-+						  ext4_fsblk_t block)
-+{
-+	struct kunit *test = kunit_get_current_test();
-+	struct xattr_test_ctx *ctx = test->priv;
-+	struct mock_block *blk;
-+
-+	if (ctx->fail_xattr_getblk)
++	if (t_ctx->getblk_fail)
 +		return NULL;
 +
-+	blk = find_mock_block(ctx, block);
-+	if (!blk)
-+		return NULL;
-+
-+	get_bh(&blk->bh);
-+	return &blk->bh;
++	atomic_inc(&t_ctx->data_bh.b_count);
++	t_ctx->data_bh.b_blocknr = block;
++	return &t_ctx->data_bh;
 +}
 +
-+static struct buffer_head *ext4_sb_bread_stub(struct super_block *sb,
-+					      sector_t block,
-+					      blk_opf_t op_flags)
++static int stub_da_get_block_prep(struct inode *inode, sector_t iblock,
++				  struct buffer_head *bh, int create)
 +{
-+	struct kunit *test = kunit_get_current_test();
-+	struct xattr_test_ctx *ctx = test->priv;
-+	struct mock_block *blk;
++	if (t_ctx->da_get_block_prep_err)
++		return t_ctx->da_get_block_prep_err;
 +
-+	if (ctx->fail_sb_bread)
-+		return ERR_PTR(ctx->fail_sb_bread);
-+
-+	blk = find_mock_block(ctx, block);
-+	if (!blk)
-+		return ERR_PTR(-EIO);
-+
-+	get_bh(&blk->bh);
-+	return &blk->bh;
++	set_buffer_new(bh);
++	set_buffer_delay(bh);
++	bh->b_blocknr = 0;
++	bh->b_size = inode->i_sb->s_blocksize;
++	return 0;
 +}
 +
-+static int ext4_map_blocks_stub(handle_t *handle, struct inode *inode,
-+				struct ext4_map_blocks *map, int flags)
++static int stub_inode_journal_mode(struct inode *inode)
 +{
-+	struct kunit *test = kunit_get_current_test();
-+	struct xattr_test_ctx *ctx = test->priv;
-+	struct mock_inode_slot *slot;
-+	struct mock_block *blk;
++	return t_ctx->journal_mode;
++}
 +
-+	slot = container_of(EXT4_I(inode), struct mock_inode_slot, ei);
-+	if (map->m_lblk >= ARRAY_SIZE(slot->lblk_to_pblk))
-+		return -EFSCORRUPTED;
++/* --- Helpers --- */
 +
-+	if (!slot->lblk_to_pblk[map->m_lblk]) {
-+		if (!(flags & EXT4_GET_BLOCKS_CREATE))
-+			return 0;
-+		if (ctx->fail_alloc_block)
-+			return ctx->fail_alloc_block;
-+		blk = alloc_mock_block(ctx);
-+		if (!blk)
-+			return -ENOSPC;
-+		slot->lblk_to_pblk[map->m_lblk] = blk->bh.b_blocknr;
-+		inode->i_blocks += TEST_BLK_SIZE >> 9;
-+		map->m_flags = EXT4_MAP_NEW | EXT4_MAP_MAPPED;
-+	} else {
-+		map->m_flags = EXT4_MAP_MAPPED;
++static void *raw_inline_i_block(struct inline_test_ctx *ctx)
++{
++	struct ext4_inode *raw_inode = (struct ext4_inode *)ctx->raw_inode_buf;
++
++	return (void *)raw_inode->i_block;
++}
++
++static void *raw_inline_xattr_pos(struct inline_test_ctx *ctx)
++{
++	struct inode *inode = &ctx->ei.vfs_inode;
++	struct ext4_inode *raw_inode = (struct ext4_inode *)ctx->raw_inode_buf;
++	struct ext4_xattr_ibody_header *header = IHDR(inode, raw_inode);
++	struct ext4_xattr_entry *entry;
++
++	entry = (struct ext4_xattr_entry *)((void *)raw_inode +
++					    ctx->ei.i_inline_off);
++	return (void *)IFIRST(header) + le16_to_cpu(entry->e_value_offs);
++}
++
++static void reset_inode_state(struct inline_test_ctx *ctx, umode_t mode)
++{
++	struct inode *inode = &ctx->ei.vfs_inode;
++	struct ext4_inode *raw_inode;
++
++	if (!list_empty(&ctx->ei.i_orphan))
++		list_del_init(&ctx->ei.i_orphan);
++
++	truncate_inode_pages(&inode->i_data, 0);
++
++	memset(ctx->raw_inode_buf, 0, sizeof(ctx->raw_inode_buf));
++	memset(ctx->data_block_buf, 0, sizeof(ctx->data_block_buf));
++	memset(ctx->ei.i_data, 0, sizeof(ctx->ei.i_data));
++
++	raw_inode = (struct ext4_inode *)ctx->raw_inode_buf;
++	raw_inode->i_extra_isize = cpu_to_le16(TEST_EXTRA_ISIZE);
++
++	ctx->ei.i_extra_isize = TEST_EXTRA_ISIZE;
++	ctx->ei.i_inline_off = 0;
++	ctx->ei.i_inline_size = 0;
++	ctx->ei.i_flags = 0;
++	ext4_clear_state_flags(&ctx->ei);
++	ext4_set_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
++	ctx->ei.i_disksize = 0;
++
++	inode->i_mode = mode;
++	inode->i_size = 0;
++	inode->i_blocks = 0;
++	inode_set_iversion(inode, 1);
++	inode_state_set_raw(inode, I_DIRTY);
++}
++
++static int create_inline_file(struct inode *inode, const void *data, size_t len)
++{
++	struct folio *folio = NULL;
++	void *kaddr;
++	int ret;
++
++	inode_lock(inode);
++	ret = ext4_try_to_write_inline_data(&inode->i_data, inode, 0, len,
++					    &folio);
++	if (ret != 1) {
++		inode_unlock(inode);
++		return ret < 0 ? ret : -ENOSPC;
 +	}
 +
-+	map->m_pblk = slot->lblk_to_pblk[map->m_lblk];
-+	map->m_len = 1;
-+	return 1;
-+}
-+
-+static struct buffer_head *ext4_getblk_stub(handle_t *handle,
-+					    struct inode *inode,
-+					    ext4_lblk_t block, int map_flags)
-+{
-+	struct kunit *test = kunit_get_current_test();
-+	struct xattr_test_ctx *ctx = test->priv;
-+	struct mock_inode_slot *slot;
-+	struct mock_block *blk;
-+
-+	if (ctx->fail_getblk)
-+		return ERR_PTR(ctx->fail_getblk);
-+
-+	slot = container_of(EXT4_I(inode), struct mock_inode_slot, ei);
-+	if (block >= ARRAY_SIZE(slot->lblk_to_pblk))
-+		return ERR_PTR(-EFSCORRUPTED);
-+	if (!slot->lblk_to_pblk[block]) {
-+		if (!(map_flags & EXT4_GET_BLOCKS_CREATE))
-+			return NULL;
-+		blk = alloc_mock_block(ctx);
-+		if (!blk)
-+			return ERR_PTR(-ENOSPC);
-+		slot->lblk_to_pblk[block] = blk->bh.b_blocknr;
-+		inode->i_blocks += TEST_BLK_SIZE >> 9;
-+	} else {
-+		blk = find_mock_block(ctx, slot->lblk_to_pblk[block]);
-+		if (!blk)
-+			return ERR_PTR(-EIO);
++	if (data && len) {
++		kaddr = kmap_local_folio(folio, 0);
++		memcpy(kaddr, data, len);
++		kunmap_local(kaddr);
 +	}
 +
-+	get_bh(&blk->bh);
-+	return &blk->bh;
++	ret = ext4_write_inline_data_end(inode, 0, len, len, folio);
++	inode_unlock(inode);
++	if (ret < 0)
++		return ret;
++
++	i_size_write(inode, len);
++	EXT4_I(inode)->i_disksize = len;
++	return 0;
 +}
 +
-+static struct inode *__ext4_new_inode_stub(struct mnt_idmap *idmap,
-+					   handle_t *handle,
-+					   struct inode *dir, umode_t mode,
-+					   const struct qstr *qstr,
-+					   __u32 goal, uid_t *owner,
-+					   __u32 i_flags, int handle_type,
-+					   unsigned int line_no, int nblocks)
++static int inline_test_init(struct kunit *test)
 +{
-+	struct kunit *test = kunit_get_current_test();
-+	struct xattr_test_ctx *ctx = test->priv;
-+	int i;
-+
-+	if (ctx->fail_new_inode)
-+		return ERR_PTR(ctx->fail_new_inode);
-+
-+	for (i = 0; i < TEST_MAX_EA_INODES; i++) {
-+		struct mock_inode_slot *slot = &ctx->ea_inodes[i];
-+		struct inode *inode = &slot->ei.vfs_inode;
-+
-+		if (!slot->allocated) {
-+			init_mock_inode_slot(ctx, slot, TEST_FIRST_EA_INO + i);
-+			inode->i_mode = mode;
-+			slot->ei.i_flags = i_flags;
-+			if (owner) {
-+				i_uid_write(inode, owner[0]);
-+				i_gid_write(inode, owner[1]);
-+			}
-+			/*
-+			 * Set I_NEW for unlock_new_inode() and give the mock
-+			 * inode an extra baseline reference (i_count = 2) so
-+			 * ext4_put_ea_inode()'s iput_if_not_last() decrements
-+			 * i_count to 1 and returns without entering VFS
-+			 * eviction.
-+			 */
-+			inode_state_set_raw(inode, I_DIRTY | I_NEW);
-+			atomic_set(&inode->i_count, 2);
-+			return inode;
-+		}
-+	}
-+	return ERR_PTR(-ENOSPC);
-+}
-+
-+static struct inode *__ext4_iget_stub(struct super_block *sb,
-+				      unsigned long ino,
-+				      ext4_iget_flags flags,
-+				      const char *function,
-+				      unsigned int line)
-+{
-+	struct kunit *test = kunit_get_current_test();
-+	struct xattr_test_ctx *ctx = test->priv;
-+	int i;
-+
-+	if (ctx->fail_iget)
-+		return ERR_PTR(ctx->fail_iget);
-+
-+	for (i = 0; i < TEST_MAX_EA_INODES; i++) {
-+		struct mock_inode_slot *slot = &ctx->ea_inodes[i];
-+		struct inode *inode = &slot->ei.vfs_inode;
-+
-+		if (slot->allocated && inode->i_ino == ino) {
-+			if ((flags & EXT4_IGET_EA_INODE) &&
-+			    !(slot->ei.i_flags & EXT4_EA_INODE_FL))
-+				return ERR_PTR(-EFSCORRUPTED);
-+			atomic_inc(&inode->i_count);
-+			return inode;
-+		}
-+	}
-+	return ERR_PTR(-ENOENT);
-+}
-+
-+static int xattr_test_init(struct kunit *test)
-+{
-+	struct xattr_test_ctx *ctx;
-+	struct super_block *sb;
-+	struct ext4_sb_info *sbi;
++	struct inline_test_ctx *ctx;
++	struct inode *inode;
 +
 +	ctx = kunit_kzalloc(test, sizeof(*ctx), GFP_KERNEL);
-+	KUNIT_ASSERT_NOT_NULL(test, ctx);
++	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, ctx);
++	t_ctx = ctx;
 +	test->priv = ctx;
 +
-+	sb = &ctx->sb;
-+	sbi = &ctx->sbi;
-+
-+	sbi->s_sb = sb;
-+	sb->s_fs_info = sbi;
-+	sb->s_op = &xattr_test_sops;
-+#ifdef CONFIG_QUOTA
-+	sb->dq_op = &xattr_test_qops;
-+#endif
-+	sb->s_blocksize = TEST_BLK_SIZE;
-+	sb->s_blocksize_bits = TEST_BLK_BITS;
-+	sb->s_maxbytes = MAX_LFS_FILESIZE;
-+	sb->s_time_gran = 1;
-+	sb->s_xattr = ext4_xattr_handlers;
-+	strscpy(sb->s_id, "ext4_xattr_kunit", sizeof(sb->s_id));
-+	init_rwsem(&sb->s_umount);
++	/* Superblock and ext4_sb_info setup */
++	ctx->sb.s_blocksize = TEST_BLOCK_SIZE;
++	ctx->sb.s_blocksize_bits = TEST_BLOCK_BITS;
++	ctx->sb.s_maxbytes = MAX_LFS_FILESIZE;
++	ctx->sb.s_time_gran = 1;
++	ctx->sb.s_bdi = &noop_backing_dev_info;
++	ctx->sb.s_fs_info = &ctx->sbi;
++	ctx->sb.s_op = &inline_test_sops;
++	snprintf(ctx->sb.s_id, sizeof(ctx->sb.s_id), "ext4-inline-test");
++	init_rwsem(&ctx->sb.s_umount);
 +
 +	ctx->bdev.bd_mapping = &ctx->bd_mapping;
 +	bdev_set_flag(&ctx->bdev, BD_READ_ONLY);
-+	sb->s_bdev = &ctx->bdev;
++	ctx->sb.s_bdev = &ctx->bdev;
 +
-+	sbi->s_es = &ctx->es;
++	ctx->es.s_feature_incompat =
++		cpu_to_le32(EXT4_FEATURE_INCOMPAT_INLINE_DATA |
++			    EXT4_FEATURE_INCOMPAT_EXTENTS |
++			    EXT4_FEATURE_INCOMPAT_FILETYPE);
 +	ctx->es.s_first_data_block = cpu_to_le32(1);
-+	ctx->es.s_rev_level = cpu_to_le32(EXT4_DYNAMIC_REV);
 +	ctx->es.s_inodes_count = cpu_to_le32(1024);
-+	ctx->es.s_first_ino = cpu_to_le32(11);
++	ctx->es.s_rev_level = cpu_to_le32(EXT4_DYNAMIC_REV);
 +	ctx->es.s_inode_size = cpu_to_le16(TEST_INODE_SIZE);
-+	ext4_blocks_count_set(&ctx->es, 65536);
 +
 +	ctx->sb_bh.b_data = (char *)&ctx->es;
 +	ctx->sb_bh.b_size = sizeof(ctx->es);
 +	ctx->sb_bh.b_bdev = &ctx->bdev;
 +	atomic_set(&ctx->sb_bh.b_count, 1);
 +	set_buffer_uptodate(&ctx->sb_bh);
-+	sbi->s_sbh = &ctx->sb_bh;
++	ctx->sbi.s_sbh = &ctx->sb_bh;
 +
-+	sbi->s_inode_size = TEST_INODE_SIZE;
-+	sbi->s_first_ino = 11;
-+	sbi->s_want_extra_isize = TEST_EXTRA_ISIZE;
-+	ctx->es.s_min_extra_isize = cpu_to_le16(TEST_EXTRA_ISIZE);
-+	sbi->s_blocks_per_group = 8192;
-+	sbi->s_clusters_per_group = 8192;
-+	sbi->s_cluster_ratio = 1;
-+	sbi->s_cluster_bits = 0;
-+	sbi->s_groups_count = 8;
-+	sbi->s_csum_seed = TEST_CSUM_SEED;
-+
-+	set_opt(sb, ERRORS_CONT);
-+	set_opt(sb, XATTR_USER);
-+	spin_lock_init(&sbi->s_bdev_wb_lock);
-+	spin_lock_init(&sbi->s_error_lock);
-+	spin_lock_init(&sbi->s_md_lock);
-+
-+	/*
-+	 * Use burst = 0 so expected corruption-test error/warning messages
-+	 * are suppressed without setting EXT4_FLAGS_SHUTDOWN.
-+	 */
-+	ratelimit_state_init(&sbi->s_err_ratelimit_state,
++	ctx->sbi.s_sb = &ctx->sb;
++	ctx->sbi.s_es = &ctx->es;
++	ctx->sbi.s_inode_size = TEST_INODE_SIZE;
++	ctx->sbi.s_want_extra_isize = TEST_EXTRA_ISIZE;
++	ctx->sbi.s_cluster_bits = 0;
++	ctx->sbi.s_cluster_ratio = 1;
++	INIT_LIST_HEAD(&ctx->sbi.s_orphan);
++	mutex_init(&ctx->sbi.s_orphan_lock);
++	set_opt(&ctx->sb, ERRORS_CONT);
++	spin_lock_init(&ctx->sbi.s_bdev_wb_lock);
++	spin_lock_init(&ctx->sbi.s_error_lock);
++	spin_lock_init(&ctx->sbi.s_md_lock);
++	ratelimit_state_init(&ctx->sbi.s_err_ratelimit_state,
 +			     DEFAULT_RATELIMIT_INTERVAL, 0);
-+	ratelimit_state_init(&sbi->s_warning_ratelimit_state,
++	ratelimit_state_init(&ctx->sbi.s_warning_ratelimit_state,
 +			     DEFAULT_RATELIMIT_INTERVAL, 0);
-+	ratelimit_state_init(&sbi->s_msg_ratelimit_state,
++	ratelimit_state_init(&ctx->sbi.s_msg_ratelimit_state,
 +			     DEFAULT_RATELIMIT_INTERVAL, 0);
 +
-+	init_mock_inode_slot(ctx, &ctx->primary, TEST_PRIMARY_INO);
-+	init_mock_inode_slot(ctx, &ctx->secondary, TEST_SECONDARY_INO);
++	/* Mock buffer_head for raw inode (iloc.bh) */
++	ctx->iloc_bh.b_data = (char *)ctx->raw_inode_buf;
++	ctx->iloc_bh.b_size = TEST_BLOCK_SIZE;
++	ctx->iloc_bh.b_blocknr = 10;
++	ctx->iloc_bh.b_bdev = &ctx->bdev;
++	atomic_set(&ctx->iloc_bh.b_count, 1);
++	set_buffer_uptodate(&ctx->iloc_bh);
++	set_buffer_mapped(&ctx->iloc_bh);
 +
-+	ctx->root_dentry.d_sb = sb;
-+	ctx->root_dentry.d_inode = &ctx->primary.ei.vfs_inode;
-+	sb->s_root = &ctx->root_dentry;
++	/* Mock buffer_head for allocated data block (data_bh) */
++	ctx->data_bh.b_data = (char *)ctx->data_block_buf;
++	ctx->data_bh.b_size = TEST_BLOCK_SIZE;
++	ctx->data_bh.b_blocknr = TEST_PBLK;
++	ctx->data_bh.b_bdev = &ctx->bdev;
++	atomic_set(&ctx->data_bh.b_count, 1);
++	set_buffer_uptodate(&ctx->data_bh);
++	set_buffer_mapped(&ctx->data_bh);
 +
++	/* Default stub behavior */
++	ctx->map_blocks_ret = 1;
++	ctx->map_pblk = TEST_PBLK;
++	ctx->map_flags = EXT4_MAP_MAPPED;
++	ctx->journal_mode = EXT4_INODE_WRITEBACK_DATA_MODE;
++
++	/* Initialize mock ext4_inode_info and embedded vfs_inode */
++	inode = &ctx->ei.vfs_inode;
++	inode->i_sb = &ctx->sb;
++	inode->i_ino = TEST_INO;
++	inode->i_blkbits = TEST_BLOCK_BITS;
++	set_nlink(inode, 1);
++	atomic_set(&inode->i_count, 1);
++	spin_lock_init(&inode->i_lock);
++	init_rwsem(&inode->i_rwsem);
++	INIT_LIST_HEAD(&inode->i_io_list);
++	INIT_LIST_HEAD(&inode->i_wb_list);
++	INIT_LIST_HEAD(&inode->i_lru);
++	INIT_HLIST_NODE(&inode->i_hash);
++	inode_state_set_raw(inode, I_DIRTY);
++
++	address_space_init_once(&inode->i_data);
++	inode->i_data.host = inode;
++	inode->i_data.a_ops = &test_inline_aops;
++	mapping_set_gfp_mask(&inode->i_data, GFP_HIGHUSER_MOVABLE);
++	init_rwsem(&inode->i_data.invalidate_lock);
++	inode->i_mapping = &inode->i_data;
++
++	init_rwsem(&ctx->ei.xattr_sem);
++	init_rwsem(&ctx->ei.i_data_sem);
++	spin_lock_init(&ctx->ei.i_raw_lock);
++	spin_lock_init(&ctx->ei.i_block_reservation_lock);
++	INIT_LIST_HEAD(&ctx->ei.i_orphan);
++	ctx->ei.i_prealloc_node = RB_ROOT;
++	rwlock_init(&ctx->ei.i_prealloc_lock);
++	ext4_es_init_tree(&ctx->ei.i_es_tree);
++	rwlock_init(&ctx->ei.i_es_lock);
++	INIT_LIST_HEAD(&ctx->ei.i_es_list);
++	ctx->ei.i_es_all_nr = 0;
++	ctx->ei.i_es_shk_nr = 0;
++
++	reset_inode_state(ctx, S_IFREG | 0644);
++
++	/* Activate static stubs */
 +	kunit_activate_static_stub(test, ext4_get_inode_loc,
-+				   ext4_get_inode_loc_stub);
-+	kunit_activate_static_stub(test, ext4_mark_iloc_dirty,
-+				   ext4_mark_iloc_dirty_stub);
-+	kunit_activate_static_stub(test, __ext4_mark_inode_dirty,
-+				   __ext4_mark_inode_dirty_stub);
++				   stub_get_inode_loc);
 +	kunit_activate_static_stub(test, __ext4_handle_dirty_metadata,
-+				   __ext4_handle_dirty_metadata_stub);
-+	kunit_activate_static_stub(test, ext4_mb_new_blocks,
-+				   ext4_mb_new_blocks_stub);
-+	kunit_activate_static_stub(test, ext4_free_blocks,
-+				   ext4_free_blocks_stub);
-+	kunit_activate_static_stub(test, ext4_xattr_getblk,
-+				   ext4_xattr_getblk_stub);
-+	kunit_activate_static_stub(test, ext4_sb_bread,
-+				   ext4_sb_bread_stub);
++				   stub_handle_dirty_metadata);
++	kunit_activate_static_stub(test, ext4_mark_iloc_dirty,
++				   stub_mark_iloc_dirty);
++	kunit_activate_static_stub(test, __ext4_mark_inode_dirty,
++				   stub_mark_inode_dirty);
 +	kunit_activate_static_stub(test, ext4_map_blocks,
-+				   ext4_map_blocks_stub);
-+	kunit_activate_static_stub(test, ext4_getblk,
-+				   ext4_getblk_stub);
-+	kunit_activate_static_stub(test, __ext4_new_inode,
-+				   __ext4_new_inode_stub);
-+	kunit_activate_static_stub(test, __ext4_iget,
-+				   __ext4_iget_stub);
++				   stub_map_blocks);
++	kunit_activate_static_stub(test, ext4_inline_getblk,
++				   stub_inline_getblk);
++	kunit_activate_static_stub(test, ext4_da_get_block_prep,
++				   stub_da_get_block_prep);
++	kunit_activate_static_stub(test, ext4_inode_journal_mode,
++				   stub_inode_journal_mode);
 +
 +	return 0;
 +}
 +
-+static void xattr_test_exit(struct kunit *test)
++static void inline_test_exit(struct kunit *test)
 +{
-+	struct xattr_test_ctx *ctx = test->priv;
++	struct inline_test_ctx *ctx = test->priv;
 +
-+	if (!ctx)
-+		return;
++	if (current->journal_info)
++		ext4_journal_stop(ext4_journal_current_handle());
 +
-+	ext4_xattr_destroy_cache(ctx->sbi.s_ea_block_cache);
-+	ctx->sbi.s_ea_block_cache = NULL;
-+	ext4_xattr_destroy_cache(ctx->sbi.s_ea_inode_cache);
-+	ctx->sbi.s_ea_inode_cache = NULL;
++	if (ctx) {
++		if (!list_empty(&ctx->ei.i_orphan))
++			list_del_init(&ctx->ei.i_orphan);
++		truncate_inode_pages(&ctx->ei.vfs_inode.i_data, 0);
++	}
++	t_ctx = NULL;
 +}
 +
-+/*
-+ * Test 1: Sizing macros, EXT4_INODE_HAS_XATTR_SPACE, and xattr_sem locking
-+ * helpers.
++/* =========================================================================
++ * 1. Capacity and Lookup Tests (ext4_get_max_inline_size /
++ *    ext4_find_inline_data_nolock)
++ * =========================================================================
 + */
-+static void test_xattr_macros_and_locking(struct kunit *test)
++
++static void test_max_inline_size_variants(struct kunit *test)
 +{
-+	struct xattr_test_ctx *ctx = test->priv;
-+	struct inode *inode = &ctx->primary.ei.vfs_inode;
-+	int save_outer = -1, save_inner = -1;
-+	int locked;
++	struct inline_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->ei.vfs_inode;
++	int ret;
 +
-+	/* EXT4_XATTR_LEN rounds (sizeof(entry) + name_len) to 4-byte boundary */
-+	KUNIT_EXPECT_EQ(test, EXT4_XATTR_LEN(0), 16U);
-+	KUNIT_EXPECT_EQ(test, EXT4_XATTR_LEN(1), 20U);
-+	KUNIT_EXPECT_EQ(test, EXT4_XATTR_LEN(4), 20U);
-+	KUNIT_EXPECT_EQ(test, EXT4_XATTR_LEN(5), 24U);
++	/* 1. Fresh 256-byte inode with 32-byte extra_isize -> 128 bytes */
++	KUNIT_EXPECT_EQ(test, ext4_get_max_inline_size(inode),
++			TEST_MAX_INLINE_SIZE);
 +
-+	/* EXT4_XATTR_SIZE rounds value size up to 4-byte boundary */
-+	KUNIT_EXPECT_EQ(test, EXT4_XATTR_SIZE(0), 0U);
-+	KUNIT_EXPECT_EQ(test, EXT4_XATTR_SIZE(1), 4U);
-+	KUNIT_EXPECT_EQ(test, EXT4_XATTR_SIZE(4), 4U);
-+	KUNIT_EXPECT_EQ(test, EXT4_XATTR_SIZE(5), 8U);
++	/* 2. Inode with i_extra_isize == 0 -> 0 */
++	ctx->ei.i_extra_isize = 0;
++	KUNIT_EXPECT_EQ(test, ext4_get_max_inline_size(inode), 0);
++	ctx->ei.i_extra_isize = TEST_EXTRA_ISIZE;
 +
-+	/*
-+	 * EXT4_XATTR_MIN_LARGE_EA_SIZE(b) is
-+	 * b - EXT4_XATTR_LEN(3) - sizeof(struct ext4_xattr_header) - 4.
-+	 */
-+	KUNIT_EXPECT_EQ(test, EXT4_XATTR_MIN_LARGE_EA_SIZE(1024), 968);
-+	KUNIT_EXPECT_EQ(test, EXT4_XATTR_MIN_LARGE_EA_SIZE(4096), 4040);
-+
-+	/*
-+	 * EXT4_INODE_HAS_XATTR_SPACE requires at least
-+	 * sizeof(ibody_header) + EXT4_XATTR_PAD = 8 bytes of space after
-+	 * EXT4_GOOD_OLD_INODE_SIZE + i_extra_isize.
-+	 */
-+	KUNIT_EXPECT_TRUE(test, EXT4_INODE_HAS_XATTR_SPACE(inode));
-+
++	/* 3. Old 128-byte inode size (no xattr space) -> 0 */
 +	ctx->sbi.s_inode_size = EXT4_GOOD_OLD_INODE_SIZE;
-+	KUNIT_EXPECT_FALSE(test, EXT4_INODE_HAS_XATTR_SPACE(inode));
++	KUNIT_EXPECT_EQ(test, ext4_get_max_inline_size(inode), 0);
 +	ctx->sbi.s_inode_size = TEST_INODE_SIZE;
 +
-+	/* Exact boundary: 256 - 128 - 8 = 120 bytes of i_extra_isize fits */
-+	EXT4_I(inode)->i_extra_isize = 120;
-+	KUNIT_EXPECT_TRUE(test, EXT4_INODE_HAS_XATTR_SPACE(inode));
++	/* 4. ext4_get_inode_loc error -> 0 */
++	ctx->get_inode_loc_err = -EIO;
++	KUNIT_EXPECT_EQ(test, ext4_get_max_inline_size(inode), 0);
++	ctx->get_inode_loc_err = 0;
 +
-+	/* 124 bytes leaves only 4 bytes (< 8 bytes required) */
-+	EXT4_I(inode)->i_extra_isize = 124;
-+	KUNIT_EXPECT_FALSE(test, EXT4_INODE_HAS_XATTR_SPACE(inode));
-+	EXT4_I(inode)->i_extra_isize = TEST_EXTRA_ISIZE;
++	/* 5. With a user xattr in ibody reducing free space */
++	{
++		struct ext4_xattr_ibody_find is = {
++			.s = { .not_found = -ENODATA, },
++		};
++		struct ext4_xattr_info i = {
++			.name_index = EXT4_XATTR_INDEX_USER,
++			.name = "foo",
++			.value = "12345678",
++			.value_len = 8,
++		};
 +
-+	/* Locking helpers and EXT4_STATE_NO_EXPAND state preservation */
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_test_inode_state(inode, EXT4_STATE_NO_EXPAND), 0);
-+
-+	ext4_write_lock_xattr(inode, &save_outer);
-+	locked = ext4_test_inode_state(inode, EXT4_STATE_NO_EXPAND);
-+	ext4_write_unlock_xattr(inode, &save_outer);
-+
-+	KUNIT_EXPECT_EQ(test, save_outer, 0);
-+	KUNIT_EXPECT_NE(test, locked, 0);
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_test_inode_state(inode, EXT4_STATE_NO_EXPAND), 0);
-+
-+	/* When EXT4_STATE_NO_EXPAND is already set, unlock must preserve it */
-+	ext4_set_inode_state(inode, EXT4_STATE_NO_EXPAND);
-+	locked = ext4_write_trylock_xattr(inode, &save_inner);
-+	if (locked)
-+		ext4_write_unlock_xattr(inode, &save_inner);
-+
-+	KUNIT_EXPECT_EQ(test, locked, 1);
-+	KUNIT_EXPECT_NE(test, save_inner, 0);
-+	KUNIT_EXPECT_NE(test,
-+			ext4_test_inode_state(inode, EXT4_STATE_NO_EXPAND), 0);
-+	ext4_clear_inode_state(inode, EXT4_STATE_NO_EXPAND);
-+}
-+
-+/*
-+ * Test 2: Parameterized xattr_check_inode() validation across valid and
-+ * corrupted in-inode xattr layouts.
-+ */
-+enum xattr_check_case_id {
-+	CHECK_VALID_EMPTY,
-+	CHECK_VALID_TWO_ENTRIES,
-+	CHECK_BAD_MAGIC,
-+	CHECK_END_BEFORE_FIRST,
-+	CHECK_ENTRY_HDR_OVERFLOW,
-+	CHECK_ENTRY_NAME_OVERFLOW,
-+	CHECK_UNTERMINATED_LIST,
-+	CHECK_NONZERO_OFFS_WITH_INUM,
-+	CHECK_VALUE_SIZE_GT_TOTAL,
-+	CHECK_VALUE_OFFS_OVERLAPS_ENTRY,
-+	CHECK_VALUE_END_EXCEEDS_TOTAL,
-+};
-+
-+struct xattr_check_param {
-+	const char *desc;
-+	enum xattr_check_case_id id;
-+	int expected_err;
-+};
-+
-+static const struct xattr_check_param xattr_check_params[] = {
-+	{ "valid_empty_ibody", CHECK_VALID_EMPTY, 0 },
-+	{ "valid_two_entries", CHECK_VALID_TWO_ENTRIES, 0 },
-+	{ "bad_magic", CHECK_BAD_MAGIC, -EFSCORRUPTED },
-+	{ "end_before_first_entry", CHECK_END_BEFORE_FIRST, -EFSCORRUPTED },
-+	{ "entry_header_overflows_end", CHECK_ENTRY_HDR_OVERFLOW, -EFSCORRUPTED },
-+	{ "entry_name_overflows_end", CHECK_ENTRY_NAME_OVERFLOW, -EFSCORRUPTED },
-+	{ "unterminated_entry_list", CHECK_UNTERMINATED_LIST, -EFSCORRUPTED },
-+	{ "nonzero_offs_with_value_inum", CHECK_NONZERO_OFFS_WITH_INUM, -EFSCORRUPTED },
-+	{ "value_size_gt_total_size", CHECK_VALUE_SIZE_GT_TOTAL, -EFSCORRUPTED },
-+	{ "value_offset_overlaps_entries", CHECK_VALUE_OFFS_OVERLAPS_ENTRY, -EFSCORRUPTED },
-+	{ "value_end_exceeds_total_size", CHECK_VALUE_END_EXCEEDS_TOTAL, -EFSCORRUPTED },
-+};
-+
-+static void xattr_check_param_get_desc(const struct xattr_check_param *p,
-+				       char *desc)
-+{
-+	strscpy(desc, p->desc, KUNIT_PARAM_DESC_SIZE);
-+}
-+
-+KUNIT_ARRAY_PARAM(xattr_check, xattr_check_params, xattr_check_param_get_desc);
-+
-+static void test_xattr_check_inode(struct kunit *test)
-+{
-+	const struct xattr_check_param *p = test->param_value;
-+	struct xattr_test_ctx *ctx = test->priv;
-+	struct inode *inode = &ctx->primary.ei.vfs_inode;
-+	struct ext4_inode *raw_inode = (struct ext4_inode *)ctx->primary.raw_buf;
-+	struct ext4_xattr_ibody_header *hdr = IHDR(inode, raw_inode);
-+	struct ext4_xattr_entry *e1, *e2;
-+	void *end = ITAIL(inode, raw_inode);
-+	size_t total_size = (char *)end - (char *)IFIRST(hdr);
-+	int ret;
-+
-+	memset(hdr, 0, (char *)end - (char *)hdr);
-+	hdr->h_magic = cpu_to_le32(EXT4_XATTR_MAGIC);
-+	e1 = IFIRST(hdr);
-+
-+	switch (p->id) {
-+	case CHECK_VALID_EMPTY:
-+		break;
-+	case CHECK_VALID_TWO_ENTRIES:
-+		e1->e_name_len = 1;
-+		e1->e_name_index = EXT4_XATTR_INDEX_USER;
-+		e1->e_name[0] = 'a';
-+		e1->e_value_size = cpu_to_le32(4);
-+		e1->e_value_offs = cpu_to_le16(total_size - 4);
-+
-+		e2 = EXT4_XATTR_NEXT(e1);
-+		e2->e_name_len = 1;
-+		e2->e_name_index = EXT4_XATTR_INDEX_USER;
-+		e2->e_name[0] = 'b';
-+		e2->e_value_size = cpu_to_le32(4);
-+		e2->e_value_offs = cpu_to_le16(total_size - 8);
-+		break;
-+	case CHECK_BAD_MAGIC:
-+		hdr->h_magic = cpu_to_le32(0xdeadbeef);
-+		break;
-+	case CHECK_END_BEFORE_FIRST:
-+		end = (char *)IFIRST(hdr) + 2;
-+		break;
-+	case CHECK_ENTRY_HDR_OVERFLOW:
-+		e1->e_name_len = 1;
-+		e1->e_name[0] = 'a';
-+		end = (char *)IFIRST(hdr) + EXT4_XATTR_LEN(1) + 8;
-+		e2 = EXT4_XATTR_NEXT(e1);
-+		e2->e_name_len = 1;
-+		break;
-+	case CHECK_ENTRY_NAME_OVERFLOW:
-+		e1->e_name_len = 100;
-+		break;
-+	case CHECK_UNTERMINATED_LIST:
-+		e1->e_name_len = 1;
-+		end = (char *)IFIRST(hdr) + EXT4_XATTR_LEN(1);
-+		break;
-+	case CHECK_NONZERO_OFFS_WITH_INUM:
-+		e1->e_name_len = 1;
-+		e1->e_value_inum = cpu_to_le32(20);
-+		e1->e_value_offs = cpu_to_le16(total_size - 4);
-+		break;
-+	case CHECK_VALUE_SIZE_GT_TOTAL:
-+		e1->e_name_len = 1;
-+		e1->e_value_size = cpu_to_le32(total_size + 4);
-+		e1->e_value_offs = cpu_to_le16(total_size - 4);
-+		break;
-+	case CHECK_VALUE_OFFS_OVERLAPS_ENTRY:
-+		e1->e_name_len = 1;
-+		e1->e_value_size = cpu_to_le32(4);
-+		/* Offset points inside e1 + 4-byte terminator */
-+		e1->e_value_offs = cpu_to_le16(EXT4_XATTR_LEN(1));
-+		break;
-+	case CHECK_VALUE_END_EXCEEDS_TOTAL:
-+		e1->e_name_len = 1;
-+		e1->e_value_size = cpu_to_le32(8);
-+		e1->e_value_offs = cpu_to_le16(total_size - 4);
-+		break;
++		ret = ext4_get_inode_loc(inode, &is.iloc);
++		KUNIT_ASSERT_EQ(test, ret, 0);
++		ret = ext4_xattr_ibody_find(inode, &i, &is);
++		KUNIT_ASSERT_EQ(test, ret, 0);
++		ret = ext4_xattr_ibody_set(NULL, inode, &i, &is);
++		KUNIT_ASSERT_EQ(test, ret, 0);
++		brelse(is.iloc.bh);
 +	}
++	/*
++	 * "foo" entry takes EXT4_XATTR_LEN(3) = 20 bytes + EXT4_XATTR_SIZE(8) = 8
++	 * Total 28 bytes consumed in ibody -> max inline size drops from 128 to 100.
++	 */
++	KUNIT_EXPECT_EQ(test, ext4_get_max_inline_size(inode),
++			TEST_MAX_INLINE_SIZE - 28);
 +
-+	ret = xattr_check_inode(inode, hdr, end);
-+	KUNIT_EXPECT_EQ_MSG(test, ret, p->expected_err, "case: %s", p->desc);
++	/* 6. When inline data already exists in system.data, its space counts as usable */
++	reset_inode_state(ctx, S_IFREG | 0644);
++	{
++		char buf[80];
++
++		memset(buf, 'A', sizeof(buf));
++		ret = create_inline_file(inode, buf, sizeof(buf));
++		KUNIT_ASSERT_EQ(test, ret, 0);
++	}
++	KUNIT_EXPECT_EQ(test, ext4_get_max_inline_size(inode),
++			TEST_MAX_INLINE_SIZE);
++
++	/*
++	 * 7. When ibody free space is smaller than EXT4_XATTR_LEN(strlen("data"))
++	 * (20 bytes), get_max_inline_xattr_value_size returns 0 -> max is 0.
++	 */
++	reset_inode_state(ctx, S_IFREG | 0644);
++	{
++		struct ext4_xattr_ibody_find is = {
++			.s = { .not_found = -ENODATA, },
++		};
++		char val[60];
++		struct ext4_xattr_info i = {
++			.name_index = EXT4_XATTR_INDEX_USER,
++			.name = "bigattr",
++			.value = val,
++			.value_len = sizeof(val),
++		};
++
++		memset(val, 'x', sizeof(val));
++		ret = ext4_get_inode_loc(inode, &is.iloc);
++		KUNIT_ASSERT_EQ(test, ret, 0);
++		ret = ext4_xattr_ibody_find(inode, &i, &is);
++		KUNIT_ASSERT_EQ(test, ret, 0);
++		ret = ext4_xattr_ibody_set(NULL, inode, &i, &is);
++		KUNIT_ASSERT_EQ(test, ret, 0);
++		brelse(is.iloc.bh);
++	}
++	KUNIT_EXPECT_EQ(test, ext4_get_max_inline_size(inode), 0);
++
++	/*
++	 * 8. Corrupted xattr entry in ibody (e_name_len overflows end of inode)
++	 * -> get_max_inline_xattr_value_size returns 0 -> total max is 0.
++	 */
++	{
++		struct ext4_inode *raw_inode =
++			(struct ext4_inode *)ctx->raw_inode_buf;
++		struct ext4_xattr_ibody_header *header = IHDR(inode, raw_inode);
++		struct ext4_xattr_entry *entry = IFIRST(header);
++
++		entry->e_name_len = 250;
++		KUNIT_EXPECT_EQ(test, ext4_get_max_inline_size(inode), 0);
++	}
 +}
 +
-+/*
-+ * Test 3: In-inode (ibody) get/set, flags validation, EXT4_STATE_NEW handling,
-+ * superblock feature update, and identical-value fastpath.
-+ */
-+static void test_xattr_ibody_basic_and_flags(struct kunit *test)
++static void test_find_inline_data_nolock(struct kunit *test)
 +{
-+	struct xattr_test_ctx *ctx = test->priv;
-+	struct inode *inode = &ctx->primary.ei.vfs_inode;
-+	struct ext4_inode *raw_inode = (struct ext4_inode *)ctx->primary.raw_buf;
-+	char long_name[260];
-+	char buf[32];
-+	unsigned int prev_dirty;
++	struct inline_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->ei.vfs_inode;
++	struct ext4_iloc iloc = { 0 };
++	char buf[90];
 +	int ret;
 +
-+	/* Fresh inode without EXT4_STATE_XATTR returns -ENODATA */
-+	ret = ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, "missing",
-+			     buf, sizeof(buf));
-+	KUNIT_EXPECT_EQ(test, ret, -ENODATA);
-+
-+	/* Parameter validation: NULL name -> -EINVAL, >255 name -> -ERANGE */
-+	ret = ext4_xattr_set_handle(NULL, inode, EXT4_XATTR_INDEX_USER,
-+				    NULL, "v", 1, 0);
-+	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
-+
-+	memset(long_name, 'x', sizeof(long_name) - 1);
-+	long_name[sizeof(long_name) - 1] = '\0';
-+	ret = ext4_xattr_set_handle(NULL, inode, EXT4_XATTR_INDEX_USER,
-+				    long_name, "v", 1, 0);
-+	KUNIT_EXPECT_EQ(test, ret, -ERANGE);
-+
-+	/* Forced shutdown check on get and set */
-+	set_bit(EXT4_FLAGS_SHUTDOWN, &ctx->sbi.s_ext4_flags);
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, "k",
-+				       buf, sizeof(buf)),
-+			-EIO);
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_xattr_set_handle(NULL, inode,
-+					      EXT4_XATTR_INDEX_USER, "k",
-+					      "v", 1, 0),
-+			-EIO);
-+	clear_bit(EXT4_FLAGS_SHUTDOWN, &ctx->sbi.s_ext4_flags);
-+
-+	/* XATTR_REPLACE on non-existent attribute returns -ENODATA */
-+	ret = ext4_xattr_set_handle(NULL, inode, EXT4_XATTR_INDEX_USER,
-+				    "no_such", "val", 3, XATTR_REPLACE);
-+	KUNIT_EXPECT_EQ(test, ret, -ENODATA);
-+
-+	/* Deleting non-existent attribute without XATTR_REPLACE succeeds (0) */
-+	ret = ext4_xattr_set_handle(NULL, inode, EXT4_XATTR_INDEX_USER,
-+				    "no_such", NULL, 0, 0);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+
-+	/*
-+	 * Verify EXT4_STATE_NEW causes ext4_xattr_set_handle() to zero the raw
-+	 * inode and clear EXT4_STATE_NEW.
-+	 */
-+	memset(raw_inode, 0x5a, TEST_INODE_SIZE);
-+	ext4_set_inode_state(inode, EXT4_STATE_NEW);
-+	KUNIT_EXPECT_FALSE(test,
-+			   ext4_has_feature_xattr(&ctx->sb));
-+
-+	ret = ext4_xattr_set_handle(NULL, inode, EXT4_XATTR_INDEX_USER,
-+				    "key1", "hello", 5, XATTR_CREATE);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_test_inode_state(inode, EXT4_STATE_NEW), 0);
-+	KUNIT_EXPECT_NE(test,
-+			ext4_test_inode_state(inode, EXT4_STATE_XATTR), 0);
-+	KUNIT_EXPECT_EQ(test, IHDR(inode, raw_inode)->h_magic,
-+			cpu_to_le32(EXT4_XATTR_MAGIC));
-+	/* Setting first xattr enables EXT4_FEATURE_COMPAT_EXT_ATTR on sb */
-+	KUNIT_EXPECT_TRUE(test, ext4_has_feature_xattr(&ctx->sb));
-+
-+	/* XATTR_CREATE on existing attribute returns -EEXIST */
-+	ret = ext4_xattr_set_handle(NULL, inode, EXT4_XATTR_INDEX_USER,
-+				    "key1", "other", 5, XATTR_CREATE);
-+	KUNIT_EXPECT_EQ(test, ret, -EEXIST);
-+
-+	/* Query length (NULL buffer), too small buffer (-ERANGE), and read */
-+	ret = ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, "key1", NULL, 0);
-+	KUNIT_EXPECT_EQ(test, ret, 5);
-+
-+	ret = ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, "key1", buf, 4);
-+	KUNIT_EXPECT_EQ(test, ret, -ERANGE);
-+
-+	memset(buf, 0, sizeof(buf));
-+	ret = ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, "key1",
-+			     buf, sizeof(buf));
-+	KUNIT_EXPECT_EQ(test, ret, 5);
-+	KUNIT_EXPECT_MEMEQ(test, buf, "hello", 5);
-+
-+	/* Direct ext4_xattr_ibody_get() check */
-+	memset(buf, 0, sizeof(buf));
-+	ret = ext4_xattr_ibody_get(inode, EXT4_XATTR_INDEX_USER, "key1",
-+				   buf, sizeof(buf));
-+	KUNIT_EXPECT_EQ(test, ret, 5);
-+	KUNIT_EXPECT_MEMEQ(test, buf, "hello", 5);
-+
-+	/*
-+	 * Setting the exact same value triggers the ext4_xattr_value_same()
-+	 * fastpath and skips dirtying the inode location.
-+	 */
-+	prev_dirty = ctx->mark_iloc_dirty_calls;
-+	ret = ext4_xattr_set_handle(NULL, inode, EXT4_XATTR_INDEX_USER,
-+				    "key1", "hello", 5, XATTR_REPLACE);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, ctx->mark_iloc_dirty_calls, prev_dirty);
-+}
-+
-+/*
-+ * Test 4: In-inode (ibody) replacement (same padded size vs different size),
-+ * zero-length values, entry removal, and i_inline_off adjustment.
-+ */
-+static void test_xattr_ibody_replace_and_remove(struct kunit *test)
-+{
-+	struct xattr_test_ctx *ctx = test->priv;
-+	struct inode *inode = &ctx->primary.ei.vfs_inode;
-+	struct ext4_inode *raw_inode = (struct ext4_inode *)ctx->primary.raw_buf;
-+	struct ext4_xattr_ibody_header *hdr = IHDR(inode, raw_inode);
-+	struct ext4_xattr_entry *e;
-+	char buf[32];
-+	u16 offs_before, offs_after;
-+	int ret;
-+
-+	/* Create two entries in ibody: "a" (7 bytes -> 8 padded) and "b" (4 bytes) */
-+	ret = ext4_xattr_set_handle(NULL, inode, EXT4_XATTR_INDEX_USER,
-+				    "a", "1234567", 7, XATTR_CREATE);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+	ret = ext4_xattr_set_handle(NULL, inode, EXT4_XATTR_INDEX_USER,
-+				    "b", "wxyz", 4, XATTR_CREATE);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+
-+	e = IFIRST(hdr);
-+	offs_before = le16_to_cpu(e->e_value_offs);
-+
-+	/*
-+	 * Replace "a" with a 5-byte value (still 8 bytes padded): hits the
-+	 * in-place overwrite fastpath without shifting offsets, and zeroes
-+	 * the last 3 padding bytes.
-+	 */
-+	ret = ext4_xattr_set_handle(NULL, inode, EXT4_XATTR_INDEX_USER,
-+				    "a", "ABCDE", 5, XATTR_REPLACE);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+
-+	offs_after = le16_to_cpu(e->e_value_offs);
-+	KUNIT_EXPECT_EQ(test, offs_after, offs_before);
-+	KUNIT_EXPECT_MEMEQ(test, (char *)IFIRST(hdr) + offs_after,
-+			   "ABCDE\0\0\0", 8);
-+
-+	/*
-+	 * Replace "a" with a 12-byte value (different padded size): shifts
-+	 * "b"'s value and updates offsets while preserving "b"'s content.
-+	 */
-+	ret = ext4_xattr_set_handle(NULL, inode, EXT4_XATTR_INDEX_USER,
-+				    "a", "0123456789ab", 12, XATTR_REPLACE);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, "a",
-+				       buf, sizeof(buf)),
-+			12);
-+	KUNIT_EXPECT_MEMEQ(test, buf, "0123456789ab", 12);
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, "b",
-+				       buf, sizeof(buf)),
-+			4);
-+	KUNIT_EXPECT_MEMEQ(test, buf, "wxyz", 4);
-+
-+	/* Replace "a" with a zero-length value ("", size = 0) */
-+	ret = ext4_xattr_set_handle(NULL, inode, EXT4_XATTR_INDEX_USER,
-+				    "a", "", 0, XATTR_REPLACE);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, "a",
-+				       buf, sizeof(buf)),
-+			0);
-+
-+	/*
-+	 * Add system.data (inline data entry) and verify removing an earlier
-+	 * entry ("a") shifts system.data's entry header left and updates
-+	 * EXT4_I(inode)->i_inline_off.
-+	 */
-+	ret = ext4_xattr_set_handle(NULL, inode, EXT4_XATTR_INDEX_SYSTEM,
-+				    "data", "inlinedata", 10,
-+				    XATTR_CREATE);
++	/* 1. i_extra_isize == 0 -> returns 0 immediately without setting inline state */
++	ctx->ei.i_extra_isize = 0;
++	ret = ext4_get_inode_loc(inode, &iloc);
 +	KUNIT_ASSERT_EQ(test, ret, 0);
 +	ret = ext4_find_inline_data_nolock(inode);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+	ext4_set_inode_flag(inode, EXT4_INODE_INLINE_DATA);
-+	ext4_set_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
-+	offs_before = EXT4_I(inode)->i_inline_off;
-+	KUNIT_EXPECT_GT(test, offs_before, (u16)0);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_FALSE(test, ext4_has_inline_data(inode));
++	brelse(iloc.bh);
++	ctx->ei.i_extra_isize = TEST_EXTRA_ISIZE;
 +
-+	/* Remove "a": system.data entry header moves left by EXT4_XATTR_LEN(1) */
-+	ret = ext4_xattr_set_handle(NULL, inode, EXT4_XATTR_INDEX_USER,
-+				    "a", NULL, 0, XATTR_REPLACE);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, EXT4_I(inode)->i_inline_off,
-+			(u16)(offs_before - EXT4_XATTR_LEN(1)));
++	/* 2. ext4_get_inode_loc error -> propagates error */
++	ctx->get_inode_loc_err = -EIO;
++	ret = ext4_find_inline_data_nolock(inode);
++	KUNIT_EXPECT_EQ(test, ret, -EIO);
++	ctx->get_inode_loc_err = 0;
 +
-+	/* Remove "b" and "system.data": emptying ibody clears h_magic and state */
-+	ext4_clear_inode_flag(inode, EXT4_INODE_INLINE_DATA);
++	/* 3. Inode without EXT4_STATE_XATTR -> returns 0, inline_size == 0 */
++	ret = ext4_find_inline_data_nolock(inode);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, ctx->ei.i_inline_size, 0);
++
++	/* 4. Inode with EXT4_STATE_XATTR set, but no system.data xattr -> 0 */
++	ext4_set_inode_state(inode, EXT4_STATE_XATTR);
++	{
++		struct ext4_inode *raw_inode =
++			(struct ext4_inode *)ctx->raw_inode_buf;
++		struct ext4_xattr_ibody_header *header = IHDR(inode, raw_inode);
++
++		header->h_magic = cpu_to_le32(EXT4_XATTR_MAGIC);
++	}
++	ret = ext4_find_inline_data_nolock(inode);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, ctx->ei.i_inline_size, 0);
++
++	/* 5. Inode with 30-byte inline file (0-byte system.data xattr) */
++	reset_inode_state(ctx, S_IFREG | 0644);
++	memset(buf, 'B', sizeof(buf));
++	ret = create_inline_file(inode, buf, 30);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++
++	ctx->ei.i_inline_off = 0;
++	ctx->ei.i_inline_size = 0;
 +	ext4_clear_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
-+	ret = ext4_xattr_set_handle(NULL, inode, EXT4_XATTR_INDEX_USER,
-+				    "b", NULL, 0, XATTR_REPLACE);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_NE(test,
-+			ext4_test_inode_state(inode, EXT4_STATE_XATTR), 0);
++	ret = ext4_find_inline_data_nolock(inode);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, ctx->ei.i_inline_size, EXT4_MIN_INLINE_DATA_SIZE);
++	KUNIT_EXPECT_NE(test, ctx->ei.i_inline_off, 0);
++	KUNIT_EXPECT_TRUE(test, ext4_has_inline_data(inode));
 +
-+	ret = ext4_xattr_set_handle(NULL, inode, EXT4_XATTR_INDEX_SYSTEM,
-+				    "data", NULL, 0,
-+				    XATTR_REPLACE);
++	/* 6. Inode with 90-byte inline file (30-byte system.data xattr) */
++	reset_inode_state(ctx, S_IFREG | 0644);
++	ret = create_inline_file(inode, buf, 90);
 +	KUNIT_ASSERT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, hdr->h_magic, cpu_to_le32(0));
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_test_inode_state(inode, EXT4_STATE_XATTR), 0);
++
++	ctx->ei.i_inline_off = 0;
++	ctx->ei.i_inline_size = 0;
++	ret = ext4_find_inline_data_nolock(inode);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, ctx->ei.i_inline_size, 90);
++	KUNIT_EXPECT_GT(test, ctx->ei.i_inline_off,
++			EXT4_GOOD_OLD_INODE_SIZE + TEST_EXTRA_ISIZE);
++
++	/* 7. Corrupted system.data entry with non-zero e_value_inum -> -EFSCORRUPTED */
++	{
++		struct ext4_inode *raw_inode =
++			(struct ext4_inode *)ctx->raw_inode_buf;
++		struct ext4_xattr_ibody_header *header = IHDR(inode, raw_inode);
++		struct ext4_xattr_entry *entry = IFIRST(header);
++
++		entry->e_value_inum = cpu_to_le32(99);
++		ret = ext4_find_inline_data_nolock(inode);
++		KUNIT_EXPECT_EQ(test, ret, -EFSCORRUPTED);
++	}
 +}
 +
-+/*
-+ * Test 5: External xattr block allocation, entry sorting, migration between
-+ * ibody and external block, EXT4_XATTR_BLOCK_RESERVE enforcement, and external
-+ * block header/CRC32C checksum validation.
++/* =========================================================================
++ * 2. Inline File Write & Destroy Lifecycle Tests
++ * =========================================================================
 + */
-+static void test_xattr_external_block_and_check(struct kunit *test)
++
++static void test_write_and_destroy_inline_data(struct kunit *test)
 +{
-+	struct xattr_test_ctx *ctx = test->priv;
-+	struct inode *inode = &ctx->primary.ei.vfs_inode;
-+	struct mock_block *blk;
-+	struct ext4_xattr_header *bhdr;
-+	struct ext4_xattr_entry *e1, *e2, *e3;
-+	char val100[100];
-+	char *val796;
-+	char buf[128];
++	struct inline_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->ei.vfs_inode;
++	struct ext4_iloc iloc = { 0 };
++	struct folio *folio = NULL;
++	handle_t *handle;
++	char pattern[100];
++	char verify_buf[100];
++	void *kaddr;
++	int i, ret;
++
++	for (i = 0; i < sizeof(pattern); i++)
++		pattern[i] = (char)('A' + (i % 26));
++
++	/*
++	 * Step 1: Write 20 bytes into a brand-new inode (fits in i_block).
++	 */
++	inode_lock(inode);
++	ret = ext4_try_to_write_inline_data(&inode->i_data, inode, 0, 20,
++					    &folio);
++	KUNIT_ASSERT_EQ(test, ret, 1);
++	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, folio);
++	KUNIT_EXPECT_TRUE(test, folio_test_locked(folio));
++	KUNIT_EXPECT_TRUE(test, ext4_has_inline_data(inode));
++	KUNIT_EXPECT_EQ(test, ctx->ei.i_inline_size,
++			(u16)EXT4_MIN_INLINE_DATA_SIZE);
++
++	kaddr = kmap_local_folio(folio, 0);
++	memcpy(kaddr, pattern, 20);
++	kunmap_local(kaddr);
++
++	ret = ext4_write_inline_data_end(inode, 0, 20, 20, folio);
++	inode_unlock(inode);
++	KUNIT_EXPECT_EQ(test, ret, 20);
++	KUNIT_EXPECT_NULL(test, current->journal_info);
++	i_size_write(inode, 20);
++	ctx->ei.i_disksize = 20;
++
++	/* Verify i_block contents */
++	KUNIT_EXPECT_MEMEQ(test, raw_inline_i_block(ctx), pattern, 20);
++
++	/*
++	 * Step 2: Expand from 20 bytes to 90 bytes (crosses 60-byte boundary
++	 * into ibody system.data xattr via ext4_update_inline_data).
++	 */
++	inode_lock(inode);
++	folio = NULL;
++	ret = ext4_try_to_write_inline_data(&inode->i_data, inode, 20, 70,
++					    &folio);
++	KUNIT_ASSERT_EQ(test, ret, 1);
++	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, folio);
++	KUNIT_EXPECT_EQ(test, ctx->ei.i_inline_size, 90);
++
++	/* Verify existing first 20 bytes were loaded into the folio by prepare_inline_data */
++	kaddr = kmap_local_folio(folio, 0);
++	KUNIT_EXPECT_MEMEQ(test, kaddr, pattern, 20);
++	memcpy((char *)kaddr + 20, pattern + 20, 70);
++	kunmap_local(kaddr);
++
++	ret = ext4_write_inline_data_end(inode, 20, 70, 70, folio);
++	inode_unlock(inode);
++	KUNIT_EXPECT_EQ(test, ret, 70);
++	i_size_write(inode, 90);
++	ctx->ei.i_disksize = 90;
++
++	/*
++	 * Step 3: Overwrite 15 bytes purely within the xattr region
++	 * (pos = 65, len = 15 -> pos >= EXT4_MIN_INLINE_DATA_SIZE).
++	 */
++	memset(pattern + 65, 'Z', 15);
++	inode_lock(inode);
++	folio = NULL;
++	ret = ext4_try_to_write_inline_data(&inode->i_data, inode, 65, 15,
++					    &folio);
++	KUNIT_ASSERT_EQ(test, ret, 1);
++	kaddr = kmap_local_folio(folio, 0);
++	memcpy((char *)kaddr + 65, pattern + 65, 15);
++	kunmap_local(kaddr);
++	ret = ext4_write_inline_data_end(inode, 65, 15, 15, folio);
++	inode_unlock(inode);
++	KUNIT_EXPECT_EQ(test, ret, 15);
++
++	/* Verify both i_block (first 60B) and ibody xattr (remaining 30B) */
++	memcpy(verify_buf, raw_inline_i_block(ctx), EXT4_MIN_INLINE_DATA_SIZE);
++	memcpy(verify_buf + EXT4_MIN_INLINE_DATA_SIZE,
++	       raw_inline_xattr_pos(ctx), 30);
++	KUNIT_EXPECT_MEMEQ(test, verify_buf, pattern, 90);
++
++	/*
++	 * Step 4: Destroy inline data on a regular file -> clears inline state
++	 * and initializes extent tree (EXT4_INODE_EXTENTS).
++	 */
++	handle = ext4_journal_start(inode, EXT4_HT_INODE, 1);
++	KUNIT_ASSERT_FALSE(test, IS_ERR(handle));
++	ret = ext4_get_inode_loc(inode, &iloc);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	ret = ext4_destroy_inline_data(handle, inode);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_FALSE(test, ext4_has_inline_data(inode));
++	KUNIT_EXPECT_EQ(test, ctx->ei.i_inline_off, 0);
++	KUNIT_EXPECT_EQ(test, ctx->ei.i_inline_size, 0);
++	KUNIT_EXPECT_TRUE(test, ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS));
++	brelse(iloc.bh);
++
++	/* Calling destroy again when inline_off == 0 is a no-op returning 0 */
++	ret = ext4_destroy_inline_data(handle, inode);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	ext4_journal_stop(handle);
++
++	/*
++	 * Step 5: Initial creation directly > 60 bytes (75 bytes) on a non-extent
++	 * mode inode (e.g. S_IFIFO) -> destroy does NOT set EXT4_INODE_EXTENTS.
++	 */
++	reset_inode_state(ctx, S_IFIFO | 0644);
++	ret = create_inline_file(inode, pattern, 75);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, ctx->ei.i_inline_size, 75);
++
++	handle = ext4_journal_start(inode, EXT4_HT_INODE, 1);
++	KUNIT_ASSERT_FALSE(test, IS_ERR(handle));
++	ret = ext4_destroy_inline_data(handle, inode);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_FALSE(test, ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS));
++	ext4_journal_stop(handle);
++}
++
++static void test_write_inline_short_copy_and_edge_cases(struct kunit *test)
++{
++	struct inline_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->ei.vfs_inode;
++	struct folio *folio = NULL;
++	char buf[80];
++	void *kaddr;
 +	int ret;
 +
-+	ext4_set_feature_metadata_csum(&ctx->sb);
-+	memset(val100, 'V', sizeof(val100));
++	memset(buf, 'M', sizeof(buf));
++	ret = create_inline_file(inode, buf, 20);
++	KUNIT_ASSERT_EQ(test, ret, 0);
 +
 +	/*
-+	 * Start with a small attribute in ibody ("migr", 4 bytes), then grow
-+	 * it to 100 bytes (> 88-byte ibody space) so it migrates from ibody
-+	 * to a newly allocated external block.
++	 * 1. Short write (copied < len) when expanding from 20B to 80B:
++	 * prepare_inline_data expands xattr to 80B, but only 10 bytes are
++	 * copied (pos=20, len=60, copied=10 -> pos+copied=30 > i_size=20).
++	 * ext4_write_inline_data_end adds to orphan, updates i_disksize to 30,
++	 * and calls ext4_truncate_failed_write -> shrinks inline data back to
++	 * 60B (i_block only).
 +	 */
-+	ret = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, "migr",
-+			     "tiny", 4, XATTR_CREATE);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, EXT4_I(inode)->i_file_acl, 0ULL);
++	inode_lock(inode);
++	ret = ext4_try_to_write_inline_data(&inode->i_data, inode, 20, 60,
++					    &folio);
++	KUNIT_ASSERT_EQ(test, ret, 1);
++	KUNIT_EXPECT_EQ(test, ctx->ei.i_inline_size, 80);
 +
-+	ret = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, "migr",
-+			     val100, sizeof(val100), XATTR_REPLACE);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_NE(test, EXT4_I(inode)->i_file_acl, 0ULL);
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_test_inode_state(inode, EXT4_STATE_XATTR), 0);
++	kaddr = kmap_local_folio(folio, 0);
++	memcpy((char *)kaddr + 20, "0123456789", 10);
++	kunmap_local(kaddr);
++
++	ret = ext4_write_inline_data_end(inode, 20, 60, 10, folio);
++	KUNIT_EXPECT_EQ(test, ret, 10);
++	KUNIT_EXPECT_EQ(test, i_size_read(inode), 30);
++	KUNIT_EXPECT_EQ(test, ctx->ei.i_inline_size,
++			(u16)EXT4_MIN_INLINE_DATA_SIZE);
++	KUNIT_EXPECT_TRUE(test, list_empty(&ctx->ei.i_orphan));
++	inode_unlock(inode);
 +
 +	/*
-+	 * Add two more entries into the external block (by temporarily setting
-+	 * s_inode_size = 128 so ibody is bypassed) and verify external block
-+	 * entries are kept sorted by (e_name_index, e_name_len, e_name).
++	 * 2. Short write (copied < len) when folio is NOT uptodate ->
++	 * copied is forced to 0.
 +	 */
-+	ctx->sbi.s_inode_size = EXT4_GOOD_OLD_INODE_SIZE;
-+	ret = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, "z",
-+			     "1", 1, XATTR_CREATE);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+	ret = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, "a",
-+			     "2", 1, XATTR_CREATE);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+	ctx->sbi.s_inode_size = TEST_INODE_SIZE;
-+
-+	blk = find_mock_block(ctx, EXT4_I(inode)->i_file_acl);
-+	KUNIT_ASSERT_NOT_NULL(test, blk);
-+	bhdr = BHDR(&blk->bh);
-+	e1 = BFIRST(&blk->bh);
-+	e2 = EXT4_XATTR_NEXT(e1);
-+	e3 = EXT4_XATTR_NEXT(e2);
-+
-+	/* Length 1 ("a", "z") precede length 4 ("migr") */
-+	KUNIT_EXPECT_EQ(test, e1->e_name_len, 1);
-+	KUNIT_EXPECT_EQ(test, e1->e_name[0], 'a');
-+	KUNIT_EXPECT_EQ(test, e2->e_name_len, 1);
-+	KUNIT_EXPECT_EQ(test, e2->e_name[0], 'z');
-+	KUNIT_EXPECT_EQ(test, e3->e_name_len, 4);
-+	KUNIT_EXPECT_MEMEQ(test, e3->e_name, "migr", 4);
++	inode_lock(inode);
++	folio = NULL;
++	ret = ext4_try_to_write_inline_data(&inode->i_data, inode, 30, 10,
++					    &folio);
++	KUNIT_ASSERT_EQ(test, ret, 1);
++	folio_clear_uptodate(folio);
++	ret = ext4_write_inline_data_end(inode, 30, 10, 5, folio);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, i_size_read(inode), 30);
++	inode_unlock(inode);
 +
 +	/*
-+	 * Verify external block validation and buffer_verified caching:
-+	 * 1) Reading sets buffer_verified.
-+	 * 2) Corrupting h_checksum while buffer_verified is set still succeeds
-+	 *    because ext4_xattr_check_block() trusts buffer_verified.
-+	 * 3) Clearing buffer_verified exposes the bad checksum (-EFSBADCRC).
-+	 * 4) Corrupting h_blocks or h_magic returns -EFSCORRUPTED.
++	 * 3. Emergency shutdown flag (EXT4_FLAGS_SHUTDOWN):
++	 *   3a. Set before ext4_try_to_write_inline_data -> ext4_journal_start
++	 *       fails with -EIO.
++	 *   3b. Set after ext4_try_to_write_inline_data -> ext4_write_inline_data
++	 *       returns early without modifying inline data.
 +	 */
-+	clear_buffer_verified(&blk->bh);
-+	ret = ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, "migr",
-+			     buf, sizeof(buf));
-+	KUNIT_EXPECT_EQ(test, ret, 100);
-+	KUNIT_EXPECT_NE(test, buffer_verified(&blk->bh), 0);
++	set_bit(EXT4_FLAGS_SHUTDOWN, &ctx->sbi.s_ext4_flags);
++	inode_lock(inode);
++	folio = NULL;
++	ret = ext4_try_to_write_inline_data(&inode->i_data, inode, 0, 10,
++					    &folio);
++	inode_unlock(inode);
++	KUNIT_EXPECT_EQ(test, ret, -EIO);
++	clear_bit(EXT4_FLAGS_SHUTDOWN, &ctx->sbi.s_ext4_flags);
 +
-+	bhdr->h_checksum ^= cpu_to_le32(1);
-+	ret = ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, "a",
-+			     buf, sizeof(buf));
++	inode_lock(inode);
++	folio = NULL;
++	ret = ext4_try_to_write_inline_data(&inode->i_data, inode, 0, 10,
++					    &folio);
++	KUNIT_ASSERT_EQ(test, ret, 1);
++	kaddr = kmap_local_folio(folio, 0);
++	memcpy(kaddr, "XXXXXXXXXX", 10);
++	kunmap_local(kaddr);
++	set_bit(EXT4_FLAGS_SHUTDOWN, &ctx->sbi.s_ext4_flags);
++	ret = ext4_write_inline_data_end(inode, 0, 10, 10, folio);
++	inode_unlock(inode);
++	KUNIT_EXPECT_EQ(test, ret, 10);
++	/* i_block should still have 'M's because shutdown skipped ext4_write_inline_data */
++	KUNIT_EXPECT_MEMEQ(test, raw_inline_i_block(ctx), buf, 10);
++	clear_bit(EXT4_FLAGS_SHUTDOWN, &ctx->sbi.s_ext4_flags);
++
++	/*
++	 * 4. Race condition where EXT4_INODE_INLINE_DATA is cleared before
++	 * ext4_write_inline_data_end runs -> skips inline copy and returns 0.
++	 */
++	inode_lock(inode);
++	folio = NULL;
++	ret = ext4_try_to_write_inline_data(&inode->i_data, inode, 0, 10,
++					    &folio);
++	KUNIT_ASSERT_EQ(test, ret, 1);
++	ext4_clear_inode_flag(inode, EXT4_INODE_INLINE_DATA);
++	ret = ext4_write_inline_data_end(inode, 0, 10, 10, folio);
++	inode_unlock(inode);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	ext4_set_inode_flag(inode, EXT4_INODE_INLINE_DATA);
++
++	/*
++	 * 5. Corruption detection in ext4_create_inline_data when system.data
++	 * already exists on an inode with i_inline_off == 0 (e.g. corrupted
++	 * e_value_inum so ext4_find_inline_data_nolock leaves i_inline_off == 0).
++	 */
++	{
++		struct ext4_inode *raw_inode =
++			(struct ext4_inode *)ctx->raw_inode_buf;
++		struct ext4_xattr_ibody_header *header = IHDR(inode, raw_inode);
++		struct ext4_xattr_entry *entry = IFIRST(header);
++
++		entry->e_value_inum = cpu_to_le32(1);
++		ctx->ei.i_inline_off = 0;
++		ctx->ei.i_inline_size = 0;
++		ext4_clear_inode_flag(inode, EXT4_INODE_INLINE_DATA);
++		ext4_set_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
++		folio = NULL;
++		ret = ext4_try_to_write_inline_data(&inode->i_data, inode, 0,
++						    10, &folio);
++		KUNIT_EXPECT_EQ(test, ret, -EFSCORRUPTED);
++	}
++
++	/*
++	 * 6. Corruption detection in ext4_update_inline_data when inline state
++	 * claims inline data exists, but system.data xattr was wiped.
++	 */
++	reset_inode_state(ctx, S_IFREG | 0644);
++	ctx->ei.i_inline_off = 164;
++	ctx->ei.i_inline_size = EXT4_MIN_INLINE_DATA_SIZE;
++	ext4_set_inode_flag(inode, EXT4_INODE_INLINE_DATA);
++	folio = NULL;
++	ret = ext4_try_to_write_inline_data(&inode->i_data, inode, 0, 80,
++					    &folio);
++	KUNIT_EXPECT_EQ(test, ret, -EFSCORRUPTED);
++}
++
++/* =========================================================================
++ * 3. Reading Inline Data, Symlinks, and iomap Tests
++ * =========================================================================
++ */
++
++static void test_readpage_inline_link_and_iomap(struct kunit *test)
++{
++	struct inline_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->ei.vfs_inode;
++	struct folio *folio;
++	struct iomap iomap = { 0 };
++	char content[85];
++	const char *short_link = "/usr/bin/python3";
++	char long_link[85];
++	char *target;
++	void *kaddr;
++	int i, ret;
++
++	for (i = 0; i < sizeof(content); i++)
++		content[i] = (char)('0' + (i % 10));
++
++	/* 1. ext4_readpage_inline and ext4_inline_data_iomap on non-inline inode -> -EAGAIN */
++	folio = __filemap_get_folio(&inode->i_data, 0,
++				    FGP_LOCK | FGP_ACCESSED | FGP_CREAT,
++				    GFP_KERNEL);
++	KUNIT_ASSERT_FALSE(test, IS_ERR(folio));
++	ret = ext4_readpage_inline(inode, folio);
++	KUNIT_EXPECT_EQ(test, ret, -EAGAIN);
++	folio_unlock(folio);
++	folio_put(folio);
++
++	ret = ext4_inline_data_iomap(inode, &iomap);
++	KUNIT_EXPECT_EQ(test, ret, -EAGAIN);
++
++	/* 2. Create 85-byte inline file and test ext4_readpage_inline on index 0 */
++	truncate_inode_pages(&inode->i_data, 0);
++	ret = create_inline_file(inode, content, sizeof(content));
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	truncate_inode_pages(&inode->i_data, 0);
++
++	folio = __filemap_get_folio(&inode->i_data, 0,
++				    FGP_LOCK | FGP_ACCESSED | FGP_CREAT,
++				    GFP_KERNEL);
++	KUNIT_ASSERT_FALSE(test, IS_ERR(folio));
++	ret = ext4_readpage_inline(inode, folio);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_TRUE(test, folio_test_uptodate(folio));
++	KUNIT_EXPECT_FALSE(test, folio_test_locked(folio));
++
++	kaddr = kmap_local_folio(folio, 0);
++	KUNIT_EXPECT_MEMEQ(test, kaddr, content, sizeof(content));
++	/* Verify zero-padding past inline_size */
++	KUNIT_EXPECT_EQ(test, ((char *)kaddr)[sizeof(content)], 0);
++	KUNIT_EXPECT_EQ(test, ((char *)kaddr)[PAGE_SIZE - 1], 0);
++	kunmap_local(kaddr);
++	folio_put(folio);
++
++	/* 3. ext4_readpage_inline on folio->index > 0 zeros the folio and marks uptodate */
++	folio = __filemap_get_folio(&inode->i_data, 1,
++				    FGP_LOCK | FGP_ACCESSED | FGP_CREAT,
++				    GFP_KERNEL);
++	KUNIT_ASSERT_FALSE(test, IS_ERR(folio));
++	kaddr = kmap_local_folio(folio, 0);
++	memset(kaddr, 0xff, PAGE_SIZE);
++	kunmap_local(kaddr);
++
++	ret = ext4_readpage_inline(inode, folio);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_TRUE(test, folio_test_uptodate(folio));
++	kaddr = kmap_local_folio(folio, 0);
++	KUNIT_EXPECT_EQ(test, ((unsigned char *)kaddr)[0], 0);
++	kunmap_local(kaddr);
++	folio_put(folio);
++
++	/* 4. ext4_readpage_inline when ext4_get_inode_loc fails -> propagates error */
++	truncate_inode_pages(&inode->i_data, 0);
++	ctx->get_inode_loc_err = -EIO;
++	folio = __filemap_get_folio(&inode->i_data, 0,
++				    FGP_LOCK | FGP_ACCESSED | FGP_CREAT,
++				    GFP_KERNEL);
++	KUNIT_ASSERT_FALSE(test, IS_ERR(folio));
++	ret = ext4_readpage_inline(inode, folio);
++	KUNIT_EXPECT_EQ(test, ret, -EIO);
++	folio_put(folio);
++	ctx->get_inode_loc_err = 0;
++
++	/*
++	 * 5. ext4_readpage_inline when i_inline_size > PAGE_SIZE -> -EFSCORRUPTED.
++	 * i_inline_size is a u16, so it can only exceed PAGE_SIZE when
++	 * PAGE_SIZE < U16_MAX (e.g. 4KB, 8KB, 16KB, or 32KB base pages).
++	 */
++	if (PAGE_SIZE < U16_MAX) {
++		truncate_inode_pages(&inode->i_data, 0);
++		ctx->ei.i_inline_size = U16_MAX;
++		i_size_write(inode, U16_MAX);
++		folio = __filemap_get_folio(&inode->i_data, 0,
++					    FGP_LOCK | FGP_ACCESSED | FGP_CREAT,
++					    GFP_KERNEL);
++		KUNIT_ASSERT_FALSE(test, IS_ERR(folio));
++		ret = ext4_readpage_inline(inode, folio);
++		KUNIT_EXPECT_EQ(test, ret, -EFSCORRUPTED);
++		folio_put(folio);
++		ctx->ei.i_inline_size = sizeof(content);
++		i_size_write(inode, sizeof(content));
++	}
++
++	/* 6. ext4_inline_data_iomap populates IOMAP_INLINE with inline address/len */
++	memset(&iomap, 0, sizeof(iomap));
++	ret = ext4_inline_data_iomap(inode, &iomap);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, iomap.type, (u16)IOMAP_INLINE);
++	KUNIT_EXPECT_EQ(test, iomap.offset, 0ULL);
++	KUNIT_EXPECT_EQ(test, iomap.length, (u64)sizeof(content));
++	KUNIT_EXPECT_EQ(test, iomap.addr,
++			((u64)ctx->iloc_bh.b_blocknr << TEST_BLOCK_BITS) +
++			offsetof(struct ext4_inode, i_block));
++
++	/* 7. ext4_inline_data_iomap error when ext4_get_inode_loc fails */
++	ctx->get_inode_loc_err = -EIO;
++	ret = ext4_inline_data_iomap(inode, &iomap);
++	KUNIT_EXPECT_EQ(test, ret, -EIO);
++	ctx->get_inode_loc_err = 0;
++
++	/* 8. ext4_read_inline_link: short symlink (in i_block) and long symlink (in xattr) */
++	reset_inode_state(ctx, S_IFLNK | 0777);
++	ret = create_inline_file(inode, short_link, strlen(short_link));
++	KUNIT_ASSERT_EQ(test, ret, 0);
++
++	target = ext4_read_inline_link(inode);
++	KUNIT_ASSERT_FALSE(test, IS_ERR(target));
++	KUNIT_EXPECT_STREQ(test, target, short_link);
++	kfree(target);
++
++	reset_inode_state(ctx, S_IFLNK | 0777);
++	memset(long_link, 'a', sizeof(long_link) - 1);
++	long_link[sizeof(long_link) - 1] = '\0';
++	ret = create_inline_file(inode, long_link, strlen(long_link));
++	KUNIT_ASSERT_EQ(test, ret, 0);
++
++	target = ext4_read_inline_link(inode);
++	KUNIT_ASSERT_FALSE(test, IS_ERR(target));
++	KUNIT_EXPECT_STREQ(test, target, long_link);
++	kfree(target);
++
++	/* ext4_read_inline_link error when ext4_get_inode_loc fails */
++	ctx->get_inode_loc_err = -EIO;
++	target = ext4_read_inline_link(inode);
++	KUNIT_EXPECT_TRUE(test, IS_ERR(target));
++	KUNIT_EXPECT_EQ(test, PTR_ERR(target), -EIO);
++	ctx->get_inode_loc_err = 0;
++}
++
++/* =========================================================================
++ * 4. Inline Truncation Tests (ext4_inline_data_truncate)
++ * =========================================================================
++ */
++
++static void test_inline_data_truncate(struct kunit *test)
++{
++	struct inline_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->ei.vfs_inode;
++	int has_inline = 1;
++	char buf[100];
++	int i, ret;
++
++	for (i = 0; i < sizeof(buf); i++)
++		buf[i] = (char)('a' + (i % 26));
++
++	/* 1. Non-inline inode -> sets *has_inline = 0 and returns */
++	inode_lock(inode);
++	ext4_inline_data_truncate(inode, &has_inline);
++	inode_unlock(inode);
++	KUNIT_EXPECT_EQ(test, has_inline, 0);
++
++	/* 2. Create a 100-byte inline file (60B in i_block + 40B in xattr) */
++	ret = create_inline_file(inode, buf, 100);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, ctx->ei.i_inline_size, 100);
++
++	/* 3. Truncate extending i_size (100 -> 120): no-op on inline size */
++	inode_lock(inode);
++	i_size_write(inode, 120);
++	has_inline = 1;
++	ext4_inline_data_truncate(inode, &has_inline);
++	inode_unlock(inode);
++	KUNIT_EXPECT_EQ(test, has_inline, 1);
++	KUNIT_EXPECT_EQ(test, ctx->ei.i_inline_size, 100);
++
++	/* 4. Shrink within xattr space (100 -> 75 bytes) */
++	inode_lock(inode);
++	i_size_write(inode, 75);
++	ext4_inline_data_truncate(inode, &has_inline);
++	inode_unlock(inode);
++	KUNIT_EXPECT_EQ(test, has_inline, 1);
++	KUNIT_EXPECT_EQ(test, ctx->ei.i_inline_size, 75);
++	KUNIT_EXPECT_EQ(test, ctx->ei.i_disksize, 75);
++	KUNIT_EXPECT_MEMEQ(test, raw_inline_xattr_pos(ctx),
++			   buf + EXT4_MIN_INLINE_DATA_SIZE, 15);
++
++	/* 5. Shrink from xattr space into i_block (75 -> 25 bytes): zeros i_block[25..59] */
++	inode_lock(inode);
++	i_size_write(inode, 25);
++	ext4_inline_data_truncate(inode, &has_inline);
++	inode_unlock(inode);
++	KUNIT_EXPECT_EQ(test, ctx->ei.i_inline_size,
++			(u16)EXT4_MIN_INLINE_DATA_SIZE);
++	KUNIT_EXPECT_EQ(test, ctx->ei.i_disksize, 25);
++	KUNIT_EXPECT_MEMEQ(test, raw_inline_i_block(ctx), buf, 25);
++	for (i = 25; i < EXT4_MIN_INLINE_DATA_SIZE; i++)
++		KUNIT_EXPECT_EQ(test, ((char *)raw_inline_i_block(ctx))[i], 0);
++
++	/* 6. Shrink to 0 bytes: zeros all of i_block */
++	inode_lock(inode);
++	i_size_write(inode, 0);
++	ext4_inline_data_truncate(inode, &has_inline);
++	inode_unlock(inode);
++	KUNIT_EXPECT_EQ(test, ctx->ei.i_disksize, 0);
++	for (i = 0; i < EXT4_MIN_INLINE_DATA_SIZE; i++)
++		KUNIT_EXPECT_EQ(test, ((char *)raw_inline_i_block(ctx))[i], 0);
++
++	/*
++	 * 7. When !EXT4_STATE_MAY_INLINE_DATA (being converted),
++	 * ext4_inline_data_truncate clears the extent status tree.
++	 */
++	ext4_clear_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
++	inode_lock(inode);
++	ext4_inline_data_truncate(inode, &has_inline);
++	inode_unlock(inode);
++	KUNIT_EXPECT_TRUE(test, list_empty(&ctx->ei.i_orphan));
++}
++
++/* =========================================================================
++ * 5. Inline-to-Extent Conversion Tests for Regular Files
++ * =========================================================================
++ */
++
++static void test_convert_inline_data_and_rollback(struct kunit *test)
++{
++	struct inline_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->ei.vfs_inode;
++	char buf[80];
++	int i, ret;
++
++	for (i = 0; i < sizeof(buf); i++)
++		buf[i] = (char)('A' + (i % 26));
++
++	/* 1. Non-inline inode -> clears MAY_INLINE_DATA and returns 0 immediately */
++	ret = ext4_convert_inline_data(inode);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_FALSE(test,
++			   ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA));
++	ext4_set_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
++
++	/*
++	 * 2. Inline inode without EXT4_STATE_MAY_INLINE_DATA -> calls
++	 * filemap_flush() and finishes converting inline data if still inline.
++	 */
++	ret = create_inline_file(inode, buf, sizeof(buf));
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	ext4_clear_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
++	ret = ext4_convert_inline_data(inode);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_FALSE(test, ext4_has_inline_data(inode));
++	KUNIT_EXPECT_MEMEQ(test, ctx->data_block_buf, buf, sizeof(buf));
++
++	/*
++	 * 3. Error rollback when ext4_map_blocks fails (-ENOSPC):
++	 * ext4_restore_inline_data restores the original 80 bytes of inline data.
++	 */
++	reset_inode_state(ctx, S_IFREG | 0644);
++	ret = create_inline_file(inode, buf, sizeof(buf));
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	ctx->map_blocks_ret = -ENOSPC;
++	ret = ext4_convert_inline_data(inode);
++	KUNIT_EXPECT_EQ(test, ret, -ENOSPC);
++	KUNIT_EXPECT_TRUE(test, ext4_has_inline_data(inode));
++	KUNIT_EXPECT_EQ(test, ctx->ei.i_inline_size, sizeof(buf));
++	KUNIT_EXPECT_MEMEQ(test, raw_inline_i_block(ctx), buf,
++			   EXT4_MIN_INLINE_DATA_SIZE);
++	KUNIT_EXPECT_MEMEQ(test, raw_inline_xattr_pos(ctx),
++			   buf + EXT4_MIN_INLINE_DATA_SIZE,
++			   sizeof(buf) - EXT4_MIN_INLINE_DATA_SIZE);
++	ctx->map_blocks_ret = 1;
++
++	/*
++	 * 4. Error rollback when ext4_map_blocks returns unmapped block -> -EIO
++	 */
++	ctx->map_flags = 0;
++	ret = ext4_convert_inline_data(inode);
++	KUNIT_EXPECT_EQ(test, ret, -EIO);
++	KUNIT_EXPECT_TRUE(test, ext4_has_inline_data(inode));
++	ctx->map_flags = EXT4_MAP_MAPPED;
++
++	/*
++	 * 5. Error rollback when ext4_inline_getblk returns NULL -> -ENOMEM
++	 */
++	ctx->getblk_fail = true;
++	ret = ext4_convert_inline_data(inode);
++	KUNIT_EXPECT_EQ(test, ret, -ENOMEM);
++	KUNIT_EXPECT_TRUE(test, ext4_has_inline_data(inode));
++	ctx->getblk_fail = false;
++
++	/*
++	 * 6. Error rollback when ext4_handle_dirty_metadata fails on data_bh
++	 */
++	ctx->dirty_metadata_err = -EIO;
++	ctx->dirty_metadata_fail_on_call = 1;
++	ctx->dirty_metadata_calls = 0;
++	ret = ext4_convert_inline_data(inode);
++	KUNIT_EXPECT_EQ(test, ret, -EIO);
++	KUNIT_EXPECT_TRUE(test, ext4_has_inline_data(inode));
++	ctx->dirty_metadata_err = 0;
++	ctx->dirty_metadata_fail_on_call = 0;
++
++	/*
++	 * 7. Successful conversion via ext4_convert_inline_data():
++	 * copies 80 bytes into data_bh, destroys inline data, initializes
++	 * extent tree.
++	 */
++	memset(ctx->data_block_buf, 0, sizeof(ctx->data_block_buf));
++	ret = ext4_convert_inline_data(inode);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_FALSE(test, ext4_has_inline_data(inode));
++	KUNIT_EXPECT_TRUE(test, ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS));
++	KUNIT_EXPECT_MEMEQ(test, ctx->data_block_buf, buf, sizeof(buf));
++}
++
++static void test_write_triggers_inline_to_extent_conversion(struct kunit *test)
++{
++	struct inline_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->ei.vfs_inode;
++	struct folio *folio = NULL;
++	char buf[50];
++	int ret;
++
++	memset(buf, 'K', sizeof(buf));
++
++	/*
++	 * 1. Standard write (ext4_try_to_write_inline_data) exceeding
++	 * TEST_MAX_INLINE_SIZE (pos=0, len=200) converts inline data via
++	 * ext4_convert_inline_data_to_extent -> returns 0 so caller proceeds
++	 * with normal block write.
++	 */
++	ret = create_inline_file(inode, buf, sizeof(buf));
++	KUNIT_ASSERT_EQ(test, ret, 0);
++
++	inode_lock(inode);
++	ret = ext4_try_to_write_inline_data(&inode->i_data, inode, 0, 200,
++					    &folio);
++	inode_unlock(inode);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_FALSE(test, ext4_has_inline_data(inode));
++	KUNIT_EXPECT_TRUE(test, ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS));
++
++	/*
++	 * 2. Conversion with DIOREAD_NOLOCK + DELALLOC enabled and journal_data
++	 * mode (exercises ext4_should_dioread_nolock and ext4_should_journal_data
++	 * branches in ext4_convert_inline_data_to_extent).
++	 */
++	reset_inode_state(ctx, S_IFREG | 0644);
++	ret = create_inline_file(inode, buf, sizeof(buf));
++	KUNIT_ASSERT_EQ(test, ret, 0);
++
++	set_opt(&ctx->sb, DIOREAD_NOLOCK);
++	set_opt(&ctx->sb, DELALLOC);
++	ctx->journal_mode = EXT4_INODE_JOURNAL_DATA_MODE;
++
++	inode_lock(inode);
++	folio = NULL;
++	ret = ext4_try_to_write_inline_data(&inode->i_data, inode, 0, 200,
++					    &folio);
++	inode_unlock(inode);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_FALSE(test, ext4_has_inline_data(inode));
++
++	clear_opt(&ctx->sb, DIOREAD_NOLOCK);
++	clear_opt(&ctx->sb, DELALLOC);
++	ctx->journal_mode = EXT4_INODE_WRITEBACK_DATA_MODE;
++
++	/*
++	 * 3. Error paths in ext4_convert_inline_data_to_extent when
++	 * ext4_get_block fails during ext4_block_write_begin (-EIO and -ENOSPC):
++	 * cleans up orphan and propagates error.
++	 */
++	reset_inode_state(ctx, S_IFREG | 0644);
++	ret = create_inline_file(inode, buf, sizeof(buf));
++	KUNIT_ASSERT_EQ(test, ret, 0);
++
++	ctx->map_blocks_ret = -EIO;
++	inode_lock(inode);
++	folio = NULL;
++	ret = ext4_try_to_write_inline_data(&inode->i_data, inode, 0, 200,
++					    &folio);
++	inode_unlock(inode);
++	KUNIT_EXPECT_EQ(test, ret, -EIO);
++	KUNIT_EXPECT_TRUE(test, list_empty(&ctx->ei.i_orphan));
++	ctx->map_blocks_ret = 1;
++
++	reset_inode_state(ctx, S_IFREG | 0644);
++	ret = create_inline_file(inode, buf, sizeof(buf));
++	KUNIT_ASSERT_EQ(test, ret, 0);
++
++	ctx->map_blocks_ret = -ENOSPC;
++	inode_lock(inode);
++	folio = NULL;
++	ret = ext4_try_to_write_inline_data(&inode->i_data, inode, 0, 200,
++					    &folio);
++	inode_unlock(inode);
++	KUNIT_EXPECT_EQ(test, ret, -ENOSPC);
++	KUNIT_EXPECT_FALSE(test, ext4_has_inline_data(inode));
++	KUNIT_EXPECT_TRUE(test, list_empty(&ctx->ei.i_orphan));
++	ctx->map_blocks_ret = 1;
++
++	/*
++	 * 4. Delayed allocation conversion (da = true in
++	 * ext4_generic_write_inline_data):
++	 *   4a. Fresh inode without inline data yet -> clears MAY_INLINE_DATA
++	 *       and returns 0.
++	 */
++	reset_inode_state(ctx, S_IFREG | 0644);
++	folio = NULL;
++	ret = ext4_generic_write_inline_data(&inode->i_data, inode, 0, 200,
++					     &folio, true);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_FALSE(test,
++			   ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA));
++
++	/*
++	 *   4b. Existing inline data -> ext4_da_convert_inline_data_to_extent
++	 *       loads inline bytes into folio, marks buffer delayed, and clears
++	 *       EXT4_STATE_MAY_INLINE_DATA while keeping inline data until
++	 *       writepages.
++	 */
++	reset_inode_state(ctx, S_IFREG | 0644);
++	ret = create_inline_file(inode, buf, sizeof(buf));
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	truncate_inode_pages(&inode->i_data, 0);
++
++	folio = NULL;
++	ret = ext4_generic_write_inline_data(&inode->i_data, inode, 0, 200,
++					     &folio, true);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_FALSE(test,
++			   ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA));
++
++	/*
++	 *   4c. Error in ext4_da_get_block_prep during DA conversion ->
++	 *       propagates error and unlocks folio.
++	 */
++	reset_inode_state(ctx, S_IFREG | 0644);
++	ret = create_inline_file(inode, buf, sizeof(buf));
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	truncate_inode_pages(&inode->i_data, 0);
++
++	ctx->da_get_block_prep_err = -ENOSPC;
++	inode_lock(inode);
++	folio = NULL;
++	ret = ext4_generic_write_inline_data(&inode->i_data, inode, 0, 200,
++					     &folio, true);
++	inode_unlock(inode);
++	KUNIT_EXPECT_EQ(test, ret, -ENOSPC);
++	ctx->da_get_block_prep_err = 0;
++}
++
++/* =========================================================================
++ * 6. Inline Directory Operations Tests
++ * =========================================================================
++ */
++
++struct test_dir_ctx {
++	struct dir_context ctx;
++	int count;
++	char names[16][32];
++	u64 inos[16];
++	int max_emit;
++	struct inode *mutate_inode_on_second;
++};
++
++static bool test_filldir_actor(struct dir_context *dctx, const char *name,
++			       int namelen, loff_t offset, u64 ino,
++			       unsigned int d_type)
++{
++	struct test_dir_ctx *tctx =
++		container_of(dctx, struct test_dir_ctx, ctx);
++
++	if (tctx->max_emit > 0 && tctx->count >= tctx->max_emit)
++		return false;
++
++	if (tctx->count < 16) {
++		int copy_len = min(namelen, 31);
++
++		memcpy(tctx->names[tctx->count], name, copy_len);
++		tctx->names[tctx->count][copy_len] = '\0';
++		tctx->inos[tctx->count] = ino;
++	}
++	tctx->count++;
++
++	if (tctx->mutate_inode_on_second && tctx->count == 2) {
++		inode_inc_iversion(tctx->mutate_inode_on_second);
++		tctx->mutate_inode_on_second = NULL;
++	}
++	return true;
++}
++
++struct inline_dir_test_env {
++	struct inode parent;
++	struct inode child;
++	struct qstr qname;
++	struct ext4_filename fname;
++	struct dir_private_info info;
++	struct file filp;
++	struct test_dir_ctx dctx;
++	struct ext4_dir_entry_2 bogus_de;
++};
++
++static struct inline_dir_test_env *
++alloc_dir_test_env(struct kunit *test, struct inline_test_ctx *ctx)
++{
++	struct inline_dir_test_env *env;
++
++	env = kunit_kzalloc(test, sizeof(*env), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, env);
++	env->parent.i_sb = &ctx->sb;
++	env->parent.i_ino = TEST_PARENT_INO;
++	env->parent.i_mode = S_IFDIR | 0755;
++	return env;
++}
++
++static void init_mock_fname_and_child(struct inline_dir_test_env *env,
++				      struct super_block *sb,
++				      const char *name, ino_t ino,
++				      umode_t mode)
++{
++	memset(&env->fname, 0, sizeof(env->fname));
++	memset(&env->qname, 0, sizeof(env->qname));
++	memset(&env->child, 0, sizeof(env->child));
++
++	env->child.i_sb = sb;
++	env->child.i_ino = ino;
++	env->child.i_mode = mode;
++
++	env->qname.name = (const unsigned char *)name;
++	env->qname.len = strlen(name);
++	env->fname.usr_fname = &env->qname;
++	env->fname.disk_name.name = (unsigned char *)name;
++	env->fname.disk_name.len = strlen(name);
++}
++
++static void test_update_final_de(struct kunit *test)
++{
++	u8 buf[64];
++	struct ext4_dir_entry_2 *de1, *de2;
++
++	memset(buf, 0, sizeof(buf));
++
++	/* 1. old_size == 0 -> sets de1->rec_len to new_size (32) */
++	de1 = (struct ext4_dir_entry_2 *)buf;
++	ext4_update_final_de(buf, 0, 32);
++	KUNIT_EXPECT_EQ(test, le16_to_cpu(de1->rec_len), 32);
++
++	/* 2. Two entries in 32 bytes (12 + 20), expand to 56 bytes -> last entry becomes 44 */
++	de1->rec_len = cpu_to_le16(12);
++	de2 = (struct ext4_dir_entry_2 *)(buf + 12);
++	de2->rec_len = cpu_to_le16(20);
++	ext4_update_final_de(buf, 32, 56);
++	KUNIT_EXPECT_EQ(test, le16_to_cpu(de1->rec_len), 12);
++	KUNIT_EXPECT_EQ(test, le16_to_cpu(de2->rec_len), 44);
++}
++
++static void test_inline_dir_lifecycle_and_operations(struct kunit *test)
++{
++	struct inline_test_ctx *ctx = test->priv;
++	struct inode *dir = &ctx->ei.vfs_inode;
++	struct inline_dir_test_env *env;
++	struct ext4_dir_entry_2 *de = NULL;
++	struct buffer_head *bh = NULL;
++	handle_t *handle;
++	int has_inline_data = 1;
++	int ret;
++
++	env = alloc_dir_test_env(test, ctx);
++	reset_inode_state(ctx, S_IFDIR | 0755);
++
++	/*
++	 * 1. Create inline directory via ext4_try_create_inline_dir.
++	 */
++	handle = ext4_journal_start(dir, EXT4_HT_DIR, 1);
++	KUNIT_ASSERT_FALSE(test, IS_ERR(handle));
++	ret = ext4_try_create_inline_dir(handle, &env->parent, dir);
++	ext4_journal_stop(handle);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	KUNIT_EXPECT_TRUE(test, ext4_has_inline_data(dir));
++	KUNIT_EXPECT_EQ(test, ctx->ei.i_inline_size,
++			(u16)EXT4_MIN_INLINE_DATA_SIZE);
++	KUNIT_EXPECT_EQ(test, i_size_read(dir),
++			(loff_t)EXT4_MIN_INLINE_DATA_SIZE);
++
++	/* Newly created inline dir is empty */
++	KUNIT_EXPECT_TRUE(test, empty_inline_dir(dir, &has_inline_data));
++	KUNIT_EXPECT_EQ(test, has_inline_data, 1);
++
++	/*
++	 * 2. Verify ext4_get_first_inline_block returns the inline buffer
++	 * starting at parent_de (whose inode field holds the parent ino).
++	 */
++	bh = ext4_get_first_inline_block(dir, &de, &ret);
++	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, bh);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, le32_to_cpu(de->inode), (u32)TEST_PARENT_INO);
++	brelse(bh);
++
++	/*
++	 * 3. Add first entry "file1" (fits in i_block alongside parent ino).
++	 * Return value 1 means added inline without block conversion.
++	 */
++	init_mock_fname_and_child(env, &ctx->sb, "file1", 101, S_IFREG | 0644);
++	handle = ext4_journal_start(dir, EXT4_HT_DIR, 1);
++	KUNIT_ASSERT_FALSE(test, IS_ERR(handle));
++	ret = ext4_try_add_inline_entry(handle, &env->fname, dir, &env->child);
++	ext4_journal_stop(handle);
++	KUNIT_EXPECT_EQ(test, ret, 1);
++	KUNIT_EXPECT_EQ(test, ctx->ei.i_inline_size,
++			(u16)EXT4_MIN_INLINE_DATA_SIZE);
++	KUNIT_EXPECT_FALSE(test, empty_inline_dir(dir, &has_inline_data));
++
++	/*
++	 * 4. Adding duplicate "file1" returns -EEXIST.
++	 */
++	handle = ext4_journal_start(dir, EXT4_HT_DIR, 1);
++	KUNIT_ASSERT_FALSE(test, IS_ERR(handle));
++	ret = ext4_try_add_inline_entry(handle, &env->fname, dir, &env->child);
++	ext4_journal_stop(handle);
++	KUNIT_EXPECT_EQ(test, ret, -EEXIST);
++
++	/*
++	 * 5. Add more entries ("file2_longer_name", "file3_longer_name",
++	 * "file4_in_xattr") to overflow i_block (56B) and trigger expansion
++	 * into ibody system.data xattr via ext4_update_inline_dir (132B).
++	 */
++	init_mock_fname_and_child(env, &ctx->sb, "file2_longer_name", 102,
++				  S_IFREG | 0644);
++	handle = ext4_journal_start(dir, EXT4_HT_DIR, 1);
++	KUNIT_ASSERT_FALSE(test, IS_ERR(handle));
++	ret = ext4_try_add_inline_entry(handle, &env->fname, dir, &env->child);
++	ext4_journal_stop(handle);
 +	KUNIT_EXPECT_EQ(test, ret, 1);
 +
-+	clear_buffer_verified(&blk->bh);
-+	ret = ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, "a",
-+			     buf, sizeof(buf));
-+	KUNIT_EXPECT_EQ(test, ret, -EFSBADCRC);
-+	bhdr->h_checksum ^= cpu_to_le32(1);
++	init_mock_fname_and_child(env, &ctx->sb, "file3_longer_name", 103,
++				  S_IFDIR | 0755);
++	handle = ext4_journal_start(dir, EXT4_HT_DIR, 1);
++	KUNIT_ASSERT_FALSE(test, IS_ERR(handle));
++	ret = ext4_try_add_inline_entry(handle, &env->fname, dir, &env->child);
++	ext4_journal_stop(handle);
++	KUNIT_EXPECT_EQ(test, ret, 1);
++	KUNIT_EXPECT_EQ(test, ctx->ei.i_inline_size, TEST_MAX_INLINE_SIZE);
 +
-+	bhdr->h_blocks = cpu_to_le32(2);
-+	clear_buffer_verified(&blk->bh);
-+	ret = ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, "a",
-+			     buf, sizeof(buf));
-+	KUNIT_EXPECT_EQ(test, ret, -EFSCORRUPTED);
-+	bhdr->h_blocks = cpu_to_le32(1);
++	init_mock_fname_and_child(env, &ctx->sb, "file4_in_xattr", 104,
++				  S_IFREG | 0644);
++	handle = ext4_journal_start(dir, EXT4_HT_DIR, 1);
++	KUNIT_ASSERT_FALSE(test, IS_ERR(handle));
++	ret = ext4_try_add_inline_entry(handle, &env->fname, dir, &env->child);
++	ext4_journal_stop(handle);
++	KUNIT_EXPECT_EQ(test, ret, 1);
 +
 +	/*
-+	 * Verify EXT4_XATTR_BLOCK_RESERVE (128 bytes on 1024B block) when
-+	 * EXT4_FEATURE_INCOMPAT_EA_INODE is enabled:
-+	 * With "migr" (100B), "a" (4B), and "z" (4B) in the block, min_offs is
-+	 * 1024 - 108 = 916 and free space is 820 bytes. Adding "r1" with a
-+	 * 796-byte value (816B total <= 820B free) leaves min_offs - new_size
-+	 * = 916 - 796 = 120 < 128 (EXT4_XATTR_BLOCK_RESERVE), so with ea_inode
-+	 * enabled and EA inode creation disabled it fails with -ENOSPC,
-+	 * whereas with ea_inode disabled it fits inline in the block.
++	 * 6. Lookup entries in both i_block ("file1") and xattr ("file4_in_xattr"),
++	 * and verify missing entry returns NULL.
 +	 */
-+	val796 = kunit_kmalloc(test, 796, GFP_KERNEL);
-+	KUNIT_ASSERT_NOT_NULL(test, val796);
-+	memset(val796, 'R', 796);
-+	ctx->sbi.s_inode_size = EXT4_GOOD_OLD_INODE_SIZE;
-+	ext4_set_feature_ea_inode(&ctx->sb);
-+	ctx->fail_new_inode = -ENOSPC;
-+	ret = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, "r1",
-+			     val796, 796, XATTR_CREATE);
-+	ctx->fail_new_inode = 0;
-+	KUNIT_EXPECT_EQ(test, ret, -ENOSPC);
++	init_mock_fname_and_child(env, &ctx->sb, "file1", 0, 0);
++	bh = ext4_find_inline_entry(dir, &env->fname, &de, &has_inline_data);
++	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, bh);
++	KUNIT_EXPECT_EQ(test, has_inline_data, 1);
++	KUNIT_EXPECT_EQ(test, le32_to_cpu(de->inode), 101U);
++	brelse(bh);
 +
-+	ext4_clear_feature_ea_inode(&ctx->sb);
-+	ret = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, "r1",
-+			     val796, 796, XATTR_CREATE);
++	init_mock_fname_and_child(env, &ctx->sb, "file4_in_xattr", 0, 0);
++	bh = ext4_find_inline_entry(dir, &env->fname, &de, &has_inline_data);
++	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, bh);
++	KUNIT_EXPECT_EQ(test, le32_to_cpu(de->inode), 104U);
++	brelse(bh);
++
++	init_mock_fname_and_child(env, &ctx->sb, "nonexistent", 0, 0);
++	bh = ext4_find_inline_entry(dir, &env->fname, &de, &has_inline_data);
++	KUNIT_EXPECT_NULL(test, bh);
++	KUNIT_EXPECT_EQ(test, has_inline_data, 1);
++
++	/*
++	 * 7. Test ext4_read_inline_dir (full iteration, partial iteration,
++	 * and iversion change re-validation).
++	 */
++	env->filp.f_inode = dir;
++	env->filp.private_data = &env->info;
++	env->dctx.ctx.actor = test_filldir_actor;
++	env->dctx.ctx.pos = 0;
++
++	ret = ext4_read_inline_dir(&env->filp, &env->dctx.ctx,
++				   &has_inline_data);
 +	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_ASSERT_EQ(test,
-+			ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, "r1",
-+				       NULL, 0, XATTR_REPLACE),
-+			0);
-+	ctx->sbi.s_inode_size = TEST_INODE_SIZE;
++	KUNIT_EXPECT_EQ(test, has_inline_data, 1);
++	/*
++	 * Expect ".", "..", "file1", "file2_longer_name",
++	 * "file3_longer_name", "file4_in_xattr"
++	 */
++	KUNIT_EXPECT_EQ(test, env->dctx.count, 6);
++	KUNIT_EXPECT_STREQ(test, env->dctx.names[0], ".");
++	KUNIT_EXPECT_STREQ(test, env->dctx.names[1], "..");
++	KUNIT_EXPECT_STREQ(test, env->dctx.names[2], "file1");
++	KUNIT_EXPECT_STREQ(test, env->dctx.names[5], "file4_in_xattr");
++	/*
++	 * extra_size = (dotdot_size - EXT4_INLINE_DOTDOT_SIZE) +
++	 *              TEST_MAX_INLINE_SIZE = (24 - 4) + 128 = 148
++	 */
++	KUNIT_EXPECT_EQ(test, env->dctx.ctx.pos,
++			(loff_t)(TEST_MAX_INLINE_SIZE + 20));
 +
-+	ret = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, "a",
-+			      NULL, 0, XATTR_REPLACE);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+	ret = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, "z",
-+			     NULL, 0, XATTR_REPLACE);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
++	/* Calling again at EOF (pos == inline_size) emits nothing */
++	env->dctx.count = 0;
++	ret = ext4_read_inline_dir(&env->filp, &env->dctx.ctx,
++				   &has_inline_data);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, env->dctx.count, 0);
++
++	/* Mutating inode iversion during iteration triggers offset revalidation */
++	memset(&env->dctx, 0, sizeof(env->dctx));
++	env->dctx.ctx.actor = test_filldir_actor;
++	env->dctx.ctx.pos = 0;
++	env->dctx.mutate_inode_on_second = dir;
++	ret = ext4_read_inline_dir(&env->filp, &env->dctx.ctx,
++				   &has_inline_data);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, env->dctx.count, 6);
 +
 +	/*
-+	 * Removing the last entry ("migr") from the external block frees the
-+	 * external xattr block and clears i_file_acl to 0.
++	 * 8. Test ext4_inlinedir_to_tree (htree rbtree population).
 +	 */
-+	ret = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, "migr",
-+			     NULL, 0, XATTR_REPLACE);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, EXT4_I(inode)->i_file_acl, 0ULL);
-+}
++	{
++		struct dir_private_info *info;
++		struct dx_hash_info hinfo = {
++			.hash_version = DX_HASH_HALF_MD4,
++		};
 +
-+/*
-+ * Test 6: External xattr block mb_cache deduplication, copy-on-write cloning
-+ * when modifying a shared block, and EXT4_XATTR_REFCOUNT_MAX handling.
-+ */
-+static void test_xattr_block_dedup_and_cow(struct kunit *test)
-+{
-+	struct xattr_test_ctx *ctx = test->priv;
-+	struct inode *inode1 = &ctx->primary.ei.vfs_inode;
-+	struct inode *inode2 = &ctx->secondary.ei.vfs_inode;
-+	struct mock_block *blk;
-+	struct mb_cache_entry *ce;
-+	char val100[100];
-+	ext4_fsblk_t shared_blk;
-+	u32 hash;
-+	int ret;
++		memset(&env->filp, 0, sizeof(env->filp));
++		env->filp.f_inode = dir;
++		info = kzalloc_obj(*info, GFP_KERNEL);
++		KUNIT_ASSERT_NOT_ERR_OR_NULL(test, info);
++		env->filp.private_data = info;
++		ret = ext4_inlinedir_to_tree(&env->filp, dir, 0, &hinfo,
++					     0, 0, &has_inline_data);
++		KUNIT_EXPECT_GT(test, ret, 0);
++		KUNIT_EXPECT_EQ(test, has_inline_data, 1);
 +
-+	ctx->sbi.s_ea_block_cache = ext4_xattr_create_cache();
-+	KUNIT_ASSERT_NOT_NULL(test, ctx->sbi.s_ea_block_cache);
-+
-+	memset(val100, 'D', sizeof(val100));
-+	ret = ext4_xattr_set(inode1, EXT4_XATTR_INDEX_USER, "shared",
-+			     val100, sizeof(val100), XATTR_CREATE);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+	shared_blk = EXT4_I(inode1)->i_file_acl;
-+	KUNIT_ASSERT_NE(test, shared_blk, 0ULL);
-+
-+	/* Setting identical xattr on inode2 reuses shared_blk from mb_cache */
-+	ret = ext4_xattr_set(inode2, EXT4_XATTR_INDEX_USER, "shared",
-+			     val100, sizeof(val100), XATTR_CREATE);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, EXT4_I(inode2)->i_file_acl, shared_blk);
-+
-+	blk = find_mock_block(ctx, shared_blk);
-+	KUNIT_ASSERT_NOT_NULL(test, blk);
-+	KUNIT_EXPECT_EQ(test, le32_to_cpu(BHDR(&blk->bh)->h_refcount), 2U);
-+
-+	/*
-+	 * Modifying the xattr on inode2 triggers copy-on-write: inode2 gets a
-+	 * new block and shared_blk's refcount drops back to 1.
-+	 */
-+	val100[0] = 'M';
-+	ret = ext4_xattr_set(inode2, EXT4_XATTR_INDEX_USER, "shared",
-+			     val100, sizeof(val100), XATTR_REPLACE);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_NE(test, EXT4_I(inode2)->i_file_acl, shared_blk);
-+	KUNIT_EXPECT_EQ(test, le32_to_cpu(BHDR(&blk->bh)->h_refcount), 1U);
-+
-+	/*
-+	 * Test EXT4_XATTR_REFCOUNT_MAX (1024) limit:
-+	 * Bump shared_blk's h_refcount to EXT4_XATTR_REFCOUNT_MAX (1024),
-+	 * then set the same xattr on inode2. Cache lookup must see
-+	 * ref >= EXT4_XATTR_REFCOUNT_MAX, clear MBE_REUSABLE_B, and allocate
-+	 * a separate block instead of exceeding 1024.
-+	 */
-+	val100[0] = 'D';
-+	BHDR(&blk->bh)->h_refcount = cpu_to_le32(EXT4_XATTR_REFCOUNT_MAX);
-+	hash = le32_to_cpu(BHDR(&blk->bh)->h_hash);
-+
-+	ret = ext4_xattr_set(inode2, EXT4_XATTR_INDEX_USER, "shared",
-+			     val100, sizeof(val100), XATTR_REPLACE);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_NE(test, EXT4_I(inode2)->i_file_acl, shared_blk);
-+
-+	ce = mb_cache_entry_get(ctx->sbi.s_ea_block_cache, hash, shared_blk);
-+	KUNIT_ASSERT_NOT_NULL(test, ce);
-+	KUNIT_EXPECT_FALSE(test, test_bit(MBE_REUSABLE_B, &ce->e_flags));
-+	mb_cache_entry_put(ctx->sbi.s_ea_block_cache, ce);
-+
-+	/*
-+	 * Removing the attribute on inode1 releases one reference on
-+	 * shared_blk (1024 -> 1023 = EXT4_XATTR_REFCOUNT_MAX - 1), which
-+	 * re-enables MBE_REUSABLE_B on the mb_cache entry.
-+	 */
-+	ret = ext4_xattr_set(inode1, EXT4_XATTR_INDEX_USER, "shared",
-+			     NULL, 0, XATTR_REPLACE);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, le32_to_cpu(BHDR(&blk->bh)->h_refcount),
-+			EXT4_XATTR_REFCOUNT_MAX - 1);
-+
-+	ce = mb_cache_entry_get(ctx->sbi.s_ea_block_cache, hash, shared_blk);
-+	KUNIT_ASSERT_NOT_NULL(test, ce);
-+	KUNIT_EXPECT_TRUE(test, test_bit(MBE_REUSABLE_B, &ce->e_flags));
-+	mb_cache_entry_put(ctx->sbi.s_ea_block_cache, ce);
-+}
-+
-+/*
-+ * Test 7: ext4_listxattr() across ibody and external block, and user/hurd/
-+ * trusted handler prefix and mount-option filtering.
-+ */
-+static void test_xattr_list_and_handlers(struct kunit *test)
-+{
-+	struct xattr_test_ctx *ctx = test->priv;
-+	struct inode *inode = &ctx->primary.ei.vfs_inode;
-+	struct dentry *dentry = &ctx->root_dentry;
-+	char val100[100];
-+	char list_buf[128];
-+	char val_buf[16];
-+	ssize_t list_len;
-+	int ret;
-+
-+	/* Handler get/set/list via user, hurd, and trusted handlers */
-+	ret = ext4_xattr_user_handler.set(&ext4_xattr_user_handler,
-+					  &nop_mnt_idmap, dentry, inode,
-+					  "ukey", "uval", 4, XATTR_CREATE);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+	ret = ext4_xattr_user_handler.get(&ext4_xattr_user_handler,
-+					  dentry, inode, "ukey",
-+					  val_buf, sizeof(val_buf));
-+	KUNIT_EXPECT_EQ(test, ret, 4);
-+
-+	ret = ext4_xattr_hurd_handler.set(&ext4_xattr_hurd_handler,
-+					  &nop_mnt_idmap, dentry, inode,
-+					  "hkey", "hval", 4, XATTR_CREATE);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+	ret = ext4_xattr_hurd_handler.get(&ext4_xattr_hurd_handler,
-+					  dentry, inode, "hkey",
-+					  val_buf, sizeof(val_buf));
-+	KUNIT_EXPECT_EQ(test, ret, 4);
-+
-+	/* Add a large attribute in external block via trusted handler */
-+	memset(val100, 'T', sizeof(val100));
-+	ret = ext4_xattr_trusted_handler.set(&ext4_xattr_trusted_handler,
-+					     &nop_mnt_idmap, dentry, inode,
-+					     "tkey", val100, sizeof(val100),
-+					     XATTR_CREATE);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+
-+	/*
-+	 * With XATTR_USER set: "user.ukey\0" (10) + "gnu.hkey\0" (9) +
-+	 * (if CAP_SYS_ADMIN) "trusted.tkey\0" (13).
-+	 */
-+	list_len = ext4_listxattr(dentry, NULL, 0);
-+	KUNIT_EXPECT_GE(test, list_len, (ssize_t)19);
-+
-+	/* Buffer too small by 1 byte returns -ERANGE */
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_listxattr(dentry, list_buf, list_len - 1),
-+			(ssize_t)-ERANGE);
-+
-+	memset(list_buf, 0, sizeof(list_buf));
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_listxattr(dentry, list_buf, sizeof(list_buf)),
-+			list_len);
-+	KUNIT_EXPECT_MEMEQ(test, list_buf, "user.ukey\0gnu.hkey\0", 19);
-+
-+	/*
-+	 * Clearing XATTR_USER mount option disables user and hurd handlers
-+	 * (-EOPNOTSUPP on get/set and filtered out of ext4_listxattr).
-+	 */
-+	clear_opt(&ctx->sb, XATTR_USER);
-+	KUNIT_EXPECT_FALSE(test, ext4_xattr_user_handler.list(dentry));
-+	KUNIT_EXPECT_FALSE(test, ext4_xattr_hurd_handler.list(dentry));
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_xattr_user_handler.get(&ext4_xattr_user_handler,
-+						    dentry, inode, "ukey",
-+						    val_buf, sizeof(val_buf)),
-+			-EOPNOTSUPP);
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_xattr_user_handler.set(&ext4_xattr_user_handler,
-+						    &nop_mnt_idmap, dentry,
-+						    inode, "ukey", "x", 1, 0),
-+			-EOPNOTSUPP);
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_xattr_hurd_handler.get(&ext4_xattr_hurd_handler,
-+						    dentry, inode, "hkey",
-+						    val_buf, sizeof(val_buf)),
-+			-EOPNOTSUPP);
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_xattr_hurd_handler.set(&ext4_xattr_hurd_handler,
-+						    &nop_mnt_idmap, dentry,
-+						    inode, "hkey", "x", 1, 0),
-+			-EOPNOTSUPP);
-+	KUNIT_EXPECT_EQ(test, ext4_listxattr(dentry, NULL, 0),
-+			capable(CAP_SYS_ADMIN) ? (ssize_t)13 : (ssize_t)0);
-+	set_opt(&ctx->sb, XATTR_USER);
-+}
-+
-+/*
-+ * Test 8: Large xattr inodes (ea_inode feature) multi-block write/read,
-+ * 64-bit refcount & hash encoding, mb_cache deduplication across inodes,
-+ * reference decrement to 0, and ext4_evict_ea_inode().
-+ */
-+static void test_xattr_ea_inode_lifecycle_and_dedup(struct kunit *test)
-+{
-+	struct xattr_test_ctx *ctx = test->priv;
-+	struct inode *inode1 = &ctx->primary.ei.vfs_inode;
-+	struct inode *inode2 = &ctx->secondary.ei.vfs_inode;
-+	struct inode *ea_inode;
-+	struct ext4_inode *raw1 = (struct ext4_inode *)ctx->primary.raw_buf;
-+	struct ext4_xattr_entry *e1;
-+	char *large_val, *read_buf;
-+	const size_t large_len = 1500; /* Spans 2 1024-byte blocks */
-+	unsigned int ea_ino;
-+	u64 refcount;
-+	int i, ret;
-+
-+	ext4_set_feature_ea_inode(&ctx->sb);
-+	ctx->sbi.s_ea_inode_cache = ext4_xattr_create_cache();
-+	KUNIT_ASSERT_NOT_NULL(test, ctx->sbi.s_ea_inode_cache);
-+	ext4_init_ea_inode_work(&ctx->sbi);
-+
-+	large_val = kunit_kmalloc(test, large_len, GFP_KERNEL);
-+	read_buf = kunit_kzalloc(test, large_len, GFP_KERNEL);
-+	KUNIT_ASSERT_NOT_NULL(test, large_val);
-+	KUNIT_ASSERT_NOT_NULL(test, read_buf);
-+	for (i = 0; i < large_len; i++)
-+		large_val[i] = (char)('A' + (i % 26));
-+
-+	/* Create 1500-byte xattr on inode1: stored in a new EA inode */
-+	ret = ext4_xattr_set(inode1, EXT4_XATTR_INDEX_USER, "big",
-+			     large_val, large_len, XATTR_CREATE);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+
-+	e1 = IFIRST(IHDR(inode1, raw1));
-+	ea_ino = le32_to_cpu(e1->e_value_inum);
-+	KUNIT_ASSERT_EQ(test, ea_ino, (unsigned int)TEST_FIRST_EA_INO);
-+	KUNIT_EXPECT_EQ(test, le16_to_cpu(e1->e_value_offs), 0U);
-+	KUNIT_EXPECT_EQ(test, le32_to_cpu(e1->e_value_size),
-+			(u32)large_len);
-+
-+	ea_inode = &ctx->ea_inodes[0].ei.vfs_inode;
-+	refcount = ((u64)inode_get_ctime_sec(ea_inode) << 32) |
-+		   (u32)inode_peek_iversion_raw(ea_inode);
-+	KUNIT_EXPECT_EQ(test, refcount, 1ULL);
-+	KUNIT_EXPECT_EQ(test, ea_inode->i_nlink, 1U);
-+
-+	/* Read back multi-block EA inode value via ext4_xattr_get() */
-+	ret = ext4_xattr_get(inode1, EXT4_XATTR_INDEX_USER, "big",
-+			     read_buf, large_len);
-+	KUNIT_ASSERT_EQ(test, ret, (int)large_len);
-+	KUNIT_EXPECT_MEMEQ(test, read_buf, large_val, large_len);
-+
-+	/*
-+	 * Setting the identical 1500-byte value on inode2 deduplicates via
-+	 * s_ea_inode_cache and increments ea_inode's refcount to 2.
-+	 */
-+	ret = ext4_xattr_set(inode2, EXT4_XATTR_INDEX_USER, "big2",
-+			     large_val, large_len, XATTR_CREATE);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+
-+	refcount = ((u64)inode_get_ctime_sec(ea_inode) << 32) |
-+		   (u32)inode_peek_iversion_raw(ea_inode);
-+	KUNIT_EXPECT_EQ(test, refcount, 2ULL);
-+
-+	/* Removing from inode1 drops refcount to 1; i_nlink remains 1 */
-+	ret = ext4_xattr_set(inode1, EXT4_XATTR_INDEX_USER, "big",
-+			     NULL, 0, XATTR_REPLACE);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+	refcount = ((u64)inode_get_ctime_sec(ea_inode) << 32) |
-+		   (u32)inode_peek_iversion_raw(ea_inode);
-+	KUNIT_EXPECT_EQ(test, refcount, 1ULL);
-+	KUNIT_EXPECT_EQ(test, ea_inode->i_nlink, 1U);
-+
-+	/*
-+	 * Removing from inode2 drops refcount to 0 and clears i_nlink to 0.
-+	 * Also verify ext4_evict_ea_inode() removes it from s_ea_inode_cache.
-+	 */
-+	ret = ext4_xattr_set(inode2, EXT4_XATTR_INDEX_USER, "big2",
-+			     NULL, 0, XATTR_REPLACE);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+	refcount = ((u64)inode_get_ctime_sec(ea_inode) << 32) |
-+		   (u32)inode_peek_iversion_raw(ea_inode);
-+	KUNIT_EXPECT_EQ(test, refcount, 0ULL);
-+	KUNIT_EXPECT_EQ(test, ea_inode->i_nlink, 0U);
-+
-+	ext4_evict_ea_inode(ea_inode);
-+}
-+
-+/*
-+ * Test 9: EA inode hash verification (including legacy signed-char name hash
-+ * fallback), ext4_xattr_inode_iget() corruption checks, and Lustre-style
-+ * EA inode compatibility.
-+ */
-+static void test_xattr_ea_inode_validation_and_compat(struct kunit *test)
-+{
-+	struct xattr_test_ctx *ctx = test->priv;
-+	struct inode *inode = &ctx->primary.ei.vfs_inode;
-+	struct inode *ea_inode;
-+	struct ext4_inode *raw = (struct ext4_inode *)ctx->primary.raw_buf;
-+	struct ext4_xattr_entry *e;
-+	static const char signed_name[] = "\x80\xfe";
-+	const size_t val_len = 1000;
-+	char *val, *buf;
-+	u32 val_hash, signed_e_hash = 0;
-+	__le32 orig_e_hash;
-+	int i, ret;
-+
-+	ext4_set_feature_ea_inode(&ctx->sb);
-+	val = kunit_kmalloc(test, val_len, GFP_KERNEL);
-+	buf = kunit_kzalloc(test, val_len, GFP_KERNEL);
-+	KUNIT_ASSERT_NOT_NULL(test, val);
-+	KUNIT_ASSERT_NOT_NULL(test, buf);
-+	memset(val, 'S', val_len);
-+
-+	ret = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, signed_name,
-+			     val, val_len, XATTR_CREATE);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+
-+	e = IFIRST(IHDR(inode, raw));
-+	ea_inode = &ctx->ea_inodes[0].ei.vfs_inode;
-+	orig_e_hash = e->e_hash;
-+
-+	/*
-+	 * Compute the legacy signed-char entry hash for "\x80\xfe" and verify
-+	 * ext4_xattr_inode_verify_hashes() accepts it as a valid fallback.
-+	 */
-+	val_hash = (u32)inode_get_atime_sec(ea_inode);
-+	for (i = 0; i < (int)strlen(signed_name); i++) {
-+		signed_e_hash = (signed_e_hash << 5) ^
-+				(signed_e_hash >> 27) ^
-+				(signed char)signed_name[i];
++		/* With start_hash = 0xffffffffU, entries with smaller hash are skipped */
++		ext4_htree_free_dir_info(info);
++		info = kzalloc_obj(*info, GFP_KERNEL);
++		KUNIT_ASSERT_NOT_ERR_OR_NULL(test, info);
++		env->filp.private_data = info;
++		ret = ext4_inlinedir_to_tree(&env->filp, dir, 0, &hinfo,
++					     0xffffffffU, 0xffffffffU,
++					     &has_inline_data);
++		KUNIT_EXPECT_GE(test, ret, 0);
++		ext4_htree_free_dir_info(info);
 +	}
-+	signed_e_hash = (signed_e_hash << 16) ^
-+			(signed_e_hash >> 16) ^ val_hash;
-+	e->e_hash = cpu_to_le32(signed_e_hash);
-+
-+	ret = ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, signed_name,
-+			     buf, val_len);
-+	KUNIT_EXPECT_EQ(test, ret, (int)val_len);
-+
-+	/* Truly corrupted entry hash is rejected with -EFSCORRUPTED */
-+	e->e_hash = cpu_to_le32(signed_e_hash ^ 0x12345678U);
-+	ret = ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, signed_name,
-+			     buf, val_len);
-+	KUNIT_EXPECT_EQ(test, ret, -EFSCORRUPTED);
-+	e->e_hash = orig_e_hash;
-+
-+	/* Corrupted value hash stored in ea_inode->i_atime is rejected */
-+	inode_set_atime(ea_inode, val_hash ^ 1, 0);
-+	ret = ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, signed_name,
-+			     buf, val_len);
-+	KUNIT_EXPECT_EQ(test, ret, -EFSCORRUPTED);
-+	inode_set_atime(ea_inode, val_hash, 0);
-+
-+	/* Size mismatch between ea_inode->i_size and entry->e_value_size */
-+	i_size_write(ea_inode, val_len - 1);
-+	ret = ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, signed_name,
-+			     buf, val_len);
-+	KUNIT_EXPECT_EQ(test, ret, -EFSCORRUPTED);
-+	i_size_write(ea_inode, val_len);
-+
-+	/* Invalid i_nlink (0 or 2) on active EA inode returns -EFSCORRUPTED */
-+	set_nlink(ea_inode, 2);
-+	ret = ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, signed_name,
-+			     buf, val_len);
-+	KUNIT_EXPECT_EQ(test, ret, -EFSCORRUPTED);
-+	set_nlink(ea_inode, 1);
-+
-+	/* Self-referencing e_value_inum == parent->i_ino returns -EFSCORRUPTED */
-+	e->e_value_inum = cpu_to_le32(inode->i_ino);
-+	ret = ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, signed_name,
-+			     buf, val_len);
-+	KUNIT_EXPECT_EQ(test, ret, -EFSCORRUPTED);
-+	e->e_value_inum = cpu_to_le32(ea_inode->i_ino);
 +
 +	/*
-+	 * Lustre-style old EA inode compatibility: when e_hash != ea_inode
-+	 * hash, but parent ino (stored in i_mtime) and generation (stored in
-+	 * i_generation) match parent, ext4_xattr_inode_iget() sets
-+	 * EXT4_STATE_LUSTRE_EA_INODE and forces ref_count = 1.
++	 * 9. Delete entries in both i_block and xattr regions and verify
++	 * empty_inline_dir behavior when only xattr has an entry vs completely empty.
 +	 */
-+	e->e_hash = 0;
-+	inode->i_generation = 42;
-+	ea_inode->i_generation = 42;
-+	inode_set_mtime(ea_inode, inode->i_ino, 0);
-+	inode_set_ctime(ea_inode, 0, 0);
-+	inode_set_iversion_raw(ea_inode, 0);
-+	/* Even with initial ref_count = 0, Lustre compat sets ref = 1 */
-+	ret = ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, signed_name,
-+			     buf, val_len);
-+	KUNIT_EXPECT_EQ(test, ret, (int)val_len);
-+	KUNIT_EXPECT_NE(test,
-+			ext4_test_inode_state(ea_inode,
-+					      EXT4_STATE_LUSTRE_EA_INODE),
-+			0);
-+}
++	{
++		static const char * const del_names[] = {
++			"file1",
++			"file2_longer_name",
++			"file3_longer_name",
++		};
++		int i;
 +
-+/*
-+ * Test 10: ext4_get_inode_usage(), credit calculation, handle credit check,
-+ * ext4_expand_extra_isize_ea(), and ext4_xattr_delete_inode().
-+ */
-+static void test_xattr_credits_usage_expand_and_delete(struct kunit *test)
-+{
-+	struct xattr_test_ctx *ctx = test->priv;
-+	struct inode *inode = &ctx->primary.ei.vfs_inode;
-+	struct ext4_inode *raw = (struct ext4_inode *)ctx->primary.raw_buf;
-+	journal_t fake_journal = {
-+		.j_revoke_records_per_block = 64,
-+	};
-+	handle_t fake_handle = {
-+		.h_reserved = 1,
-+		.h_journal = &fake_journal,
-+		.h_total_credits = 1,
-+	};
-+	const size_t large_len = 1000;
-+	char *large_val;
-+	char val28[28];
-+	char buf[64];
-+	qsize_t usage = 0;
-+	int credits_create, credits_replace, credits_out = -1;
-+	int ret;
++		for (i = 0; i < ARRAY_SIZE(del_names); i++) {
++			init_mock_fname_and_child(env, &ctx->sb, del_names[i],
++						  0, 0);
++			bh = ext4_find_inline_entry(dir, &env->fname, &de,
++						    &has_inline_data);
++			KUNIT_ASSERT_NOT_ERR_OR_NULL(test, bh);
++			handle = ext4_journal_start(dir, EXT4_HT_DIR, 1);
++			KUNIT_ASSERT_FALSE(test, IS_ERR(handle));
++			ret = ext4_delete_inline_entry(handle, dir, de, bh,
++						       &has_inline_data);
++			ext4_journal_stop(handle);
++			KUNIT_EXPECT_EQ(test, ret, 0);
++			brelse(bh);
++		}
++	}
 +
-+	large_val = kunit_kmalloc(test, large_len, GFP_KERNEL);
-+	KUNIT_ASSERT_NOT_NULL(test, large_val);
-+	memset(large_val, 'L', large_len);
++	/* i_block now has no live entries, but "file4_in_xattr" is still in xattr */
++	KUNIT_EXPECT_FALSE(test, empty_inline_dir(dir, &has_inline_data));
 +
-+	/*
-+	 * 1. Credit calculation and insufficient handle credits check
-+	 */
-+	credits_create = __ext4_xattr_set_credits(&ctx->sb, inode, NULL,
-+						  100, true);
-+	KUNIT_EXPECT_GT(test, credits_create, 0);
++	/* Delete "file4_in_xattr" -> directory becomes completely empty */
++	init_mock_fname_and_child(env, &ctx->sb, "file4_in_xattr", 0, 0);
++	bh = ext4_find_inline_entry(dir, &env->fname, &de, &has_inline_data);
++	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, bh);
 +
-+	ext4_set_feature_ea_inode(&ctx->sb);
-+	credits_create = __ext4_xattr_set_credits(&ctx->sb, inode, NULL,
-+						  1500, true);
-+	credits_replace = __ext4_xattr_set_credits(&ctx->sb, inode, NULL,
-+						   1500, false);
-+	KUNIT_EXPECT_GT(test, credits_replace, credits_create);
++	/* Deleting an address outside inline buffers returns -ENOENT */
++	handle = ext4_journal_start(dir, EXT4_HT_DIR, 1);
++	KUNIT_ASSERT_FALSE(test, IS_ERR(handle));
++	ret = ext4_delete_inline_entry(handle, dir, &env->bogus_de, bh,
++				       &has_inline_data);
++	ext4_journal_stop(handle);
++	KUNIT_EXPECT_EQ(test, ret, -ENOENT);
 +
-+	/* Without a journal (s_journal == NULL), credits_out is 0 */
-+	ret = ext4_xattr_set_credits(inode, 1500, true, &credits_out);
++	handle = ext4_journal_start(dir, EXT4_HT_DIR, 1);
++	KUNIT_ASSERT_FALSE(test, IS_ERR(handle));
++	ret = ext4_delete_inline_entry(handle, dir, de, bh, &has_inline_data);
++	ext4_journal_stop(handle);
 +	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, credits_out, 0);
++	brelse(bh);
 +
-+	/* With s_journal set, ext4_xattr_set_credits() returns credits_create */
-+	ctx->sbi.s_journal = &fake_journal;
-+	ret = ext4_xattr_set_credits(inode, 1500, true, &credits_out);
-+	ctx->sbi.s_journal = NULL;
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, credits_out, credits_create);
-+
-+	/* Handle with only 1 buffer credit (< credits) fails with -ENOSPC */
-+	ret = ext4_xattr_set_handle(&fake_handle, inode, EXT4_XATTR_INDEX_USER,
-+				    "k", "v", 1, XATTR_CREATE);
-+	KUNIT_EXPECT_EQ(test, ret, -ENOSPC);
-+
-+	/*
-+	 * 2. ext4_expand_extra_isize_ea():
-+	 * Put "keep" (4B -> 24B total) and "evict" (28B -> 52B total) in
-+	 * ibody (88B usable, leaving 12B free).
-+	 * First expand i_extra_isize from 32 -> 40 (8 bytes <= 12B free):
-+	 * shifts ibody entries in-place without allocating an external block.
-+	 * Then expand i_extra_isize from 40 -> 72 (32 bytes > 4B free):
-+	 * "keep" (24 + 4 = 28 < 32) is too small alone, so "evict" (52 + 4 >= 32)
-+	 * is moved to an external xattr block while "keep" stays in ibody!
-+	 */
-+	ext4_clear_feature_ea_inode(&ctx->sb);
-+	ret = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, "keep",
-+			     "1234", 4, XATTR_CREATE);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+	memset(val28, 'E', sizeof(val28));
-+	ret = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, "evict",
-+			     val28, sizeof(val28), XATTR_CREATE);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, EXT4_I(inode)->i_file_acl, 0ULL);
-+
-+	/* In-place ibody shift (32 -> 40) */
-+	ret = ext4_expand_extra_isize_ea(inode, 40, raw, NULL);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, EXT4_I(inode)->i_extra_isize, (u16)40);
-+	KUNIT_EXPECT_EQ(test, EXT4_I(inode)->i_file_acl, 0ULL);
-+
-+	/* Eviction of "evict" to external block (40 -> 72) */
-+	ret = ext4_expand_extra_isize_ea(inode, 72, raw, NULL);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, EXT4_I(inode)->i_extra_isize, (u16)72);
-+	KUNIT_EXPECT_NE(test, EXT4_I(inode)->i_file_acl, 0ULL);
-+
-+	/* Both "keep" (in ibody) and "evict" (in external block) remain readable */
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_xattr_ibody_get(inode, EXT4_XATTR_INDEX_USER,
-+					     "keep", buf, sizeof(buf)),
-+			4);
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER,
-+				       "evict", buf, sizeof(buf)),
-+			28);
-+
-+	/*
-+	 * 3. ext4_get_inode_usage() and ext4_xattr_delete_inode():
-+	 * Add a 1000-byte EA inode attribute ("large_ea") and check that
-+	 * ext4_get_inode_usage() accounts for 1 (parent inode) + 1 (EA inode)
-+	 * = 2 inodes, and ext4_xattr_delete_inode() frees the external block
-+	 * and drops the EA inode reference to 0.
-+	 */
-+	ext4_set_feature_ea_inode(&ctx->sb);
-+	ret = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, "large_ea",
-+			     large_val, large_len, XATTR_CREATE);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+
-+	down_read(&EXT4_I(inode)->xattr_sem);
-+	ret = ext4_get_inode_usage(inode, &usage);
-+	up_read(&EXT4_I(inode)->xattr_sem);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, usage, (qsize_t)2);
-+
-+	ret = ext4_xattr_delete_inode(NULL, inode, 0);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, EXT4_I(inode)->i_file_acl, 0ULL);
-+	KUNIT_EXPECT_EQ(test, ctx->ea_inodes[0].ei.vfs_inode.i_nlink, 0U);
++	KUNIT_EXPECT_TRUE(test, empty_inline_dir(dir, &has_inline_data));
 +}
 +
-+/*
-+ * Test 11: Error injection and rollback paths across inode location lookup,
-+ * external block allocation/getblk/bread/dirty_metadata, and EA inode
-+ * creation/write/lookup.
-+ */
-+static void test_xattr_error_injection(struct kunit *test)
++static void test_inline_dir_conversion_and_corruptions(struct kunit *test)
 +{
-+	struct xattr_test_ctx *ctx = test->priv;
-+	struct inode *inode = &ctx->primary.ei.vfs_inode;
-+	const size_t large_len = 1000;
-+	char *large_val;
-+	char val100[100];
-+	char buf[128];
-+	unsigned int prev_free;
-+	int ret;
++	struct inline_test_ctx *ctx = test->priv;
++	struct inode *dir = &ctx->ei.vfs_inode;
++	struct inline_dir_test_env *env;
++	struct ext4_dir_entry_2 *de;
++	handle_t *handle;
++	int has_inline_data = 1;
++	int i, ret;
 +
-+	large_val = kunit_kmalloc(test, large_len, GFP_KERNEL);
-+	KUNIT_ASSERT_NOT_NULL(test, large_val);
-+	memset(large_val, 'F', large_len);
-+	memset(val100, 'B', sizeof(val100));
++	env = alloc_dir_test_env(test, ctx);
++	reset_inode_state(ctx, S_IFDIR | 0755);
 +
-+	/* 1. ext4_get_inode_loc() failure on set and get */
-+	ctx->fail_get_inode_loc = -EIO;
-+	ret = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, "k",
-+			     "v", 1, XATTR_CREATE);
-+	KUNIT_EXPECT_EQ(test, ret, -EIO);
-+
-+	ext4_set_inode_state(inode, EXT4_STATE_XATTR);
-+	ret = ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, "k",
-+			     buf, sizeof(buf));
-+	KUNIT_EXPECT_EQ(test, ret, -EIO);
-+	ext4_clear_inode_state(inode, EXT4_STATE_XATTR);
-+	ctx->fail_get_inode_loc = 0;
-+
-+	/* 2. ext4_mark_iloc_dirty() failure on set */
-+	ctx->fail_mark_iloc_dirty = -EIO;
-+	ret = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, "k",
-+			     "v", 1, XATTR_CREATE);
-+	ctx->fail_mark_iloc_dirty = 0;
-+	KUNIT_EXPECT_EQ(test, ret, -EIO);
-+	/* Clean up the entry written to raw_buf before mark_iloc_dirty */
-+	KUNIT_ASSERT_EQ(test,
-+			ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, "k",
-+				       NULL, 0, XATTR_REPLACE),
-+			0);
-+
-+	/* 3. External block allocation failure (-ENOSPC) */
-+	ctx->fail_alloc_block = -ENOSPC;
-+	ret = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, "blk",
-+			     val100, sizeof(val100), XATTR_CREATE);
-+	ctx->fail_alloc_block = 0;
-+	KUNIT_EXPECT_EQ(test, ret, -ENOSPC);
-+	KUNIT_EXPECT_EQ(test, EXT4_I(inode)->i_file_acl, 0ULL);
-+
-+	/*
-+	 * 4. ext4_xattr_getblk() failure (-ENOMEM) after block allocation must
-+	 * free the newly allocated block via ext4_free_blocks().
-+	 */
-+	prev_free = ctx->free_block_calls;
-+	ctx->fail_xattr_getblk = true;
-+	ret = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, "blk",
-+			     val100, sizeof(val100), XATTR_CREATE);
-+	ctx->fail_xattr_getblk = false;
-+	KUNIT_EXPECT_EQ(test, ret, -ENOMEM);
-+	KUNIT_EXPECT_EQ(test, ctx->free_block_calls, prev_free + 1);
-+	KUNIT_EXPECT_EQ(test, EXT4_I(inode)->i_file_acl, 0ULL);
-+
-+	/* 5. ext4_handle_dirty_metadata() failure when creating external block */
-+	ctx->fail_dirty_metadata = -EIO;
-+	ret = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, "blk",
-+			     val100, sizeof(val100), XATTR_CREATE);
-+	ctx->fail_dirty_metadata = 0;
-+	KUNIT_EXPECT_EQ(test, ret, -EIO);
-+	KUNIT_EXPECT_EQ(test, EXT4_I(inode)->i_file_acl, 0ULL);
-+
-+	/* Successfully create external block, then test ext4_sb_bread() failure */
-+	ret = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, "blk",
-+			     val100, sizeof(val100), XATTR_CREATE);
++	handle = ext4_journal_start(dir, EXT4_HT_DIR, 1);
++	KUNIT_ASSERT_FALSE(test, IS_ERR(handle));
++	ret = ext4_try_create_inline_dir(handle, &env->parent, dir);
++	ext4_journal_stop(handle);
 +	KUNIT_ASSERT_EQ(test, ret, 0);
 +
-+	ctx->fail_sb_bread = -EIO;
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, "blk",
-+				       buf, sizeof(buf)),
-+			-EIO);
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_listxattr(&ctx->root_dentry, buf, sizeof(buf)),
-+			(ssize_t)-EIO);
-+	KUNIT_EXPECT_EQ(test, ext4_xattr_delete_inode(NULL, inode, 0), -EIO);
-+	ctx->fail_sb_bread = 0;
++	/* Fill the inline directory up to its 128-byte limit */
++	for (i = 0; i < 4; i++) {
++		char name[24];
++
++		snprintf(name, sizeof(name), "entry_long_name_%d", i);
++		init_mock_fname_and_child(env, &ctx->sb, name, 200 + i,
++					  S_IFREG | 0644);
++		handle = ext4_journal_start(dir, EXT4_HT_DIR, 1);
++		KUNIT_ASSERT_FALSE(test, IS_ERR(handle));
++		ret = ext4_try_add_inline_entry(handle, &env->fname, dir,
++						&env->child);
++		ext4_journal_stop(handle);
++		KUNIT_ASSERT_EQ(test, ret, 1);
++	}
 +
 +	/*
-+	 * 6. EA inode block allocation failure in ext4_xattr_inode_write()
-+	 * must clean up the newly created EA inode (dropping its i_nlink to 0).
++	 * 1. When full, adding another entry triggers ext4_convert_inline_data_nolock.
++	 * Test rollback first when ext4_map_blocks fails (-ENOSPC).
 +	 */
-+	ext4_set_feature_ea_inode(&ctx->sb);
-+	ctx->fail_alloc_block = -ENOSPC;
-+	ret = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, "big_err",
-+			     large_val, large_len, XATTR_CREATE);
-+	ctx->fail_alloc_block = 0;
++	init_mock_fname_and_child(env, &ctx->sb, "overflow_entry_name", 250,
++				  S_IFREG | 0644);
++	ctx->map_blocks_ret = -ENOSPC;
++	handle = ext4_journal_start(dir, EXT4_HT_DIR, 1);
++	KUNIT_ASSERT_FALSE(test, IS_ERR(handle));
++	ret = ext4_try_add_inline_entry(handle, &env->fname, dir, &env->child);
++	ext4_journal_stop(handle);
 +	KUNIT_EXPECT_EQ(test, ret, -ENOSPC);
-+	KUNIT_EXPECT_TRUE(test, ctx->ea_inodes[0].allocated);
-+	KUNIT_EXPECT_EQ(test, ctx->ea_inodes[0].ei.vfs_inode.i_nlink, 0U);
++	KUNIT_EXPECT_TRUE(test, ext4_has_inline_data(dir));
++	ctx->map_blocks_ret = 1;
 +
-+	/* 7. Successfully create EA inode, then test __ext4_iget() and ext4_getblk() failure */
-+	ret = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, "big_ok",
-+			     large_val, large_len, XATTR_CREATE);
++	/*
++	 * 2. Successful conversion of full inline directory to a normal
++	 * 1024-byte directory block -> ext4_try_add_inline_entry returns 0
++	 * and data_block_buf starts with "." and ".." followed by copied entries.
++	 */
++	memset(ctx->data_block_buf, 0, sizeof(ctx->data_block_buf));
++	handle = ext4_journal_start(dir, EXT4_HT_DIR, 1);
++	KUNIT_ASSERT_FALSE(test, IS_ERR(handle));
++	ret = ext4_try_add_inline_entry(handle, &env->fname, dir, &env->child);
++	ext4_journal_stop(handle);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_FALSE(test, ext4_has_inline_data(dir));
++	KUNIT_EXPECT_EQ(test, i_size_read(dir), (loff_t)TEST_BLOCK_SIZE);
++
++	/* Verify "." and ".." headers in converted block */
++	de = (struct ext4_dir_entry_2 *)ctx->data_block_buf;
++	KUNIT_EXPECT_EQ(test, le32_to_cpu(de->inode), (u32)TEST_INO);
++	KUNIT_EXPECT_EQ(test, de->name_len, 1);
++	KUNIT_EXPECT_EQ(test, de->name[0], '.');
++	de = ext4_next_entry(de, TEST_BLOCK_SIZE);
++	KUNIT_EXPECT_EQ(test, le32_to_cpu(de->inode), (u32)TEST_PARENT_INO);
++	KUNIT_EXPECT_EQ(test, de->name_len, 2);
++	KUNIT_EXPECT_MEMEQ(test, de->name, "..", 2);
++
++	/*
++	 * 3. Non-inline directory behavior on inline dir functions:
++	 * sets *has_inline_data = 0 and returns early.
++	 */
++	has_inline_data = 1;
++	KUNIT_EXPECT_TRUE(test, empty_inline_dir(dir, &has_inline_data));
++	KUNIT_EXPECT_EQ(test, has_inline_data, 0);
++
++	/*
++	 * 4. Corrupted inline directory checks:
++	 *   4a. Parent ino ("..") == 0 -> empty_inline_dir returns false.
++	 *   4b. Zero rec_len dirent -> empty_inline_dir returns false,
++	 *       ext4_inlinedir_to_tree returns -EFSCORRUPTED, and
++	 *       ext4_convert_inline_data_nolock aborts via ext4_check_all_de.
++	 */
++	reset_inode_state(ctx, S_IFDIR | 0755);
++	handle = ext4_journal_start(dir, EXT4_HT_DIR, 1);
++	KUNIT_ASSERT_FALSE(test, IS_ERR(handle));
++	ret = ext4_try_create_inline_dir(handle, &env->parent, dir);
++	ext4_journal_stop(handle);
 +	KUNIT_ASSERT_EQ(test, ret, 0);
 +
-+	ctx->fail_iget = -EIO;
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, "big_ok",
-+				       large_val, large_len),
-+			-EIO);
-+	ctx->fail_iget = 0;
++	/* Corrupt parent ino to 0 */
++	*(__le32 *)raw_inline_i_block(ctx) = cpu_to_le32(0);
++	KUNIT_EXPECT_FALSE(test, empty_inline_dir(dir, &has_inline_data));
++	*(__le32 *)raw_inline_i_block(ctx) = cpu_to_le32(TEST_PARENT_INO);
 +
-+	ctx->fail_getblk = -EIO;
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, "big_ok",
-+				       large_val, large_len),
-+			-EIO);
-+	ctx->fail_getblk = 0;
++	/* Corrupt first dirent rec_len to 0 */
++	de = (struct ext4_dir_entry_2 *)((char *)raw_inline_i_block(ctx) +
++					 EXT4_INLINE_DOTDOT_SIZE);
++	de->rec_len = cpu_to_le16(0);
++	KUNIT_EXPECT_FALSE(test, empty_inline_dir(dir, &has_inline_data));
++
++	/* ext4_convert_inline_data on corrupted inline dir fails in ext4_check_all_de */
++	ret = ext4_convert_inline_data(dir);
++	KUNIT_EXPECT_EQ(test, ret, -EFSCORRUPTED);
++	KUNIT_EXPECT_TRUE(test, ext4_has_inline_data(dir));
 +}
 +
-+static struct kunit_case xattr_test_cases[] = {
-+	KUNIT_CASE(test_xattr_macros_and_locking),
-+	KUNIT_CASE_PARAM(test_xattr_check_inode, xattr_check_gen_params),
-+	KUNIT_CASE(test_xattr_ibody_basic_and_flags),
-+	KUNIT_CASE(test_xattr_ibody_replace_and_remove),
-+	KUNIT_CASE(test_xattr_external_block_and_check),
-+	KUNIT_CASE(test_xattr_block_dedup_and_cow),
-+	KUNIT_CASE(test_xattr_list_and_handlers),
-+	KUNIT_CASE(test_xattr_ea_inode_lifecycle_and_dedup),
-+	KUNIT_CASE(test_xattr_ea_inode_validation_and_compat),
-+	KUNIT_CASE(test_xattr_credits_usage_expand_and_delete),
-+	KUNIT_CASE(test_xattr_error_injection),
++static struct kunit_case ext4_inline_test_cases[] = {
++	KUNIT_CASE(test_max_inline_size_variants),
++	KUNIT_CASE(test_find_inline_data_nolock),
++	KUNIT_CASE(test_write_and_destroy_inline_data),
++	KUNIT_CASE(test_write_inline_short_copy_and_edge_cases),
++	KUNIT_CASE(test_readpage_inline_link_and_iomap),
++	KUNIT_CASE(test_inline_data_truncate),
++	KUNIT_CASE(test_convert_inline_data_and_rollback),
++	KUNIT_CASE(test_write_triggers_inline_to_extent_conversion),
++	KUNIT_CASE(test_update_final_de),
++	KUNIT_CASE(test_inline_dir_lifecycle_and_operations),
++	KUNIT_CASE(test_inline_dir_conversion_and_corruptions),
 +	{}
 +};
 +
-+static struct kunit_suite xattr_test_suite = {
-+	.name = "ext4_xattr_test",
-+	.init = xattr_test_init,
-+	.exit = xattr_test_exit,
-+	.test_cases = xattr_test_cases,
++static struct kunit_suite ext4_inline_test_suite = {
++	.name = "ext4_inline_test",
++	.init = inline_test_init,
++	.exit = inline_test_exit,
++	.test_cases = ext4_inline_test_cases,
 +};
 +
-+kunit_test_suites(&xattr_test_suite);
++kunit_test_suites(&ext4_inline_test_suite);
 +
 +MODULE_LICENSE("GPL");
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 5c310747b965..f9397a7124fd 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -57,6 +57,7 @@
- #include <linux/mbcache.h>
- #include <linux/quotaops.h>
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index 0e662a9f7574..97cc2c61ce25 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -9,6 +9,7 @@
+ #include <linux/namei.h>
  #include <linux/iversion.h>
+ #include <linux/sched/mm.h>
 +#include <kunit/static_stub.h>
+ 
  #include "ext4_jbd2.h"
  #include "ext4.h"
- #include "xattr.h"
-@@ -107,6 +108,7 @@ const struct xattr_handler * const ext4_xattr_handlers[] = {
- 	&ext4_xattr_hurd_handler,
- 	NULL
- };
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_xattr_handlers);
- 
- #define EA_BLOCK_CACHE(inode)	(((struct ext4_sb_info *) \
- 				inode->i_sb->s_fs_info)->s_ea_block_cache)
-@@ -169,6 +171,14 @@ static void ext4_xattr_block_csum_set(struct inode *inode,
- 						bh->b_blocknr, BHDR(bh));
+@@ -1096,6 +1097,13 @@ static void ext4_restore_inline_data(handle_t *handle, struct inode *inode,
+ 	ext4_set_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
  }
  
-+struct buffer_head *ext4_xattr_getblk(struct super_block *sb,
-+				      ext4_fsblk_t block)
++struct buffer_head *ext4_inline_getblk(struct super_block *sb,
++				       ext4_fsblk_t block)
 +{
-+	KUNIT_STATIC_STUB_REDIRECT(ext4_xattr_getblk, sb, block);
++	KUNIT_STATIC_STUB_REDIRECT(ext4_inline_getblk, sb, block);
 +	return sb_getblk(sb, block);
 +}
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_xattr_getblk);
 +
- static inline const char *ext4_xattr_prefix(int name_index,
- 					    struct dentry *dentry)
- {
-@@ -315,6 +325,7 @@ __xattr_check_inode(struct inode *inode, struct ext4_xattr_ibody_header *header,
- 	return check_xattrs(inode, NULL, IFIRST(header), end, IFIRST(header),
- 			    function, line);
- }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(__xattr_check_inode);
- 
- static int
- xattr_find_entry(struct inode *inode, struct ext4_xattr_entry **pentry,
-@@ -493,6 +504,7 @@ void ext4_evict_ea_inode(struct inode *inode)
- 		mb_cache_entry_put(EA_INODE_CACHE(inode), oe);
+ static int ext4_convert_inline_data_nolock(handle_t *handle,
+ 					   struct inode *inode,
+ 					   struct ext4_iloc *iloc)
+@@ -1144,7 +1152,7 @@ static int ext4_convert_inline_data_nolock(handle_t *handle,
+ 		goto out_restore;
  	}
+ 
+-	data_bh = sb_getblk(inode->i_sb, map.m_pblk);
++	data_bh = ext4_inline_getblk(inode->i_sb, map.m_pblk);
+ 	if (!data_bh) {
+ 		error = -ENOMEM;
+ 		goto out_restore;
+@@ -2018,5 +2026,25 @@ int ext4_convert_inline_data(struct inode *inode)
  }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_evict_ea_inode);
  
- static int
- ext4_xattr_inode_verify_hashes(struct inode *ea_inode,
-@@ -693,6 +705,7 @@ ext4_xattr_ibody_get(struct inode *inode, int name_index, const char *name,
- 	brelse(iloc.bh);
- 	return error;
- }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_xattr_ibody_get);
- 
- /*
-  * ext4_xattr_get()
-@@ -725,6 +738,7 @@ ext4_xattr_get(struct inode *inode, int name_index, const char *name,
- 	up_read(&EXT4_I(inode)->xattr_sem);
- 	return error;
- }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_xattr_get);
- 
- static int
- ext4_xattr_list_entries(struct dentry *dentry, struct ext4_xattr_entry *entry,
-@@ -841,6 +855,7 @@ ext4_listxattr(struct dentry *dentry, char *buffer, size_t buffer_size)
- 	up_read(&EXT4_I(d_inode(dentry))->xattr_sem);
- 	return ret;
- }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_listxattr);
- 
- /*
-  * If the EXT4_FEATURE_COMPAT_EXT_ATTR feature of this file system is
-@@ -912,6 +927,7 @@ int ext4_get_inode_usage(struct inode *inode, qsize_t *usage)
- 	brelse(bh);
- 	return ret;
- }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_get_inode_usage);
- 
- static inline size_t round_up_cluster(struct inode *inode, size_t length)
- {
-@@ -1029,6 +1045,7 @@ int __ext4_xattr_set_credits(struct super_block *sb, struct inode *inode,
- 	}
- 	return credits;
- }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(__ext4_xattr_set_credits);
- 
- static int ext4_xattr_inode_update_ref(handle_t *handle, struct inode *ea_inode,
- 				       int ref_change)
-@@ -2136,7 +2153,7 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
- 			ea_idebug(inode, "creating block %llu",
- 				  (unsigned long long)block);
- 
--			new_bh = sb_getblk(sb, block);
-+			new_bh = ext4_xattr_getblk(sb, block);
- 			if (unlikely(!new_bh)) {
- 				error = -ENOMEM;
- getblk_failed:
-@@ -2252,6 +2269,7 @@ int ext4_xattr_ibody_find(struct inode *inode, struct ext4_xattr_info *i,
- 	}
- 	return 0;
- }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_xattr_ibody_find);
- 
- int ext4_xattr_ibody_set(handle_t *handle, struct inode *inode,
- 				struct ext4_xattr_info *i,
-@@ -2302,6 +2320,7 @@ int ext4_xattr_ibody_set(handle_t *handle, struct inode *inode,
- 	ext4_put_ea_inode(ea_inode);
- 	return 0;
- }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_xattr_ibody_set);
- 
- static int ext4_xattr_value_same(struct ext4_xattr_search *s,
- 				 struct ext4_xattr_info *i)
-@@ -2499,6 +2518,7 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
- 	ext4_write_unlock_xattr(inode, &no_expand);
- 	return error;
- }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_xattr_set_handle);
- 
- int ext4_xattr_set_credits(struct inode *inode, size_t value_len,
- 			   bool is_create, int *credits)
-@@ -2526,6 +2546,7 @@ int ext4_xattr_set_credits(struct inode *inode, size_t value_len,
- 	up_read(&EXT4_I(inode)->xattr_sem);
- 	return err;
- }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_xattr_set_credits);
- 
- /*
-  * ext4_xattr_set()
-@@ -2574,6 +2595,7 @@ ext4_xattr_set(struct inode *inode, int name_index, const char *name,
- 
- 	return error;
- }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_xattr_set);
- 
- /*
-  * Shift the EA entries in the inode to create space for the increased
-@@ -2865,6 +2887,7 @@ int ext4_expand_extra_isize_ea(struct inode *inode, int new_extra_isize,
- 	}
- 	return error;
- }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_expand_extra_isize_ea);
- 
- /*
-  * ext4_xattr_delete_inode()
-@@ -2973,6 +2996,7 @@ int ext4_xattr_delete_inode(handle_t *handle, struct inode *inode,
- 	brelse(bh);
- 	return error;
- }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_xattr_delete_inode);
- 
- /*
-  * Worker function for deferred EA inode iput.  Processes all inodes queued
-@@ -3026,12 +3050,14 @@ void ext4_put_ea_inode(struct inode *inode)
- 	 */
- 	schedule_delayed_work(&EXT4_SB(inode->i_sb)->s_ea_inode_work, 1);
- }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_put_ea_inode);
- 
- void ext4_init_ea_inode_work(struct ext4_sb_info *sbi)
- {
- 	init_llist_head(&sbi->s_ea_inode_to_free);
- 	INIT_DELAYED_WORK(&sbi->s_ea_inode_work, ext4_ea_inode_work);
- }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_init_ea_inode_work);
- 
- /*
-  * ext4_xattr_block_cache_insert()
-@@ -3229,10 +3255,12 @@ ext4_xattr_create_cache(void)
- {
- 	return mb_cache_create(HASH_BUCKET_BITS);
- }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_xattr_create_cache);
- 
- void ext4_xattr_destroy_cache(struct mb_cache *cache)
- {
- 	if (cache)
- 		mb_cache_destroy(cache);
- }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_xattr_destroy_cache);
- 
-diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
-index 821dc6a50e51..1a72e68cea0c 100644
---- a/fs/ext4/xattr.h
-+++ b/fs/ext4/xattr.h
-@@ -229,3 +229,5 @@ static inline void ext4_xattr_inode_set_class(struct inode *ea_inode) { }
+ #if IS_ENABLED(CONFIG_EXT4_KUNIT_TESTS)
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_inline_getblk);
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_get_max_inline_size);
+ EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_find_inline_data_nolock);
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_readpage_inline);
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_generic_write_inline_data);
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_try_to_write_inline_data);
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_write_inline_data_end);
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_update_final_de);
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_try_add_inline_entry);
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_inlinedir_to_tree);
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_read_inline_dir);
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_read_inline_link);
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_get_first_inline_block);
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_try_create_inline_dir);
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_find_inline_entry);
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_delete_inline_entry);
++EXPORT_SYMBOL_FOR_EXT4_TEST(empty_inline_dir);
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_destroy_inline_data);
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_inline_data_iomap);
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_inline_data_truncate);
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_convert_inline_data);
  #endif
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index c8a06c455b3f..105c731b95b1 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2030,6 +2030,9 @@ int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
+ 	sector_t invalid_block = ~((sector_t) 0xffff);
+ 	int ret = 0;
  
- extern int ext4_get_inode_usage(struct inode *inode, qsize_t *usage);
-+extern struct buffer_head *ext4_xattr_getblk(struct super_block *sb,
-+					     ext4_fsblk_t block);
-diff --git a/fs/ext4/xattr_hurd.c b/fs/ext4/xattr_hurd.c
-index 8a5842e4cd95..69163a6eda2c 100644
---- a/fs/ext4/xattr_hurd.c
-+++ b/fs/ext4/xattr_hurd.c
-@@ -50,3 +50,7 @@ const struct xattr_handler ext4_xattr_hurd_handler = {
- 	.get	= ext4_xattr_hurd_get,
- 	.set	= ext4_xattr_hurd_set,
- };
++	KUNIT_STATIC_STUB_REDIRECT(ext4_da_get_block_prep, inode, iblock, bh,
++				   create);
 +
-+#if IS_ENABLED(CONFIG_EXT4_KUNIT_TESTS)
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_xattr_hurd_handler);
-+#endif
-diff --git a/fs/ext4/xattr_trusted.c b/fs/ext4/xattr_trusted.c
-index 9811eb0ab276..4329c020201b 100644
---- a/fs/ext4/xattr_trusted.c
-+++ b/fs/ext4/xattr_trusted.c
-@@ -45,3 +45,7 @@ const struct xattr_handler ext4_xattr_trusted_handler = {
- 	.get	= ext4_xattr_trusted_get,
- 	.set	= ext4_xattr_trusted_set,
- };
-+
-+#if IS_ENABLED(CONFIG_EXT4_KUNIT_TESTS)
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_xattr_trusted_handler);
-+#endif
-diff --git a/fs/ext4/xattr_user.c b/fs/ext4/xattr_user.c
-index 4b70bf4e7626..cb043545d411 100644
---- a/fs/ext4/xattr_user.c
-+++ b/fs/ext4/xattr_user.c
-@@ -48,3 +48,7 @@ const struct xattr_handler ext4_xattr_user_handler = {
- 	.get	= ext4_xattr_user_get,
- 	.set	= ext4_xattr_user_set,
- };
-+
-+#if IS_ENABLED(CONFIG_EXT4_KUNIT_TESTS)
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_xattr_user_handler);
-+#endif
+ 	BUG_ON(create == 0);
+ 	BUG_ON(bh->b_size != inode->i_sb->s_blocksize);
+ 
+@@ -6999,6 +7002,7 @@ vm_fault_t ext4_page_mkwrite(struct vm_fault *vmf)
+ }
+ 
+ #if IS_ENABLED(CONFIG_EXT4_KUNIT_TESTS)
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_da_get_block_prep);
+ EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_da_update_reserve_space);
+ EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_da_release_space);
+ EXPORT_SYMBOL_FOR_EXT4_TEST(__ext4_mark_inode_dirty);
 -- 
 2.56.0.542.g3ef89b7020-goog
 
