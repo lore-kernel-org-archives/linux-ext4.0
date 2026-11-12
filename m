@@ -1,55 +1,55 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794457713;
-	b=c0UENy9ZCXpAQY3Ha+eLNDF6lcX+p/qIe/Ev0iF5DF7ScM9uJoc4OIb50f/QBDarfFWM
-	 ZyyfH3CLbhT6FCfZ7B0SZDXuBlZKwJGfmbhMAI9756BBO9vWvXuwFgoLzZ/j6qVSdTKXU
-	 6bA70OEfsjb4lDCSYBXibOIwQROm20iTqA8TeqMPAQ8WVOq7D5d6gE4XMPg5dRaN92YVU
-	 lDxbZW5pRpTYYk4bAELN8hUiz9xMLVnlaw8Z1zssCB5KCLUmcKQa4RHW9GJJGMZk53IgE
-	 S5SYqj7HrdvG+Mcw7DO6WSQkQ9/uSehTw1pTrS5JxSzn74LwoQ8iM8A1s795CaLdTKA==
+	t=1794457759;
+	b=ZBfKQZRe3paqil4cfzYhJSzovsOforAajj+/+W+g7iMp8HFJTAtsChVUOC0ZwMjQfqYw
+	 pKbAKLKz34r8X8FjeExdf1MA/ns5XnglIyOKHdb6tJlZJxNoaRtFw7OTutX80bt8E+y/q
+	 ybN1z9ZT4u3TZ2j6ZD4D63dmPHyCszNvwoX5sDo2baRN35/vyM5Hnb8gvKWR61fvujzYP
+	 t63aU9h9grNAYhX51X/Hg97p7KtlWpM/ie+T6fD5xzRNWKY0KHokSspXS4x6/8zGvBytI
+	 So0wwQ4lOAW4YkZ7Y1beIR56Edr7PSP44tAlAWQEd0C1rZDKHhzqKfj1TuyWWtCWZOA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794457713;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794457759;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=la5/TLkbDv7ZYovdVEDkygyrvKUVdFyDv5IIaahTXjQ=;
-	b=luGqLBUcfAOp30snbUHDc30aTnF0j1LZYBoBemgcsTZ3YqtoLNVD9jqiYmgvrx9BE+ps
-	 OFwbKfSu9RdCsDgiYm1ypZilZ2uL0TJwahrZoDBFb2X3vMj53NmAtMlKzmBFTCX1n6X5p
-	 F+yZKCn9PdyZi0569AX+avELM6h9GFBhiRU/Iik6UoH4jIGMpBPA++DxMbeUA00iv7a0C
-	 58CpV8oXrxIPegT6owA8sYjKjbGwgNTGSDL2K55ye7bb+n7v7Rm+DNXRQ0qL/lrJPBwRi
-	 6WQYQ5WDNTbXMDcAfVyHw8dDu694e4KH6YiOyv12HfZZe53HYgEjE06XRu5TrbYK5PQ==
+	bh=mhlHFUu5HIbCCv8iaBs/kRAN3g4ObIUaLQTuwCIgE6w=;
+	b=YBh5tvs8kaRmGPx1VJvLzPOkQm414msm1U8RnqReRzhrZuw/7CWBHAyTYF0X4I+/mqUF
+	 eTlyKN/S6c6ZMBl60wV64j7jLrSWyvZtP4WwqwENOXKX2ACBO1YuAQzleQX2mtT7BOdd0
+	 X3pskq1L7SIdgs7qyeU9OR8G1n9Clmf5Dz+Ze+lzP8qlJ5at+7XMgoNuHSe2F7xWc5iVo
+	 MCDzKHi+eut15OCd0w/aCi1Ccp+a08ukDXDXYSXfdQMJ4URu5Rfw+c/eihKTPr64q4DZI
+	 JrFdwme7GRmCrmea+MuLDnSVXRkrQYkvUxCdH4UH320ZSWOcEE3x3SL4Zx8owx7PcYg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=lj5h9Nq+;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=K4WrTh7E;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6CB9A606A321
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Nov 2026 04:28:33 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 66D1B606A323
+	for <linux-ext4@vger.kernel.org>; Thu, 12 Nov 2026 04:29:19 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=lj5h9Nq+
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2BB0E1F00A05;
-	Thu, 12 Nov 2026 04:28:33 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=K4WrTh7E
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id DD3171F00A05;
+	Thu, 12 Nov 2026 04:29:18 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794457713;
-	bh=la5/TLkbDv7ZYovdVEDkygyrvKUVdFyDv5IIaahTXjQ=;
+	s=k20260515; t=1794457759;
+	bh=mhlHFUu5HIbCCv8iaBs/kRAN3g4ObIUaLQTuwCIgE6w=;
 	h=From:Subject:Reply-To:To:In-Reply-To:References:Date;
-	b=lj5h9Nq+hXlYMxy6qZDbtnTBTugFW88cPaJal+BuOCDWScFphYqXwXbEgHHFRNDNt
-	 Qg2KBTBLwr61Fd38g9rg3Kxj6WsIk3tnkoG0jCLPqhX57eQkPe/W74YwlPyDCxmZVa
-	 BSq+Ft6O80UC++0YCGs2ceIIyj8Nxx+YKJMwYuKka+cjsWNhTSCVGLaD91OVd3giHW
-	 iXb4XKfAQw+iIKYqXb7As5fK2uArxxNQeXjUDkz+JZeHPs0AAQEQ+/X/NZEowx3SMG
-	 ySCA2iUYnrENZNeVPEoc3GudI9pFCy/lZdWx3jwtu4uYzwERSNPMhrTvK6twrgSE3p
-	 iMzzO4qunYTXw==
-Message-ID: <sashiko-outbox-210338@kernel.org>
+	b=K4WrTh7E/ncivaWE9xt3bQMQGnexLInQQZ+pZN+rWhnenIEWj4Xp5UzHN3PwAkTks
+	 /0ApIIWErYukci76HjJrp0YrJyvUEO4whpx2UZ4UkKRBOCoikT5pYj7FAEX/jkjBVu
+	 L8aU4j3QREhiZqlLqh9kP7F35o+a29eWnTuRda8hPSc6V0Y6gXcji6896hJ2qL0aEj
+	 k1IPnvvxeHtxxNgGz9WSINA0p54q4Ee90pKdn1C0UNRFF7tFMFFM6abLL7zuCwylaN
+	 3lGglW5/wW5g+xc+WMnUWoqDUWhYL2sTaYnekv8WNH2aJ5+g0OqfUwNIX/g8eblOpc
+	 3Ck4ZzLlP9aSw==
+Message-ID: <sashiko-outbox-210339@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH 09/27] ext4: add KUnit tests for fs/ext4/fast_commit.c
+Subject: Re: [PATCH 07/27] ext4: add KUnit tests for fs/ext4/inline.c
 Reply-To: sashiko-reviews@lists.linux.dev
 To: =?utf-8?b?VGhlb2RvcmUgVHMnbw==?= <tytso@mit.edu>, "Ext4 Developers List" <linux-ext4@vger.kernel.org>
-In-Reply-To: <20261112040638.1576836-10-tytso@mit.edu>
+In-Reply-To: <20261112040638.1576836-8-tytso@mit.edu>
 References: <20261112040638.1576836-1-tytso@mit.edu>
- <20261112040638.1576836-10-tytso@mit.edu>
+ <20261112040638.1576836-8-tytso@mit.edu>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Thu, 12 Nov 2026 04:28:32 +0000
+Date: Thu, 12 Nov 2026 04:29:18 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -59,171 +59,304 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-Thank you for your contribution! Sashiko AI review found 3 potential
+Thank you for your contribution! Sashiko AI review found 4 potential
 issues to consider:
-- [Medium] ext4: uninitialized j_trans_commit_map in
-  fast_commit_test_init()
-- [Medium] ext4: excessive stack frame size in fast_commit-test.c test
-  cases
-- [Low] ext4: resource leak and UAF on abort in fast_commit_test_init()
-  and cleanup
+- [Low] ext4: unexercised dioread_nolock branch in inline conversion
+  KUnit test
+- [Low] ext4: unexercised iversion revalidation in test_filldir_actor()
+- [Low] ext4: inaccurate comment on ext4_inlinedir_to_tree() in
+  inline-test.c
+- [Low] ext4: missing i_size_ordered_init() on mock inode in
+  inline_test_init()
+It also noticed 2 related pre-existing issues this patch does not
+introduce:
+- [Critical] ext4: TOCTOU race condition in
+  ext4_convert_inline_data_nolock() [1]
+- [Critical] ext4: 32-bit i_size truncation in
+  ext4_inline_data_truncate() [2]
 --
 
-commit 0a44fff123afc676ec0d455ddc174806f24be58f
+commit 2474f0318caf555f2d6839372e8f1734082921e5
 Author: Theodore Ts'o <tytso@mit.edu>
 
-ext4: add KUnit tests for fs/ext4/fast_commit.c
+ext4: add KUnit tests for fs/ext4/inline.c
 
-This commit adds the ext4_fast_commit_test KUnit test suite in
-fs/ext4/fast_commit-test.c and exports fast commit helpers and static stub
-hooks in fs/ext4/fast_commit.c and related files.
+This commit adds a KUnit test suite in fs/ext4/inline-test.c to exercise
+ext4 inline data operations for regular files, symlinks, and directories,
+along with static stub hooks and symbol exports for the tested functions.
 
-> diff --git a/fs/ext4/fast_commit-test.c b/fs/ext4/fast_commit-test.c
+> diff --git a/fs/ext4/inline-test.c b/fs/ext4/inline-test.c
 > new file mode 100644
-> index 0000000000000..57745e51bea67
+> index 0000000000000..a75f46475c4a9
 > --- /dev/null
-> +++ b/fs/ext4/fast_commit-test.c
+> +++ b/fs/ext4/inline-test.c
 [ ... ]
-> +/* --- Suite Setup & Teardown --- */
-> +
-> +static void fc_cleanup_all(void *priv)
+> +static int inline_test_init(struct kunit *test)
 > +{
-> +	struct fc_test_ctx *ctx =3D priv;
-> +	int i;
-> +
-> +	ctx->sbi->s_mount_state &=3D ~EXT4_FC_REPLAY;
-> +	ext4_fc_cleanup_test(&ctx->journal, 1, 999999);
-> +	ext4_fc_replay_cleanup(ctx->sb);
-> +
-> +	for (i =3D 0; i < TEST_MAX_INODES; i++) {
-> +		if (!ctx->inodes[i].allocated)
-> +			continue;
-> +		down_write(&ctx->inodes[i].ei.i_data_sem);
-> +		ext4_es_remove_extent(&ctx->inodes[i].ei.vfs_inode, 0,
-> +				      EXT_MAX_BLOCKS);
-> +		up_write(&ctx->inodes[i].ei.i_data_sem);
-> +		ext4_fc_free_inode_snap_test(&ctx->inodes[i].ei.vfs_inode);
-> +	}
-> +
-> +	ext4_es_unregister_shrinker(ctx->sbi);
-> +	deactivate_super(ctx->sb);
-> +}
-> +
-> +static int fast_commit_test_init(struct kunit *test)
+[ ... ]
+> +	/* Initialize mock ext4_inode_info and embedded vfs_inode */
+> +	inode =3D &ctx->ei.vfs_inode;
+> +	inode->i_sb =3D &ctx->sb;
+> +	inode->i_ino =3D TEST_INO;
+> +	inode->i_blkbits =3D TEST_BLOCK_BITS;
+> +	set_nlink(inode, 1);
+> +	atomic_set(&inode->i_count, 1);
+> +	spin_lock_init(&inode->i_lock);
+> +	init_rwsem(&inode->i_rwsem);
+
+[Severity: Low]
+Does the mock inode initialization in inline_test_init() miss a call to
+i_size_ordered_init(inode) (or inode_init_once())?
+
+On 32-bit SMP kernels with CONFIG_DEBUG_LOCK_ALLOC enabled, struct inode
+embeds seqcount_t i_size_seqcount.  Because ctx is allocated from the heap
+via kunit_kzalloc(), calling i_size_write() or i_size_read() in
+create_inline_file() and the tested inline helpers accesses an
+uninitialized lockdep_map key on inode->i_size_seqcount, triggering a
+lockdep warning and disabling lockdep.
+
+[ ... ]
+
+> +static void test_write_triggers_inline_to_extent_conversion(struct kunit=
+ *test)
 > +{
-> +	struct fc_test_ctx *ctx;
-> +	struct ext4_sb_info *sbi;
-> +	struct super_block *sb;
-> +	struct fs_context *fc;
-> +	int i, err;
-> +
-> +	ctx =3D kunit_kzalloc(test, sizeof(*ctx), GFP_KERNEL);
-> +	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, ctx);
-> +
-> +	sbi =3D kunit_kzalloc(test, sizeof(*sbi), GFP_KERNEL);
-> +	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, sbi);
-> +
-> +	fc =3D fs_context_for_mount(&fc_fs_type, 0);
-> +	KUNIT_ASSERT_FALSE(test, IS_ERR(fc));
-> +	sb =3D sget_fc(fc, NULL, fc_set_anon);
-> +	put_fs_context(fc);
-> +	KUNIT_ASSERT_FALSE(test, IS_ERR(sb));
 [ ... ]
-> +	up_write(&sb->s_umount);
+> +	/*
+> +	 * 2. Conversion with DIOREAD_NOLOCK + DELALLOC enabled and journal_data
+> +	 * mode (exercises ext4_should_dioread_nolock and ext4_should_journal_d=
+ata
+> +	 * branches in ext4_convert_inline_data_to_extent).
+> +	 */
+> +	reset_inode_state(ctx, S_IFREG | 0644);
+> +	ret =3D create_inline_file(inode, buf, sizeof(buf));
+> +	KUNIT_ASSERT_EQ(test, ret, 0);
 > +
-> +	err =3D ext4_es_register_shrinker(sbi);
-> +	KUNIT_ASSERT_EQ(test, err, 0);
-> +	ctx->shrinker_count =3D sbi->s_es_shrinker->count_objects;
-> +	ctx->shrinker_scan =3D sbi->s_es_shrinker->scan_objects;
-> +	WRITE_ONCE(sbi->s_es_shrinker->count_objects, fc_dummy_shrinker_count);
-> +	WRITE_ONCE(sbi->s_es_shrinker->scan_objects, fc_dummy_shrinker_scan);
+> +	set_opt(&ctx->sb, DIOREAD_NOLOCK);
+> +	set_opt(&ctx->sb, DELALLOC);
+> +	ctx->journal_mode =3D EXT4_INODE_JOURNAL_DATA_MODE;
 > +
-> +	/* Mock journal, running transaction, and handle setup */
-> +	rwlock_init(&ctx->journal.j_state_lock);
-> +	spin_lock_init(&ctx->journal.j_list_lock);
-> +	mutex_init(&ctx->journal.j_barrier);
+> +	inode_lock(inode);
+> +	folio =3D NULL;
+> +	ret =3D ext4_try_to_write_inline_data(&inode->i_data, inode, 0, 200,
+> +					    &folio);
+> +	inode_unlock(inode);
 
-[Severity: Medium]
-Does fast_commit_test_init() leave ctx->journal.j_trans_commit_map
-uninitialized?
+[Severity: Low]
+Does setting ctx->journal_mode to EXT4_INODE_JOURNAL_DATA_MODE here prevent
+the ext4_should_dioread_nolock() branch in
+ext4_convert_inline_data_to_extent() from being exercised?
 
-ctx is heap-allocated with kunit_kzalloc().  When test_fc_commit_paths()
-calls ext4_fc_commit() -> ext4_fc_perform_commit() ->
-jbd2_journal_lock_updates(), jbd2_might_wait_for_commit() passes
-&ctx->journal.j_trans_commit_map to rwsem_acquire() and rwsem_release().
-With CONFIG_LOCKDEP enabled, its NULL key in non-static memory triggers
-"INFO: trying to register non-static key" and turns off lockdep via
-debug_locks_off().
+ext4_should_dioread_nolock() returns 0 whenever
+ext4_should_journal_data(inode) is true:
+
+fs/ext4/ext4_jbd2.h:ext4_should_dioread_nolock() {
+    ...
+	if (ext4_should_journal_data(inode))
+		return 0;
+    ...
+}
+
+Testing the DIOREAD_NOLOCK + DELALLOC unwritten-extent conversion path
+requires a separate call with a non-journaled data mode such as
+EXT4_INODE_WRITEBACK_DATA_MODE.
 
 [ ... ]
 
-> +	kunit_activate_static_stub(test, ext4_fc_submit_bh,
-> +				   stub_fc_submit_bh);
-> +	kunit_activate_static_stub(test, ext4_fc_issue_flush,
-> +				   stub_fc_issue_flush);
+> +static bool test_filldir_actor(struct dir_context *dctx, const char *nam=
+e,
+> +			       int namelen, loff_t offset, u64 ino,
+> +			       unsigned int d_type)
+> +{
+> +	struct test_dir_ctx *tctx =3D
+> +		container_of(dctx, struct test_dir_ctx, ctx);
 > +
-> +	init_mock_inode_slot(ctx, &ctx->inodes[0], TEST_ROOT_INO,
-> +			     S_IFDIR | 0755);
-> +	init_mock_inode_slot(ctx, &ctx->inodes[1], TEST_DIR_INO,
-> +			     S_IFDIR | 0755);
-> +	init_mock_inode_slot(ctx, &ctx->inodes[2], TEST_FILE1_INO,
-> +			     S_IFREG | 0644);
-> +	init_mock_inode_slot(ctx, &ctx->inodes[3], TEST_FILE2_INO,
-> +			     S_IFREG | 0644);
-> +	init_mock_inode_slot(ctx, &ctx->inodes[4], TEST_SUBDIR_INO,
-> +			     S_IFDIR | 0755);
+> +	if (tctx->max_emit > 0 && tctx->count >=3D tctx->max_emit)
+> +		return false;
+
+[ ... ]
+
+> +	/* Mutating inode iversion during iteration triggers offset revalidatio=
+n */
+> +	memset(&env->dctx, 0, sizeof(env->dctx));
+> +	env->dctx.ctx.actor =3D test_filldir_actor;
+> +	env->dctx.ctx.pos =3D 0;
+> +	env->dctx.mutate_inode_on_second =3D dir;
+> +	ret =3D ext4_read_inline_dir(&env->filp, &env->dctx.ctx,
+> +				   &has_inline_data);
+> +	KUNIT_EXPECT_EQ(test, ret, 0);
+> +	KUNIT_EXPECT_EQ(test, env->dctx.count, 6);
+
+[Severity: Low]
+Does this subtest ever exercise partial iteration or the iversion
+revalidation loop in ext4_read_inline_dir()?
+
+tctx->max_emit is never set to a non-zero value anywhere in the file, and
+ext4_read_inline_dir() is only called once starting from ctx.pos =3D 0.
+When test_filldir_actor() increments dir's iversion on the second entry,
+ext4_read_inline_dir() has already passed the
+!inode_eq_iversion(inode, info->cookie) check at the top of the function
+and continues emitting all 6 entries in the same call without ever
+re-entering at a non-zero ctx.pos.
+
+[ ... ]
+
+> +static void test_inline_dir_conversion_and_corruptions(struct kunit *tes=
+t)
+> +{
+[ ... ]
+> +	/*
+> +	 * 4. Corrupted inline directory checks:
+> +	 *   4a. Parent ino ("..") =3D=3D 0 -> empty_inline_dir returns false.
+> +	 *   4b. Zero rec_len dirent -> empty_inline_dir returns false,
+> +	 *       ext4_inlinedir_to_tree returns -EFSCORRUPTED, and
+> +	 *       ext4_convert_inline_data_nolock aborts via ext4_check_all_de.
+> +	 */
+> +	reset_inode_state(ctx, S_IFDIR | 0755);
+> +	handle =3D ext4_journal_start(dir, EXT4_HT_DIR, 1);
+> +	KUNIT_ASSERT_FALSE(test, IS_ERR(handle));
+> +	ret =3D ext4_try_create_inline_dir(handle, &env->parent, dir);
+> +	ext4_journal_stop(handle);
+> +	KUNIT_ASSERT_EQ(test, ret, 0);
 > +
-> +	err =3D kunit_add_action_or_reset(test, fc_cleanup_all, ctx);
-> +	KUNIT_ASSERT_EQ(test, err, 0);
+> +	/* Corrupt parent ino to 0 */
+> +	*(__le32 *)raw_inline_i_block(ctx) =3D cpu_to_le32(0);
+> +	KUNIT_EXPECT_FALSE(test, empty_inline_dir(dir, &has_inline_data));
+> +	*(__le32 *)raw_inline_i_block(ctx) =3D cpu_to_le32(TEST_PARENT_INO);
 > +
-> +	return 0;
+> +	/* Corrupt first dirent rec_len to 0 */
+> +	de =3D (struct ext4_dir_entry_2 *)((char *)raw_inline_i_block(ctx) +
+> +					 EXT4_INLINE_DOTDOT_SIZE);
+> +	de->rec_len =3D cpu_to_le16(0);
+> +	KUNIT_EXPECT_FALSE(test, empty_inline_dir(dir, &has_inline_data));
+> +
+> +	/* ext4_convert_inline_data on corrupted inline dir fails in ext4_check=
+_all_de */
+> +	ret =3D ext4_convert_inline_data(dir);
+> +	KUNIT_EXPECT_EQ(test, ret, -EFSCORRUPTED);
+> +	KUNIT_EXPECT_TRUE(test, ext4_has_inline_data(dir));
 > +}
 
 [Severity: Low]
-Can an assertion failure in fast_commit_test_init() leak sb and leave
-sbi->s_es_shrinker and sbi->s_es_stats percpu_counters registered after
-KUnit frees sbi?
+This isn't a bug, but comment 4b states that a zero rec_len dirent causes
+ext4_inlinedir_to_tree() to return -EFSCORRUPTED, whereas the test does
+not call ext4_inlinedir_to_tree() here and ext4_inlinedir_to_tree() breaks
+out of its loop and returns the count of already-processed entries (2 for
+"." and "..") when ext4_check_dir_entry() fails.
 
-fc_cleanup_all() is only registered after ext4_es_register_shrinker() and
-all the kunit_activate_static_stub() calls, which themselves assert on
-allocation failure.  Aborting in that window skips deactivate_super(sb) and
-ext4_es_unregister_shrinker(sbi), causing a use-after-free once the
-kunit_kzalloc()-allocated sbi is freed.
+> diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+> index 0e662a9f7574c..97cc2c61ce25d 100644
+> --- a/fs/ext4/inline.c
+> +++ b/fs/ext4/inline.c
+[ ... ]
+> @@ -1144,7 +1152,7 @@ static int ext4_convert_inline_data_nolock(handle_t=
+ *handle,
+>  		goto out_restore;
+>  	}
+> =20
+> -	data_bh =3D sb_getblk(inode->i_sb, map.m_pblk);
+> +	data_bh =3D ext4_inline_getblk(inode->i_sb, map.m_pblk);
+>  	if (!data_bh) {
+>  		error =3D -ENOMEM;
+>  		goto out_restore;
 
-Also, in fc_cleanup_all(), calling ext4_fc_cleanup_test() only once drains
-FC_Q_MAIN before splicing FC_Q_STAGING into FC_Q_MAIN, so any
-ext4_fc_dentry_update entries on s_fc_dentry_q[FC_Q_STAGING] when a test
-aborts are leaked.
+[Severity: Critical]
+This problem wasn't introduced by this patch, but can unlocking data_bh
+before ext4_init_dirblock() in ext4_convert_inline_data_nolock() expose an
+uninitialized directory block to concurrent readers [1]?
 
-> +
-> +/* =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
-> + * 1. Initialization, Eligibility, and Snapshot Stat Helpers
-> + * =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
-> + */
-> +
-> +static void test_fc_init_and_eligibility(struct kunit *test)
-> +{
-> +	struct fc_test_ctx *ctx =3D test->priv;
-> +	struct super_block *sb =3D ctx->sb;
-> +	struct inode *inode =3D get_mock_inode(ctx, TEST_FILE1_INO);
-> +	struct ext4_inode_info *ei =3D EXT4_I(inode);
-> +	journal_t tmp_journal =3D {};
+CPU0                                    CPU1
+ext4_convert_inline_data_nolock()
+  ext4_destroy_inline_data_nolock()
+  ext4_map_blocks()
+  data_bh =3D ext4_inline_getblk()
+  lock_buffer(data_bh)
+  memset(data_bh->b_data, 0, ...)
+  unlock_buffer(data_bh)
+  i_size_write(inode, s_blocksize)
+                                        ext4_get_parent()
+                                          ext4_find_entry()
+                                            ...
+                                              ext4_dirblock_csum_verify()
+                                                <-- fails on zeroed block
+  ext4_init_dirblock(data_bh)
+    set_buffer_uptodate(data_bh)
+    set_buffer_verified(data_bh)
+    ext4_handle_dirty_dirblock()
 
-[Severity: Medium]
-Does allocating tmp_journal on the stack here (and five struct dentry
-objects on the stack in test_fc_replay_inode_and_dentries()) exceed
-CONFIG_FRAME_WARN?
+In the S_ISDIR branch of ext4_convert_inline_data_nolock(), data_bh is
+zeroed, unlocked, and published via i_size_write() before
+ext4_init_dirblock() populates the directory entries and computes the
+block checksum:
 
-journal_t is over 1.3 KB (and over 2.2 KB with CONFIG_LOCKDEP enabled), and
-the five dentries in test_fc_replay_inode_and_dentries() take ~1.6 KB with
-CONFIG_LOCKDEP, triggering -Wframe-larger-than warnings or build failures
-under CONFIG_WERROR.  Could tmp_journal and the mock dentries be allocated
-with kunit_kzalloc() or moved into struct fc_test_ctx?
+fs/ext4/inline.c:ext4_convert_inline_data_nolock() {
+    ...
+	} else {
+		unlock_buffer(data_bh);
+		inode->i_size =3D inode->i_sb->s_blocksize;
+		i_size_write(inode, inode->i_sb->s_blocksize);
+		EXT4_I(inode)->i_disksize =3D inode->i_sb->s_blocksize;
+
+		error =3D ext4_init_dirblock(handle, inode, data_bh,
+			  le32_to_cpu(((struct ext4_dir_entry_2 *)buf)->inode),
+			  buf + EXT4_INLINE_DOTDOT_SIZE,
+			  inline_size - EXT4_INLINE_DOTDOT_SIZE);
+    ...
+}
+
+In addition, ext4_init_dirblock() sets buffer_uptodate and buffer_verified
+before ext4_handle_dirty_dirblock() calculates the checksum.  A concurrent
+reader (such as NFS export lookup via ext4_get_parent()) can read the
+partially initialized or unchecksummed block and fail
+ext4_dirblock_csum_verify(), triggering an ext4 filesystem error (and a
+read-only remount or panic).
+
+> @@ -2018,5 +2026,25 @@ int ext4_convert_inline_data(struct inode *inode)
+>  }
+> =20
+>  #if IS_ENABLED(CONFIG_EXT4_KUNIT_TESTS)
+[ ... ]
+> +EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_inline_data_truncate);
+> +EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_convert_inline_data);
+>  #endif
+
+[Severity: Critical]
+This problem wasn't introduced by this patch, but can
+ext4_inline_data_truncate() truncate the 64-bit inode->i_size into a
+32-bit size_t on 32-bit architectures [2]?
+
+fs/ext4/inline.c:ext4_inline_data_truncate() {
+    ...
+	size_t i_size;
+    ...
+	down_write(&EXT4_I(inode)->i_data_sem);
+	i_size =3D inode->i_size;
+	inline_size =3D ext4_get_inline_size(inode);
+	EXT4_I(inode)->i_disksize =3D i_size;
+
+	if (i_size < inline_size) {
+		if (!ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA)) {
+			ext4_lblk_t lblk =3D EXT4_B_TO_LBLK(inode, i_size);
+
+			ext4_es_remove_extent(inode, lblk,
+					      EXT_MAX_BLOCKS - lblk);
+		}
+    ...
+}
+
+When an inline file is converted to delayed-allocation extents via a
+buffered write at an offset of 4 GiB or greater, EXT4_STATE_MAY_INLINE_DATA
+is cleared while EXT4_INODE_INLINE_DATA remains set until writeback.  If a
+subsequent truncate or ext4_truncate_failed_write() calls
+ext4_inline_data_truncate() before writeback on a 32-bit system, assigning
+inode->i_size to the 32-bit i_size local variable discards the upper 32
+bits, corrupting EXT4_I(inode)->i_disksize.  When the lower 32 bits are
+smaller than inline_size, it also enters the i_size < inline_size branch,
+removing live delayed extents from the extent status tree and zeroing the
+inline data buffer.
+
+[1] https://sashiko.dev/#/bug/linux-48900fa2-4764-4787-990d-c127e7cf2417
+[2] https://sashiko.dev/#/bug/linux-d1c56a9e-62e9-4eeb-addd-143c371dbdca
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261112040638.1576=
-836-1-tytso@mit.edu?part=3D9
+836-1-tytso@mit.edu?part=3D7
