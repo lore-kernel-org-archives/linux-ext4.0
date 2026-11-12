@@ -1,55 +1,55 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794458135;
-	b=p2+Mtf59enO7CXuuwwyAg7/YBAKheL1gLB950csXd2s27cwSRQQ+eCJwsmNkSJaxSkdB
-	 wV68XxBUh5jLbN8apm7G2s9MSHCM89k7Cr8eV4zScBEwLyCSU3TyeoaCGHAGDxFpDQ7u/
-	 Dvv9jWNcDgpPaA53hetUqPwlE5f5x/Hn9cx+FO6oNt0HsxqUUTokunJGB42m1+QGkUcTp
-	 IFJ4dvy4yuFJUIgkKUzcjlg74VexFf8CYUb8rlBaHNaoKaOte2iQBOZjBNqDWfyLuHAja
-	 GbfS19QxMRkjYgiBSsYJVd28UYSQSIoWUTlwqkChwQOIMnmzagcUrfrbwvoUWCM/t2Q==
+	t=1794458166;
+	b=Ku5iPykVDMIgxTYSdcBp0u1ow9SD2XfG9HZXDjA8O/eFjlm2EUw2e8C8Nt++TicUFRpG
+	 9BNCoeO/kZQrxSt7rCPxIcqlmpQ3TxseRWFKtsAlSs2jGTFp8vzzU1EDR03fM0fpPi91F
+	 4JjduTK8R+roLn6LSb7vboTHwcu70CYe8sz7e5dppizqMSGEoVt6Ka+40cj2+UD6sAVz1
+	 UZREurm1TcJY5cjjQfMqc4u8DAuTypiplyL6d6ah9bCdd83UsWL4cAikloDXJCo2xKfhw
+	 7c5fVxmyZfe2hZQ1UGXlqtjnh3Rt94R0/htqiGfvUwSxXQ2Q/Z8jpId3xEIMUF+gXIA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794458135;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794458166;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=IeiYsseVy9KQRIuGpCsy2RyL//7KD8MpXqyMehSoKAo=;
-	b=HIzQxR1n+KsqYITMSoUQ6Al0MldmPfYOn5Q1IV66vP0Rl11/pJnWIi4RU/zlhK+dRprq
-	 8jZxUqJgF/axhCaKXwVHPD8qkn4gSRTwFaA4oMgt5s9R2dTgImRKR+ASk7KQb65koN4a4
-	 a0xJxxqq7n7hZobl3TyREGMuilHHs5yriiUfg6E9rlA0W0TMki/yOaDXMoQMOR0N+IwjQ
-	 01Ip8pJJX9w/d6/rzSpe404ARHjD0wFI2vzPbPTn2oyCwFH4iP+J5rpJE7a4uEiPIxsBG
-	 uqqmjGxLhEWMbvwwHdryBgiWeGRsiLbTkZ1kb0q3Ci/QePi1vZBGWXpOD+cpPN/Tecg==
+	bh=2Z8cgFNO5iRNuTOXm1aO8oKUKwScQqHp0nq3OmL/kvk=;
+	b=T6QDIbU2bFsD5xbxgq7NRkpzeNaSHh1DoT+1UkG/Dzmak4nngoVRfaLmpSScJCQ7iBPS
+	 NkK4OGgWMltFxTCK5Jb+d0TTNYTZFXHfCejiT4gw2q+DhDH8xv6HDfhKWYtfszehim+sP
+	 Enb8Na7YYAFmhLk/9FlZvtPegq6aKmtlEYQmupHQMkK4g5SjSteWT7FsdZl9HadDoFTKG
+	 FltJbJBfY6jOhigzPlNkOWcAum3lnjKR1f0ouFetdx3ieyOrOMcGRjCZts3oBC9cAb07e
+	 XAA52RyXCPwixW6Q50e/f4AsO3/jZFvuzNsDH4XBqLTA96S/nzWmppooVkfbixeBsmg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=FJv2BxHp;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Upd+vKlb;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B63F6606A880
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Nov 2026 04:35:35 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1E02A606A8BE
+	for <linux-ext4@vger.kernel.org>; Thu, 12 Nov 2026 04:36:06 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=FJv2BxHp
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2A34B1F00A08;
-	Thu, 12 Nov 2026 04:35:35 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Upd+vKlb
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id D11E81F00A05;
+	Thu, 12 Nov 2026 04:36:05 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794458135;
-	bh=IeiYsseVy9KQRIuGpCsy2RyL//7KD8MpXqyMehSoKAo=;
+	s=k20260515; t=1794458166;
+	bh=2Z8cgFNO5iRNuTOXm1aO8oKUKwScQqHp0nq3OmL/kvk=;
 	h=From:Subject:Reply-To:To:In-Reply-To:References:Date;
-	b=FJv2BxHpu/0F6otEbCQGzDN+lbF3PUlMP5GpYBrJp/V13MWR5cLi8YMS6CD+3gPtu
-	 PBJ47IVyYZx9LIJcyOjA91KT9mmLcHBgQaDL5EFX+SS2Qv7FEbRVga/Xh4uC6rMLgF
-	 OkO8dTXJ7V+iqiGMecC4xV8kxTJnJB1BHAlkrsCUEpMo8I024QJNdR+zgDGFrtpNg1
-	 lH/wlrkNbwiaKSJRtCoBdJZJQFozzJcwg1y0mfDT+OTAFNOkw9/BxRmIUCmND8jiGB
-	 xHCEcJn8juS5fFiXUylI1iwVmqYE+QOot7o10ru5v0S8DX78rGyo56sPporAqErgRk
-	 e/Cb0eYxz2wVw==
-Message-ID: <sashiko-outbox-210366@kernel.org>
+	b=Upd+vKlbR0QKAH1pt8OvljGObklhj/Vy/J2waEXX3LOqrayQSBr68R+EqBiLzP7Xa
+	 IqiCNQmYRf3sa1E1rg78hTQ2DRmZPjw4s10iGw2/O/gEjXRUx4+0m35qSE6EIY55mn
+	 l7XcVQz/j7YQRWWcJ15WPLexEedd2hWquvX7yWIZYqbhjLSdPV4Rf0hMiI4UPdz1yp
+	 K2//iVK8AJ1u6rSVeL632ASqP6g6CG8e47mgeuRFhW6x479aZW7jFjmz0kGsHlHBa2
+	 9Dg+fU+r84fA4YDeb4hi8iz7/a14XsmzD7Rp8u0dcIfcigj7+jR5/Jukv/ATT8Q7vD
+	 k3MzeCMosxUpw==
+Message-ID: <sashiko-outbox-210367@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH 19/27] ext4: add KUnit tests for fs/ext4/ioctl.c
+Subject: Re: [PATCH 10/27] ext4: expand KUnit tests for fs/ext4/inode.c
 Reply-To: sashiko-reviews@lists.linux.dev
 To: =?utf-8?b?VGhlb2RvcmUgVHMnbw==?= <tytso@mit.edu>, "Ext4 Developers List" <linux-ext4@vger.kernel.org>
-In-Reply-To: <20261112040638.1576836-20-tytso@mit.edu>
+In-Reply-To: <20261112040638.1576836-11-tytso@mit.edu>
 References: <20261112040638.1576836-1-tytso@mit.edu>
- <20261112040638.1576836-20-tytso@mit.edu>
+ <20261112040638.1576836-11-tytso@mit.edu>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Thu, 12 Nov 2026 04:35:34 +0000
+Date: Thu, 12 Nov 2026 04:36:05 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -59,244 +59,319 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-Thank you for your contribution! Sashiko AI review found 4 potential
+Thank you for your contribution! Sashiko AI review found 2 potential
 issues to consider:
-- [Medium] ext4: uninitialized s_es_stats counters dereferenced in
-  ioctl_test_init()
-- [Low] ext4: uninitialized work and timer cleanup in ioctl_test_init()
-  error paths
-- [Low] ext4: NULL bh->b_bdev in ioctl_init_mock_bh() dereferenced by
-  tracepoint
-- [Low] ext4: leaked inodes and dentries on KUNIT_ASSERT_NOT_NULL()
-  abort in ioctl-test
+- [Medium] ext4: use-after-free of mock superblock and inodes in
+  inode_test_cleanup()
+- [Medium] ext4: highmem NULL deref on bh->b_data in
+  inode_test_read_bh_lock_stub()
 It also noticed 2 related pre-existing issues this patch does not
 introduce:
-- [High] ext4: missing s_encoding initialization in
-  ext4_ioctl_set_tune_sb() [1]
-- [High] ext4: torn read of i_version in swap_inode_data() [2]
+- [Medium] ext4: user-triggerable WARN_ON_ONCE in ext4_iomap_begin() [1]
+- [Critical] ext4: stale data leak to concurrent readers in
+  ext4_setattr() [2]
 --
 
-commit e7c759c842d0abec3f3d75ab9a035c69eb297d76
+commit f093b56ce7ca8d901aefc501ae9f381a7877b64a
 Author: Theodore Ts'o <tytso@mit.edu>
 
-ext4: add KUnit tests for fs/ext4/ioctl.c
+ext4: expand KUnit tests for fs/ext4/inode.c
 
-This commit adds a KUnit test suite for superblock online tuning, backup
-superblock updates, inode data swapping, fileattr handling, forced shutdown,
-and ioctl dispatch in fs/ext4/ioctl.c, exporting helper wrappers for testin=
-g.
+This commit expands the ext4_inode_test KUnit test suite to exercise
+fs/ext4/inode.c using an in-memory VFS superblock and mock block pool, and
+adds KUnit static stub redirects and symbol exports for the tested entry
+points.
 
-> diff --git a/fs/ext4/ioctl-test.c b/fs/ext4/ioctl-test.c
-> new file mode 100644
-> index 0000000000000..fa31a9cc5d920
-> --- /dev/null
-> +++ b/fs/ext4/ioctl-test.c
+> diff --git a/fs/ext4/inode-test.c b/fs/ext4/inode-test.c
+> index 749af7ad4e09c..e8d19c1d42707 100644
+> --- a/fs/ext4/inode-test.c
+> +++ b/fs/ext4/inode-test.c
+> @@ -267,8 +284,3432 @@ static void inode_test_xtimestamp_decoding(struct =
+kunit *test)
+
 [ ... ]
-> +static void ioctl_init_mock_bh(struct buffer_head *bh, struct folio *fol=
-io,
-> +			       u8 *data, size_t size, sector_t blocknr)
+
+> +static void inode_test_read_bh_nowait_stub(struct buffer_head *bh,
+> +					   blk_opf_t op_flags,
+> +					   bio_end_io_t end_io,
+> +					   bool simu_fail)
 > +{
-> +	memset(bh, 0, sizeof(*bh));
-> +	bh->b_folio =3D folio;
-> +	bh->b_data =3D (char *)data;
-> +	bh->b_size =3D size;
-> +	bh->b_blocknr =3D blocknr;
-> +	atomic_set(&bh->b_count, 2);
+> +	struct kunit *test =3D kunit_get_current_test();
+> +	struct inode_test_ctx *ctx =3D test ? test->priv : NULL;
+> +	struct inode_test_blk *slot;
+> +
+> +	if (!ctx) {
+> +		unlock_buffer(bh);
+> +		return;
+> +	}
+> +	ctx->read_nowait_calls++;
+> +	if (ctx->fail_read_eio || simu_fail) {
+> +		clear_buffer_uptodate(bh);
+> +		unlock_buffer(bh);
+> +		return;
+> +	}
+> +	slot =3D inode_test_find_blk_by_bh(ctx, bh);
+> +	if (!slot)
+> +		slot =3D inode_test_find_blk(ctx, bh->b_blocknr);
+> +	if (slot) {
+> +		memcpy(bh->b_data, slot->disk_buf, bh->b_size);
+> +		set_buffer_uptodate(bh);
+> +	} else {
+> +		clear_buffer_uptodate(bh);
+> +	}
+> +	unlock_buffer(bh);
+> +}
+> +
+> +static int inode_test_read_bh_lock_stub(struct buffer_head *bh,
+> +					blk_opf_t op_flags, bool wait)
+> +{
+> +	struct kunit *test =3D kunit_get_current_test();
+> +	struct inode_test_ctx *ctx =3D test ? test->priv : NULL;
+> +	struct inode_test_blk *slot;
+> +
+> +	if (!ctx)
+> +		return -EIO;
+> +	ctx->read_lock_calls++;
+> +	lock_buffer(bh);
+> +	if (ctx->fail_read_eio) {
+> +		clear_buffer_uptodate(bh);
+> +		unlock_buffer(bh);
+> +		return wait ? -EIO : 0;
+> +	}
+> +	slot =3D inode_test_find_blk_by_bh(ctx, bh);
+> +	if (!slot)
+> +		slot =3D inode_test_find_blk(ctx, bh->b_blocknr);
+> +	if (!slot) {
+> +		clear_buffer_uptodate(bh);
+> +		unlock_buffer(bh);
+> +		return wait ? -EIO : 0;
+> +	}
+> +	memcpy(bh->b_data, slot->disk_buf, bh->b_size);
 > +	set_buffer_uptodate(bh);
+> +	unlock_buffer(bh);
+> +	return 0;
 > +}
 
-[Severity: Low]
-Can leaving bh->b_bdev NULL here cause a NULL pointer dereference when the
-block_dirty_buffer tracepoint is enabled?
+[Severity: Medium]
+Can copying directly to bh->b_data in inode_test_read_bh_lock_stub() and
+inode_test_read_bh_nowait_stub() cause a NULL or low-address pointer
+dereference on 32-bit CONFIG_HIGHMEM=3Dy kernels?
 
-test_update_superblocks_and_overhead() marks these mock buffer_heads dirty
-via ext4_update_primary_sb() and ext4_update_backup_sb() ->
-mark_buffer_dirty(), which calls trace_block_dirty_buffer(bh) and
-dereferences bh->b_bdev->bd_dev.
+inode_test_setup() configures inode->i_data with GFP_HIGHUSER_MOVABLE.
+When inode_test_zero_partial_and_eof() or inode_test_setattr() calls
+ext4_zero_partial_blocks() -> ext4_block_zero_range() -> ext4_load_tail_bh(=
+),
+the pagecache folio allocated for inode->i_mapping can come from highmem.
+create_empty_buffers() -> folio_set_bh() sets bh->b_data on a highmem folio
+to (char *)(0 + offset) rather than a kernel virtual address, so
+memcpy(bh->b_data, ...) faults when ext4_load_tail_bh() calls
+ext4_read_bh_lock().  Using memcpy_to_folio(bh->b_folio, bh_offset(bh), ...)
+when bh->b_folio is present (or dropping __GFP_HIGHMEM from inode->i_data)
+would avoid this.
 
 [ ... ]
-> +static void ioctl_test_cleanup(struct ioctl_test_ctx *ctx)
+
+> +static void inode_test_cleanup(void *data)
 > +{
-> +	active_ioctl_test =3D NULL;
+> +	struct inode_test_ctx *ctx =3D data;
+> +	struct inode *inode =3D &ctx->ei.vfs_inode;
+> +	struct mapping_metadata_bhs *mmb;
+> +	unsigned int i;
 > +
-> +	if (ctx->sb) {
-> +		deactivate_super(ctx->sb);
-> +		rcu_barrier();
+> +	ctx->sbi.s_journal =3D NULL;
+> +
+> +	for (i =3D 0; i < ctx->nr_tracked_inodes; i++) {
+> +		struct inode *ti =3D ctx->tracked_inodes[i];
+> +
+> +		if (ti) {
+> +			spin_lock(&ti->i_lock);
+> +			inode_state_clear(ti, I_DIRTY_TIME);
+> +			spin_unlock(&ti->i_lock);
+> +			iput(ti);
+> +			ctx->tracked_inodes[i] =3D NULL;
+> +		}
+> +	}
+> +	ctx->nr_tracked_inodes =3D 0;
+> +
+> +	truncate_inode_pages_final(&inode->i_data);
+> +	inode_io_list_del(inode);
+> +	ext4_fc_del(inode);
+> +	mmb =3D ext4_i_metadata_bhs(inode);
+> +	if (mmb)
+> +		mmb_invalidate(mmb);
+> +	inode_test_cleanup_ext4_trees(inode);
+> +	if (ctx->ei.jinode) {
+> +		jbd2_free_inode(ctx->ei.jinode);
+> +		ctx->ei.jinode =3D NULL;
 > +	}
 > +
-> +	cancel_work_sync(&ctx->sbi.s_sb_upd_work);
-> +	timer_delete_sync(&ctx->sbi.s_err_report);
-[ ... ]
-> +static int ioctl_test_init(struct kunit *test)
+> +	deactivate_super(ctx->sb);
+> +	rcu_barrier();
+> +
+> +	ext4_es_unregister_shrinker(&ctx->sbi);
+> +	percpu_counter_destroy(&ctx->sbi.s_dirtyclusters_counter);
+> +	percpu_counter_destroy(&ctx->sbi.s_freeclusters_counter);
+> +
+> +	kfree(mmb);
+> +	kfree(ctx);
+> +}
+> +
+> +static struct inode_test_ctx *inode_test_setup(struct kunit *test)
 > +{
-[ ... ]
+> +	struct inode_test_ctx *ctx;
+> +	struct fs_context *fc;
+> +	struct super_block *sb;
+> +	struct ext4_sb_info *sbi;
+> +	struct inode *inode;
+> +	int err, i;
+> +
 > +	ctx =3D kzalloc_obj(*ctx);
 > +	KUNIT_ASSERT_NOT_NULL(test, ctx);
 > +	test->priv =3D ctx;
-> +	active_ioctl_test =3D test;
-[ ... ]
-> +	err =3D percpu_counter_init(&sbi->s_freeclusters_counter, 0, GFP_KERNEL=
-);
-> +	if (err) {
-> +		up_write(&sb->s_umount);
-> +		ioctl_test_cleanup(ctx);
-> +		KUNIT_ASSERT_EQ(test, err, 0);
-> +	}
-> +	err =3D percpu_counter_init(&sbi->s_dirtyclusters_counter, 0, GFP_KERNE=
-L);
-> +	if (err) {
-> +		percpu_counter_destroy(&sbi->s_freeclusters_counter);
-> +		up_write(&sb->s_umount);
-> +		ioctl_test_cleanup(ctx);
-> +		KUNIT_ASSERT_EQ(test, err, 0);
-> +	}
-> +	err =3D percpu_counter_init(&sbi->s_freeinodes_counter, 0, GFP_KERNEL);
-> +	if (err) {
-> +		percpu_counter_destroy(&sbi->s_dirtyclusters_counter);
-> +		percpu_counter_destroy(&sbi->s_freeclusters_counter);
-> +		up_write(&sb->s_umount);
-> +		ioctl_test_cleanup(ctx);
-> +		KUNIT_ASSERT_EQ(test, err, 0);
-> +	}
-> +	ctx->counters_inited =3D true;
 > +
-> +	INIT_WORK(&sbi->s_sb_upd_work, ioctl_test_sb_upd_work);
-> +	timer_setup(&sbi->s_err_report, ioctl_test_err_timer, 0);
-
-[Severity: Low]
-If any of the percpu_counter_init() calls fail, does ioctl_test_cleanup() r=
-un
-cancel_work_sync() and timer_delete_sync() on uninitialized s_sb_upd_work a=
-nd
-s_err_report?
-
-Because INIT_WORK() and timer_setup() happen after these error branches,
-cancel_work_sync() hits WARN_ON(!work->func) in __flush_work() and
-timer_delete_sync() passes an uninitialized lockdep_map to
-lock_map_acquire().  Also, the earlier allocation failure paths before
-sget_fc() abort without resetting active_ioctl_test to NULL.
-
-> +	spin_lock_init(&sbi->s_error_lock);
-> +	spin_lock_init(&sbi->s_md_lock);
-> +	spin_lock_init(&sbi->s_bdev_wb_lock);
-> +	spin_lock_init(&sbi->s_es_lock);
-> +	INIT_LIST_HEAD(&sbi->s_es_list);
+> +	fc =3D fs_context_for_mount(&inode_test_fs_type, 0);
+> +	if (IS_ERR(fc)) {
+> +		err =3D PTR_ERR(fc);
+> +		kfree(ctx);
+> +		KUNIT_ASSERT_EQ(test, err, 0);
+> +	}
+> +	sb =3D sget_fc(fc, NULL, set_anon_super_fc);
+> +	put_fs_context(fc);
+> +	if (IS_ERR(sb)) {
+> +		err =3D PTR_ERR(sb);
+> +		kfree(ctx);
+> +		KUNIT_ASSERT_EQ(test, err, 0);
+> +	}
+> +	ctx->sb =3D sb;
+> +	sbi =3D &ctx->sbi;
+> +
+> +	sbi->s_sb =3D sb;
+> +	sb->s_fs_info =3D sbi;
+> +	sb->s_op =3D &inode_test_sops;
+> +#ifdef CONFIG_QUOTA
+> +	sb->dq_op =3D &inode_test_qops;
+> +#endif
+> +	sb->s_flags |=3D SB_ACTIVE;
 
 [Severity: Medium]
-Does ioctl_test_init() leave the sbi->s_es_stats per-CPU counters
-uninitialized?
+Can setting SB_ACTIVE while leaving sb->s_root NULL cause a use-after-free
+of ctx->sb, ctx->sbi, and inodes after inode_test_cleanup() runs?
 
-test_swap_inode_data_and_seed() and test_force_shutdown_and_ioctl_dispatch()
-insert and remove extents via ext4_es_insert_extent() and
-ext4_es_remove_extent(), which call percpu_counter_inc() and
-percpu_counter_dec() on sbi->s_es_stats.es_stats_shk_cnt and
-sbi->s_es_stats.es_stats_all_cnt.  Because neither percpu_counter_init() nor
-ext4_es_register_shrinker() is called for sbi, running these tests on
-CONFIG_SMP dereferences a NULL per-CPU pointer and uses an uninitialized
-spinlock in percpu_counter_add_batch().
+sget_fc() -> alloc_super() calls fserror_mount(sb), which sets
+sb->s_pending_errors to 1.  When tests exercise corruption paths that call
+__ext4_error() or __ext4_error_inode(), fserror_report() sees SB_ACTIVE and
+s_pending_errors > 0, takes a reference on the inode via igrab(), and queues
+fserror_worker() on system_dfl_wq.  Because ctx->sb->s_root is NULL,
+deactivate_super() -> generic_shutdown_super() skips fserror_unmount(sb):
 
-[ ... ]
-> +static void test_swap_inode_data_and_seed(struct kunit *test)
-> +{
-[ ... ]
-> +	inode1 =3D new_inode(sb);
-> +	inode2 =3D new_inode(sb);
-> +	KUNIT_ASSERT_NOT_NULL(test, inode1);
-> +	KUNIT_ASSERT_NOT_NULL(test, inode2);
+CPU0 (KUnit test)                 CPU1 (kworker)
+inode_test_iget_corruptions()
+  ext4_iget()
+    __ext4_error_inode()
+      fserror_report()
+        igrab(inode)
+        schedule_work(&event->work)
+inode_test_cleanup()
+  deactivate_super(ctx->sb)
+    generic_shutdown_super()
+      /* s_root is NULL: skips
+         fserror_unmount() */
+  kfree(ctx)
+                                  fserror_worker()
+                                    /* accesses freed event->sb */
+                                    iput(event->inode)
+                                      ext4_evict_inode()
+                                        /* accesses freed ctx->sbi */
+                                        <-- use-after-free
 
-[Severity: Low]
-If the second new_inode(sb) call returns NULL, does KUNIT_ASSERT_NOT_NULL()
-abort the test while leaking inode1?
+In addition, when __ext4_error_inode() is called on the embedded
+&ctx->ei.vfs_inode (for example in inode_test_expand_extra_isize()),
+fserror_worker() races with inode_test_reset_mock_inode() and calls iput()
+on the embedded inode after ctx is freed.  Calling fserror_unmount(sb) in
+inode_test_setup() (or before freeing ctx in inode_test_cleanup()) would
+prevent fserror_report() from queuing async work.
 
-When ioctl_test_cleanup() subsequently calls deactivate_super(ctx->sb), the
-unreleased inode remains on sb->s_inodes and triggers the busy-inodes
-CHECK_DATA_CORRUPTION() in generic_shutdown_super().  The same pattern
-appears in test_immutable_dax_and_fileattr() when allocating reg_inode,
-dir_inode, reg_dentry, and dir_dentry before d_instantiate(), and in
-test_force_shutdown_and_ioctl_dispatch() if d_alloc_anon() fails after
-new_inode().
-
-> diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-> index c8387e6a2c6e9..61e59c30e7611 100644
-> --- a/fs/ext4/ioctl.c
-> +++ b/fs/ext4/ioctl.c
-[ ... ]
-> @@ -1465,34 +1468,35 @@ static int ext4_ioctl_set_tune_sb(struct file *fi=
-lp,
->  		 * Filter out the features that are already set from
->  		 * the set_mask.
->  		 */
-> -		params.set_feature_compat_mask &=3D
-> +		params->set_feature_compat_mask &=3D
->  			~le32_to_cpu(es->s_feature_compat);
-> -		params.set_feature_incompat_mask &=3D
-> +		params->set_feature_incompat_mask &=3D
->  			~le32_to_cpu(es->s_feature_incompat);
-> -		params.set_feature_ro_compat_mask &=3D
-> +		params->set_feature_ro_compat_mask &=3D
->  			~le32_to_cpu(es->s_feature_ro_compat);
-> -		if ((params.set_feature_incompat_mask &
-> -		     EXT4_FEATURE_INCOMPAT_CASEFOLD)) {
-> +		if (params->set_feature_incompat_mask &
-> +		    EXT4_FEATURE_INCOMPAT_CASEFOLD) {
->  			enabling_casefold =3D 1;
-> -			if (!(params.set_flags & EXT4_TUNE_FL_ENCODING)) {
-> -				params.encoding =3D EXT4_ENC_UTF8_12_1;
-> -				params.set_flags |=3D EXT4_TUNE_FL_ENCODING;
-> +			if (!(params->set_flags & EXT4_TUNE_FL_ENCODING)) {
-> +				params->encoding =3D EXT4_ENC_UTF8_12_1;
-> +				params->set_flags |=3D EXT4_TUNE_FL_ENCODING;
->  			}
-> -			if (!(params.set_flags & EXT4_TUNE_FL_ENCODING_FLAGS)) {
-> -				params.encoding_flags =3D 0;
-> -				params.set_flags |=3D EXT4_TUNE_FL_ENCODING_FLAGS;
-> +			if (!(params->set_flags &
-> +			      EXT4_TUNE_FL_ENCODING_FLAGS)) {
-> +				params->encoding_flags =3D 0;
-> +				params->set_flags |=3D
-> +					EXT4_TUNE_FL_ENCODING_FLAGS;
->  			}
->  		}
-
-[Severity: High]
-This problem wasn't introduced by this patch, but when
-EXT4_FEATURE_INCOMPAT_CASEFOLD is enabled online via
-EXT4_IOC_SET_TUNE_SB_PARAM [1], does anything initialize
-sb->s_encoding in memory?
-
-ext4_sb_setparams() sets EXT4_FEATURE_INCOMPAT_CASEFOLD in the superblock
-without loading the unicode map into sb->s_encoding.  Subsequent
-EXT4_IOC_SETFLAGS calls can then set EXT4_CASEFOLD_FL on a directory, and a
-lookup in that directory calls ext4_fname_setup_ci_filename() ->
-utf8_casefold(dir->i_sb->s_encoding, ...), dereferencing a NULL
-sb->s_encoding pointer.
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 67d37b39db938..98444d8ddb400 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
 
 [ ... ]
-> +void ext4_swap_inode_data_test(struct inode *inode1, struct inode *inode=
-2)
-> +{
-> +	swap_inode_data(inode1, inode2);
-> +}
-> +EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_swap_inode_data_test);
 
-[Severity: High]
-This problem wasn't introduced by this patch, but can swap_inode_data()
-cause torn reads of i_version on 32-bit architectures [2]?
+> @@ -3858,12 +3888,14 @@ int ext4_iomap_begin(struct inode *inode, loff_t =
+offset, loff_t length,
+> =20
+>  	return 0;
+>  }
+> +EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_iomap_begin);
 
-fs/ext4/ioctl.c:swap_inode_data() {
-	...
-	swap(inode1->i_version, inode2->i_version);
-	...
+[Severity: Medium]
+This problem wasn't introduced by this patch, but can an atomic write to an
+encrypted file trigger WARN_ON_ONCE(1) in ext4_iomap_begin() [1]?
+
+Before checking the IOMAP_ATOMIC length constraint, ext4_iomap_begin()
+calls fscrypt_limit_io_blocks() to truncate map.m_len when an I/O crosses a
+32-bit DUN boundary:
+
+fs/ext4/inode.c:ext4_iomap_begin() {
+    ...
+	map.m_len =3D fscrypt_limit_io_blocks(inode, map.m_lblk, map.m_len);
+
+	/*
+	 * Before returning to iomap, let's ensure the allocated mapping
+	 * covers the entire requested length for atomic writes.
+	 */
+	if (flags & IOMAP_ATOMIC) {
+		if (map.m_len < (length >> blkbits)) {
+			WARN_ON_ONCE(1);
+			return -EINVAL;
+		}
+	}
+    ...
 }
 
-Because i_version is an atomic64_t, exchanging it with swap() performs plain
-struct assignment instead of using atomic64 accessors, allowing concurrent
-lockless readers such as inode_peek_iversion_raw() to observe torn values on
-32-bit SMP systems.
+When an unprivileged user issues an atomic write across a DUN boundary on
+an encrypted file, fscrypt_limit_io_blocks() shortens map.m_len below
+length >> blkbits and triggers WARN_ON_ONCE(1).
 
-[1] https://sashiko.dev/#/bug/linux-4eae7256-2707-4887-b442-c774f5662e2b
-[2] https://sashiko.dev/#/bug/linux-14d568d4-dbf5-4a52-9af4-757563dc37e3
+[ ... ]
+
+> @@ -6274,6 +6322,7 @@ int ext4_setattr(struct mnt_idmap *idmap, struct de=
+ntry *dentry,
+>  		error =3D rc;
+>  	return error;
+>  }
+> +EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_setattr);
+
+[Severity: Critical]
+This problem wasn't introduced by this patch, but when extending a file via
+ext4_setattr(), can updating i_size before calling
+pagecache_isize_extended() expose stale post-EOF pagecache data to
+concurrent readers [2]?
+
+When extending a file whose old size is block-aligned (or where blocksize <
+PAGE_SIZE) and whose tail folio already has uptodate post-EOF data in the
+pagecache (such as from an earlier mmap write past EOF), ext4_setattr()
+writes the new i_size under i_data_sem before stopping the journal handle
+and zeroing the extended pagecache range:
+
+CPU0                              CPU1
+ext4_setattr()
+  i_size_write(inode, attr->ia_size)
+                                  generic_file_read_iter()
+                                    filemap_read()
+                                      /* sees new i_size and copies
+                                         unzeroed tail folio <-- stale data=
+ */
+  ext4_journal_stop(handle)
+  pagecache_isize_extended()
+
+Because buffered reads do not take i_rwsem, CPU1 can read the unzeroed
+post-EOF portion of the folio before pagecache_isize_extended() zeroes it.
+
+[1] https://sashiko.dev/#/bug/linux-38b43030-f0ce-4abf-8653-7266f768a948
+[2] https://sashiko.dev/#/bug/linux-808e5d6d-ae12-4689-877c-3d6dc1f711d5
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261112040638.1576=
-836-1-tytso@mit.edu?part=3D19
+836-1-tytso@mit.edu?part=3D10
