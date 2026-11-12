@@ -1,56 +1,57 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794521604;
-	b=MRsS1/DA5jAGkjX914PfTN2PZAP8mU4DPEJ9QaHc3XXpAE/Mw3z4/PCPm0liKRAfjSTK
-	 U5eonfZ0Qikek9E9vnIgbiNHCCrB8bPkWhddVWkOdoMThmBGs8SbVn0G9RWEllxMvxVNm
-	 ZeaSeHmFySzzb4Ysi8qER3LfSagaw8BbLbDEnLKlAOUotHZbCQxPHO4Z0CxRLoCVpVCJR
-	 uDh3T4wj5UqAsdHPaGxj87DgrqgkgLtpydqcuaMhuNX7rhfXAnFsdgwl1FTANothQQdJJ
-	 U4vgjo/9WlZ7UbjG6ji/SKmJTnJuDYqx3TzDo9mS5L1qzje9JsLChfUIcDjOUtbK93w==
+	t=1794521805;
+	b=IcnKcPq7rKBLGIKEHDONS0PHXJIkM9HE47AJtXeNOlGZ9LJ6x+pgXkhuaKU7v0rM/DDT
+	 MsfCqDHR0luzX+ANbq/QQMUTBKMp5/+smJaoKQvAVtiJR54oa3vbHB6D/s/+hRwv/+MQZ
+	 m5q10nbtgnsxNi6PQswjae7zricwAVmyk621giNS0EOiIxueSqq87gjJycJwXK2gQ5ZZQ
+	 Mf3lspn9tTeOin8BeAfXif+Q1CP9SWiG33ZKP6/Hai/dalh7GH0W362VQsOUfJpdw7sIT
+	 WcUP101b7oK9436Ev6cCMEgDuEv784esuPwf/kVgzbzEzGkksEb2VGDaL6docYdaQ9Q==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794521604;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794521805;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=RRAnbz1n3kBV7nTwFbWQ1bL5F9+W06OSUXgV8xzoYBg=;
-	b=Qo59WoncbbIfEl0d2yEVj5NSXeLQqBuRrmQFfEmo5xGRf9fAxuvpxtDKpPfiyN/F3JmD
-	 kzJQ4EXzgh14RlGXDNTkbNp0+PDjD6O/i+O46bAOrKb3hd7aSdP4cTPtqTAT3fUUni6Zp
-	 KsE3ksXtDH5Fhx+8Pu0NM6muCYLiSh82q/2fYoQudC5pUrgXoeg7IuqrBHmAeLNoHJsYB
-	 yzEf1Yw2YnFgFkDyUrbX/sovxS4qEFhyVR5QNFAZEoDKUk+LX4eMI2hnd0WNxoTMUAKk6
-	 +pQ6JmfKHhhDqbro5ltctsdymViLowJ8iG/hGIX1AVuMvwzfk6XJOxTTeyhwyADfmBw==
+	bh=XliIdf2cpXuJ8ThgYxuvS4J9xJrJ+aZM6TKlnc/C+9s=;
+	b=HvUqynWqYyb+2+xKg4jom0omKRXJCb+nFqXG3Z6f2rROJdhaOLNlWQIJJPBwZ3OKJw/B
+	 GfI91V9ZuBOdwjJplmbmeNB47BXp1DBePPrzviZ9+MXpX7HM5k97/gKEW1TDiPsu6Ys76
+	 AhtcSp1Hu2aLXkrBKTBr5FGZ0ii3SenD/BF1vwgOCkrmk9bRfizihlKASgEQZKx7CIB6R
+	 /v7GrvO44ScjI+BA2WRWTRyhlfFBVFQ3u9/rk/r8Uo0qDfOcm58UHJt3oKCX7SiQt8Rdv
+	 MZEUn3hBb59xY2Ei5m+r0O4p0iiuZghc9IqN2/7VIOb7BBW2CTlk+bzZTeHmqGk2TOw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=caWnZ1Rz;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=hBegKXXH;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0B820606A323
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Nov 2026 22:13:23 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CCE1F606A31C
+	for <linux-ext4@vger.kernel.org>; Thu, 12 Nov 2026 22:16:45 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=caWnZ1Rz
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6A6071F000C4;
-	Thu, 12 Nov 2026 22:13:23 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=hBegKXXH
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 39CDD1F000C4;
+	Thu, 12 Nov 2026 22:16:45 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794521603;
-	bh=RRAnbz1n3kBV7nTwFbWQ1bL5F9+W06OSUXgV8xzoYBg=;
+	s=k20260515; t=1794521805;
+	bh=XliIdf2cpXuJ8ThgYxuvS4J9xJrJ+aZM6TKlnc/C+9s=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=caWnZ1RzbqeFnNLsg0y8bVH3OaZ21RZnlV5eGCn13XkFWKv+wSTakDm6OL10uBehC
-	 VBqjLHOuClrjlonedUtvgAyh793Hlh3bLYjkvvuVvkxoSrojwXYp5I8X+AgeSGb/Fh
-	 r8bL+N45Rb7BDnzIh5I59NHkTDxGzFpkwoFkfueM0P+CBW3TbRBjea/xSL6BeRzQTA
-	 KAQfSVyNpV2ll1UqHvuQNWdZ4gJug5aumIdal5gYEigi0CndpvFOQ1/oLpcucdPqlb
-	 JgeIS2DBlmLWcOe/HSnxHUw6q6NfuVNIEAcwdjY04FnQ981aJ+ReHjU+7v1CmRFBXi
-	 gcY9+kVza/NRw==
-Message-ID: <sashiko-outbox-211894@kernel.org>
+	b=hBegKXXHP05XJ2ebr6TKnqCP8MN2PYy6VZXVBFxrvsTTlsqaNCYdpTrQvXNxQHIfD
+	 5VfYCXXLcvDSUaPEPcn/QdC957mpQ+2E/7CLJZk0pyjjyz8rh34FjjvNN8YOl6y+zH
+	 PMxyMQLt7zR5LAmP0B8ro+wcm9H7LQFW8ynFh5QxWMaIVImQpv4vGEW7DC8VxbI5l5
+	 qjtDicsiUk3+neYt8YOx0FArWDBQfRKwd4m14AHWBkAtmDwRRxZAkjVhXGth98Kk+j
+	 2O4gh5NEgYPDzfQmRd2Ro78jVHeZyDJnOiBOQqS+89RXyKyGaV3uQoWZQQ4xerm91q
+	 sbjVCo9pwXB8w==
+Message-ID: <sashiko-outbox-211896@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH v9 11/14] xfs: take the MMAPLOCK in xfs_fileattr_set()
+Subject: Re: [PATCH v9 05/14] fs: validate atomic writes after O_APPEND and
+ limits
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Chris Mason" <mason@kernel.org>, linux-ext4@vger.kernel.org
 Cc: tytso@mit.edu
-In-Reply-To: <20261112214604.67875-12-mason@kernel.org>
+In-Reply-To: <20261112214604.67875-6-mason@kernel.org>
 References: <20261112214604.67875-1-mason@kernel.org>
- <20261112214604.67875-12-mason@kernel.org>
+ <20261112214604.67875-6-mason@kernel.org>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Thu, 12 Nov 2026 22:13:22 +0000
+Date: Thu, 12 Nov 2026 22:16:44 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -60,38 +61,35 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-> A store through a shared mapping can corrupt a realtime file system on
-> disk, or shut a file system down, if FS_IOC_FSSETXATTR changes the
-> realtime flag or an extent size hint of the file during the write fault.
+> An RWF_ATOMIC write on XFS with reflink can expose stale disk contents
+> if O_APPEND or RLIMIT_FSIZE leaves it sector aligned but not block
+> aligned.
 >=20
-> A write fault reads the flag and the hints more than once: to choose
-> delayed allocation, to size the block reservation, and again in the
-> allocator. All of these have to see the same values. System calls that
-> write do the same, but they hold the IOLOCK, which keeps the ioctl out.
-> A fault only holds the MMAPLOCK, which the ioctl does not take:
+> XFS and ext4 call generic_atomic_write_valid() on the range that the
+> caller passed. But generic_write_checks() changes the range later:
+> O_APPEND moves the position, and RLIMIT_FSIZE cuts the length. XFS can
+> then fill only a part of a new block, and still map the whole block into
+> the file:
 >=20
->     write fault                         FS_IOC_FSSETXATTR
->     =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D                         =3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
->     takes the MMAPLOCK
->     xfs_iomap_write_direct()
->       reserves blocks for the old hint
->                                         takes the ILOCK
->                                         raises the hint
->                                         drops the ILOCK
->       takes the ILOCK
->       xfs_bmapi_write()
->         allocates for the new hint
->         /* more than was reserved */
+>     block size 4096, i_size 512, O_APPEND
+>     validated:        0 to 4095
+>     written:          512 to 4607
+>     new blocks:       0 to 8191
+>     stale below EOF:  0 to 511
 >=20
-> The fix used here is to make the ioctl take the MMAPLOCK of a regular
-> file as well.
+> The fix used here is to validate an atomic write in
+> generic_write_checks(), after its range is final, and to refuse one that
+> was cut. XFS no longer picks the path of an atomic write by the
+> alignment of the range that the caller passed.
 >=20
+> Fixes: f096207d3276 ("xfs: Validate atomic writes")
+> Fixes: 43c696f9d094 ("ext4: Check for atomic writes support in write iter=
+")
 > Signed-off-by: Chris Mason <mason@kernel.org>
 
 Sashiko has reviewed this patch and found no issues.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261112214604.6787=
-5-1-mason@kernel.org?part=3D11
+5-1-mason@kernel.org?part=3D5
 
