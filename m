@@ -1,54 +1,80 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.167.197
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=148.163.158.5
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794459452;
-	b=mrfNKgol7mO7LlLxtnIm6JFqYVCpbu+zM2x3UG/gFTGVi5l1mB6Jx3xfQX9exE1dcetS
-	 whXXhvQ52eS58jAl1LLzJ0+ubGF/ZIq8iCohFseLO5rkNRDrFo26RZpr0BBwNuPMzmwuB
-	 bcCE33OlXCboKU2LAeOOWfGHbR9w5YHKcpdFEaNWN1q3BDkC8t8tu2xtz0535bYJKjBbH
-	 pJqw/zCVIIZf5CkF8Xp8m1i2GL2oqcRZvtgKILtLSMcocs6KaOb8RIc9/SPYKFCFIxmsZ
-	 SZFPgCKPVFkXinwslOzEUt6pYkUbecFMzgDCn+eUHTEzBvH42HD9dk3Dxh1YXiK/P3g==
+	t=1794465502;
+	b=hBww98Y/1YUvg09jtnYtwJ4IEG7/52yO8iq7g3qzFNJ1wMLAZnNMOEeT2/v7QREFGGMK
+	 kWvP3SzAefnSK/D6gow3x405jcUQj4jFDhoi1Yex2h4LS2liQfmvrGhoB1Xe6mdGsKK8/
+	 yKJTmks12CL6gKSp1gW4r3OBQyCwW1UMgva3UsdNUrHXtVQSp6crYxQYLJY1Jk671oPYg
+	 Qe+An2cKWmi84wuEi6OCZdG9fj35DVGtAPZRM7t6+CJV94afdzMxHc2P52ttltipfrxX/
+	 ZQxbo/krjItSVtNtj8vvjiYEajrHnOFk1JSdrIMMcULDrfNF9XlVhgyExC15xiTA+XA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794459452;
-	h=DMARC-Filter:Received:X-Google-DKIM-Signature:X-Forwarded-Encrypted:
-	 X-Gm-Message-State:MIME-Version:X-Received:Date:
-	 X-Google-Appengine-App-Id:X-Google-Appengine-App-Id-Alias:Message-ID:
-	 Subject:From:To:Content-Type;
-	bh=fnLOXUSQFRSz6MuA8TQ8vh5DEGMpFeRQDhA/DrpotKc=;
-	b=R6H5oGTcpQ5Ta1pAQB8EJcp64hJ2PMlF2bvhKeSjWzbrs6+vcj4Oeg6YmOSVmDsY6VGB
-	 sSgeMOfeSCzmeruA8i2VFdKlqDnrDtL8rdG1vTFXZL8l2D2Rkx0HkscU/jELUzTIGSJiE
-	 HkV47ecsPnED41/Rtvj+sgnLxih6Ah3fR3eJSqyRFqVLhOPIPo+bh99rRBBbtHetn2s8L
-	 HoBtPsZnQpLx5G2dQkqlHlpMCDIV/ZIjSaxG32IA+gP5V5XKaRdelUVTkOP0rZxpyZenq
-	 dyrTPSInQYQlMXtr0ssqNVcIQqOF6iKkDTGoCv2NIZ33UtVOlVKKm2ZB60BgUQ9Ky4A==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794465502;
+	h=DMARC-Filter:Received:DKIM-Signature:Received:Received:Received:
+	 Received:Received:Received:Received:Message-ID:Date:MIME-Version:
+	 User-Agent:Content-Language:To:Cc:From:Subject:Content-Type:
+	 Content-Transfer-Encoding:X-TM-AS-GCONF:X-Proofpoint-Spam-Info:
+	 X-Authority-Analysis:X-Proofpoint-GUID:X-Proofpoint-Spam-Details-Enc:
+	 X-Proofpoint-ORIG-GUID:X-Proofpoint-Virus-Version:
+	 X-Proofpoint-Spam-Details;
+	bh=iRFfIlk2imt6t6yv6bIN0MN/kiJgCcKCYYhBMj7zHZE=;
+	b=sN3DikRt5QaAAXunSXjkm+NDWvGGN5cdFx5Kf7zqTs33aGjN6pTTFYzsumKKEYJR6VhI
+	 HFZM0LbxE+47uEPvRJzymjsmmyECg6SbCDYh8X3Q9ef0VzWA3kDyb0HzCU3OVKg99ELxH
+	 GKnYmt2FbjfrdPZBZviJYf7rwur51GpxoRLYyPYN2iaWB1pwAq86jkJbZiNY8S65xtCOz
+	 AgwwjO6yaEKwA/rk/AGgVHnGQGq3axZjnfyPeXDJiFYUFi2p/bD/J62q8dppP6xXFSX2E
+	 o6irfuUssDrsp0RHfawkbWu0A/Q9OlLUbGbVX9SG+ER2Labf+uowDYX2doll0QY4k+Q==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=fail header.from=syzkaller.appspotmail.com;
-	spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com;
-	arc=none smtp.remote-ip=209.85.167.197
-Received: from mail-oi1-f197.google.com (mail-oi1-f197.google.com [209.85.167.197])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	dmarc=pass header.from=linux.ibm.com;
+	spf=pass smtp.mailfrom=linux.ibm.com;
+	dkim=pass header.d=ibm.com header.i=@ibm.com header.a=rsa-sha256 header.s=pp1 header.b=jANViDSq;
+	arc=none smtp.remote-ip=148.163.158.5
+Received: from mx0b-001b2d01.pphosted.com (mx0b-001b2d01.pphosted.com [148.163.158.5])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C3153606A31C
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Nov 2026 04:57:31 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org C3153606A31C
-Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
-Received: by mail-oi1-f197.google.com with SMTP id 5614622812f47-5384e381fbbso3158947b6e.2
-        for <linux-ext4@vger.kernel.org>; Wed, 11 Nov 2026 20:57:31 -0800 (PST)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1794459451; x=1795064251;
-        h=content-type:to:from:subject:message-id:date:mime-version
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=fnLOXUSQFRSz6MuA8TQ8vh5DEGMpFeRQDhA/DrpotKc=;
-        b=jwZBjEbbLe41mC3xlQBlmZG4vXeOu8tua6yfbk6qCrjmc6aKF91/dnR4ZwvARyPpV/
-         r5H1G4ifSa2xjqT3VMr2nOF7ycJwX0TWdggH5jM+XBcuIKAbvUcwd6AcQiubnrQePoFw
-         EwOdE5grkdAHmluFT3FC3KbXPoJ9ziGnIAjYa1siVNFQ25ZBAVTulNVXOXNOQkpjPn/o
-         A6osnIdIj5mMxng7kRf+82sgKNkGF3e8ZuZnI0nTuD1hNG7E4hufEZ40UcnldFwrT4bW
-         /wA9z97i6kxxBHljKKZvvlEwWty12JIOtSzuhzVl9FSTbT4UmE9KdtSOSaf/Wyx750X5
-         tlvw==
-X-Forwarded-Encrypted: i=1; AL+hErGHLNdNq202lAs0c1HfQnMawXRWXuIdnwHoCyEAWZ2QrQYQ12uNHLtsXaChP25NJ42qiWAo5iaFL8aD@vger.kernel.org
-X-Gm-Message-State: APuU4Z8zHtM/UGjlGBrZK6wqxEJ2rCYiAgNgoR9A99ficgRwgsZfcxTx
-	Dsf0gA+KhO2LsqeQXCnGutoR0PkXgqa0P90AqJVmNBgW456qzFuT857/83ajHWvIi4wTH6H4YC4
-	pB7ZHUt+R6GSgWNLQYuzM8ztJELHqM5T+o6A/6pSK8gEzfO9bWiQMIpg4mA0=
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 74B4A606A31C;
+	Thu, 12 Nov 2026 06:38:22 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 74B4A606A31C
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.a=rsa-sha256 header.s=pp1 header.b=jANViDSq
+Received: from pps.filterd (m0360072.ppops.net [127.0.0.1])
+	by mx0a-001b2d01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 6AC2jUbS2861878;
+	Thu, 12 Nov 2026 06:38:11 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=cc
+	:content-transfer-encoding:content-type:date:from:message-id
+	:mime-version:subject:to; s=pp1; bh=iRFfIlk2imt6t6yv6bIN0MN/kiJg
+	CcKCYYhBMj7zHZE=; b=jANViDSqvYCil6NXuTTz2+lvbtw4X5DJgETv5vJJEG1R
+	yz74TUDcD22G/HNuu7tt4BErupxWtTnMmCOV3Rxk4rCL4AM0/bNwr+Wqkv8ga1lZ
+	UYJI/fzgBgTokB9nfYcMG51g/vrX6bCR4BRRjhJsbyAwOgqZqVzyEGQwuXF29XOR
+	HXP538IhXr0VIJyzXydnn7RQsaxvxhcaQ2el6/5rnBZtkSSXo/qK9hrJas0F4dzD
+	CMGVBPeuoopAvXLi9dcbuNIvrPsesuNS81IoA1Re2Flm/JzXMKxhzAteKJnskSKl
+	8DzxCG2AXyocbI060AGfKrOaplvnPmFE/0yWXtUajg==
+Received: from ppma12.dal12v.mail.ibm.com (dc.9e.1632.ip4.static.sl-reverse.com [50.22.158.220])
+	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4hsumv4x23-1
+	(version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=NOT);
+	Thu, 12 Nov 2026 06:38:10 +0000 (GMT)
+Received: from pps.filterd (ppma12.dal12v.mail.ibm.com [127.0.0.1])
+	by ppma12.dal12v.mail.ibm.com (8.18.1.11/8.18.1.11) with ESMTP id 6AC2a1O8054026;
+	Thu, 12 Nov 2026 06:38:10 GMT
+Received: from smtprelay07.dal12v.mail.ibm.com ([172.16.1.9])
+	by ppma12.dal12v.mail.ibm.com (PPS) with ESMTPS id 4hv309qnav-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Thu, 12 Nov 2026 06:38:10 +0000 (GMT)
+Received: from smtpav06.dal12v.mail.ibm.com (smtpav06.dal12v.mail.ibm.com [10.241.53.105])
+	by smtprelay07.dal12v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 6AC6c9RE32375318
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+	Thu, 12 Nov 2026 06:38:09 GMT
+Received: from smtpav06.dal12v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id 51CC35808E;
+	Thu, 12 Nov 2026 06:38:09 +0000 (GMT)
+Received: from smtpav06.dal12v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id C02F858083;
+	Thu, 12 Nov 2026 06:38:06 +0000 (GMT)
+Received: from [9.61.240.49] (unknown [9.61.240.49])
+	by smtpav06.dal12v.mail.ibm.com (Postfix) with ESMTP;
+	Thu, 12 Nov 2026 06:38:06 +0000 (GMT)
+Message-ID: <0d9a9fd6-3824-4709-a7f7-eb1d5849e079@linux.ibm.com>
+Date: Thu, 12 Nov 2026 12:08:05 +0530
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -58,128 +84,126 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-X-Received: by 2002:a05:6808:e82:b0:4fc:248a:de3b with SMTP id
- 5614622812f47-56b96192df6mr3824923b6e.23.1794459450706; Wed, 11 Nov 2026
- 20:57:30 -0800 (PST)
-Date: Wed, 11 Nov 2026 20:57:30 -0800
-X-Google-Appengine-App-Id: s~syzkaller
-X-Google-Appengine-App-Id-Alias: syzkaller
-Message-ID: <6af5473a.7afbdece.117ea2.0025.GAE@google.com>
-Subject: [syzbot] [ext4?] WARNING in ext4_journalled_invalidate_folio
-From: syzbot <syzbot+f111db4cb2acd44eb2f4@syzkaller.appspotmail.com>
-To: adilger.kernel@dilger.ca, jack@suse.cz, libaokun@linux.alibaba.com, 
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
-	ojaswin@linux.ibm.com, ritesh.list@gmail.com, syzkaller-bugs@googlegroups.com, 
-	tytso@mit.edu, yi.zhang@huawei.com
-Content-Type: text/plain; charset="UTF-8"
+User-Agent: Mozilla Thunderbird
+Content-Language: en-GB
+To: Ted Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+        Ojaswin Mujoo <ojaswin@linux.ibm.com>,
+        Ritesh Harjani
+ <riteshh@linux.ibm.com>,
+        Madhavan Srinivasan <maddy@linux.ibm.com>
+Cc: linuxppc-dev <linuxppc-dev@lists.ozlabs.org>,
+        LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org
+From: Venkat Rao Bagalkote <venkat88@linux.ibm.com>
+Subject: [next-20261111] ext4: Oops in ext4_writepages() during fast commit,
+ replay (generic/483, 64K pagesize, ppc64le)
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 8bit
+X-TM-AS-GCONF: 00
+X-Proofpoint-Spam-Info: AW1haW4tMjYxMTEyMDAyNCBTYWx0ZWRfXzkSZbFjxUcGT
+ l7AtGG2qgqdbdP8Y9/Xet/7YTiVMhCgVj7S8hWfxXsCELQlYmCx2b/ntkFCZmAXWv5puG7UPohn
+ KAIUjK1hZ9wI/NHQL/i13ZAI8f0uocI=
+X-Authority-Analysis: v=2.4 cv=GISdgeNK c=1 sm=1 tr=0 ts=6af55ed2 cx=c_pps
+ a=bLidbwmWQ0KltjZqbj+ezA==:117 a=bLidbwmWQ0KltjZqbj+ezA==:17
+ a=IkcTkHD0fZMA:10 a=zJRp6_cAMcgA:10 a=VkNPw1HP01LnGYTKEx00:22
+ a=RnoormkPH1_aCDwRdu11:22 a=RzCfie-kr_QcCd8fBx8p:22 a=VnNF1IyMAAAA:8
+ a=-IFbq3Xo538CQDMHEQUA:9 a=3ZKOabzyN94A:10 a=QEXdDO2ut3YA:10
+X-Proofpoint-GUID: HUuwRGpVZWvqaF-BWHFBlM4Dujs-ih3S
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYxMTEyMDAyNCBTYWx0ZWRfX1tyninbRGAkw
+ RjRCTtWO2WMkrA4/R1BhnSdfLgQSQkgVU01gw6+MunDpvC5QTnLkQlF9hIUa3RCSKw/MrSb4V9N
+ GPzTO2nqZiyr6n3sAAw2i8MFb7cOrtvwr2f2QTfnDqL2+SmFkyK9Xd8BYzAJZzKAeky7GYqG0jY
+ Gy2HY90IWENDAIdaxzK3Uh7zkD/xqMZAqdDIPbFU1R/QC5amOiV9DDAgmru9ZIT2/AL+oTLnrz4
+ sIG+LZnxHZnPX1VzS9VORAqMm2JqIdPba/hmFB5QN8WTwjWaMg3ZoyFT+TIpALwImli4W/iGNqe
+ xQgQGDSc3DFtXTrRymDO8qtzkpdu3krpAEr9bGuWKmw7HF2y8xGlpRrDpvS+NLM8+4ekGWmd28o
+ EO4IEJc6MmtLex0mBYfyITBlA2vIOjAjrkwxX4XbZPPnU86SBOslmyc0oEWb5pb/FCmjiLmnW9P
+ ffm4OFACuOg/p3zLWbQ==
+X-Proofpoint-ORIG-GUID: HUuwRGpVZWvqaF-BWHFBlM4Dujs-ih3S
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.293,Aquarius:18.0.1176,Hydra:6.1.138,FMLib:17.12.100.49
+ definitions=2026-11-12_01,2026-11-11_03,2025-10-01_01
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
+ suspectscore=0 bulkscore=0 impostorscore=0 clxscore=1015 adultscore=0
+ priorityscore=1501 phishscore=0 spamscore=0 malwarescore=0 lowpriorityscore=0
+ classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
+ reason=mlx scancount=1 engine=8.22.0-2611040001 definitions=main-2611120024
 
-Hello,
+Hi,
 
-syzbot found the following issue on:
-
-HEAD commit:    58c1eb84e977 arm64: sdei: Preserve the interrupted context..
-git tree:       git://git.kernel.org/pub/scm/linux/kernel/git/arm64/linux.git for-kernelci
-console output: https://syzkaller.appspot.com/x/log.txt?x=10ca51be580000
-kernel config:  https://syzkaller.appspot.com/x/.config?x=a58b6b4d667e7a61
-dashboard link: https://syzkaller.appspot.com/bug?extid=f111db4cb2acd44eb2f4
-compiler:       Debian clang version 22.1.8 (1~deb13u4), Debian LLD 22.1.8
-userspace arch: arm64
-syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=17b58811580000
-C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=1277f5fd580000
-
-Downloadable assets:
-disk image: https://storage.googleapis.com/syzbot-assets/b1ec47537e12/disk-58c1eb84.raw.xz
-vmlinux: https://storage.googleapis.com/syzbot-assets/3bca0c2b1169/vmlinux-58c1eb84.xz
-kernel image: https://storage.googleapis.com/syzbot-assets/0a7c49594d5a/Image-58c1eb84.gz.xz
-mounted in repro: https://storage.googleapis.com/syzbot-assets/c1da89a2e5f9/mount_2.gz
-  fsck result: OK (log: https://syzkaller.appspot.com/x/fsck.log?x=1280d5fd580000)
-
-AI-generated root cause summary:
-When a buffered write fails partially (e.g. short copy due to user page fault)
-on an ext4 inode in data=journal mode with blocksize < PAGE_SIZE,
-ext4_journalled_write_end() invokes ext4_truncate_failed_write() to discard
-blocks allocated past inode->i_size. In data=journal mode, buffers attached to a
-folio straddling inode->i_size that are undergoing transaction commit cannot be
-invalidated immediately by jbd2_journal_invalidate_folio() and return -EBUSY.
-While the normal truncate path (ext4_truncate_down()) calls
-ext4_wait_for_tail_page_commit() to wait for the committing transaction before
-truncating the page cache, ext4_truncate_failed_write() directly calls
-truncate_inode_pages(), causing ext4_journalled_invalidate_folio() to encounter
--EBUSY and trigger a WARN_ON.
-
-full analysis:  https://syzkaller.appspot.com/x/ai_root_cause?x=f111db4cb2acd44eb2f4
-
-IMPORTANT: if you fix the issue, please add the following tag to the commit:
-Reported-by: syzbot+f111db4cb2acd44eb2f4@syzkaller.appspotmail.com
-
-------------[ cut here ]------------
-WARNING: fs/ext4/inode.c:3561 at ext4_journalled_invalidate_folio+0x64/0x6c fs/ext4/inode.c:3561, CPU#1: syz.3.128/5701
-Modules linked in:
-CPU: 1 UID: 0 PID: 5701 Comm: syz.3.128 Not tainted syzkaller #0 PREEMPT 
-Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 11/06/2026
-pstate: 83400005 (Nzcv daif +PAN -UAO +TCO +DIT -SSBS BTYPE=--)
-pc : ext4_journalled_invalidate_folio+0x64/0x6c fs/ext4/inode.c:3561
-lr : ext4_journalled_invalidate_folio+0x64/0x6c fs/ext4/inode.c:3561
-sp : ffff800099227130
-x29: ffff800099227130 x28: 1fffffbff87922c3 x27: ffff800086b75f98
-x26: fffffdffc3c91618 x25: 00000000000009c5 x24: 000000000000063b
-x23: 0000000000001000 x22: fffffdffc3c91608 x21: fffffdffc3c91600
-x20: 000000000000063b x19: 00000000fffffff0 x18: ffff80012364b000
-x17: 0000000000000000 x16: 0000000000009800 x15: 0000000000000000
-x14: 00000000006b0ec7 x13: 0000000000000001 x12: 0000000000000000
-x11: 0000000000000000 x10: ffff800089889200 x9 : 0000000000000000
-x8 : 0000000000000000 x7 : ffff8000811b24f8 x6 : 0000000000000000
-x5 : 0000000000000000 x4 : 0000000000000001 x3 : ffff8000810a36e4
-x2 : 00000000fffffff0 x1 : ffff0000c4d31d80 x0 : 0000000000000000
-Call trace:
- ext4_journalled_invalidate_folio+0x64/0x6c fs/ext4/inode.c:3561 (P)
- folio_invalidate mm/truncate.c:140 [inline]
- truncate_inode_partial_folio+0x574/0xb38 mm/truncate.c:261
- truncate_inode_pages_range+0x4e8/0xc9c mm/truncate.c:460
- truncate_inode_pages+0x2c/0x3c mm/truncate.c:526
- ext4_truncate_failed_write fs/ext4/truncate.h:21 [inline]
- ext4_journalled_write_end+0x698/0xa60 fs/ext4/inode.c:1726
- generic_perform_write+0x504/0x7a4 mm/filemap.c:4413
- ext4_buffered_write_iter+0xfc/0x438 fs/ext4/file.c:372
- ext4_file_write_iter+0x1f4/0x1478 fs/ext4/file.c:-1
- do_iter_readv_writev+0x48c/0x6f8 fs/read_write.c:-1
- vfs_writev+0x2a8/0x630 fs/read_write.c:1058
- do_pwritev+0x170/0x2a0 fs/read_write.c:1153
- __do_sys_pwritev2 fs/read_write.c:1212 [inline]
- __se_sys_pwritev2 fs/read_write.c:1203 [inline]
- __arm64_sys_pwritev2+0xe4/0x118 fs/read_write.c:1203
- __invoke_syscall arch/arm64/kernel/syscall.c:35 [inline]
- invoke_syscall+0x98/0x244 arch/arm64/kernel/syscall.c:49
- el0_svc_common+0xec/0x23c arch/arm64/kernel/syscall.c:121
- do_el0_svc+0x4c/0x5c arch/arm64/kernel/syscall.c:140
- el0_svc+0x60/0x1d8 arch/arm64/kernel/entry-common.c:797
- el0t_64_sync_handler+0x44/0x104 arch/arm64/kernel/entry-common.c:816
- el0t_64_sync+0x198/0x19c arch/arm64/kernel/entry.S:606
-irq event stamp: 25834
-hardirqs last  enabled at (25833): [<ffff800080bff1cc>] kasan_quarantine_put+0xb4/0x1c4 mm/kasan/quarantine.c:234
-hardirqs last disabled at (25834): [<ffff800086953878>] el1_brk64+0x20/0x54 arch/arm64/kernel/entry-common.c:484
-softirqs last  enabled at (25130): [<ffff8000800204f4>] __do_softirq+0x14/0x20 kernel/softirq.c:703
-softirqs last disabled at (24937): [<ffff8000800204f4>] __do_softirq+0x14/0x20 kernel/softirq.c:703
----[ end trace 0000000000000000 ]---
+While running xfstests on linux-next next-20261111 on a Power9 pSeries
+LPAR with 64K PAGE_SIZE, generic/483 on ext4 (64K block size, fast_commit
+enabled) triggers a kernel oops.
 
 
----
-This report is generated by a bot. It may contain errors.
-See https://goo.gl/tpsmEJ for more information about syzbot.
-syzbot engineers can be reached at syzkaller@googlegroups.com.
+Reproducer
+----------
+Kernel:   7.4.0-rc2-next-20261111 (ppc64le, PAGE_SIZE=64K, Hash MMU)
+Hardware: IBM 8375-42A POWER9 (pSeries LPAR)
 
-syzbot will keep track of this issue. See:
-https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
+xfstests local.config:
+   export FSTYP=ext4
+   export TEST_DEV=/dev/loop0
+   export TEST_DIR=/mnt/test
+   export SCRATCH_DEV=/dev/loop1
+   export SCRATCH_MNT=/mnt/scratch
+   export MKFS_OPTIONS="-b 65536 -O fast_commit"
 
-If the report is already addressed, let syzbot know by replying with:
-#syz fix: exact-commit-title
+   ./check -ext4 generic/483
 
-If you want to overwrite report's subsystems, reply with:
-#syz set subsystems: new-subsystem
-(See the list of subsystem names on the web dashboard)
 
-If the report is a duplicate of another one, reply with:
-#syz dup: exact-subject-of-another-report
 
-If you want to undo deduplication, reply with:
-#syz undup
+Oops
+----
+[14844.411091] EXT4-fs (dm-0): mounted filesystem 7ef13de7-... r/w with 
+ordered data mode. Quota mode: none.
+[14847.236154] EXT4-fs (dm-0): unmounting filesystem 7ef13de7-...
+[14847.275380] Kernel attempted to read user page (1174770000) - exploit 
+attempt? (uid: 0)
+[14847.275406] BUG: Unable to handle kernel data access on read at 
+0x1174770000
+[14847.275414] Faulting instruction address: 0xc00800000ed42f74
+[14847.275423] Oops: Kernel access of bad area, sig: 11 [#1]
+[14847.275430] LE PAGE_SIZE=64K MMU=Hash  SMP NR_CPUS=8192 NUMA pSeries
+[14847.275575] CPU: 26 UID: 0 PID: 53042 Comm: mount Kdump: loaded Not 
+tainted 7.4.0-rc2-next-20261111 #1 PREEMPT(lazy)
+[14847.275587] Hardware name: IBM,8375-42A POWER9 (architected) 0x4e0202 
+0xf000005 of:IBM,FW950.80 (VL950_131) hv:phyp pSeries
+[14847.275597] NIP:  c00800000ed42f74 LR: c00800000ed42f70 CTR: 
+c0000000009e2a60
+[14847.275647] CFAR: c00000000000db4c DAR: 0000001174770000 DSISR: 
+40000000 IRQMASK: 1
+[14847.275771] NIP [c00800000ed42f74] ext4_writepages+0x12c/0x3a0 [ext4]
+[14847.275908] LR [c00800000ed42f70] ext4_writepages+0x128/0x3a0 [ext4]
+[14847.276038] Call Trace:
+[14847.276058]  do_writepages+0x190/0x330
+[14847.276073]  __writeback_single_inode+0x9c/0xa30
+[14847.276087]  writeback_single_inode+0x18c/0x2a0
+[14847.276101]  write_inode_now+0xc0/0x100
+[14847.276114]  iput_final+0x10c/0x300
+[14847.276128]  ext4_fc_replay_add_range+0x2f0/0x5a0 [ext4]
+[14847.276262]  ext4_fc_replay+0x564/0xdd0 [ext4]
+[14847.276394]  do_one_pass+0x9bc/0x1370 [jbd2]
+[14847.276439]  jbd2_journal_recover+0x358/0x400 [jbd2]
+[14847.276481]  jbd2_journal_load+0x28/0x110 [jbd2]
+[14847.276530]  ext4_load_journal+0x7cc/0xc60 [ext4]
+[14847.276664]  ext4_load_and_init_journal+0x6c/0x680 [ext4]
+[14847.276801]  __ext4_fill_super+0x1454/0x2360 [ext4]
+[14847.276937]  ext4_fill_super+0x188/0x4d0 [ext4]
+[14847.277072]  get_tree_bdev_flags+0x250/0x350
+[14847.277086]  ext4_get_tree+0x24/0x40 [ext4]
+[14847.277221]  vfs_get_tree+0x78/0x210
+[14847.277234]  vfs_cmd_create+0x8c/0x1a0
+[14847.277246]  __do_sys_fsconfig+0x58c/0x880
+[14847.277259]  system_call_exception+0x3c4/0x600
+[14847.277273]  system_call_vectored_common+0x15c/0x2ec
+[14847.277477] Code: 387f0740 480b8b11 e8410018 ebff0740 7dbe6b78 
+386d0030 480b8afd e8410018 ebde0030 7c7ff214 480b8b65 e8410018 
+<7d3ff02e> 7f83e378 39290001 7d3ff12e
+
+If you happen to fix this, Please add below tag.
+
+Reported-by: Venkat Rao Bagalkote <venkat88@linux.ibm.com>
+
+Regards,
+
+Venkat.
+
+
