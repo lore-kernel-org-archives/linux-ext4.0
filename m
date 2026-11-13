@@ -1,51 +1,51 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=91.218.175.225
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=91.218.175.242
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794553658;
-	b=SM+WJda/ZEQuZyE8km/U7aw7lJ14ygl1y+L5UXWBg6Op4Tn9JsKnVk6SfAWdpvWWwqFV
-	 zzBjqMm/z9MCGWiRd0bwIhIvplhtVd23anU3j0rTLPqPmhsUFfZzFWZi7wEw+N5Vm/aAn
-	 YyKZKndg6IxgBfJt4bCmjY6Fk7hi0iLVTlN9Si0tcoOtsqN3iKjJzLkRX2caGv633KALE
-	 SZjeRD2MF94WDJFz/6+uX6bYfvM2qu92v/Cit4Uv1lkahghZ5Sos7ckeif6dd6ZFYqeQ1
-	 XlYgeNqdOT8q4Zg8QxudGd9APGp8zyLMoVs0dVfQrLnfnNGyaOet1kZiI7qMZYuxSeQ==
+	t=1794553675;
+	b=gh+90PogJEip8hU4hUVWKwIdJwwiQ5yi9qVsPHvIr1WACjw3oYIpCdT3gnqRb2vom6iN
+	 vrDranSqovNc8iWYkHrzxxtmC+7+gzzC3t2ByqcwlUL273e8U0ShbuwyWh+poSAmQ7qn6
+	 j7J94o47Pw7nGyL3rlKDby5ofAAEJ7B01s+J51AQWWi8g/4D84RpBEY94NrB4XZRw18gE
+	 +Ix6XfeRwbbcdxbeNTrk4Z5wAIwhZhG2obiD/zmatsuEAOsjX9UIWKgc5RVBPCLzDm/lL
+	 Xvrfg38hNr9lOFWddwat1QbTTrkaMKbK/a5UehnQ1MC/oYv/R7sVL4YzaoX64q9iu3Q==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794553658;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794553675;
 	h=DMARC-Filter:X-Envelope-To:DKIM-Signature:X-Envelope-To:Received:
 	 X-Mizu-Trace-ID:X-Migadu-Flow:From:To:Cc:Subject:Date:Message-ID:
 	 X-Mailer:In-Reply-To:References:MIME-Version:
 	 Content-Transfer-Encoding;
-	bh=KYrqfOt3WaM6xb5MUDSy7pQiGraRuXX8G5HzWKe5LoM=;
-	b=u+sbq7rmq2FRrOXdkT6m6e12/+DMyy75Q1KFk6dsLnZKgjWExtLmyBGT+qW/ujmMO8uq
-	 /HZADJ9S2ZNoMweIi2lnpRHhT+FmuUgUGgSeFzXcuFp4HZnErttJglniiJ60M+23azMEE
-	 n//JSsvCtTzMZUMX4jMwoQ1ClVitDoemUzNLENNe61+wnVkJo3zQFkhQat+OniUGOXrsc
-	 gUHEAK8vAyhBW+03RDd70y2aeKd/4MG9YgVIQtJG1iGNbZd9WkJ3FvoDyZp+4WTurUp/3
-	 onXSge3QNfPF31opCR1i/g+edJjX/jgwtbN0GJFZUTdVeV+A1x3lvzOCbHdzjUPEdwQ==
+	bh=Y5c7omIAneSZefT9dfmZbyqefVv1syPKSN+V7Y2Kmgg=;
+	b=MPVeIP3NVLtvF3Q2jT4f7mltTW0ubXgXUYWjCyXvfGqIEv4r/HAWSLbDwmRFcmvOWOqY
+	 WRhENX17t7cUErNm+byO8qafT1735vXNp7F4rMeLbs2iTNkWiXIs2m774hhNaKOLp245k
+	 XTewfJLOuSUV66hNg2w5x70KZdFCY4uakWX6TKw4fSTkxVYXRC10bwHyl6JO+YBsjnvqT
+	 KDCEi0HVAbmWr570hb2S0bX1EL2mS6y0pLGGmSyzYoyZBO1n6oZDF/X6WXFbLppnAKAMH
+	 fvLZRenyOKAwrZ5do8xCVdFidh+t/iU1n0DypSSFMWyd/rurbhxQAnKk6Pe4gsaxfWA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=linux.dev;
 	spf=pass smtp.mailfrom=linux.dev;
-	dkim=pass header.d=linux.dev header.i=@linux.dev header.a=rsa-sha256 header.s=key1 header.b=ICj6LBSR;
-	arc=none smtp.remote-ip=91.218.175.225
-Received: from mta0.migadu.com (out-225.mta0.migadu.com [91.218.175.225])
+	dkim=pass header.d=linux.dev header.i=@linux.dev header.a=rsa-sha256 header.s=key1 header.b=RSa8yJKW;
+	arc=none smtp.remote-ip=91.218.175.242
+Received: from mta0.migadu.com (out-242.mta0.migadu.com [91.218.175.242])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 12793606A339
-	for <linux-ext4@vger.kernel.org>; Fri, 13 Nov 2026 07:07:37 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 12793606A339
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E28F3606A8B5
+	for <linux-ext4@vger.kernel.org>; Fri, 13 Nov 2026 07:07:54 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org E28F3606A8B5
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.dev
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=linux.dev header.i=@linux.dev header.a=rsa-sha256 header.s=key1 header.b=ICj6LBSR
+	dkim=pass (1024-bit key, unprotected) header.d=linux.dev header.i=@linux.dev header.a=rsa-sha256 header.s=key1 header.b=RSa8yJKW
 X-Envelope-To: linux-ext4@vger.kernel.org
-DKIM-Signature: a=rsa-sha256; bh=FEKih65dVLqip/qvv/nnGzIKP8TulmlEVfQQ2ZV1WNs=;
+DKIM-Signature: a=rsa-sha256; bh=wlo9vUd47ggH1TaP4OgfLMAqjSMe1zHTjJ3E73DhNZo=;
  c=simple/simple; d=linux.dev;
  h=from:to:subject:date:message-id:mime-version:content-type; s=key1;
- t=1794553656; v=1; x=1795158456;
- b=ICj6LBSRZFTG4UFEful4TlQrRZZ3qe+p2f5HUj0XMsmJHmUG8GOf7G77USLC5uPvzc8KSAd5
- g0j0NHnJn9o9akg5j4yRuUiGQ6QlK3RRXUdZFGJH7SogXsJRpOpdCzcjwD+BE0DY8+WH0aaNa6t
- Spz8hgDt85V0sJ9zY9qunvgk=
+ t=1794553673; v=1; x=1795158473;
+ b=RSa8yJKWKSA+JxYP4Pun8TgADBCQWOoF3MI11B0wxXP5X/Mcy/Am+sMm4fE7S2HtKaZ0QCra
+ IVmRmQPzqnewVGrHmsm6wzSyerWAQJEFjLjAZgVysHKB3PGW9EPtILBYI3R1WFYyPbPLcRWNQeI
+ CPHjrrSAqs1plnmG1hjJ/Tpk=
 X-Envelope-To: linux-ext4@vger.kernel.org
-Received: by smtp.migadu.com with ESMTPS id 399a8e2f5a148472;
-	Fri, 13 Nov 2026 07:07:35 +0000
-X-Mizu-Trace-ID: 399a8e2f5a148472
+Received: by smtp.migadu.com with ESMTPS id c98b5bb3fe46bebc;
+	Fri, 13 Nov 2026 07:07:52 +0000
+X-Mizu-Trace-ID: c98b5bb3fe46bebc
 X-Migadu-Flow: FLOW_OUT
 From: Mengmeng Zhao <mengmeng.zhao@linux.dev>
 To: Christoph Hellwig <hch@lst.de>,
@@ -82,9 +82,9 @@ Cc: linux-block@vger.kernel.org,
 	linaro-mm-sig@lists.linaro.org,
 	Li Wang <liwang@kylinos.cn>,
 	Mengmeng Zhao <zhaomengmeng@kylinos.cn>
-Subject: [RFC PATCH v2 3/8] iomap: don't ask for a buffered fallback for dma-buf iterators
-Date: Fri, 13 Nov 2026 15:06:16 +0800
-Message-ID: <20261113070621.273953-4-mengmeng.zhao@linux.dev>
+Subject: [RFC PATCH v2 4/8] blk-mq: factor out a dma-buf bio refusal helper
+Date: Fri, 13 Nov 2026 15:06:17 +0800
+Message-ID: <20261113070621.273953-5-mengmeng.zhao@linux.dev>
 X-Mailer: git-send-email 2.43.0
 In-Reply-To: <20261113070621.273953-1-mengmeng.zhao@linux.dev>
 References: <20261113070621.273953-1-mengmeng.zhao@linux.dev>
@@ -101,90 +101,59 @@ Content-Transfer-Encoding: 8bit
 
 From: Mengmeng Zhao <zhaomengmeng@kylinos.cn>
 
--ENOTBLK tells the caller to retry with buffered I/O.  A dma-buf iterator
-has no pages to copy, so the callers refuse that fallback, which would
-turn the error into a successful transfer of zero bytes.
+Move the dma-buf integrity check out of blk_mq_submit_bio() into
+bio_dmabuf_should_reject(), so that such checks have one place to grow.
 
-Report the reason instead: a busy folio becomes -EAGAIN, which the caller
-can retry, any other invalidation failure keeps its error code, and
--ENOTBLK from ->iomap_begin() becomes -EOPNOTSUPP when nothing was
-transferred.  A partial direct I/O still reports its progress.  Both
-branches are reachable only through a file that opted into dma-buf I/O,
-which ext4 does in the last patch.
+No functional change.
 
 Signed-off-by: Mengmeng Zhao <zhaomengmeng@kylinos.cn>
 Signed-off-by: Li Wang <liwang@kylinos.cn>
 ---
- .../filesystems/iomap/operations.rst          |  3 +++
- fs/iomap/direct-io.c                          | 20 +++++++++++++++++--
- 2 files changed, 21 insertions(+), 2 deletions(-)
+ block/blk-mq.c | 24 +++++++++++++++---------
+ 1 file changed, 15 insertions(+), 9 deletions(-)
 
-diff --git a/Documentation/filesystems/iomap/operations.rst b/Documentation/filesystems/iomap/operations.rst
-index da982ca7e413..ca59716d225c 100644
---- a/Documentation/filesystems/iomap/operations.rst
-+++ b/Documentation/filesystems/iomap/operations.rst
-@@ -513,6 +513,9 @@ Return Values
-    cache before issuing the I/O to storage.
-    The ``->iomap_begin`` or ``->iomap_end`` functions may also return
-    this value.
-+   A dma-buf iterator cannot fall back to buffered I/O, so it gets
-+   ``-EAGAIN`` when the failure is retryable and ``-EOPNOTSUPP`` when no
-+   data could be transferred.
+diff --git a/block/blk-mq.c b/block/blk-mq.c
+index 5ae22d556540..887d5cc5bb5e 100644
+--- a/block/blk-mq.c
++++ b/block/blk-mq.c
+@@ -3099,6 +3099,20 @@ static bool bio_unaligned(const struct bio *bio, struct request_queue *q)
+ 	return false;
+ }
  
-  * ``-EIOCBQUEUED``: The asynchronous direct I/O request has been
-    queued and will be completed separately.
-diff --git a/fs/iomap/direct-io.c b/fs/iomap/direct-io.c
-index 4a2b0f9df5a7..83fda6973bb9 100644
---- a/fs/iomap/direct-io.c
-+++ b/fs/iomap/direct-io.c
-@@ -706,7 +706,9 @@ static int iomap_dio_iter(struct iomap_iter *iter, struct iomap_dio *dio)
-  * completing partial requests asynchronously.
-  *
-  * Returns -ENOTBLK In case of a page invalidation invalidation failure for
-- * writes.  The callers needs to fall back to buffered I/O in this case.
-+ * writes.  The callers needs to fall back to buffered I/O in this case.  A
-+ * dma-buf iterator cannot use that fallback, so it gets -EAGAIN when the
-+ * failure is retryable and -EOPNOTSUPP when nothing was transferred.
-  */
- struct iomap_dio *
- __iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
-@@ -806,7 +808,7 @@ __iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
- 		/*
- 		 * Try to invalidate cache pages for the range we are writing.
- 		 * If this invalidation fails, let the caller fall back to
--		 * buffered I/O.
-+		 * buffered I/O unless the iterator cannot be handled there.
- 		 */
- 		ret = kiocb_invalidate_pages(iocb, iomi.len);
- 		if (ret) {
-@@ -820,6 +822,14 @@ __iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
- 					 * the caller tries again.
- 					 */
- 					ret = -EAGAIN;
-+				} else if (iov_iter_is_dmabuf_map(iter)) {
-+					/*
-+					 * A dma-buf iterator has no buffered
-+					 * fallback, so -ENOTBLK would hide the
-+					 * real failure.  A busy folio is retryable.
-+					 */
-+					if (ret == -EBUSY)
-+						ret = -EAGAIN;
- 				} else {
- 					/* fall back to buffered write */
- 					ret = -ENOTBLK;
-@@ -867,6 +877,12 @@ __iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
- 	if (ret == -ENOTBLK) {
- 		wait_for_completion = true;
- 		ret = 0;
-+		/*
-+		 * A dma-buf iterator cannot use that fallback.  Anything
-+		 * already transferred is still reported as a short I/O.
-+		 */
-+		if (!dio->size && iov_iter_is_dmabuf_map(iter))
-+			ret = -EOPNOTSUPP;
++/*
++ * A dma-buf bio carries a driver-private map instead of pages, so the block
++ * layer cannot generate or verify integrity metadata for it.  Only reject when
++ * it would have to do that itself, not if the submitter attached its own
++ * payload or if generation or verification is turned off for the device.
++ */
++static bool bio_dmabuf_should_reject(struct bio *bio)
++{
++	if (!op_is_dmabuf(bio->bi_opf))
++		return false;
++	return bdev_has_integrity_csum(bio->bi_bdev) &&
++	       (bio_integrity_action(bio) & BI_ACT_CHECK);
++}
++
+ /**
+  * blk_mq_submit_bio - Create and send a request to block device.
+  * @bio: Bio pointer.
+@@ -3160,15 +3174,7 @@ void blk_mq_submit_bio(struct bio *bio)
+ 		goto queue_exit;
  	}
- 	if (ret < 0)
- 		iomap_dio_set_error(dio, ret);
+ 
+-	/*
+-	 * The block layer cannot generate or verify PI for a dma-buf bio, as
+-	 * that walks the data pages.  Only fail the bio if it needs that, not
+-	 * if the submitter attached its own integrity payload or if PI
+-	 * generation or verification is turned off for the device.
+-	 */
+-	if (unlikely(op_is_dmabuf(bio->bi_opf) &&
+-		     bdev_has_integrity_csum(bio->bi_bdev) &&
+-		     (bio_integrity_action(bio) & BI_ACT_CHECK))) {
++	if (unlikely(bio_dmabuf_should_reject(bio))) {
+ 		bio_endio_status(bio, BLK_STS_NOTSUPP);
+ 		goto queue_exit;
+ 	}
 -- 
 2.43.0
 
