@@ -1,74 +1,74 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=74.125.82.200
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=74.125.82.198
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794552821;
-	b=tfuNr1dBKKbEQtiAXU0XuNm/jKVtEio1Rug6Cz7kgRezIACBXSTKmJl/5G8/diMJXvJ7
-	 yOvhw7GNIbMPARaefgxJvEXas2phQVnSaIR2v7mL++MwgYJXV1gnFBbFtdaSgnuh+HFR3
-	 KTREdbd6gZylUz2O4mqNxWhpa2pekg5UpMiDABlLFx3vSt+NOJJhUsWBu41ex6hRLdiR5
-	 K0z9kHQxXd4ZTaI5QEcAztDtzCvTiTB/+I9gSN6Sm0fncAeDTt7KpNhg1VtD1NrZTXAiY
-	 82+C5m6U1uEoLtZELJWnqcYm27owvbUS0kc7Ios9eLiEzbFM/DDTyrff/eAvh9tEEpw==
+	t=1794552824;
+	b=S0MY3WeP9i/RYiNpmhaSwqwD45hpfpylGMUr6IuTkfbNJ0jJSPXxcMDTpwySHXwzwPQv
+	 ktvTyixPutdP3qzoyoOhWqp9D7/8y2fM+0MO2+Ael2MuRNIUQAev65dCu3aouNsQ/y2Jk
+	 F0+LghVoe/dbtqVHkCh8gq7fDZL8rtF5qZiYz2h8GwARdJhOh117WkW9KO3lbUlpXCag1
+	 qGDyrr1r9pj/F2FuyjWa/qxQo+aNc44Ua6mES8C1l0mbNjS4VOm6Nd48VshIDXTZ6JbbK
+	 +vRSmpq9qdEi5IBP2bRIId09/bXai4XA7SIMXZ9eRhRzXdrP9VUWHzNprEinGKYusvw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794552821;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794552824;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
 	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Received:Date:In-Reply-To:
 	 Mime-Version:References:X-Mailer:Message-ID:Subject:From:To:Cc:
 	 Content-Type;
-	bh=7Q39/lqYC3Xf6FzX/Bx2LJs4jpalM5B4swG5E0jDvX4=;
-	b=Vqbbt9/msS3gYGaOvP/Xf7lM4y7fJfpBNqHrYU+rlP9xCRDk0ANO8IkKIxZTD82Q+bEq
-	 SzsjWMY+Kpj+cBYUDQ6HRN1AbM1P6ZQYzByGLdQtgYaxL4L8DMU9oA2Adv4oKX7W9xXnx
-	 5vSQFfX1lmZ7J41j6f+JG7SUDRwTL5qtduEHeamJAx3ElyCVqiwfCIxYlXsZ6OMVlt7Ap
-	 tc9naeXys8kei1+3smytfjgHCKVb0JqEboMM6TY/4Wfod97kTNgBV3W1JPjnhhmfzxuzy
-	 WdAN8xsqXU/1A65dZqUl1sO3xAsioz1EneYtquFZF6Rfk7qgAhHn6J/DKJHOzvttuPA==
+	bh=32C0FxBlQriZemWnWfi76aDhbmP3Z0qG7c56b0ARCqE=;
+	b=ZPCQjZnwblSDv6vpqCaDkPagiuHFFo5p2m9KrC+H8TCCeX8QxV0mjcQSuy6M376KoUAH
+	 5ZP14aNfTjE35/MmvHRuFDAwIXIKhgKauCiD5t55b2K3IiR60vlkxwtWDfm0ENefeIEm6
+	 rpoM8Mm0kl8E7J1wBwMPQY9tMuSzNzt6qI2hlWSxHIEFsHl4hYYhYJ20nsy3leGU4JmIj
+	 uIiMCXrKho68Yf7oj/1i3NMMyuYSBqeI41a/vce/jj5goFxX8g5seLhE/4YoyYbgirG8G
+	 CUJRn0dd8DWH1/w1rlTV7WbAw/7nPv/NdRqPAAQ9QPYCuepVB7O+OgrzTNul/xeReyw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=google.com;
 	spf=pass smtp.mailfrom=flex--sarthakkukreti.bounces.google.com;
-	dkim=pass header.d=google.com header.i=@google.com header.a=rsa-sha256 header.s=20260707 header.b="fLT/mju8";
-	arc=none smtp.remote-ip=74.125.82.200
-Received: from mail-dy1-f200.google.com (mail-dy1-f200.google.com [74.125.82.200])
+	dkim=pass header.d=google.com header.i=@google.com header.a=rsa-sha256 header.s=20260707 header.b=puR8RExC;
+	arc=none smtp.remote-ip=74.125.82.198
+Received: from mail-dy1-f198.google.com (mail-dy1-f198.google.com [74.125.82.198])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8FE0E606A321
-	for <linux-ext4@vger.kernel.org>; Fri, 13 Nov 2026 06:53:41 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 8FE0E606A321
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9E10F606A332
+	for <linux-ext4@vger.kernel.org>; Fri, 13 Nov 2026 06:53:43 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 9E10F606A332
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=flex--sarthakkukreti.bounces.google.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.a=rsa-sha256 header.s=20260707 header.b=fLT/mju8
-Received: by mail-dy1-f200.google.com with SMTP id 5a478bee46e88-33713e5e6daso653232eec.0
-        for <linux-ext4@vger.kernel.org>; Thu, 12 Nov 2026 22:53:41 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.a=rsa-sha256 header.s=20260707 header.b=puR8RExC
+Received: by mail-dy1-f198.google.com with SMTP id 5a478bee46e88-33713e5e6daso653272eec.0
+        for <linux-ext4@vger.kernel.org>; Thu, 12 Nov 2026 22:53:43 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=google.com; s=20260707; t=1794552821; x=1795157621; darn=vger.kernel.org;
+        d=google.com; s=20260707; t=1794552823; x=1795157623; darn=vger.kernel.org;
         h=content-type:cc:to:from:subject:message-id:references:mime-version
          :in-reply-to:date:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=7Q39/lqYC3Xf6FzX/Bx2LJs4jpalM5B4swG5E0jDvX4=;
-        b=fLT/mju85eYKEUfFdmTx0l+yDJBeLhsZrB0BgQcZDYREdLBxANpYfqgBbkRqE/+OEI
-         7Zw7zvgVOb1UU4H0aCEWxG/tMn0T28mpPryeiGNoq3LxCA4sn9HKpfUsKqx4rHDH2L94
-         lSgmyhHzYNJ+WKcV2QaJNthyNWxkKBResUzLfP7fCX1v87zgSWQSBMyTTMj1AQszBN+h
-         U6oV/jKnj91tqkW3Q8MA70cmQ2iYNhR8QLLTB5WG+SQqRHWUmYhIfxkmmofS3gL4NG0D
-         lnSbtK833Lag7hqRfDHNKSMVwXIrkY/DlboIN0JxcgIWu99CULyCWIHsnRM0RvTRqJTp
-         uwxA==
+        bh=32C0FxBlQriZemWnWfi76aDhbmP3Z0qG7c56b0ARCqE=;
+        b=puR8RExCfWpsSrtlzQgscyAHr42VjngI1jUKat4N0EXiaNr5o3suIcmS6Suse73Kky
+         WGrp3p15oHj417hYAbWAE9w+qYMp7Kfbwc+D2qAg8+J4DE7c60mvTtVGWtAbU6rJYbKL
+         oFCJPWfx3aNOgtv8ubQ+iWNhgcYidNAgmCd0BCdryRuFOXLgRvO6JvX7WTDE1rVS41BA
+         QCYJAw0z55YSHa11pdGyKIU2IJS5ttde8BPZkVAoqTvw/3Ck2bWI8ttYdUORTMGhqRxg
+         0UXcaaleJ8NbpnRZfliF/SloGNj7FBrXiy8TeQWv8ax8gLmPBmhxbW6eE2D0LU4CgT3i
+         R9+A==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1794552821; x=1795157621;
+        d=1e100.net; s=20260707; t=1794552823; x=1795157623;
         h=content-type:cc:to:from:subject:message-id:references:mime-version
          :in-reply-to:date:x-gm-message-state:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=7Q39/lqYC3Xf6FzX/Bx2LJs4jpalM5B4swG5E0jDvX4=;
-        b=ZAz4Zm+bzP1YN40CkcmplKmGKGttftPkoP595dfQSZsbiddY+KI1YxjKIZHjQrMV71
-         mbJ9Ar3MUaNQT15y+cVm0XaIJ7SQ8CC0VlkeSfAMgIYV//A5mmu05sL2Il/rdfagtdaa
-         mI/8DlNlMXM7hmaAPUjfNDAw3oib96U7JVwZXPV/hUtM1hPEd8LRmKFIBU+ZGD8oBw38
-         j0IkovPLd0jvuBfLSnbaLHJN+JTH43sP11gcXp79rNSedeti+vmymBIFNHBouf+DDngx
-         WF7dZt01GaG1knGVgnonLCz1BmNQoyUwEoNQjODYyT8RI+c2fh88YQnS2iGO0PpInNuf
-         ZEjA==
-X-Forwarded-Encrypted: i=1; AL+hErHdgwlxLFGqyhtn3jChcoDGIj2dJ7WZCRcv/RFJ/It1CrWI3ZhGzXvxQ0st3FlMdwaIYLAW/IXazsY/@vger.kernel.org
-X-Gm-Message-State: APuU4Z8Qj+qUCNoriFH2FPY/z2FdE1xlEuugFrYNGrad0xFZeSMC9OZ3
-	HHLZtG99iCZwh+zCwwZW3p8vpPtaK6PK3ckDb7wLtu7g1qf6Sa65KmUGqTFnTdJR1w5KhqOZOvB
-	lh9otjglobPadCL35IXn7m3yh1JSn20VQnaeCEw==
-X-Received: from dycmq8.prod.google.com ([2002:a05:7301:788:b0:369:fbca:f649])
+        bh=32C0FxBlQriZemWnWfi76aDhbmP3Z0qG7c56b0ARCqE=;
+        b=vRdaxHeBED5lpJYOk1ewQFfkvhQH2kCxXjQfreHWqLvWXHT5PUIpHQ2zrCQi1NGxZ7
+         NKY8GurvwxmTmY+cZDlNAsxR1l4HrzBgDaOa9qjHXyx+HFQLic6JpaM1MPiWD6vKrxYf
+         PaREPEK+bndk8NMe1oXUzMd+2m+52oP2vyYbCu5tK1SlFgQj1WhJG3k1w6mh0uEYdfRB
+         rpVmhpgVQ8g7fswEQtTCol7/CCJlIaLnyL2lwqd1yJj/d1meGcc3Bg0sIknLu24NNyBA
+         KprFtfngaR414S2plDLp83Uv1irPFHmpGBjyV9seo9PM23TgCIPu8fmQcgb3OhBqPH/o
+         NFjQ==
+X-Forwarded-Encrypted: i=1; AL+hErHI4YTKtE4XL8ANpS+t8MorFLCxelBloVWiBUISXZXcPOjXin1oCAnOBZ66HIv9Q+IG3MFwpUK0m4lc@vger.kernel.org
+X-Gm-Message-State: APuU4Z/2owUQ/7vYibREazIHIjFZyhT3yOB1K/Qghoj410DqLxV7xPci
+	khrsGLU6TtFXEODqRU8sLuQIW5bS0fV7GfVwxj4rz+cuB89fCx5QyBKlFoqTdICqkvS15La7UFb
+	UuB12YMqbIRyAnxd3beJTAKRJLBPu2gEemsKC5g==
+X-Received: from dyp12.prod.google.com ([2002:a05:693c:65cc:b0:36c:9b55:8436])
  (user=sarthakkukreti job=prod-delivery.src-stubby-dispatcher) by
- 2002:a05:7301:6185:20b0:379:3c04:2cdd with SMTP id 5a478bee46e88-379686a7f3amr1357207eec.31.1794552820371;
- Thu, 12 Nov 2026 22:53:40 -0800 (PST)
-Date: Thu, 12 Nov 2026 22:53:30 -0800
+ 2002:a05:7301:1a05:b0:369:f035:661 with SMTP id 5a478bee46e88-37967315a1emr1295500eec.15.1794552822463;
+ Thu, 12 Nov 2026 22:53:42 -0800 (PST)
+Date: Thu, 12 Nov 2026 22:53:31 -0800
 In-Reply-To: <20261113065332.929085-1-sarthakkukreti@google.com>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -81,8 +81,8 @@ Precedence: list
 Mime-Version: 1.0
 References: <20261113065332.929085-1-sarthakkukreti@google.com>
 X-Mailer: git-send-email 2.56.0.611.g1030f0b940-goog
-Message-ID: <20261113065332.929085-2-sarthakkukreti@google.com>
-Subject: [PATCH 1/3] libfs: reject casefolded names that fold to ".", "..", or empty
+Message-ID: <20261113065332.929085-3-sarthakkukreti@google.com>
+Subject: [PATCH 2/3] ext4: reject casefolded names that fold to ".", "..", or empty
 From: Sarthak Kukreti <sarthakkukreti@google.com>
 To: "Theodore Ts'o" <tytso@mit.edu>, Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>, 
 	Alexander Viro <viro@zeniv.linux.org.uk>, Christian Brauner <brauner@kernel.org>
@@ -92,192 +92,95 @@ Cc: Gabriel Krisman Bertazi <krisman@collabora.co.uk>, Eric Biggers <ebiggers@go
 	Sarthak Kukreti <sarthakkukreti@google.com>
 Content-Type: text/plain; charset="UTF-8"
 
-Unicode normalization and casefolding (utf8_casefold()) strips code
-points with the Default_Ignorable_Code_Point property, such as U+202E
-(RIGHT-TO-LEFT OVERRIDE) or U+200B (ZERO WIDTH SPACE). As a result:
+Filenames consisting solely of ignorable Unicode characters fold to
+empty strings, while names with leading dots and ignorable characters
+fold to "." or "..". Allowing such names to be created or looked up in
+casefolded directories collides with on-disk "." and ".." entries (which
+triggers EXT4_ERROR_INODE in ext4_lookup()) and introduces duplicate
+entries that e2fsck flags as corruption.
 
-1. A filename consisting of "." or ".." followed by ignorable characters
-   (e.g. ".\xe2\x80\xae" or "..\xe2\x80\xae") bypasses VFS special-entry
-   handling during path walk, but casefolds to "." or "..".
-2. A filename consisting solely of ignorable characters (e.g.
-   "\xe2\x80\xae") casefolds to the empty string "" (length 0), causing
-   any two distinct ignorable-only filenames to compare and hash as
-   equal.
+Skip casefolding when the lookup name is literally "." or "..", reject
+any non-dot names that fold to "", ".", or ".." in
+ext4_fname_setup_ci_filename(), and fall back to opaque byte hashing in
+ext4fs_dirhash() when utf8_casefold() yields "", ".", or "..".
 
-Update generic_ci_d_hash(), generic_ci_d_compare(), generic_ci_match(),
-and generic_ci_validate_strict_name() to reject case-insensitive
-hashing, matching, and creation of filenames that casefold to "", ".",
-or "..", while preserving exact byte-equality matches (such as NFS
-export lookups of literal ".."). Using a 3-byte stack buffer with
-utf8_casefold() detects all three cases in O(1) space without heap
-allocations.
-
-Fixes: c843843e714c ("fs: Add standard casefolding support")
+Fixes: b886ee3e778e ("ext4: Support case-insensitive file name lookups")
 Co-developed-by: Dmitry Torokhov <dtor@google.com>
 Signed-off-by: Dmitry Torokhov <dtor@google.com>
 Signed-off-by: Sarthak Kukreti <sarthakkukreti@google.com>
 ---
- fs/libfs.c         | 50 ++++++++++++++++++++++++++++++++++++++++++----
- include/linux/fs.h | 31 ++++++++++++++++------------
- 2 files changed, 64 insertions(+), 17 deletions(-)
+ fs/ext4/hash-test.c | 14 ++++++++++++++
+ fs/ext4/hash.c      |  2 +-
+ fs/ext4/namei.c     |  9 +++++++--
+ 3 files changed, 22 insertions(+), 3 deletions(-)
 
-diff --git a/fs/libfs.c b/fs/libfs.c
-index 27d7dc16fcb0..54296dfb8444 100644
---- a/fs/libfs.c
-+++ b/fs/libfs.c
-@@ -1801,8 +1801,11 @@ int generic_ci_d_compare(const struct dentry *dentry, unsigned int len,
- {
- 	const struct dentry *parent;
- 	const struct inode *dir;
-+	const struct unicode_map *um;
- 	union shortname_store strbuf;
-+	unsigned char buf[3];
- 	struct qstr qstr;
-+	int cf_len;
- 
- 	/*
- 	 * Attempt a case-sensitive match first. It is cheaper and
-@@ -1821,6 +1824,19 @@ int generic_ci_d_compare(const struct dentry *dentry, unsigned int len,
- 	if (!dir || !IS_CASEFOLDED(dir))
- 		return 1;
- 
-+	if (name_is_dot_dotdot(str, len) ||
-+	    name_is_dot_dotdot(name->name, name->len))
-+		return 1;
+diff --git a/fs/ext4/hash-test.c b/fs/ext4/hash-test.c
+index 49b0d874c833..a8b206a6d751 100644
+--- a/fs/ext4/hash-test.c
++++ b/fs/ext4/hash-test.c
+@@ -541,6 +541,20 @@ static void test_ext4fs_dirhash_casefold_fallback(struct kunit *test)
+ 	KUNIT_ASSERT_EQ(test, ret_plain, 0);
+ 	KUNIT_EXPECT_EQ(test, folded_dir.hash, plain.hash);
+ 	KUNIT_EXPECT_EQ(test, folded_dir.minor_hash, plain.minor_hash);
 +
-+	/*
-+	 * utf8_strncasecmp() only matches if both names casefold to the same
-+	 * byte sequence, so checking @name covers @qstr as well.
-+	 */
-+	um = dentry->d_sb->s_encoding;
-+	cf_len = utf8_casefold(um, name, buf, sizeof(buf));
-+	if (cf_len == 0 || (cf_len > 0 && name_is_dot_dotdot(buf, cf_len)))
-+		return 1;
++	ret_cf = ext4fs_dirhash(&ei->vfs_inode, ".\xe2\x80\xae", 4, &folded_dir);
++	ret_plain = ext4fs_dirhash(plain_dir, ".\xe2\x80\xae", 4, &plain);
++	KUNIT_ASSERT_EQ(test, ret_cf, 0);
++	KUNIT_ASSERT_EQ(test, ret_plain, 0);
++	KUNIT_EXPECT_EQ(test, folded_dir.hash, plain.hash);
++	KUNIT_EXPECT_EQ(test, folded_dir.minor_hash, plain.minor_hash);
 +
- 	qstr.len = len;
- 	qstr.name = str;
- 	/*
-@@ -1839,7 +1855,7 @@ int generic_ci_d_compare(const struct dentry *dentry, unsigned int len,
- 		barrier();
- 	}
- 
--	return utf8_strncasecmp(dentry->d_sb->s_encoding, name, &qstr);
-+	return utf8_strncasecmp(um, name, &qstr);
++	ret_cf = ext4fs_dirhash(&ei->vfs_inode, "\xe2\x80\xae", 3, &folded_dir);
++	ret_plain = ext4fs_dirhash(plain_dir, "\xe2\x80\xae", 3, &plain);
++	KUNIT_ASSERT_EQ(test, ret_cf, 0);
++	KUNIT_ASSERT_EQ(test, ret_plain, 0);
++	KUNIT_EXPECT_EQ(test, folded_dir.hash, plain.hash);
++	KUNIT_EXPECT_EQ(test, folded_dir.minor_hash, plain.minor_hash);
  }
- EXPORT_SYMBOL(generic_ci_d_compare);
+ #endif
  
-@@ -1855,13 +1871,21 @@ int generic_ci_d_hash(const struct dentry *dentry, struct qstr *str)
- 	const struct inode *dir = READ_ONCE(dentry->d_inode);
- 	struct super_block *sb = dentry->d_sb;
- 	const struct unicode_map *um = sb->s_encoding;
-+	unsigned char buf[3];
- 	int ret;
+diff --git a/fs/ext4/hash.c b/fs/ext4/hash.c
+index 978bd92da0ad..65019de4af93 100644
+--- a/fs/ext4/hash.c
++++ b/fs/ext4/hash.c
+@@ -327,7 +327,7 @@ int ext4fs_dirhash(const struct inode *dir, const char *name, int len,
+ 			return -ENOMEM;
  
- 	if (!dir || !IS_CASEFOLDED(dir))
+ 		dlen = utf8_casefold(um, &qstr, buff, PATH_MAX);
+-		if (dlen < 0) {
++		if (dlen <= 0 || name_is_dot_dotdot(buff, dlen)) {
+ 			kfree(buff);
+ 			goto opaque_seq;
+ 		}
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index a6386c1d237f..096f78ea5df4 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1368,7 +1368,8 @@ int ext4_fname_setup_ci_filename(struct inode *dir, const struct qstr *iname,
+ 	int len;
+ 
+ 	if (!IS_CASEFOLDED(dir) ||
+-	    (IS_ENCRYPTED(dir) && !fscrypt_has_encryption_key(dir))) {
++	    (IS_ENCRYPTED(dir) && !fscrypt_has_encryption_key(dir)) ||
++	    name_is_dot_dotdot(iname->name, iname->len)) {
+ 		cf_name->name = NULL;
  		return 0;
+ 	}
+@@ -1378,9 +1379,13 @@ int ext4_fname_setup_ci_filename(struct inode *dir, const struct qstr *iname,
+ 		return -ENOMEM;
  
- 	ret = utf8_casefold_hash(um, dentry, str);
--	if (ret < 0 && sb_has_strict_encoding(sb))
-+	if (ret < 0) {
-+		if (sb_has_strict_encoding(sb))
-+			return -EINVAL;
-+		return 0;
-+	}
-+
-+	ret = utf8_casefold(um, str, buf, sizeof(buf));
-+	if (ret == 0 || (ret > 0 && name_is_dot_dotdot(buf, ret)))
- 		return -EINVAL;
- 	return 0;
- }
-@@ -1934,10 +1958,28 @@ int generic_ci_match(const struct inode *parent,
- 	    !memcmp(name->name, dirent.name, dirent.len))
- 		goto out;
- 
--	if (folded_name->name)
-+	if (name_is_dot_dotdot(dirent.name, dirent.len) ||
-+	    name_is_dot_dotdot(name->name, name->len) ||
-+	    (folded_name->name &&
-+	     (!folded_name->len ||
-+	      name_is_dot_dotdot(folded_name->name, folded_name->len)))) {
-+		res = 1;
-+		goto out;
-+	}
-+
-+	if (folded_name->name) {
- 		res = utf8_strncasecmp_folded(um, folded_name, &dirent);
--	else
-+	} else {
-+		unsigned char buf[3];
-+		int cf_len = utf8_casefold(um, name, buf, sizeof(buf));
-+
-+		if (cf_len == 0 ||
-+		    (cf_len > 0 && name_is_dot_dotdot(buf, cf_len))) {
-+			res = 1;
-+			goto out;
-+		}
- 		res = utf8_strncasecmp(um, name, &dirent);
-+	}
- 
- out:
- 	kfree(decrypted_name.name);
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index f9d1e05e8ae6..84f5ce2bb9ad 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -3356,28 +3356,26 @@ int generic_ci_d_compare(const struct dentry *dentry, unsigned int len,
-  * generic_ci_validate_strict_name - Check if a given name is suitable
-  * for a directory
-  *
-- * This functions checks if the proposed filename is valid for the
-- * parent directory. That means that only valid UTF-8 filenames will be
-- * accepted for casefold directories from filesystems created with the
-- * strict encoding flag.  That also means that any name will be
-- * accepted for directories that doesn't have casefold enabled, or
-- * aren't being strict with the encoding.
-+ * This function checks if the proposed filename is valid for the
-+ * parent directory. Names that casefold to "", ".", or ".." are
-+ * rejected for all casefolded directories. When the filesystem is
-+ * created with the strict encoding flag, only valid UTF-8 filenames
-+ * are accepted for casefolded directories.
-  *
-  * @dir: inode of the directory where the new file will be created
-  * @name: name of the new file
-  *
-  * Return:
-- * * True: if the filename is suitable for this directory. It can be
-- *   true if a given name is not suitable for a strict encoding
-- *   directory, but the directory being used isn't strict
-- * * False if the filename isn't suitable for this directory. This only
-- *   happens when a directory is casefolded and the filesystem is strict
-- *   about its encoding.
-+ * * True: if the filename is suitable for this directory.
-+ * * False: if the filename isn't suitable for this directory.
-  */
- static inline bool generic_ci_validate_strict_name(struct inode *dir,
- 						   const struct qstr *name)
- {
--	if (!IS_CASEFOLDED(dir) || !sb_has_strict_encoding(dir->i_sb))
-+	unsigned char buf[3];
-+	int len;
-+
-+	if (!IS_CASEFOLDED(dir))
- 		return true;
- 
- 	/*
-@@ -3387,6 +3385,13 @@ static inline bool generic_ci_validate_strict_name(struct inode *dir,
- 	if (WARN_ON_ONCE(!dir->i_sb->s_encoding))
- 		return true;
- 
-+	len = utf8_casefold(dir->i_sb->s_encoding, name, buf, sizeof(buf));
-+	if (len == 0 || (len > 0 && name_is_dot_dotdot(buf, len)))
-+		return false;
-+
-+	if (!sb_has_strict_encoding(dir->i_sb))
-+		return true;
-+
- 	return !utf8_validate(dir->i_sb->s_encoding, name);
- }
- #else
+ 	len = utf8_casefold(dir->i_sb->s_encoding, iname, buf, EXT4_NAME_LEN);
+-	if (len <= 0) {
++	if (len < 0) {
+ 		kfree(buf);
+ 		buf = NULL;
++	} else if (len == 0 || name_is_dot_dotdot(buf, len)) {
++		kfree(buf);
++		cf_name->name = NULL;
++		return -EINVAL;
+ 	}
+ 	cf_name->name = buf;
+ 	cf_name->len = (unsigned) len;
 -- 
 2.56.0.611.g1030f0b940-goog
 
