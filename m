@@ -1,49 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794571337;
-	b=HX0QuVS5PiaoRsO9R5vCNpran4DVRn0m/F+bFECCvDx2E0QuB3TROh+9yVt/XgEmcgR8
-	 7cF5v5Uire6ilhvOzlQ6MGNPGuHmozEPS0vSn78O/kvwXlZ8THFqYTFJo8z6aFnNuD+B0
-	 sKPWWJePdfibwATS618f0W7pgfFzMpIKX+c5WLiKUo6h+oHT1ukOX54GXmcC2evW+IHaq
-	 jAL8fb0QeM3bIcJ7/pUkiiO+YGTKUk01Kbps8MOoVB0pOabLKKdAGIWO34XlaaQ+ZEEp+
-	 X0QGfCJodfMQmk22SJv2WLgHNho9hrozTOsFYKsNEk2c6Ed525pMHf0/XFH9YhBk/KA==
+	t=1794571332;
+	b=JBxiDO4EXgzbOfnPVMSe782oXv69V4ZxnfWAis3261OWDNWGwFGBkfr1hqkk/hgg0Nsg
+	 9w5Kt1xQZNNFJZ7p6f0jFqUFZn1KrF4CFtVi6nJGducKg78yCq9BzdWhejPdamBS8lX6B
+	 6Beb0i03R8POFmTvw9hj61uWoRBJzevG/esWIK1b9ifQr//0jtenf/+erEixCNMrAa4Sb
+	 39ivj7uh/9UDLFlfCgsG+njFVl0TBNDeUs9jIEAEyJBb30xgmbzsYHW0g8iDM0fBiaEsy
+	 E3RMULQGF2qbqd9j6N4j6yzjTGF3qLsohjJTcawKUSWoA0I9K1C4eZvxEM3C87b1GKA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794571337;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794571332;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=rS1m6Cp+lH+e/iHXkx5HAKDceJmj2j6LhhW3qVbCZW4=;
-	b=Lj5j9IROF5C6FfhCP+aYPb/IQUkzU3cr05ZVfxlwzFAOURI1TASpFlE6ZJpuoqlL0AsO
-	 9JTsIdKCWYFIb7o2kLkKCVXLuwWL8Bl7JbtLa22q7k8170AeBWQK+dt+SGBxe+0rmmJUd
-	 VPwBJ8BciUAkPqtsj99HM95zES30IxwBY3jYGXRGsYchFuYd+fxRqwwhFjxWeMccWD9+W
-	 AuMt0CYXFFfXYp6apQw6l5xzKHggXz4bczpPGNUoB6SL2IZFCz9SkjIxquh6pyLEQwxWt
-	 IKwzTeyPHV26ydjJypntcZn36lvsqI57lUUaSdGWce0q/XPPmzOwqQh688Z6DOf9Ogg==
+	bh=wvxqV6rBMhuwjgNvbm4HdYkiAl72akCQocg4irtd5xY=;
+	b=wvO0KUrp4FAjxrbOqwQPlOxXVsx7XhYknN2+xmKkarOJeawOzhygo3Ih3EZAmz1Ttj59
+	 s50zM5Mpi8/PrC4lGLVx3zpg0CwXl3JHuA5xFeR+NRtXAkPhm6mOGEI/aSup7Z96emZkJ
+	 fYWYIuyJ4pjkLI4m8ZrX+FchOhwwLnKbpvgvrxyzB3Z9Lq/YeYmBDHg1iKRLn73Tp9ULB
+	 dNckYiP72HRPYZZI8wyGviwQYlWQIPqSrSNqOrl7ad3xiTjVqnmUIUh7B9yiqjMODnr/k
+	 cRG4uE/bSeawqIaCn2Ck5K3ywceWZGd9u7CojeLNiaqR9bU/dZ30XUS2+Bti4lUnNAA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ab83gmrU;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=mupl0aGo;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 682C3606A894;
-	Fri, 13 Nov 2026 12:02:17 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ab83gmrU
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id EE1E41F000C4;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D24EB606A33B;
 	Fri, 13 Nov 2026 12:02:12 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=mupl0aGo
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 662D81F000C9;
+	Fri, 13 Nov 2026 12:02:08 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794571337;
-	bh=rS1m6Cp+lH+e/iHXkx5HAKDceJmj2j6LhhW3qVbCZW4=;
+	s=k20260515; t=1794571332;
+	bh=wvxqV6rBMhuwjgNvbm4HdYkiAl72akCQocg4irtd5xY=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=ab83gmrUpzh805E0hYE9wXyEirCMlxpG5/m5wWElyk1lwxlfo4B4O3MxfGYxZt6l8
-	 09dfQssQ+WkFWAIpI11SMv0HX8EzkPZEZrEx9evH9V/FyqX/9Sw0yl7lzD6nnCSFMd
-	 O/OHVg27YfeRoj0w2nMtmyevJPrskpK7G+g2xeGkWS08ADCV3aGN3u0KFYLN6kx4Tz
-	 tzF/S4PfkL2ziROzev1RRF8i71wXgY/MKGxPdW4/3SVE3JjHTB29DJCK9j1hlckSwf
-	 SFxaFn8HiWaq7Fhtd4NZ8Fh+NpyGhq+YxTiOT6Ojsxh+UXG2jc/ZJxduokvOwlNOhE
-	 jT8wxOXakn9cw==
+	b=mupl0aGoCEKRrJxTZLqZbVpXPKIl7wKiL4i08LuH57sJaIGeQDbF3qDkf4HWkWkmF
+	 IWp95SsS9DvzX0/D+DJNCRmp684iI/OAxb0prndGs1l2/wQhCGekwGqqqi8CLN+ht1
+	 cQVYnj7KFusuXb7D1t9qrN9UHUXmPENkLkAi7v5FXFuJI89xcfjGM1Fy8ylnoZrzMB
+	 y1/BW3gEa1gE33/+iuoRZkywUx1tuTbvfVLUF5HbHJBDK+3N+D5zqWGInn5SlBcj51
+	 fDy6xfIOHlZyeIfMjNqMgrKLjLXFiXxKPf7mwrLl8uFS+BGgTA2EtF6AEDranfWg+Q
+	 vFEoVZu64l2eA==
 From: Christian Brauner <brauner@kernel.org>
-Date: Fri, 13 Nov 2026 12:59:25 +0100
-Subject: [PATCH v3 29/33] efivarfs: stop using SB_RDONLY for read-only
- efivar ops
+Date: Fri, 13 Nov 2026 12:59:24 +0100
+Subject: [PATCH v3 28/33] gfs2: don't set SB_RDONLY on withdraw
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -55,7 +54,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261113-work-fs-sb_rdonly-v3-29-0be92bb73709@kernel.org>
+Message-Id: <20261113-work-fs-sb_rdonly-v3-28-0be92bb73709@kernel.org>
 References: <20261113-work-fs-sb_rdonly-v3-0-0be92bb73709@kernel.org>
 In-Reply-To: <20261113-work-fs-sb_rdonly-v3-0-0be92bb73709@kernel.org>
 To: linux-fsdevel@vger.kernel.org, Jan Kara <jack@suse.com>
@@ -68,231 +67,143 @@ Cc: Al Viro <viro@zeniv.linux.org.uk>, ecryptfs@vger.kernel.org,
  linux-xfs@vger.kernel.org, 
  "Christian Brauner (Amutable)" <brauner@kernel.org>, stable@vger.kernel.org
 X-Mailer: b4 0.17-dev-ce4c1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=7550; i=brauner@kernel.org;
- h=from:subject:message-id; bh=/72VFxS3I/CxjnoeReimw+DEGd3eAwaOhrR+5ycR15E=;
- b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWR9+73nwoslG7XsBMXfysYIvXxhmf35Nss5h7+WN8+kt
- ua9j56a0FHKwiDGxSArpsji0G4SLrecp2KzUaYGzBxWJpAhDFycAnCTDRgZXq7pe6s1a7LQibbO
- KS9YQuPDjp8Qnex1db740bpVxRFXkhh+s6TcX5VQXrR3wYaS0y7RLewCqzj2sPZdWRjy86/za7m
- 33AA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4737; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=4Z6USPkDhlKo3OfSZLyvVwhHh60YY76o8yAB54W4804=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWR9+727L16KRXrVgZCrfyQ/3px6cJFhQfWXVzs2T/3BE
+ soxaVZVQEcpC4MYF4OsmCKLQ7tJuNxynorNRpkaMHNYmUCGMHBxCsBEWGQZGa6db35d9Nbo46Ne
+ d6vFc3O11wqfKFsl3+Dia9Trf8rblJGR4eM202nmndteVuQbCTPcclgS4pGZOCNdJOR2MZfLhN2
+ 3+QE=
 X-Developer-Key: i=brauner@kernel.org; a=openpgp;
  fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-Since commit 94f7f6182c72 ("efivarfs: automatically update super block
-flag") efivarfs_ops_notifier() sets or clears SB_RDONLY whenever the
-efivar ops switch between ops that can and ops that can't set variables,
-e.g. when tee_stmm_efi is probed or removed. It does that at any time
-without holding s_umount. efivarfs is frozen on every suspend and if the
-ops switch while it's frozen thaw_super() either leaves the s_writers
-rwsems locked or releases rwsems nobody holds.
+do_withdraw() sets SB_RDONLY from the withdraw work without holding
+s_umount, also on a frozen filesystem. FITHAW then fails because a
+withdrawn filesystem can't take the freeze glock. Emergency thaw and the
+gfs2 "freeze" sysfs file see SB_RDONLY and leave the s_writers rwsems
+locked. Writers hang and umount warns. And freezing after a withdraw
+fails and leaves the superblock frozen.
 
-So keep the state in efivarfs. The notifier sets and clears a new
-EFIVARFS_OPS_RDONLY flag instead and efivarfs_fill_super() initializes
-it under efivar_lock() so a switch can't slip in. fill_super doesn't set
-SB_RDONLY either. systemd mounts efivarfs before tee_stmm_efi is loaded
-and the mount has to become writable then. create, unlink, setattr,
-fileattr_set, write and opening for write fail with EROFS while the flag
-is set. Like the SB_RDONLY check this runs without efivars_lock so a
-write racing with a switch can still call a NULL ->set_variable. That's
-not new.
+SDF_WITHDRAWN already stops all modifications, so stop setting
+SB_RDONLY. A few things have to come with that:
 
-efivarfs_reconfigure() only refuses a remount from read-only to
-read-write while the flag is set and returns EROFS. It used to refuse
-every remount without "ro" which would break option-only remounts.
+(1) gfs2_evict_inode() and gfs2_quota_sync() check gfs2_withdrawn()
+    next to sb_rdonly().
+(2) gfs2_write_inode() returns EIO once withdrawn because sync and
+    umount don't skip writeback for a read-only superblock anymore.
+(3) gfs2_do_thaw() thaws even if the freeze glock can't be taken again.
+(4) gfs2_freeze_super() refuses a withdrawn filesystem with EIO and
+    thaws the superblock itself if the withdraw happens while it tries
+    to freeze.
 
-With read-only ops efivarfs is mounted "rw" now. statfs() doesn't report
-ST_RDONLY anymore and access(W_OK) succeeds.
+This can't be split up. With only (3) FITHAW leaks the rwsems of the
+read-only superblock. With only the SB_RDONLY change FITHAW can't
+release the rwsems a freeze took after a withdraw.
 
-Fixes: 94f7f6182c72 ("efivarfs: automatically update super block flag")
+A remount to read-only writes nothing once do_withdraw() ran and waits
+for it since the previous patch, so sysrq u works on a withdrawn gfs2.
+Going read-write still fails with EIO. A withdrawn filesystem stays "rw"
+in /proc/mounts and statfs() doesn't report ST_RDONLY anymore. The
+withdraw file in sysfs still shows it.
+
+Fixes: 601ef0d52e96 ("gfs2: Force withdraw to replay journals and wait for it to finish")
+Fixes: b77b4a4815a9 ("gfs2: Rework freeze / thaw logic")
 Cc: stable@vger.kernel.org
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- fs/efivarfs/file.c     |  6 ++++++
- fs/efivarfs/inode.c    | 15 +++++++++++++++
- fs/efivarfs/internal.h | 14 +++++++++++++-
- fs/efivarfs/super.c    | 26 ++++++++++++++++++--------
- 4 files changed, 52 insertions(+), 9 deletions(-)
+ fs/gfs2/quota.c |  2 +-
+ fs/gfs2/super.c | 20 ++++++++++++++++++--
+ fs/gfs2/util.c  |  5 +++--
+ 3 files changed, 22 insertions(+), 5 deletions(-)
 
-diff --git a/fs/efivarfs/file.c b/fs/efivarfs/file.c
-index cb1b6d0c34545..a074145fa57e1 100644
---- a/fs/efivarfs/file.c
-+++ b/fs/efivarfs/file.c
-@@ -23,6 +23,9 @@ static ssize_t efivarfs_file_write(struct file *file,
- 	ssize_t bytes;
- 	bool set = false;
+diff --git a/fs/gfs2/quota.c b/fs/gfs2/quota.c
+index b2984fb7b35c3..affe4c3451f5b 100644
+--- a/fs/gfs2/quota.c
++++ b/fs/gfs2/quota.c
+@@ -1335,7 +1335,7 @@ int gfs2_quota_sync(struct super_block *sb, int type)
+ 	u64 sync_gen;
+ 	int error = 0;
  
-+	if (efivarfs_ops_rdonly(inode->i_sb))
-+		return -EROFS;
+-	if (sb_rdonly(sdp->sd_vfs))
++	if (sb_rdonly(sdp->sd_vfs) || gfs2_withdrawn(sdp))
+ 		return 0;
+ 
+ 	qda = kzalloc_objs(struct gfs2_quota_data *, max_qd);
+diff --git a/fs/gfs2/super.c b/fs/gfs2/super.c
+index f61c309368ef1..82f9d90f35788 100644
+--- a/fs/gfs2/super.c
++++ b/fs/gfs2/super.c
+@@ -455,6 +455,9 @@ static int gfs2_write_inode(struct inode *inode, struct writeback_control *wbc)
+ 	int ret = 0;
+ 	bool flush_all = (wbc->sync_mode == WB_SYNC_ALL || gfs2_is_jdata(ip));
+ 
++	if (gfs2_withdrawn(sdp))
++		return -EIO;
 +
- 	if (count < sizeof(attributes))
- 		return -EINVAL;
- 
-@@ -137,6 +140,9 @@ static int efivarfs_file_open(struct inode *inode, struct file *file)
- {
- 	struct efivar_entry *entry = inode->i_private;
- 
-+	if ((file->f_mode & FMODE_WRITE) && efivarfs_ops_rdonly(inode->i_sb))
-+		return -EROFS;
-+
- 	file->private_data = entry;
- 
- 	inode_lock(inode);
-diff --git a/fs/efivarfs/inode.c b/fs/efivarfs/inode.c
-index 07602cd5d33c3..be183de4b7716 100644
---- a/fs/efivarfs/inode.c
-+++ b/fs/efivarfs/inode.c
-@@ -15,6 +15,8 @@
- #include "internal.h"
- 
- static const struct inode_operations efivarfs_file_inode_operations;
-+static int efivarfs_setattr(const struct mnt_idmap *idmap,
-+			    struct dentry *dentry, struct iattr *iattr);
- 
- struct inode *efivarfs_get_inode(struct super_block *sb,
- 				const struct inode *dir, int mode,
-@@ -83,6 +85,9 @@ static int efivarfs_create(const struct mnt_idmap *idmap, struct inode *dir,
- 	bool is_removable = false;
- 	efi_guid_t vendor;
- 
-+	if (efivarfs_ops_rdonly(dir->i_sb))
-+		return -EROFS;
-+
- 	if (!efivarfs_valid_name(dentry->d_name.name, dentry->d_name.len))
- 		return -EINVAL;
- 
-@@ -122,6 +127,9 @@ static int efivarfs_unlink(struct inode *dir, struct dentry *dentry)
- {
- 	struct efivar_entry *var = d_inode(dentry)->i_private;
- 
-+	if (efivarfs_ops_rdonly(dir->i_sb))
-+		return -EROFS;
-+
- 	if (efivar_entry_delete(var))
- 		return -EINVAL;
- 
-@@ -132,6 +140,7 @@ const struct inode_operations efivarfs_dir_inode_operations = {
- 	.lookup = simple_lookup,
- 	.unlink = efivarfs_unlink,
- 	.create = efivarfs_create,
-+	.setattr = efivarfs_setattr,
- };
- 
- static int
-@@ -155,6 +164,9 @@ efivarfs_fileattr_set(const struct mnt_idmap *idmap,
- {
- 	unsigned int i_flags = 0;
- 
-+	if (efivarfs_ops_rdonly(dentry->d_sb))
-+		return -EROFS;
-+
- 	if (fileattr_has_fsx(fa))
- 		return -EOPNOTSUPP;
- 
-@@ -176,6 +188,9 @@ static int efivarfs_setattr(const struct mnt_idmap *idmap, struct dentry *dentry
- 	struct inode *inode = d_inode(dentry);
+ 	if (flush_all)
+ 		gfs2_log_flush(GFS2_SB(inode), gl,
+ 			       GFS2_LOG_HEAD_FLUSH_NORMAL |
+@@ -686,7 +689,8 @@ static int gfs2_do_thaw(struct gfs2_sbd *sdp, enum freeze_holder who, const void
  	int error;
  
-+	if (efivarfs_ops_rdonly(inode->i_sb))
-+		return -EROFS;
-+
- 	error = setattr_prepare(idmap, dentry, iattr);
- 	if (error)
- 		return error;
-diff --git a/fs/efivarfs/internal.h b/fs/efivarfs/internal.h
-index f5c1a25be9969..34a0c53b5993f 100644
---- a/fs/efivarfs/internal.h
-+++ b/fs/efivarfs/internal.h
-@@ -16,10 +16,22 @@ struct efivarfs_mount_opts {
- 
- struct efivarfs_fs_info {
- 	struct efivarfs_mount_opts mount_opts;
--	struct super_block *sb;
- 	struct notifier_block nb;
-+	unsigned long flags;
- };
- 
-+/* efivarfs_fs_info->flags */
-+enum {
-+	EFIVARFS_OPS_RDONLY,	/* the registered efivar ops can't set variables */
-+};
-+
-+static inline bool efivarfs_ops_rdonly(const struct super_block *sb)
-+{
-+	const struct efivarfs_fs_info *sfi = sb->s_fs_info;
-+
-+	return test_bit(EFIVARFS_OPS_RDONLY, &sfi->flags);
-+}
-+
- struct efi_variable {
- 	efi_char16_t  VariableName[EFI_VAR_NAME_LEN/sizeof(efi_char16_t)];
- 	efi_guid_t    VendorGuid;
-diff --git a/fs/efivarfs/super.c b/fs/efivarfs/super.c
-index 12746ced6dc63..437dfea9aa42d 100644
---- a/fs/efivarfs/super.c
-+++ b/fs/efivarfs/super.c
-@@ -28,12 +28,16 @@ static int efivarfs_ops_notifier(struct notifier_block *nb, unsigned long event,
- {
- 	struct efivarfs_fs_info *sfi = container_of(nb, struct efivarfs_fs_info, nb);
- 
-+	/*
-+	 * This runs without s_umount so it can't touch SB_RDONLY. The
-+	 * modifying operations check EFIVARFS_OPS_RDONLY instead.
-+	 */
- 	switch (event) {
- 	case EFIVAR_OPS_RDONLY:
--		sfi->sb->s_flags |= SB_RDONLY;
-+		set_bit(EFIVARFS_OPS_RDONLY, &sfi->flags);
- 		break;
- 	case EFIVAR_OPS_RDWR:
--		sfi->sb->s_flags &= ~SB_RDONLY;
-+		clear_bit(EFIVARFS_OPS_RDONLY, &sfi->flags);
- 		break;
- 	default:
- 		return NOTIFY_DONE;
-@@ -384,9 +388,6 @@ static int efivarfs_fill_super(struct super_block *sb, struct fs_context *fc)
- 	sb->s_d_flags |= DCACHE_DONTCACHE;
- 	sb->s_time_gran         = 1;
- 
--	if (!efivar_supports_writes())
--		sb->s_flags |= SB_RDONLY;
--
- 	inode = efivarfs_get_inode(sb, NULL, S_IFDIR | 0755, 0, true);
- 	if (!inode)
- 		return -ENOMEM;
-@@ -397,9 +398,15 @@ static int efivarfs_fill_super(struct super_block *sb, struct fs_context *fc)
- 	if (!root)
- 		return -ENOMEM;
- 
--	sfi->sb = sb;
-+	/* The ops can't switch between sampling them and registering. */
-+	err = efivar_lock();
-+	if (err)
-+		return err;
-+	if (!efivar_supports_writes())
-+		set_bit(EFIVARFS_OPS_RDONLY, &sfi->flags);
- 	sfi->nb.notifier_call = efivarfs_ops_notifier;
- 	err = blocking_notifier_chain_register(&efivar_ops_nh, &sfi->nb);
-+	efivar_unlock();
- 	if (err)
- 		return err;
- 
-@@ -413,12 +420,15 @@ static int efivarfs_get_tree(struct fs_context *fc)
- 
- static int efivarfs_reconfigure(struct fs_context *fc)
- {
-+	struct super_block *sb = fc->root->d_sb;
- 	struct efivarfs_fs_info *sfi = fc->root->d_sb->s_fs_info;
- 	struct efivarfs_fs_info *new_sfi = fc->s_fs_info;
- 
--	if (!efivar_supports_writes() && !(fc->sb_flags & SB_RDONLY)) {
-+	/* Only refuse remounting a read-only mount read-write. */
-+	if ((fc->sb_flags_mask & SB_RDONLY) && !(fc->sb_flags & SB_RDONLY) &&
-+	    sb_rdonly(sb) && efivarfs_ops_rdonly(sb)) {
- 		pr_err("Firmware does not support SetVariableRT. Can not remount with rw\n");
--		return -EINVAL;
-+		return -EROFS;
+ 	error = gfs2_freeze_lock_shared(sdp);
+-	if (error)
++	/* A withdrawn filesystem can't get the freeze glock back, thaw anyway. */
++	if (error && !gfs2_withdrawn(sdp))
+ 		goto fail;
+ 	error = thaw_super(sb, who, freeze_owner);
+ 	if (!error)
+@@ -751,6 +755,11 @@ static int gfs2_freeze_super(struct super_block *sb, enum freeze_holder who,
+ 		mutex_unlock(&sdp->sd_freeze_mutex);
+ 		return -EBUSY;
  	}
++	/* A withdrawn filesystem can't take the freeze glock anymore. */
++	if (gfs2_withdrawn(sdp)) {
++		mutex_unlock(&sdp->sd_freeze_mutex);
++		return -EIO;
++	}
  
- 	/* statfs()/show_options() read nostatfs locklessly; benign race. */
+ 	for (;;) {
+ 		error = freeze_super(sb, who, freeze_owner);
+@@ -767,6 +776,13 @@ static int gfs2_freeze_super(struct super_block *sb, enum freeze_holder who,
+ 			break;
+ 		}
+ 
++		/* Withdrawn meanwhile, don't take the freeze glock again. */
++		if (gfs2_withdrawn(sdp)) {
++			(void)thaw_super(sb, who, freeze_owner);
++			error = -EIO;
++			goto out;
++		}
++
+ 		(void)gfs2_do_thaw(sdp, who, freeze_owner);
+ 
+ 		if (error == -EBUSY)
+@@ -1488,7 +1504,7 @@ static void gfs2_evict_inode(struct inode *inode)
+ 	int ret;
+ 
+ 	gfs2_holder_mark_uninitialized(&gh);
+-	if (sb_rdonly(sb) || !ip->i_no_addr || !gl)
++	if (sb_rdonly(sb) || gfs2_withdrawn(sdp) || !ip->i_no_addr || !gl)
+ 		goto out;
+ 
+ 	/*
+diff --git a/fs/gfs2/util.c b/fs/gfs2/util.c
+index 888e0d6bf5122..e720f73b7b24e 100644
+--- a/fs/gfs2/util.c
++++ b/fs/gfs2/util.c
+@@ -132,9 +132,10 @@ static void do_withdraw(struct gfs2_sbd *sdp)
+ 			   gfs2_log_is_empty(sdp),
+ 			   HZ * 5);
+ 
+-	sdp->sd_vfs->s_flags |= SB_RDONLY;
+-
+ 	/*
++	 * No SB_RDONLY, that needs s_umount. SDF_WITHDRAWN already stops all
++	 * modifications.
++	 *
+ 	 * Dequeue any pending non-system glock holders that can no
+ 	 * longer be granted because the file system is withdrawn.
+ 	 */
 
 -- 
 2.53.0
