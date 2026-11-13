@@ -1,48 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794571355;
-	b=cy2sRv+KlbSIWiru3VAXM7zZDslB2WRGtBnkNIuoVhoCIeRpvkMo4GMEaB0V4d1KRgkf
-	 6RKaC3dzi8Vm7sYqOHImOqAj6RoiFIaRYj4V3mGz0thbNzztqBfmN4Ak9cK9cO4qc23ds
-	 DFE9MZhPGNvMfMNJ4zm2V7TktByj+cSV4be6BwCKn/DIgw84SJQ7Rs5r7xcweJumBY21P
-	 mAEkbucSIVyEBiaXXbcpErhl22oHD7KAQY031kLw9b6hOSOIMHFxPgLttMh0cTxYaDMS+
-	 i88O+qIWmfXYMcmrq18MZ5Y7U3FC5+pjb81HdfwMPMJvkheLzlFkINPdU6wfCv8r/aw==
+	t=1794571346;
+	b=1BhcoVbOrwZh/fzzWojWa5B41r0EpIfk7BCQkjy9hXT5pNAQWtfo3/AmgpyyTXWtGwGJ
+	 rhb6lqGebZ0zvHELopZTev6OITUpN+ATUG486srcm7q5Fu6Hybo+Nm9TwURqxb5VDI+HM
+	 8fzxdoQWiwbflUfhNFp36bXMwzXt2KUaSMVLZ+BPuJHQlhwXlApXIn2WqGeDJuGZGUS7k
+	 gHWvj409XnHJSO9q2SNc4Z24dBzgShI3WlSWNi6Wom0H/asmx+6L1SudLB+Dwmrgs/MnA
+	 kLUmnLQ7YbUJTa5PBHAQjFpUbcemL3XOF7qlC4XNQa4J+8orhY/1sarFqjHPzWe8m4g==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794571355;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794571346;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=nqpl7OV39r2iQfy91FqwaHd5ZOtj6zGRSvahZGEYD+E=;
-	b=tRMrYiX/KUHWHcuZ0mG3sKm7GbDgWs8D+uc60njCf7qYAw3lV2j4713lkFSXYr4RPLnG
-	 P/6iJOrzKyjs28XoQOzicJF9nmqXMSAC0A+6xTZV0lju4Fuz7YvsvLpfOrAExewSA9hiT
-	 xeeE8ZBq4n4Bph5Hqh4LRBtapM0XwKM8K4Gzcxt/mrVswuhsUzMIHAmQ2nXsZVd5Z9cev
-	 lm3GECUE2/oaf+Ldsa9FUZ8FfltCiytzqxw7x6fh7HWQcgoFWq//LHCx4kEzpKnhaQqFH
-	 mL39pNkF30KMb5RORrPC0m6s+FsePtcvT49Yh2LMp5p7oSsWFE2lkqxGXGnmP+0IlQg==
+	bh=Ys3YMXl5oMlmXRh6V3Opwtt0DjuOynQe0v2BdPk6TCg=;
+	b=5SiZw4wEj0/jMo4f0Rjx8wvsC6AKGpbWBWBef3blcWzz+3XItcUvMaUcPP+AUyoT5Vo/
+	 4rAMAvsCgRO5XfCnMBYV2dNjPN6e8tXacSB7Blo72pM9uYo91Ga+DxTQ2z7CoVVvaxzKY
+	 7gnvCBOb3Ik5MVwMZSRZYll992DMhGxx3u1v5Eb+9uw7b/HO5zzfg0+Iksho6da8t9wru
+	 inmaHJ5MhRGnzd9g/BFfzeDwYPAtqrEAj8VzT8SDndrF6X85eZb/zh854tNsonXAaT2sA
+	 l7nb3F+so0jC9g8lrILeekBAWANOOZ/PKwDp7ey5g87PVJ5B8Cthxu+XGHs0GuHFP2w==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=cf+yeFhO;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Eop4DJ+y;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E47B2606A884;
-	Fri, 13 Nov 2026 12:02:34 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 44A2A606A890;
+	Fri, 13 Nov 2026 12:02:25 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=cf+yeFhO
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id BF12E1F000C4;
-	Fri, 13 Nov 2026 12:02:30 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Eop4DJ+y
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 950221F000C6;
+	Fri, 13 Nov 2026 12:02:21 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794571354;
-	bh=nqpl7OV39r2iQfy91FqwaHd5ZOtj6zGRSvahZGEYD+E=;
+	s=k20260515; t=1794571345;
+	bh=Ys3YMXl5oMlmXRh6V3Opwtt0DjuOynQe0v2BdPk6TCg=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=cf+yeFhOxffbF4Gcf34O35WTxadG12WvPaCmfzpM4r32A0Zx6mgMDJc1sLO/YM6kO
-	 AttOejPt8vjAVMDguouOKgG4chNWLadxzD+/+x0udw00EWdrBxZXjjyUGxXiNfr0KL
-	 2Cy4hMfY6XBfQRpX+3tRTOLMyM9ycZzFnmbhGe4vQX/XMXAN8zxW+nTIQRZUDSPFN+
-	 UA0HoX/cY+5dUrCcKOGhiq27KEj1oYfFrxgN2XYCRdQGCGFk9rXYAWmgfrTpRTXfVE
-	 pkxsl//WEYBESVhL4XDuY4okx74G61h8X8gdb9K34VBxKOCwUYhd2LlsYSC6gjpuqG
-	 xJXrsVuVLfs5g==
+	b=Eop4DJ+yxDliZwyInAuNW8c3JHZf+X5C54FWRtqZtQrZ8ZzgrkakpbSmsnVcEyCFJ
+	 uBy2Rr1UZrQWWl4dcr/zHxb3DnQoqEjV//kydM+Z4LWDLA6xrXgz1cvLWobpAqMJoD
+	 s6EFw/9Gp9VX/gBBLbwRC0Lh5DJaKGw6dDShXcH+2rqCc78FILZNz5SPyMJ/8rt02Z
+	 /Uc6drxqxlb/0B/1hTazmRyYdQPnOshcKXZMTAaXSaJeDakqkIVGljHsPYkwixDDIf
+	 SE6uZqlFv8y+n9E/MMjBpudPTsEDkGmMS5LyyNOQolZRvDHUiUhKhYi3kFb1AIR8r5
+	 NBVdDdqDKYOPA==
 From: Christian Brauner <brauner@kernel.org>
-Date: Fri, 13 Nov 2026 12:59:29 +0100
-Subject: [PATCH v3 33/33] xfs: allow remounting read-only after a shutdown
+Date: Fri, 13 Nov 2026 12:59:27 +0100
+Subject: [PATCH v3 31/33] ext4: allow remounting read-only in the emergency
+ state
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -54,7 +55,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261113-work-fs-sb_rdonly-v3-33-0be92bb73709@kernel.org>
+Message-Id: <20261113-work-fs-sb_rdonly-v3-31-0be92bb73709@kernel.org>
 References: <20261113-work-fs-sb_rdonly-v3-0-0be92bb73709@kernel.org>
 In-Reply-To: <20261113-work-fs-sb_rdonly-v3-0-0be92bb73709@kernel.org>
 To: linux-fsdevel@vger.kernel.org, Jan Kara <jack@suse.com>
@@ -66,78 +67,79 @@ Cc: Al Viro <viro@zeniv.linux.org.uk>, ecryptfs@vger.kernel.org,
  linux-efi@vger.kernel.org, linux-mtd@lists.infradead.org, 
  linux-xfs@vger.kernel.org, 
  "Christian Brauner (Amutable)" <brauner@kernel.org>, stable@vger.kernel.org, 
- Christoph Hellwig <hch@lst.de>
+ Jan Kara <jack@suse.cz>
 X-Mailer: b4 0.17-dev-ce4c1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2142; i=brauner@kernel.org;
- h=from:subject:message-id; bh=Wv1rk/34mZRddPCwhZsrnHdy4Y6/8eX5Up6b2ymQePk=;
- b=kA0DAAoWkcYbwGV43KIByyZiAGr2+8Ci+Z4+6tOwi97X6NaG06NaC9t14B0Ks88kXi6ffXLsd
- Yh1BAAWCgAdFiEEQIc0Vx6nDHizMmkokcYbwGV43KIFAmr2+8AACgkQkcYbwGV43KJHWwD/VEUp
- qHV8TWkuKU4bX3KINk6z04cdivoCpFl2Vn3AuVEBANhCoTbo2sLJQwZevodePoMGYTNnOhgh2Gr
- V9nOa3SIE
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2358; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=fD+vdKPUstldI8+nFemEF3fb/4i0Xe3BUPEtvaff8Ps=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWR9+73PxbtLyE9xTqkEb1nnpvBAb46ZBnddePYs722qt
+ HuqemBRRykLgxgXg6yYIotDu0m43HKeis1GmRowc1iZQIYwcHEKwES21TH84W+KMud47KIe7zf5
+ 5L17f8sPWkjIMB2Y+z3mHDv3ubbTDIwMTVmCIRs8JETqL4azM9raN+mvlAlnzbtd/pHjEOOfA4H
+ sAA==
 X-Developer-Key: i=brauner@kernel.org; a=openpgp;
  fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-xfs_remount_ro() starts with sync_filesystem() which fails with EIO
-after a shutdown. So a shut down xfs can't be remounted read-only and
-emergency remount (sysrq u) WARNs in reconfigure_super(), a panic with
-panic_on_warn:
+__ext4_remount() refuses any change of the read-only state with EROFS
+while ext4_emergency_state() is set, i.e. after a shutdown or an error.
+Neither sets SB_RDONLY anymore, so a remount to read-only fails and the
+filesystem stays read-write. Emergency remount (sysrq u) asks with
+SB_FORCE and reconfigure_super() WARNs, a panic with panic_on_warn:
 
-  forced remount of a xfs fs returned -5
+  forced remount of a ext4 fs returned -30
 
-Going read-only doesn't need to write anything. So ignore the errors
-from flushing and from freeing the COW and post-EOF blocks once xfs is
-shut down, also if the flush shut it down itself. The rest of
-xfs_remount_ro() copes with a shutdown like unmount does. And refuse
-going back to read-write with EIO, xfs_remount_rw() didn't check for a
-shutdown at all.
+Becoming read-only doesn't need to write anything. So allow it and skip
+everything in that branch that would touch the disk: sync_filesystem(),
+dquot_suspend(), the s_state update, ext4_mark_recovery_complete() and
+the superblock commit without a journal. Going read-write is still
+refused.
 
-Fixes: b97cca3ba909 ("xfs: only bother with sync_filesystem during readonly remount")
+Note that ext4_emergency_state() only exists since v6.15. Older stable
+trees need ext4_forced_shutdown() instead.
+
+Fixes: 95257987a638 ("ext4: drop EXT4_MF_FS_ABORTED flag")
+Fixes: d3476f3dad4a ("ext4: don't set SB_RDONLY after filesystem errors")
 Cc: stable@vger.kernel.org
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+Reviewed-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- fs/xfs/xfs_super.c | 13 ++++++++++---
- 1 file changed, 10 insertions(+), 3 deletions(-)
+ fs/ext4/super.c | 18 ++++++++++++------
+ 1 file changed, 12 insertions(+), 6 deletions(-)
 
-diff --git a/fs/xfs/xfs_super.c b/fs/xfs/xfs_super.c
-index 5a06132aa3846..59c83438d402b 100644
---- a/fs/xfs/xfs_super.c
-+++ b/fs/xfs/xfs_super.c
-@@ -2041,6 +2041,10 @@ xfs_remount_rw(
- 	struct xfs_sb		*sbp = &mp->m_sb;
- 	int error;
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 9cae52471dee9..ae5ba6823c01c 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -6761,11 +6761,16 @@ static int __ext4_remount(struct fs_context *fc, struct super_block *sb)
  
-+	/* Nothing can be written anymore after a shutdown. */
-+	if (xfs_is_shutdown(mp))
-+		return -EIO;
-+
- 	if (mp->m_logdev_targp && mp->m_logdev_targp != mp->m_ddev_targp &&
- 	    xfs_readonly_buftarg(mp->m_logdev_targp)) {
- 		xfs_warn(mp,
-@@ -2115,9 +2119,12 @@ xfs_remount_ro(
- 	};
- 	int			error;
- 
--	/* Flush all the dirty data to disk. */
-+	/*
-+	 * Flush all the dirty data to disk. That fails after a shutdown, also
-+	 * one the flush itself caused, but going read-only still has to work.
-+	 */
- 	error = sync_filesystem(mp->m_super);
--	if (error)
-+	if (error && !xfs_is_shutdown(mp))
- 		return error;
- 
- 	/*
-@@ -2133,7 +2140,7 @@ xfs_remount_ro(
- 	 * cached inode, so this requires a synchronous cache scan.
- 	 */
- 	error = xfs_blockgc_free_space(mp, &icw);
--	if (error) {
-+	if (error && !xfs_is_shutdown(mp)) {
- 		xfs_force_shutdown(mp, SHUTDOWN_CORRUPT_INCORE);
- 		return error;
+ 	if ((bool)(fc->sb_flags & SB_RDONLY) != sb_rdonly(sb)) {
+ 		if (ext4_emergency_state(sb)) {
+-			err = -EROFS;
+-			goto restore_opts;
+-		}
+-
+-		if (fc->sb_flags & SB_RDONLY) {
++			/*
++			 * Going read-only must work for emergency remount
++			 * (sysrq u) but nothing may be written, just flip it.
++			 */
++			if (!(fc->sb_flags & SB_RDONLY)) {
++				err = -EROFS;
++				goto restore_opts;
++			}
++			sb->s_flags |= SB_RDONLY;
++		} else if (fc->sb_flags & SB_RDONLY) {
+ 			err = sync_filesystem(sb);
+ 			if (err < 0)
+ 				goto restore_opts;
+@@ -6876,7 +6881,8 @@ static int __ext4_remount(struct fs_context *fc, struct super_block *sb)
+ 			goto restore_opts;
  	}
+ 
+-	if (sbi->s_journal == NULL && !(old_sb_flags & SB_RDONLY)) {
++	if (sbi->s_journal == NULL && !(old_sb_flags & SB_RDONLY) &&
++	    !ext4_emergency_state(sb)) {
+ 		err = ext4_commit_super(sb);
+ 		if (err)
+ 			goto restore_opts;
 
 -- 
 2.53.0
