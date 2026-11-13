@@ -1,109 +1,49 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794570134;
-	b=gvVBps1mliGAZSL+XYkjsfX2ogbeYpxaLmwVSnwMHlCfjT3s5aMQeWSb/SmDP6LSPi0v
-	 mRsNMyTRZasIArXlZY7S7eja/eVyY9st4EuJBXnmIcb4304HQmcqQDbzrYC5ow3t9fzCV
-	 BkVtMKmfm57f9eToZQUqlQHng4Uczs/+Rr9w9RWag+lggYaKE20hh/cTD76vI6KL3BYqx
-	 zhdmIkDxVifDFUQ8EqkOeaUgZkayglhHhHfWLj6hCdDOOUlKNXiNA+W/0Tq6FU8oWynlA
-	 4KKrdbE47Fn3UkGyRk6e1ijxN/B1BRWVU3rjkp6zqrQiWBVDC4LZkm6jx1pkI9vSiZw==
+	t=1794571210;
+	b=ldkdEBvv0EA3sU0b4qsf73PhYFJgxts9wQSJw5Pc6rJeqOFrB0DUtN3aAueW8yDQnjLF
+	 1PK97R7gQWS8F/BLdXTLtHhqyaVmMTkjs4FxQ99XpQia/pfYp68pYTy1UsLw4L4/QpO7T
+	 e153SCf7aAiD3emKY/kFzpeUa1JKdeBCslrVorYF2hrN9uN+0Lx4fKNcDpJG5+HnTDkvM
+	 dEK9ejV3u+YIIqJ/c17w/4IfWE79g1/moBUegNFupjOq2zj2v/qxG0FxEL55hE1IYRjIN
+	 VHaHceDkZNcf3imozO2XRZfBrvIlLrwsla7uiIuwILzPp8rJE/QQyrmCjOnwP0J3T4Q==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794570134;
-	h=DMARC-Filter:Received:DKIM-Signature:DKIM-Signature:DKIM-Signature:
-	 DKIM-Signature:Received:Received:Received:Date:From:To:Cc:Subject:
-	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
-	 In-Reply-To:X-Spam-Flag:X-Spam-Level:X-Spamd-Result:X-Spam-Score;
-	bh=HiASKsoge9ZhLc7H5LmDHN9gRxWAuyb+NGrypM6Aj/I=;
-	b=hQO3rYz5c2CGxeCFtz23cw5u4gokzc1NI0HpZ3lRd5e5idDzuhGrnMikF5LVKFU1iBK1
-	 tgixy1YbqF3LZLM5ZoVCYr34nrFQkJP9MslUyDHep1i+n7sixWLfCTokpcH+Gss/xZD/D
-	 YliAsud9abYowTw3f9/xEHqohbURrvT44u/s4YPqKEU88xHaFOtCG5TwPzGEAlP4WrPIK
-	 RcXKoVrCDkLT5byLqs5W47clIIrL0zW4qynwxRHtEsf1984ORzQoU4JHNk1KviGs/I2KN
-	 +x42dnWVbjWzLLm/PFZuWOS/X50JSi4as/BoffcjxrLQrUnN+AZmrgwOLD0f4VRqggw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794571210;
+	h=Received:DKIM-Signature:From:Subject:Date:Message-Id:MIME-Version:
+	 Content-Type:Content-Transfer-Encoding:X-B4-Tracking:X-Change-ID:To:
+	 Cc:X-Mailer:X-Developer-Signature:X-Developer-Key;
+	bh=IWprbPwkQqPxXeS+kMxX8OuNnd1sijR3CtNVlcmSiAs=;
+	b=YN7clzfgMG/ezQ/neVFqib3lzVMjdbayyPf1DmSLbYAFREYFSVGn36/Fcg55Lhse1Xq6
+	 ss6zYfYev/FmqHubyP1uLtTJZjhwVucoji5UfU9Ix8Ss41oJswd6YhbzdZ5LMVguFyLdu
+	 /oxW3AYwP4jRNTJN5UZ1bSaJI6mEcAPsfjDFAXRiSP3YYxNRR59N7zDOBBMTOfFO/J1Yt
+	 NTEeOn1emfeDZrNlPfT1n6kCnSZ67CPkmGTul1gbYrNTfM3oEkXfVux57XWl88+pYy+x9
+	 9yHtJuYTraR4+YmtTcjXyE4ENZH7rPVC8ZX7vOsJdDRQInpoW0HCQzQt+CTBA+apZ2A==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=none header.from=suse.cz;
-	spf=pass smtp.mailfrom=suse.cz;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=RP8fGMpZ;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=nPZzRs9h;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=IwDxhzoW;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b="/LmgDMgC";
-	arc=none smtp.remote-ip=195.135.223.131
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=TtipzD2D;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 653BF606A323;
-	Fri, 13 Nov 2026 11:42:12 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 653BF606A323
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D349A606A32D;
+	Fri, 13 Nov 2026 12:00:10 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=RP8fGMpZ;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=nPZzRs9h;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=IwDxhzoW;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=/LmgDMgC
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id A40961F8CD;
-	Fri, 13 Nov 2026 11:42:09 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1794570130; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=HiASKsoge9ZhLc7H5LmDHN9gRxWAuyb+NGrypM6Aj/I=;
-	b=RP8fGMpZkm+arKoFGBgnP8Buvvw8SWmK1AbaD3opg7AxYL6Mwus+8zoWAfPA50gYwXc1mG
-	jYPRgYa0arQekIy+lRK49U37AfiMPYdAe8G9j8alGDn3qgQ/B+l3fwQmiJfqdydllvEkOw
-	WIQpn7V7CLdwUkK3XXDk6UincNVXtw4=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1794570130;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=HiASKsoge9ZhLc7H5LmDHN9gRxWAuyb+NGrypM6Aj/I=;
-	b=nPZzRs9h/NS5EpOgkskveJcxRoIXcm30oUO9TPFZVcfnp6DZECFKDjePzc8z14lAzpKJkd
-	hCvxqDmUpy+E8eDA==
-Authentication-Results: smtp-out2.suse.de;
-	none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1794570129; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=HiASKsoge9ZhLc7H5LmDHN9gRxWAuyb+NGrypM6Aj/I=;
-	b=IwDxhzoWxRJTSj6WNyRw7L/absr/2DjNaeIXEKhPMBFqL82r5wTPQg+Y8RI/zKWchdEkQG
-	aQTt32tjC6xMwTyeVhb/uiEQTjkmXSahFEQwXSTOhyP2Fxd0URqEqD8wylyHoZnXGig7SW
-	I0xJSAeBY1vBcGQ6awAmPiMfnT3z4gQ=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1794570129;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=HiASKsoge9ZhLc7H5LmDHN9gRxWAuyb+NGrypM6Aj/I=;
-	b=/LmgDMgCstk4eWHyS69iyg0YzWC0qIV+XtEftzB2cuwwjZkrEft7IT33EUzP4ELkrCc8uP
-	DNAXD/yogOvyO0Dg==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 826CE1344A;
-	Fri, 13 Nov 2026 11:42:09 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id /9UMGpH39mqMTQAAD6G6ig
-	(envelope-from <jack@suse.cz>); Fri, 13 Nov 2026 11:42:09 +0000
-Received: by quack.suse.cz (Postfix, from userid 1000)
-	id 2EB8622CAE; Fri, 13 Nov 2026 12:42:05 +0100 (CET)
-Date: Fri, 13 Nov 2026 12:42:05 +0100
-From: Jan Kara <jack@suse.cz>
-To: Chandradhar Kumar <chandradhar.2003@gmail.com>
-Cc: Theodore Ts'o <tytso@mit.edu>, 
-	Andreas Dilger <adilger.kernel@dilger.ca>, Baokun Li <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>, 
-	Ojaswin Mujoo <ojaswin@linux.ibm.com>, "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, 
-	Zhang Yi <yi.zhang@huawei.com>, linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
-	syzbot+f111db4cb2acd44eb2f4@syzkaller.appspotmail.com
-Subject: Re: [PATCH] ext4: wait for tail page commit in
- ext4_truncate_failed_write()
-Message-ID: <k5kh7sx5jxixvcwlqeenkliru4eo7mqyotozloogo6nlj4hsg2@kqgqerfg2fhd>
-References: <20261112124835.114888-1-chandradhar.2003@gmail.com>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=TtipzD2D
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6F6D61F000C4;
+	Fri, 13 Nov 2026 12:00:04 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1794571210;
+	bh=IWprbPwkQqPxXeS+kMxX8OuNnd1sijR3CtNVlcmSiAs=;
+	h=From:Subject:Date:To:Cc;
+	b=TtipzD2D57k1FaW7n2aOXcsxOQUyGAOFQPuLkxWB/5ZUic2Hz/TevGioOwz5c3EuN
+	 NwaWt1gjqJGSexamWcb6bAq3Z8exNSlhzD9AQ7q66hhnvKJN+1HZ3dyo7OqGD2sA53
+	 8aSINs6GoSWacnPVC6xi3kaLoTU1vt0DKCbsEJUdOqFdPJq+pJtJpIcFeSQs1sd39M
+	 Rzd30imuRd3XwgbgmO6sHxmbx55hp/aU2LE+X2e9NmKt+v9XnWz5PJ+c+KosXPx5WM
+	 wxIR8TEp1vev9awx7oYI6VmTkVUVe3lifU0I9D36XpzXnY09txOBr5yN70nO69RSZt
+	 Syt7IdyqiZBnA==
+From: Christian Brauner <brauner@kernel.org>
+Subject: [PATCH v3 00/33] fs: don't set SB_RDONLY after filesystem errors
+Date: Fri, 13 Nov 2026 12:58:56 +0100
+Message-Id: <20261113-work-fs-sb_rdonly-v3-0-0be92bb73709@kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -113,116 +53,339 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20261112124835.114888-1-chandradhar.2003@gmail.com>
-X-Spam-Flag: NO
-X-Spam-Level: 
-X-Spamd-Result: default: False [-11.30 / 50.00];
-	SUSE_INTERNAL_BYPASS(-9.00)[];
-	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	TAGGED_RCPT(0.00)[f111db4cb2acd44eb2f4];
-	ARC_NA(0.00)[];
-	FREEMAIL_TO(0.00)[gmail.com];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	MISSING_XM_UA(0.00)[];
-	RCPT_COUNT_SEVEN(0.00)[11];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	TO_DN_SOME(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	FREEMAIL_CC(0.00)[mit.edu,dilger.ca,linux.alibaba.com,suse.cz,linux.ibm.com,gmail.com,huawei.com,vger.kernel.org,syzkaller.appspotmail.com];
-	RCVD_COUNT_THREE(0.00)[3];
-	FROM_EQ_ENVFROM(0.00)[];
-	RCVD_TLS_LAST(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,syzbot.org:url,appspotmail.com:email,suse.com:email]
-X-Spam-Score: -11.30
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/23OQQrCMBAF0KtI1qYkkxLRlfcQkSad2KgkMqNVk
+ d7dRlEUXP7hz+PfBSNFZLGY3AVhHznmNAYznQjfNWmLMrZjFqDAaqW1vGTay8CS3YbanA43GeY
+ GLVjXKg9i/DsShnh9mqv1K/PZ7dCfClQarmGUjprku3IqZBW4+pBVKZRiF/mU6fZc1+sCvofAn
+ yG9lkpaNatNY1pvwC73SAkPVaatKEt6+CJg/o+AkYBQ18HWQTn7SwzD8ADWvmBZMQEAAA==
+X-Change-ID: 20261011-work-fs-sb_rdonly-f93e626bd0c2
+To: linux-fsdevel@vger.kernel.org, Jan Kara <jack@suse.com>
+Cc: Al Viro <viro@zeniv.linux.org.uk>, ecryptfs@vger.kernel.org, 
+ linux-ext4@vger.kernel.org, jfs-discussion@lists.sourceforge.net, 
+ linux-nilfs@vger.kernel.org, exfat@lists.linux.dev, linux-mm@kvack.org, 
+ ntfs@lists.linux.dev, ocfs2-devel@lists.linux.dev, 
+ linux-btrfs@vger.kernel.org, gfs2@lists.linux.dev, 
+ linux-efi@vger.kernel.org, linux-mtd@lists.infradead.org, 
+ linux-xfs@vger.kernel.org, 
+ "Christian Brauner (Amutable)" <brauner@kernel.org>, stable@vger.kernel.org, 
+ Farhad Alemi <farhad.alemi@berkeley.edu>, Tyler Hicks <code@tyhicks.com>, 
+ Jan Kara <jack@suse.cz>, Karl Mehltretter <kmehltretter@gmail.com>, 
+ Ryusuke Konishi <konishi.ryusuke@gmail.com>, 
+ Viacheslav Dubeyko <slava@dubeyko.com>, Hyunchul Lee <hyc.lee@gmail.com>, 
+ Joseph Qi <joseph.qi@linux.alibaba.com>, Christoph Hellwig <hch@lst.de>
+X-Mailer: b4 0.17-dev-ce4c1
+X-Developer-Signature: v=1; a=openpgp-sha256; l=17051; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=99RT7ELH83mPhcnOk5YHQ3hDMsPWvJyllxxqXgpc3bE=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWR9+z3z6+nZG49N+tZyTNT/xfHXCRZf3R82LA5vZJFWr
+ FZaIVwwr6OUhUGMi0FWTJHFod0kXG45T8Vmo0wNmDmsTCBDGLg4BWAiQmsY/pecPa36feWsd3/d
+ fiUw1FyTiNFKLO5o8o88n8XqttV6bTsjw1/mCgWv6erPrk5KVg1i52jwWHV7g28Hx+w629z78pU
+ /WAA=
+X-Developer-Key: i=brauner@kernel.org; a=openpgp;
+ fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-On Thu 12-11-26 18:18:32, Chandradhar Kumar wrote:
-> When a buffered write fails partially (e.g., due to a user page fault)
-> on an ext4 filesystem mounted in data=journal mode with blocksize <
-> PAGE_SIZE, ext4_journalled_write_end() invokes ext4_truncate_failed_write()
-> to discard newly allocated blocks beyond inode->i_size.
-> 
-> If the updated inode->i_size straddles a folio whose buffers are currently
-> being committed to the journal, truncate_inode_pages() attempts to
-> partially invalidate that folio via ext4_journalled_invalidate_folio().
-> Because JBD2 cannot unmap buffers belonging to a committing transaction
-> on a partial folio, journal_unmap_buffer() returns -EBUSY, triggering
-> the WARN_ON() in ext4_journalled_invalidate_folio().
-> 
-> Unlike the standard truncate path in ext4_truncate_down(),
-> ext4_truncate_failed_write() does not wait for the committing
-> transaction on the tail page to finish before truncating the page cache.
-> Export ext4_wait_for_tail_page_commit() and call it in
-> ext4_truncate_failed_write() when data=journal is enabled before
-> acquiring filemap_invalidate_lock() and calling truncate_inode_pages().
-> 
-> Fixes: 53e872681fed ("ext4: fix deadlock in journal_unmap_buffer()")
-> Reported-by: syzbot+f111db4cb2acd44eb2f4@syzkaller.appspotmail.com
-> Closes: https://syzbot.org/bug?extid=f111db4cb2acd44eb2f4
-> Signed-off-by: Chandradhar Kumar <chandradhar.2003@gmail.com>
+A lot of filesystems handle errors by setting SB_RDONLY from whatever
+context found the error and without holding s_umount. SB_RDONLY is
+supposed to only change under s_umount through a proper remount. So
+that races with everyone else writing sb->s_flags and it breaks
+freezing: freeze_super() and thaw_super() decide from sb_rdonly()
+whether the s_writers rwsems need to be taken or released. An error
+while frozen makes thaw_super() leave them write-locked, every writer
+after that hangs in sb_start_write() and umount warns. jfs even oopses.
 
-Thanks but the fix was already posted here:
-https://lore.kernel.org/all/20261112115906.17915-1-diasyzhangqing@gmail.com
+Karl proposed teaching thaw_super() to remember what the freeze took
+(cf. [1]). Jan preferred fixing the filesystems like ext4 and f2fs
+already did (cf. [2]) and I agree. v1 did that and every filesystem
+grew the same checks in ->open, ->setattr, ->fsync and friends, so Jan
+suggested a generic flag in the superblock instead (cf. [3]):
 
-								Honza
+- sb->s_state gets SB_STATE_EMERGENCY_RO. It's only ever set and never
+  cleared and SB_RDONLY stays untouched so freezing keeps working.
+- a filesystem calls sb_set_emergency_ro() where it used to set
+  SB_RDONLY
+- the VFS refuses modifications with EROFS wherever sb_rdonly() does,
+  also for files opened before the error, refuses the remount to
+  read-write and a new freeze, and doesn't sync the superblock anymore:
+  syncfs(2) and Q_SYNC fail with EROFS, sync(2) and umount skip it (Jan)
+- /proc/mounts, statmount() and statfs() show it read-only and a
+  remount to read-only works, so sysrq u doesn't WARN anymore, and
+  doesn't mark the filesystem clean
 
-> ---
->  fs/ext4/ext4.h     | 1 +
->  fs/ext4/inode.c    | 2 +-
->  fs/ext4/truncate.h | 3 +++
->  3 files changed, 5 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index bf0325ecbec7..cc714d7b292c 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -3215,6 +3215,7 @@ int ext4_get_fc_inode_loc(struct super_block *sb, unsigned long ino,
->  extern int ext4_inode_attach_jinode(struct inode *inode);
->  extern int ext4_can_truncate(struct inode *inode);
->  extern int ext4_truncate(struct inode *);
-> +extern void ext4_wait_for_tail_page_commit(struct inode *inode);
->  extern int ext4_break_layouts(struct inode *);
->  extern int ext4_truncate_page_cache_block_range(struct inode *inode,
->  						loff_t start, loff_t end);
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index e3129353d4ed..366345981438 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -6819,7 +6819,7 @@ int ext4_sync_inode_metadata(struct inode *inode, struct writeback_control *wbc)
->   * buffers that are attached to a folio straddling i_size and are undergoing
->   * commit. In that case we have to wait for commit to finish and try again.
->   */
-> -static void ext4_wait_for_tail_page_commit(struct inode *inode)
-> +void ext4_wait_for_tail_page_commit(struct inode *inode)
->  {
->  	unsigned offset;
->  	journal_t *journal = EXT4_SB(inode->i_sb)->s_journal;
-> diff --git a/fs/ext4/truncate.h b/fs/ext4/truncate.h
-> index ce84aa2786c7..19ed4673284c 100644
-> --- a/fs/ext4/truncate.h
-> +++ b/fs/ext4/truncate.h
-> @@ -17,6 +17,9 @@ static inline void ext4_truncate_failed_write(struct inode *inode)
->  	 * We don't need to call ext4_break_layouts() because the blocks we
->  	 * are truncating were never visible to userspace.
->  	 */
-> +	if (ext4_should_journal_data(inode))
-> +		ext4_wait_for_tail_page_commit(inode);
-> +
->  	filemap_invalidate_lock(mapping);
->  	truncate_inode_pages(mapping, inode->i_size);
->  	ext4_truncate(inode);
-> -- 
-> 2.56.0
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Writeback isn't stopped. The flusher and the block device flushes in
+sync(2) and kill_block_super() keep writing, so what ends up on disk is
+what it is on mainline today and every filesystem decides what its
+writeback still writes. The same goes for what doesn't pass through the
+VFS: allocators, journals, the deletion of unlinked inodes and the xattr
+and ACL setters that ecryptfs calls without write access on the lower
+mount. That's about a third of the checks v1 had.
+
+The stable fixes stay self-contained, a follow-up patch converts each of
+exfat, hfs, ntfs, zonefs and ext4 to the generic state. fat, exfat, hpfs
+and ntfs still set SB_RDONLY for errors during mount, nothing can freeze
+before SB_BORN. A few patches make the read-only remount work in the
+first place: exfat and ocfs2 didn't inherit their mount options on
+remount, gfs2 BUG()s when remounted read-only during a withdraw, and
+ext4 in its emergency state and a shut down xfs refused to go read-only
+at all, so sysrq u WARNed for them. ecryptfs gets a read-only fallback
+for its lower files, otherwise every lookup on top of an errored
+filesystem fails with EROFS and leaks the inode.
+
+The first two patches are jfs fixes for mainline: umount after an error
+BUG()s because nothing commits the anonymous tlocks of allocations
+writeback didn't get to, and slow symlinks read from disk didn't get
+jfs_setattr().
+
+There are user-visible changes but I think they're all fine. "mount -o
+remount,rw" doesn't make the filesystem writable again after an error,
+like ext4 since commit d3476f3dad4a ("ext4: don't set SB_RDONLY after
+filesystem errors"). Writes through file descriptors opened before the
+error, fsync(), syncfs() and Q_SYNC fail with EROFS and stores through
+shared mappings get SIGBUS. FIFREEZE and dm suspend with lockfs fail
+with EROFS like they already did for ext4, and the shutdown ioctls of
+ext4, exfat, ntfs and btrfs skip the freeze after an error. A second
+read-only mount of the device fails with EBUSY. And ext4 shows "ro" in
+/proc/mounts and reports ST_RDONLY again after an error.
+
+This has dependencies on vfs-7.5.super (cf. [4]). With this no
+filesystem changes SB_RDONLY outside of mount and remount anymore.
+
+[1]: https://lore.kernel.org/r/20260903060855.4610-1-kmehltretter@gmail.com
+[2]: https://lore.kernel.org/r/hyhuckyohsabx2suvq3z7uy3pbgmihva6wgzxr3op7pzcrlu33@p7zzlgp2ehjf
+[3]: https://lore.kernel.org/r/my2k7257m265fp5ad77n5hfndl23i56gsog3jwnsyocp3yxbnj@aphfqdiej2hs
+[4]: https://lore.kernel.org/r/20261011-work-super-fixes-core-v1-0-c727176c5b53@kernel.org
+
+Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
+---
+Changes in v3:
+- New first patch: jfs frees the anonymous tlocks of an evicted inode
+  instead of BUG()ing on umount after an error. That's a mainline bug,
+  Cc stable.
+- sync_filesystem() and sync(2) skip a superblock in the emergency
+  state, syncfs(2) and Q_SYNC fail with EROFS. That's the VFS patch from
+  the v1 thread after all, the jfs fix takes care of the BUG (Jan).
+- freeze_super() refuses a new freeze in the emergency state with EROFS,
+  the exfat, ntfs, btrfs and ext4 shutdown ioctls skip the freeze after
+  an error.
+- ext2, fat, affs, ufs and hfs don't refuse ->write_inode() anymore. The
+  flusher wrote data and bitmaps but no inodes and new files were lost
+  (sashiko).
+- The ->sync_fs() checks of ext2, jfs, nilfs2, ocfs2 and ubifs are gone,
+  the VFS doesn't call them in that state.
+- ext2: ext2_freeze() doesn't check the emergency state anymore (Jan).
+- jfs: refuse a resize after an error, keep FM_DIRTY with nointegrity
+  when the error hit while frozen (sashiko).
+- ntfs: ntfs_drop_big_inode() leaves unlinked inodes to chkdsk in the
+  emergency state like ntfs_evict_big_inode() (sashiko).
+- btrfs_force_shutdown() sets BTRFS_FS_STATE_RO too (Qu).
+- ubifs: always use the emergency state, don't sync the write-buffers
+  or the master node on a remount to read-only after an error, drop
+  dirty folios and inodes after an error (Zhihao, sashiko).
+- ecryptfs doesn't try to write the header through a read-only lower
+  file when opening an empty file (sashiko).
+- Dropped the selftests, fstests is the place for them (Christoph).
+- The jfs symlink inode operations fix is a patch of its own.
+- sb_rdonly_any() for the checks that need the read-only mount and the
+  emergency state instead of open-coding the pair.
+- Picked up the review tags. The ones for hfs, ntfs, ocfs2, nilfs2
+  and the ext4 conversion are kept although those patches changed a
+  bit (a ->sync_fs() or ->write_inode() hunk less, the shutdown ioctls
+  skip the freeze). Jan's tag on the VFS patch isn't, it changed too
+  much.
+- Link to v2: https://patch.msgid.link/20261029-work-fs-sb_rdonly-v2-0-2f44f64f0b66@kernel.org
+
+Changes in v2:
+- Generic SB_STATE_EMERGENCY_RO in the superblock, the VFS refuses
+  modifications. The checks at the VFS entry points of every filesystem
+  are gone (Jan).
+- The VFS patch from the v1 thread also hooked write_inode() and
+  sync_filesystem(). Dropped, jfs still has to commit queued allocations
+  after the error.
+- /proc/mounts shows "ro" and statfs() reports ST_RDONLY again in the
+  emergency state.
+- The stable-tagged fixes stay self-contained, follow-up patches convert
+  exfat, hfs, ntfs, zonefs and ext4 to the generic state.
+- hfsplus checks the b-tree map records in hfsplus_fill_super() (Slava).
+- Selftests expect ST_RDONLY and EROFS from fsync() on jfs too.
+- ecryptfs refuses writes through a read-only lower file with EROFS.
+  truncate(2) and creating a file ran into the WARN_ON_ONCE() in
+  __kernel_write_iter() (sashiko).
+- gfs2: bail out of the freeze loop when the filesystem withdrew in the
+  meantime, keep the EIO from gfs2_make_fs_rw() for a remount to
+  read-write and don't show "withdrawn" in the mount options (Andreas).
+- Don't show "emergency_ro" and "ro_ops" in the mount options. Remount
+  helpers that pass the shown options back trip over them. ext4 keeps
+  showing "emergency_ro" like it does now (Andreas).
+- Rebased onto current mainline. ntfs persists its error state itself
+  since commit 521978c4f444, the error work uses that now, and the new
+  named stream paths refuse modifications in the emergency state too.
+- statmount() reports the emergency state as read-only too and
+  remap_verify_area() refuses FICLONE and friends in that state.
+- nilfs2 refuses going read-write in the emergency state itself because
+  nilfs_get_tree() reconfigures the superblock without
+  reconfigure_super(). zonefs keeps its check in ->write_iter() because
+  the loop driver and others call it without rw_verify_area().
+- ntfs runs a pending error work before umount persists the error
+  state, hfsplus says which b-tree header node it couldn't load again.
+- The reproducers moved out of the commit messages into git notes.
+- Link to v1: https://patch.msgid.link/20261012-work-fs-sb_rdonly-v1-0-60743a3dc326@kernel.org
+
+---
+Christian Brauner (33):
+      jfs: free uncommitted anonymous tlocks when evicting an inode
+      jfs: use jfs_symlink_inode_operations in jfs_iget()
+      ecryptfs: don't leak the inode when a lookup can't open the lower file
+      ecryptfs: fall back to a read-only lower file
+      fs: add a generic emergency read-only state
+      ext2: don't set SB_RDONLY after filesystem errors
+      jfs: don't set SB_RDONLY after filesystem errors
+      nilfs2: don't set SB_RDONLY after filesystem errors
+      fat: don't set SB_RDONLY after filesystem errors
+      exfat: keep the current mount options on remount
+      exfat: don't set SB_RDONLY after filesystem errors
+      exfat: use the generic emergency read-only state
+      hfs: don't set SB_RDONLY after MDB write errors
+      hfs: use the generic emergency read-only state
+      hfsplus: don't set SB_RDONLY when creating the attributes tree
+      affs: don't set SB_RDONLY after filesystem errors
+      ufs: don't set SB_RDONLY after filesystem errors
+      hpfs: don't set SB_RDONLY after filesystem errors
+      ntfs: don't set SB_RDONLY after filesystem errors
+      ntfs: use the generic emergency read-only state
+      ocfs2: keep the current mount options on remount
+      ocfs2: don't set SB_RDONLY after filesystem errors
+      zonefs: don't set SB_RDONLY after I/O errors
+      zonefs: use the generic emergency read-only state
+      btrfs: check BTRFS_FS_STATE_RO instead of SB_RDONLY at runtime
+      btrfs: don't set SB_RDONLY after filesystem errors
+      gfs2: wait for a pending withdraw before remounting read-only
+      gfs2: don't set SB_RDONLY on withdraw
+      efivarfs: stop using SB_RDONLY for read-only efivar ops
+      ubifs: don't set SB_RDONLY after errors
+      ext4: allow remounting read-only in the emergency state
+      ext4: use the generic emergency read-only state
+      xfs: allow remounting read-only after a shutdown
+
+ Documentation/filesystems/porting.rst | 20 +++++++++++
+ Documentation/filesystems/zonefs.rst  |  4 +--
+ fs/affs/amigaffs.c                    |  4 +--
+ fs/affs/super.c                       | 14 +++++---
+ fs/attr.c                             |  4 +++
+ fs/btrfs/acl.c                        |  3 +-
+ fs/btrfs/bio.c                        |  2 +-
+ fs/btrfs/block-group.c                |  2 +-
+ fs/btrfs/dev-replace.c                |  2 +-
+ fs/btrfs/discard.c                    |  2 +-
+ fs/btrfs/disk-io.c                    |  4 +--
+ fs/btrfs/fs.h                         | 20 +++++++----
+ fs/btrfs/inode.c                      |  8 ++---
+ fs/btrfs/ioctl.c                      | 13 ++++---
+ fs/btrfs/messages.c                   | 16 +++++----
+ fs/btrfs/qgroup.c                     |  4 +--
+ fs/btrfs/reflink.c                    |  3 +-
+ fs/btrfs/super.c                      | 35 +++++++++++++++---
+ fs/btrfs/sysfs.c                      |  4 +--
+ fs/btrfs/tree-checker.c               |  2 +-
+ fs/btrfs/volumes.c                    |  4 +--
+ fs/btrfs/xattr.c                      |  8 +++--
+ fs/ecryptfs/file.c                    |  4 ++-
+ fs/ecryptfs/inode.c                   | 13 ++++++-
+ fs/ecryptfs/kthread.c                 | 15 ++++++--
+ fs/ecryptfs/read_write.c              |  3 ++
+ fs/efivarfs/file.c                    |  6 ++++
+ fs/efivarfs/inode.c                   | 15 ++++++++
+ fs/efivarfs/internal.h                | 14 +++++++-
+ fs/efivarfs/super.c                   | 26 +++++++++-----
+ fs/exfat/exfat_fs.h                   | 10 ++++++
+ fs/exfat/file.c                       | 54 ++++++++++++++++++++--------
+ fs/exfat/inode.c                      | 11 +++---
+ fs/exfat/misc.c                       | 16 ++++++---
+ fs/exfat/namei.c                      | 27 ++++++++------
+ fs/exfat/super.c                      | 41 +++++++++++++--------
+ fs/ext2/balloc.c                      |  5 +++
+ fs/ext2/ialloc.c                      |  2 ++
+ fs/ext2/inode.c                       |  4 ++-
+ fs/ext2/super.c                       | 13 ++++---
+ fs/ext2/xattr.c                       |  2 ++
+ fs/ext4/ioctl.c                       |  4 +++
+ fs/ext4/super.c                       | 19 ++++++----
+ fs/fat/dir.c                          |  3 ++
+ fs/fat/fatent.c                       | 11 +++++-
+ fs/fat/file.c                         |  4 +++
+ fs/fat/inode.c                        | 13 +++++--
+ fs/fat/misc.c                         | 19 ++++++----
+ fs/gfs2/quota.c                       |  2 +-
+ fs/gfs2/super.c                       | 40 +++++++++++++++++----
+ fs/gfs2/util.c                        |  7 ++--
+ fs/hfs/attr.c                         |  3 ++
+ fs/hfs/extent.c                       |  5 +++
+ fs/hfs/inode.c                        |  7 ++++
+ fs/hfs/mdb.c                          | 16 +++++----
+ fs/hfs/super.c                        |  2 +-
+ fs/hfsplus/btree.c                    | 42 ++++++++++++++--------
+ fs/hfsplus/hfsplus_fs.h               |  1 +
+ fs/hfsplus/super.c                    |  5 +++
+ fs/hpfs/alloc.c                       |  4 +--
+ fs/hpfs/dir.c                         |  2 +-
+ fs/hpfs/map.c                         |  3 +-
+ fs/hpfs/super.c                       | 11 ++++--
+ fs/jfs/acl.c                          |  3 ++
+ fs/jfs/inode.c                        | 15 +++++++-
+ fs/jfs/ioctl.c                        |  4 +++
+ fs/jfs/jfs_dtree.c                    |  3 +-
+ fs/jfs/jfs_extent.c                   | 10 ++++++
+ fs/jfs/jfs_incore.h                   |  6 ++++
+ fs/jfs/jfs_inode.c                    |  3 ++
+ fs/jfs/jfs_txnmgr.c                   | 68 +++++++++++++++++++++++++++++++++++
+ fs/jfs/jfs_txnmgr.h                   |  1 +
+ fs/jfs/super.c                        | 36 ++++++++++++++++---
+ fs/jfs/xattr.c                        |  3 ++
+ fs/namei.c                            |  3 +-
+ fs/namespace.c                        |  5 ++-
+ fs/nilfs2/inode.c                     |  4 +--
+ fs/nilfs2/ioctl.c                     |  4 +++
+ fs/nilfs2/mdt.c                       |  2 +-
+ fs/nilfs2/page.c                      |  2 +-
+ fs/nilfs2/segment.c                   | 13 ++++---
+ fs/nilfs2/sufile.h                    |  2 +-
+ fs/nilfs2/super.c                     | 25 +++++++++----
+ fs/ntfs/aops.c                        |  5 +--
+ fs/ntfs/dir.c                         |  5 +--
+ fs/ntfs/ea.c                          | 10 ++++--
+ fs/ntfs/file.c                        | 63 +++++++++++++++++++++++---------
+ fs/ntfs/inode.c                       | 18 +++++++---
+ fs/ntfs/iomap.c                       |  6 ++--
+ fs/ntfs/mft.c                         | 10 ++++--
+ fs/ntfs/named_stream.c                | 43 +++++++++++-----------
+ fs/ntfs/namei.c                       | 40 ++++++++++++---------
+ fs/ntfs/super.c                       | 56 +++++++++++++++++++++++++----
+ fs/ntfs/volume.h                      | 13 +++++++
+ fs/ocfs2/acl.c                        |  3 ++
+ fs/ocfs2/super.c                      | 27 +++++++++++---
+ fs/ocfs2/xattr.c                      |  8 +++++
+ fs/open.c                             |  4 +++
+ fs/proc_namespace.c                   |  2 +-
+ fs/quota/dquot.c                      | 27 ++++++++++----
+ fs/quota/quota.c                      | 13 +++++++
+ fs/read_write.c                       |  5 +++
+ fs/remap_range.c                      |  4 +++
+ fs/statfs.c                           |  9 +++--
+ fs/super.c                            | 17 +++++++++
+ fs/sync.c                             | 14 ++++++--
+ fs/ubifs/file.c                       | 12 +++++++
+ fs/ubifs/io.c                         |  6 +++-
+ fs/ubifs/super.c                      | 40 +++++++++++++--------
+ fs/ubifs/xattr.c                      |  6 ++++
+ fs/ufs/cylinder.c                     | 12 ++++---
+ fs/ufs/super.c                        | 56 ++++++++++++++++++++---------
+ fs/xfs/xfs_super.c                    | 13 +++++--
+ fs/zonefs/file.c                      | 13 ++++---
+ fs/zonefs/super.c                     | 25 ++++++++-----
+ fs/zonefs/zonefs.h                    |  1 +
+ include/linux/fs/super.h              | 23 ++++++++++++
+ include/linux/fs/super_types.h        | 19 ++++++++++
+ mm/memory.c                           |  6 ++++
+ 119 files changed, 1185 insertions(+), 343 deletions(-)
+---
+base-commit: c339f4010dea8b0d754f84ace70cd1b089878ef8
+change-id: 20261011-work-fs-sb_rdonly-f93e626bd0c2
+
