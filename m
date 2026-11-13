@@ -1,73 +1,47 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=124.71.94.104
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794528893;
-	b=NOI1DnMEgauJW2iogvV108DHS67/GJPiiilm+NzHKjtrprxLfYarssUxV57PlXpMltZf
-	 EtcDdJMNtKBuV8ZI4nzOGQ2rDQD6HDDCZV8/IRlbTsymX6VRqtr2Cunn3YKZXWe2h325U
-	 NL907FS1LdeKiyC1m0E0RNVI93AqXcGpcy8y4EEytrY58Q/Ct3IXD+rD0eGFfTdNqhdTs
-	 KtTurQlhKWrKvx9xhflqhqIG2+yeFMq065yLhYiK177rFa9SoqtMuKw7NmKBihtfppqJz
-	 30tjBTx0epvQSt/J55qLoxkAhlY0MZubhkfCQ2PDxys2lXPfQWMmVfSxXpledJ76WPw==
+	t=1794540539;
+	b=DiHABVsgCvrSjDTh9Y0GPQWWXRug8WCP9RDKDdmrZDsw7JDUlABm//ahlswxGEuwCiha
+	 ywJK2j2K+s3yvuhCiaDwEBRina/iuYHp7JeFOQDH+Z+9lckohb3/6hCmfeskOlHxqsJvb
+	 H8HiYNSfW8TpwVYmz3Fh1JjuN4h7A0SQNagZpLw16KmPeiL8ZucTiZMX72kzjW2yEbrYW
+	 JN0ezPNmyjGMrxHu/CLJoc1dWBZ3MeYFfJTrvD2kjPP/T9+Opi18hpF5IyJW0eryGj2aH
+	 Gm1wHlRW7mbhsWcZJqkJLksze37eRQeUgNN70D09iACY0G6evqTiOosYBwqep6IoWVg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794528893;
-	h=Received:DKIM-Signature:Received:Received:X-ME-Sender:
-	 X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:X-Mailer:
-	 MIME-Version:X-ThreadId:Date:From:To:Cc:Message-Id:In-Reply-To:
-	 References:Subject:Content-Type:Content-Transfer-Encoding;
-	bh=NwR2wSyV2KhYxI0PF/ZwLwdA5AHcVcrKPi/WugyKj04=;
-	b=xKh63Il+SSPmwWwbT989bGoGRhNlT1YN7qDecKV8kS+GxIYRC3Y6swbqIWaKbPAr05N1
-	 z4YuY/6mqfbDNUyRI7r80qbVkBnYE7PFZ/izUbxZLXLTpeZtZZfvDHSo66hNY+DKfkxIf
-	 +10lEWvm9ozrXW6IgUA9WauoLVyHpOB/huBF582nbkjvXMcS4P6ox4zea9Bqmymudwi+U
-	 5IyW9zHePMJBW32osRf+4NB4J4/sYRxfCnjA4O+qx623IKlzpUmR4eSzaBY5DRWDIAG/w
-	 KZglzoh6nbm5XevciuekkkfOb4qBawB8J7yN45KPn9wrqX8o9ehivu1mxpgNsB193JQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794540539;
+	h=DMARC-Filter:Received:Received:Received:Message-ID:Date:MIME-Version:
+	 User-Agent:Subject:To:Cc:References:Content-Language:From:In-Reply-To:
+	 Content-Type:Content-Transfer-Encoding:X-CM-TRANSID:
+	 X-Coremail-Antispam:X-CM-SenderInfo;
+	bh=ZGUaiQStui/oBajhsUVUJ5o+FnF3+m5kPb6e9oWH/N4=;
+	b=XUuaDfbhyNA3vh6jsxdSTpGH4ptXKVudF1W6SGvUxQ8VDj745Rz6s3f4MdeEku4H9plI
+	 +WA8hyri6nEAwpDZhYiVpBya5yzIwoN+zctF81Rss1+hhHpneQ4lWZM7RWd+aFVNdYONU
+	 bkS5D6BpXOWWB+9tTFFbrmPWA5+tfmyJprOjpJugwlmnBz0JvkiMA+5sMtLAbDLHWpOJc
+	 RKJf/DAqFLPFh//GvM37z7/YokKQeTfJb9A7kwQ6/biRRMjdMafj22PegbgE88FW36ahX
+	 aHKBYlI6hZiUQnKXe/+Ga1gTvCBk3dSgxgoW2aGC0hoRUGj974hp7JQv4p/YO3n9Qdg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=hOVrJR0F;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	dmarc=none header.from=huaweicloud.com;
+	spf=pass smtp.mailfrom=huaweicloud.com;
+	arc=none smtp.remote-ip=124.71.94.104
+Received: from dggmsgout13.his.huawei.com (dggmsgout13.his.huawei.com [124.71.94.104])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9BD15606A321;
-	Fri, 13 Nov 2026 00:14:53 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=hOVrJR0F
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id F1E711F000C4;
-	Fri, 13 Nov 2026 00:14:52 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794528893;
-	bh=NwR2wSyV2KhYxI0PF/ZwLwdA5AHcVcrKPi/WugyKj04=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=hOVrJR0FwgSdBlB/ZCfPGBgGzEKKmzIDIX2eGD89a5EtSDpsXU8fmqI/d+8NTAjht
-	 kiGhNke1nxh2Wh7Nw7YPXuW3mN+sSVUFpqrHS5mLfBKK4yx2S9Z12a14fqsoN8hrVU
-	 pldGiEO9vLG+Y7qVvbjqtSbDxRPdWyP/eVR3C8gx+LydBEN1kTPK7gDinxABFYmUFu
-	 22FMxLkLQlcmgF1MZ5Dbv7E7NlbmrJamOTKeunZ9OnERCrwMkVVMSOA91RUDTwRgmP
-	 9UzJtVRX3a5CKhP79nSB2HEKKSxTbtg3eyYhGO+EGdgGdUpFAtLzY/WO05HCW3Ix+4
-	 foS+EQEYH1fNQ==
-Received: from stl-compute-04.internal (stl-compute-04.internal [10.204.2.64])
-	by mailfauth.stl.internal (Postfix) with ESMTP id 66D34780043;
-	Thu, 12 Nov 2026 19:14:52 -0500 (EST)
-Received: from stl-imap-13 ([10.204.2.104])
-  by stl-compute-04.internal (MEProxy); Thu, 12 Nov 2026 19:14:52 -0500
-X-ME-Sender: <xms:fFb2asM5SkzXMZe6KFy_fjhaukTl80OF49wPq7Ms-nEIwb_cvazRhQ>
-    <xme:fFb2atyd0mB09GY0L5yli96HBY4mtyuoX3ViD7_g4BaVLCzZq5MKi9BOF86RQkXeQ
-    XWUMBVWKjNpX46AJstxALcm8n8am7ikUdemanGX5kOjvDZZyoEof7s>
-X-ME-Proxy-Cause: dmFkZTEXI+Qp90KuiWLSpiY+3WISfla3t4O0XbbPPLzuWlPj/w53GCXDMqpj4UDBkfkB7B
-    +9qIf81kJMjgKczbDcNTSKKEz08QWe3MM4lnqHodiWHfA6997YNOE9PVpJO3VREUxeDi4x
-    hEh4cI/41WtRSOUeY35G9T3zWKEE1qvebJz20/UQRdvT5IBinwe4a74+ikuEbltF9VjNGT
-    HiIFiMuAWdbaeq1DXhjcLAe/LmCu5KLlKzvlyk+jz8BSiejDjF/2Ilq56hdFvZ0yN24JJC
-    sTrOJjLRZazoAXe8k1sQZOgb+irWzWDGeZTiNbL9MTgfSgdQafOK38Ft3m/jxcdjvO5aO3
-    4POmq8eFS+TRvDiq+PadVSTJ69Oq3Vp4WT3TDkp80H37n8RP6q8N98sdq50JsFnP98wSOG
-    VBPYAcMui8hnv8Tzpcgzz9fKYNOtV0w3r7jJNoUVdCMBUaHSSCSniyKv6rz78MnMwIO/am
-    HvpVh5xanLgk8xeoEGv3n1UV06UAqHmN0ufD05iHdL35LcD2sRThgWFzFAIStJIRWczPgl
-    zvI634dfqRS/LBaKDPSdnVBZsxgC6DR83nUSWWGbYMw7oXCeeUPp0x82lnWNVYtMG4p6wh
-    L+u672JGJGJSiEvfzaOsoXp/M0L9wLmG1m1sKixkFUOzP6XwppgkckXi0ADw
-X-ME-Proxy: <xmx:fFb2amWZ6BIH7-S3ZTQPSkjz99pK9mf3ebApWQybQnPYb4Z4QT-f5A>
-    <xmx:fFb2auBbjFSwXuwG4POKZo9Jc0P665BywutZ59XuCDq73vF8acYohg>
-    <xmx:fFb2at5xuZQb9iLlpX5SrJGs4yHE_Tb6DG10TMVk9UcZ0x8QhMMq_A>
-    <xmx:fFb2ahzWF4egzEzAAq5pWwSP1ooQa8MHqWA3Sc2bUWUGfL_yne9fjQ>
-    <xmx:fFb2aszkZTzBIUV-o-TD9_0VM_hnM7E8lZIHfg_0-g0h0nCxvq7b899f>
-Feedback-ID: iccae4b50:Fastmail
-Received: by mailuser.stl.internal (Postfix, from userid 501)
-	id 0F8FBF60084; Thu, 12 Nov 2026 19:14:52 -0500 (EST)
-X-Mailer: MessagingEngine.com Webmail Interface
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 35124606A327;
+	Fri, 13 Nov 2026 03:28:56 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 35124606A327
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.177])
+	by dggmsgout13.his.huawei.com (SkyGuard) with ESMTP id 4jQjPy1VQbz1rqgT;
+	Fri, 13 Nov 2026 11:28:06 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.128])
+	by mail.maildlp.com (Postfix) with ESMTP id D822940595;
+	Fri, 13 Nov 2026 11:28:48 +0800 (CST)
+Received: from [10.174.179.19] (unknown [10.174.179.19])
+	by APP4 (Coremail) with UTF8SMTPSA id gCh0CgBXkO_vg_Zqje6aEA--.20867S3;
+	Fri, 13 Nov 2026 11:28:48 +0800 (CST)
+Message-ID: <167a29b6-32cc-4d98-b664-4b1db1320609@huaweicloud.com>
+Date: Fri, 13 Nov 2026 11:28:46 +0800
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -77,61 +51,188 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-X-ThreadId: A078c3q8o2BN
-Date: Thu, 12 Nov 2026 19:14:30 -0500
-From: "Chris Mason" <mason@kernel.org>
-To: sashiko-reviews@lists.linux.dev, linux-ext4@vger.kernel.org
-Cc: "Theodore Tso" <tytso@mit.edu>, "Carlos Maiolino" <cem@kernel.org>
-Message-Id: <5efb8c04-ad07-4f39-98d0-2896c800b101@app.fastmail.com>
-In-Reply-To: <sashiko-outbox-211908@kernel.org>
-References: <20261112214604.67875-1-mason@kernel.org>
- <20261112214604.67875-7-mason@kernel.org> <sashiko-outbox-211908@kernel.org>
-Subject: Re: [PATCH v9 06/14] xfs: recheck direct write alignment after write checks
-Content-Type: text/plain
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH 0/8] ext4: fix endio zeroout corruption by tracking
+ to-be-converted unwritten IOs
+To: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+Cc: Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>,
+ Baokun Li <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>,
+ "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, linux-ext4@vger.kernel.org,
+ linux-kernel@vger.kernel.org
+References: <20261102-ext4-endio-zero-bug-v1-0-266d2bb9e6dc@linux.ibm.com>
+ <fce5c384-3a18-4156-b0eb-a0d584b8b459@huaweicloud.com>
+ <avVm8XuQbU4sSIF1@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
+Content-Language: en-US
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+In-Reply-To: <avVm8XuQbU4sSIF1@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 7bit
+X-CM-TRANSID:gCh0CgBXkO_vg_Zqje6aEA--.20867S3
+X-Coremail-Antispam: 1UD129KBjvJXoW3JFWUWFW5Aw4kKFWfGF1kAFb_yoWxGFWfpF
+	Wa9F15Kr4Dt392krZ2yan0vw4Yvws3XrW3Wry5Ga1vyFn0gryIgF4xKayj9FyDKr4kGr1Y
+	vr4jqryDCas8Z3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUymb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
+	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Xr0_Ar1l84ACjcxK6xIIjxv20xvEc7Cj
+	xVAFwI0_Gr0_Cr1l84ACjcxK6I8E87Iv67AKxVWxJr0_GcWl84ACjcxK6I8E87Iv6xkF7I
+	0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40E
+	x7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x
+	0Yz7v_Jr0_Gr1lF7xvr2IY64vIr41lc7CjxVAaw2AFwI0_JF0_Jw1l42xK82IYc2Ij64vI
+	r41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8Gjc
+	xK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r1q6r43MIIYrxkI7VAKI48JMIIF0xvE2Ix0
+	cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY6xkF7I0E14v26r1j6r4UMIIF0xvE42xK8V
+	AvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E
+	14v26r1j6r4UYxBIdaVFxhVjvjDU0xZFpf9x07UK2NtUUUUU=
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
+On 11/12/2026 3:12 PM, Ojaswin Mujoo wrote:
+> On Thu, Nov 12, 2026 at 11:33:35AM +0800, Zhang Yi wrote:
+>> On 11/3/2026 2:26 AM, Ojaswin Mujoo wrote:
+>>> There is a data corruption in the zeroout fallback
+>>> ext4_split_extent_zeroout() when we encounter an error like ENOSPC
+>>> while trying to perform endio extent splitting.
+>>>
+>>> The issue was discovered by Fedora coreos community while using 1kb
+>>> blocks size on a 64kb pagesize arch like powerpc or aarch64 and the
+>>> discussion can be found at [1].
+>>>
+>>> ** The Issue **
+>>>
+>>> The issue can be encountered as follows:
+>>>
+>>> 1. Make an FS with no reserved to root reserved blocks and fill it
+>>>    completely.
+>>> 2. Delete a file so that ext4_sb_info thinks there is free space but
+>>>    mballoc doesnt have any (until txn is committed).
+>>> 3. Now when endio kicks in it eventually reaches:
+>>>
+>>> ext4_handle_unwritten_extents
+>>>   ext4_split_convert_extents
+>>>     ext4_split_extent
+>>>       ext4_split_extent_at
+>>>         ext4_ext_insert_extent
+>>>           ext4_new_meta_blocks  // extent tree split/grow needs a block
+>>>             ext4_mb_new_blocks
+>>>               ext4_claim_free_clusters  // thinks we have free space but mballoc
+>>>                                            has none until txn commit frees it
+>>>               ext4_mb_regular_allocator
+>>>                 // return -ENOSPC
+>>>     // ext4_split_extent fallsback to zeroout
+>>>     ext4_split_extent_zeroout
+>>>       // We try to zeroout surrounding unwritten ranges. This code has a bug
+>>>          where we zero an unwritten extent which could have valid data on disk 
+>>>          whose endio has not yet converted it
+>>>
+>>> The main issue is that zeroout assumes any unwritten extent is valid to
+>>> zeroout but it could actually be a soon-to-be-converted extent holding
+>>> valid data.
+>>>
+>>
+>> Hi Ojaswin,
+>>
+>> Thank you for your analysis! This makes sense to me. I apologize for not
+>> having considered this concurrent scenario earlier and for amplifying
+>> the data loss issue.
+>>
+>>> ** The fix **
+>>>
+>>> The way this series fixes it is by per-inode tracking the no. of
+>>> unwritten IOs that are submitted but not yet converted
+>>> (ei->i_conv_pending_ios). If we end up in the zeroout fallback and see
+>>> there are such IOs existing in the inode, then we don't zeroout and just
+>>> return back the original error. More design notes can be found in
+>>> subsequent patches.
+>>>
+>>
+>> Regarding the solution, I agree that your approach looks like it can fix
+>> this issue, and the idea is fairly straightforward. When zeroing out, if
+>> there is other concurrent I/O, just fall back and return an error.
+>> However, I've been thinking about it over the past few days, hoping to
+>> find another simpler and more elegant solution, but that seems rather
+>> difficult.
+>>
+>> First, due to the map range caching mechanism in the iomap writeback
+>> path and for performance reasons, we probably can't go back to splitting
+>> extents when issuing I/O as before. Moreover, the previous approach also
+>> couldn't completely avoid zeroing the entire unwritten extent when the
+>> I/O completes, so the problem already existed before. It just required
+>> concurrency and had a very low probability. Therefore, I agree that we
+>> need to address this problem head-on.
+> 
+> Hi Zhang, thank you so much for looking into this.
+> 
+> So I agree that it is a tricky issue to solve since we don't want to
+> add too much complexity in the fast path. Actually the first prototype I
+> did for this (back in sep before we started seeing this in distros) was
+> becuase I was working on moving zeroout to the fast path rather than
+> just a fallback and had hit this fairly easily there.
+> 
+> In the first prototype, I took the exact approach you discussed here. A
+> new CONV_PENDING type for extent cache with all the plumbing to ensure
+> we don't lose the status untill the conversion happens. What I reliased
+> was that although this was a much more accurate fix, it needed lots of
+> core changes to es layer, and I ran into several bugs where data got
+> corrupted cause the status was getting lost or not in sync. I did manage
+> to fix most of them but it somehow makes me a bit uncomfortable from the
+> POV of a backport.
+> 
+> The patch for the inital version (v v rough and not cleaned up since
+> Sep) can be found here [1]. 
 
-I've done some handwaving around this sashiko complaint in the
-letter, but here are actual details about why claude thinks this
-is the correct path:
+Ha, it looks like we're thinking along the same lines, the
+implementation of this POC is largely similar to what I had in mind.
+Thank you for working on this. Feel free to reach out anytime to
+discuss.  :)
 
-On Thu, Nov 12, 2026, at 5:22 PM, sashiko-bot@kernel.org wrote:
-> [Severity: Medium]
-> Does returning -EAGAIN from xfs_file_dio_write_aligned() without checking
-> target->bt_logical_sectormask cause sector-unaligned O_DIRECT writes to
-> bounce to buffered I/O instead of failing with -EINVAL?
+> 
+> I'll address your below ideas on how/if i implemented them in [1]
+> 
+>>
+>>
+>> Here's a rough idea I'd like to share:
+>>
+>> 1. Add an in-core extent status flag, something like
+>>    EXTENT_STATUS_PENDING_WRITTEN.  Like EXTENT_STATUS_DELAYED, these
+>>    entries would be must-keep.  The idea is to mark ranges for which
+>>    we've submitted I/O over an unwritten extent but haven't done the
+>>    conversion yet.  It would just be an extra flag on top of
+>>    EXTENT_STATUS_UNWRITTEN; the zeroout paths would be the only thing
+> 
+> I added a CONV_PENDING es type rather than flag. I did start with the
+> flag over UNWRITTEN approach but most places like merging logic care
+> that the type rather than flag and which was causing us to merge
+> UNWRITTEN and CONV_PENDING which we can't allow. So instead of modiying
+> code around merging and other areas I just made CONV_PENDING a separate
+> type.
+> 
 
-Yes for reflinked and zoned files, and that's intentional.
+Yeah, it's also fine with me to make it a separate type, whichever is
+clearer.
 
-The sector check in xfs_file_dio_write() has only ever seen the range as
-it was submitted, so the unaligned path already does this in 7.4-rc2.
-Here are O_DIRECT|O_APPEND writes to a 100 byte file, with 512 byte
-sectors and 4k blocks:
+[...]
 
-                            7.4-rc2    v9
-    plain, 4096 bytes       EINVAL     EINVAL
-    plain, 512 bytes        EINVAL     EINVAL
-    reflinked, 4096 bytes   EINVAL     works
-    reflinked, 512 bytes    works      works
-    zoned, 4096 bytes       EINVAL     works
-    zoned, 512 bytes        works      works
+> I agree that in the long term es cache approach is definitely the way to
+> move forward. I'm just wondering if it would be feasible to backport
+> something like that. Then again if we want to backport only till 7.0,
+> maybe it wont be that big of a deal. 
+> 
+> There are 2 approaches that I can see here:
+> 1. USe this patch set's counter apprach as a stop gap, easy to backport
+> solution which works but is a bit clumsy. With the immediate fix in
+> place, we can take time to test and design the extent status approach
+> correctly and land it as a feature rather than something that needs
+> backport.
+> 
+> 2. Ditch the counter approach and just fix it in one shot with extent
+> status approach like in [1].
+> 
+> I'm happy to work on either of the two, what do you think shall be the
+> right way forward?
+> 
 
-So the patch makes the block aligned write behave like the 512 byte one.
-A write cut short by RLIMIT_FSIZE goes the same way.  In every case that
-works the new data is right, the other side of the reflink doesn't
-change, and xfs_repair is clean.
+Personally, although I still think this counting approach is a bit
+hacky, I'm not opposed to using it to fix the problem first.
 
-Checking the sector mask again in the aligned path would only keep the
-two paths different.  Checking it in the unaligned path as well would
-fail writes that work today. 
+Best Regards,
+Yi.
 
-> For non-CoW inodes, xfs_file_dio_write_unaligned() proceeds into
-> iomap_dio_rw() where extending writes allocate unwritten blocks in
-> xfs_direct_write_iomap_begin() before iomap_dio_bio_iter() rejects the
-> bio alignment.
-
-That part isn't new.  Before this patch the aligned path called
-iomap_dio_rw() with the same range, so it allocated the same blocks
-ahead of the same -EINVAL.
-
--chris
