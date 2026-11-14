@@ -1,58 +1,57 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794657826;
-	b=VyQp1UTM2KB9uChndaLoH1xvc+pYxiYgXGD3gmDzaER9KF+eZEmQIc99LZ06sqr2wpjC
-	 SQa+2qB0navKBoeCyL0Amuy9LlxhZKKMT52riAI6eTcigmBESDYJT+VLou9tedPlDrO/l
-	 brNXN9U3k4tLgrL90/8q1/dKxHTtbH0K7IMtdN6FMD+M7+UqWKUFupnT3ZTnN39FiHqnd
-	 vtoOTYoBnMMfkcb5iBUADjYdMun8PXU7w+ARTmS4ZV+WRjs2ZOeQd73AApQODnYHISREB
-	 wYiYtZ2kMlw7S2ZvZUVkF2urwJbuOCFY5zakkopJG4Sq2EU35eWhB/fSKzAhTvCQkxA==
+	t=1794657827;
+	b=vUNV+zf0jEIe/4/XkjFuZ9sJtXavU+LbbkExznALIIk4rrOrZ+UhM+JJAX6zcOlj5WDF
+	 eZuxxmQuVkZBytPpWsWtTc+GlDhn9KeCOskRdi3kIXcsj5nCjZck0a8hfKfM6V8ks6CmH
+	 f4oTqNbFHhDC7X+bcWK+mpi+FCsep09+t6gsfH0/gvsYjdhxNGQOg3NoYrol2NEa4QN43
+	 UP8iVThJX+LmU2A7rLfbuTbLK0fsDFoaw6pzHR6mQwgAQ/Rx8Eog3cRQWEnpZcM43WoHx
+	 Vl1koKbN+HkcBmy8Yzyq/I7cGJBPjakjqpofqmFw+8AJvcHfzYFFi1t+Sbv8DhUa7OQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794657826;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794657827;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=Nvg4fIvN5qtMATjvOR2xS4eNpAt8eUmvUzinIY1npxU=;
-	b=SI64W/dWGv+yoPh+t6fstpnDWtfU5J1vWyFvr7hesS/nbbWqvrrvwc+ePyjqmj9JxxM0
-	 boK6GO6QWPETdk6C4cP7iMcZJNNE+K77hRAWH9jH0PvSvPNnjOpdUTYy9yLKf8a4/n8YB
-	 Df86tgh2RcsJgllR76aLaIt42ODMoheJhrZvJdLW4sefXAc1/rlxhULXQI80qQFaFurj3
-	 7T0UN8+uiOHB+NpcFKbfMgT06JHcDEFu3qv05nV+UubuCvsQmianjS8LhW1pJGSHHL5Wp
-	 kHUwjplkzgp0nc/JMp7aG6L1zfm/ZtQwbqwbh1RQHILDraFW3NuePFa4AnJy1rCXlZA==
+	bh=JJm9nfB7C7r+XTvqMLxAZhLsCSVxQL6AYJnn4sY2W+g=;
+	b=WSr4O/ytT46QKYPkI6bP/TZLMS2IPPdD9CVabfYnowHagnCXeOk6QwP++fWW+qSej1UX
+	 E2t0p101WIGDpxCrHr2whp/qu8ajPRXhS+AYjaLaNbQu+bPvSxM+1XKvYGYjWCcLsEWRc
+	 nhyxhSey+CSRa/W0h0YZOT4QD5QkMEHPwB6e23HJnxgHUBc9VBL4CrBJ7e2GheX94ei2N
+	 pMwvGKrhMH7G+8E097zMziOSt2pYsI5mN7TQxWFowu49qUEpxvx2H+ka5ZxfZxCLIXKhX
+	 ZioJySjsUGssKIqsKwpkaawAcHAAAUF/aA6Ba7VpA90Eeu7l1SGx+rJ8qVwxUkyQImQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ET4AWmsH;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="Y+jXO/xt";
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 637E7606A336
-	for <linux-ext4@vger.kernel.org>; Sat, 14 Nov 2026 12:03:46 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7A92D606A336
+	for <linux-ext4@vger.kernel.org>; Sat, 14 Nov 2026 12:03:47 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ET4AWmsH
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id EDFDE1F000C5;
-	Sat, 14 Nov 2026 12:03:45 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Y+jXO/xt
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id B7C301F000C5;
+	Sat, 14 Nov 2026 12:03:46 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794657826;
-	bh=Nvg4fIvN5qtMATjvOR2xS4eNpAt8eUmvUzinIY1npxU=;
+	s=k20260515; t=1794657827;
+	bh=JJm9nfB7C7r+XTvqMLxAZhLsCSVxQL6AYJnn4sY2W+g=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=ET4AWmsHnV0GAfAy3Efk3F+877T26ynnv6XoRz7cAmyqPSvieDWwQUasn+ZymRPI1
-	 MGBFw4ZGvCkxrt5RiQ4SKcnJM6rR6ctR1KxG58hyjYgsWvyMRAvBLzaya4s9OyjMUR
-	 lqNjH8RAQYfyf+tCHLxnS4nxMZ0WJRUQIqiQOX72TR1MZOfrnVlmPtgjeEWf8hPgHp
-	 x0Y2RLqqk4m8HhKJarG3+Z5eT30PEt42gWf6OfExD8sKxR3r0SZmztVLx9oRk1BbKS
-	 l6nAfX6IxLnlPhv5ki46q6/6EU+4fl/tug3MsHrDxR8kafwh9kBNzYJtA7qRlgXSPP
-	 f6bTY2VAGmlWg==
-Message-ID: <sashiko-outbox-214473@kernel.org>
+	b=Y+jXO/xtUP4uGfz7VgMGPLNXa3ztyyR9uAHoR5vYrkbjhsdxsOUff9v/fKtIHD5Fk
+	 bssQgepjUdwKjTGg7q88GyMtQPynYkoEKRQHCfkeKw6CamMKJ7CwJQkCf+wgZkVq8S
+	 qYZAD+9VLPfPc+2wc/aPQbVaM+C8NgBHsERJ9Aqk4bAfIH/ozbGqI+jF9YpMuvkK1D
+	 hFPH9Nvh3Rpnoj3Z8GSLbUA3fq5TluKMevuOGSe6Kq4v0cnOFItbbsTrOhr+Yait7H
+	 YC5D6/+6yBvzzcTXK8RyHoSWsfLl6U47cbSkI541ZmDCw23Sp12QtGSBk1N/dQCjd1
+	 xvYOacKYz7DvA==
+Message-ID: <sashiko-outbox-214474@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH v3 22/33] ocfs2: don't set SB_RDONLY after filesystem
- errors
+Subject: Re: [PATCH v3 23/33] zonefs: don't set SB_RDONLY after I/O errors
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Christian Brauner" <brauner@kernel.org>
 Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, "Mark Fasheh" <mark@fasheh.com>, "Joel
  Becker" <jlbec@evilplan.org>, "Joseph Qi" <joseph.qi@linux.alibaba.com>
-In-Reply-To: <20261113-work-fs-sb_rdonly-v3-22-0be92bb73709@kernel.org>
+In-Reply-To: <20261113-work-fs-sb_rdonly-v3-23-0be92bb73709@kernel.org>
 References: <20261113-work-fs-sb_rdonly-v3-0-0be92bb73709@kernel.org>
- <20261113-work-fs-sb_rdonly-v3-22-0be92bb73709@kernel.org>
+ <20261113-work-fs-sb_rdonly-v3-23-0be92bb73709@kernel.org>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Sat, 14 Nov 2026 12:03:45 +0000
+Date: Sat, 14 Nov 2026 12:03:46 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -62,38 +61,32 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-> With errors=3Dremount-ro, the default, ocfs2_handle_error() sets SB_RDONLY
-> without holding s_umount. If that happens while the filesystem is frozen
-> through bdev_freeze() thaw_super() leaves the s_writers rwsems locked.
-> Writers hang and so does umount because ocfs2_shutdown_local_alloc()
-> needs sb_start_intwrite().
+> zonefs sets SB_RDONLY from its I/O error handling without holding
+> s_umount: with errors=3Dremount-ro, when the zone report fails and when
+> closing an explicitly opened zone fails. If that happens while the
+> filesystem is frozen through bdev_freeze() thaw_super() sees a read-only
+> superblock and leaves the s_writers rwsems locked. Writers hang and even
+> a remount to read-write doesn't help because the next freeze blocks
+> forever.
 >=20
-> The soft read-only state doesn't stop modifications on its own. Every
-> read-only mount sets it and those still need transactions for recovery,
-> the local alloc and the truncate log. Everything else was stopped by the
-> VFS because of SB_RDONLY. So call sb_set_emergency_ro() instead which
-> keeps it that way, and keep setting SOFT_RO for the existing
-> ocfs2_emergency_state() checks.
+> So record the error in a new ZONEFS_SB_EMERGENCY_RO bit instead. All
+> three places go through zonefs_set_emergency_ro() which keeps printing
+> the warning once. Write opens, write_iter and setattr fail with EROFS
+> and page_mkwrite with SIGBUS. An error on a read-only mount doesn't set
+> the bit.
 >=20
-> The xattr and ACL setters get a check of their own because ecryptfs
-> calls them without write access on the lower mount. It sits in the xattr
-> handlers and not in ocfs2_xattr_set() because chmod and setfacl store
-> the ACL through it after the new mode was already committed.
+> The state lasts until umount and zonefs.rst says so. A remount to
+> read-only works and writes nothing. /proc/mounts keeps showing the
+> filesystem read-write. ftruncate() and write faults through file
+> descriptors and mappings from before the error are refused now too.
 >=20
-> Quotas aren't enabled at mount in the error state because that writes
-> the quota files. The VFS doesn't call ocfs2_sync_fs() in that state and
-> a remount to read-only doesn't suspend quotas. Q_GETQUOTA and
-> Q_GETNEXTQUOTA can still start transactions. I've left that alone.
->=20
-> Writes through file descriptors opened before the error fail with EROFS
-> and umount completes instead of hanging.
->=20
-> Reviewed-by: Joseph Qi <joseph.qi@linux.alibaba.com>
+> Fixes: 8dcc1a9d90c1 ("fs: New zonefs file system")
+> Cc: stable@vger.kernel.org
 > Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 
 Sashiko has reviewed this patch and found no issues.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261113-work-fs-sb=
-_rdonly-v3-0-0be92bb73709@kernel.org?part=3D22
+_rdonly-v3-0-0be92bb73709@kernel.org?part=3D23
 
