@@ -1,58 +1,58 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
 	t=1794657819;
-	b=M4YK8JaCytmAtrox+7A4z2WT4Q9VKAoYYeVcbcZNGf5y8Hoazls51n4y4hxdT4blzweR
-	 eeL4dY6E+2bpRkpIq3XO+VfuNTwVDlCT/NRIjDIAxPOOTqIQ8Mlm5JB+sL3SJ4bARgFZ4
-	 jJx8HDPKIlu7jpSTuOMeE3cgOHRuFFHdLRtKfoZwqDLBkif6MntrRhjkUwSZgyRgYkrH8
-	 kdRLQ9djgnJiRehnJFdmRSVw0J3i9CJWPl4XImXXvaLMMf/Qmg6fXPbFQGJGhZk7v9Evs
-	 PADXk7gsed+HJN6apDYXSQS3o2dhen6AeqDjTY3U0vocIo+7vJOwOzGKRiC+4FbhTgQ==
+	b=20tAKDX7xXSKklAHlmxnvjkzS4lBxwUNE7dkW1J4Ksa/UUWnw/avorpw71uPDEvVNGzm
+	 1UyIF2CRtrotSpR9E+WSZNKHgg0+Ui0s8w0GBzmkc8CR5lY3kpuGcoWxyEbhkE7YMJ5oy
+	 /nkGy6M0c0G9TkPUn/Az9RdqF/Juti6FpYWfhXTwKJh3qW96kqGxqzvcx5xWp20Berkb7
+	 BFOdIIDpQZjkWvUN+wSHn+469Zq10sHwpjflHhychCnIc2XyqTIzMSboA8/RREnB5Tycn
+	 SNIJf0q6yc03T7JIbtjGOFubsZ5zSipPVA8Q9n0XODqI9IsT7YQoq4KufTVBgMEg6FQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
 	a=rsa-sha256; c=relaxed/relaxed; t=1794657819;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=VJvTxxxVKFSKaVy4VwipIwjtqqi4NX20dtdLW1nv+Hc=;
-	b=QbRUHOfouxDJWRWtaC58xL1pVNZP+pLC1CmT8A4ludYe9FghSHmaFwhWcdnFPLLG91kt
-	 VMRzn/q4OdvKVtm/OR2DwM78tQRBdgLjdldevmWde5jnJ3IyIKUDAPPXR0XDnOTxxqcsc
-	 qeiB9khSIfiGmxtFuH0Uek/lThRv8me/Pye5xpjZ3vZ2pK1t2ToOadhf70atXwPCMwRGn
-	 ZS+ro+Rd/bHS0dVb0gmNvDPaRuuCr599gRlkyzzcJy4cL0dv9VmfAPhUhk4bZArOOIzk2
-	 ugKLNOFQvBQevoreUOt5IHqlNoWscCY7GQeXkvA1+WsZP1ojX6+lcxxinRRPclNCjnw==
+	bh=O9aEDQnPlgsg5A+33Arr73AkdxoSxY8KrxbvcSsrOk0=;
+	b=sV+lQcX4TUWoWqhk4hur4K7MtA1LQqN4k1N+eBJnXje+ZSy44KtiYCcezsH2KyZXCd0x
+	 R03gwwXZTO03ZlOSuiZmjSTrA/XT19CzxZWMJRXQZDFybBYOoR3rrrkORNDT/SkXIjB0s
+	 osgSci7q2BO4E1pnW+xZrZ+WQ9a74B1hNXScuFAPr3axxFrlLpAouypdIDA96TUy5w8K2
+	 sWYVx+gHeU/mnuDcdUhafSMqEpP/C4UEdI0AcMPn5NJZrJn5363U76yjyRpBE2TbhoeEn
+	 lnhd7DNDcLkgFC3h1JWJOTSdJ6M81tptWKWUmt3d7g9YQxhuVLB/jPxciCG+8qaOI+Q==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=SJXRZ7UC;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Fc+jfklO;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E93C6606A88E;
-	Sat, 14 Nov 2026 12:03:38 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 889D2606A880
+	for <linux-ext4@vger.kernel.org>; Sat, 14 Nov 2026 12:03:39 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=SJXRZ7UC
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id EDA6C1F000C4;
-	Sat, 14 Nov 2026 12:03:37 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Fc+jfklO
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0EAAC1F000C5;
+	Sat, 14 Nov 2026 12:03:39 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794657818;
-	bh=VJvTxxxVKFSKaVy4VwipIwjtqqi4NX20dtdLW1nv+Hc=;
+	s=k20260515; t=1794657819;
+	bh=O9aEDQnPlgsg5A+33Arr73AkdxoSxY8KrxbvcSsrOk0=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=SJXRZ7UCCdy3QZyo+FxMDY7k8UIUGk6IYo89lBu3JfDwkdzTs3BZnWyGaCc/ULTNn
-	 hTClA74WxBneCreuWBl8YFI8tBn7zxnnD9TXVlOMqnV+xQ6uV8PhP1S9SPwJ6ZTpSO
-	 5zAHKao9moTQQgbLDO8sbnPffmS1wkAjk8AyR8QA7xbPlYrXri8uKa7QkpNcwLQwID
-	 Wxo2z8l+5N6HHOqpdrXitXhs30JB45pi0jnIIoiIE1pk9b1JjFa/5wKPTdMicUZTzV
-	 9CQoNePsc39FBbjGyiptDy9bf0aHlUaDlJQsHsyhfRni7RfJyClfhj54WdR0L/qJMM
-	 FNvbQxj3FfiCg==
-Message-ID: <sashiko-outbox-214468@kernel.org>
+	b=Fc+jfklOmIr9g20OFdXsPQjh/o4zomReP5PkmG0MgAuC2c6dvIPa9ZVpbiXF3o0bC
+	 n5q8DZxDAMlEUycawkiod6xTi5DCxk1IIF667P0HK6954vXb4l/bAGlt0qEz9Yiice
+	 MuZuceJe/iMCLuWd7jeBBj2muNvF1uVkN6nNSQ8yS0srMIHhKCnpI/FCA1bhkMREEQ
+	 dnGP8ZGQubClkIueh/XP05DIY95u14R8YNJr0PHe+nYTAC+uCx2oqKsTR0eJgXevJl
+	 J3aXRRSy5LAei1NCKfHVsrvDBg6kETGY/v/UdXQuTXQZXmfbHrecuheBgGJ2nRXeGw
+	 Asc6zR03Wf13w==
+Message-ID: <sashiko-outbox-214469@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH v3 17/33] ufs: don't set SB_RDONLY after filesystem
+Subject: Re: [PATCH v3 18/33] hpfs: don't set SB_RDONLY after filesystem
  errors
 Reply-To: sashiko-reviews@lists.linux.dev
-To: "Christian Brauner" <brauner@kernel.org>, "Jan Kara" <jack@suse.com>
-Cc: "Al Viro" <viro@zeniv.linux.org.uk>, linux-ext4@vger.kernel.org, linux-mm@kvack.org, linux-efi@vger.kernel.org, linux-mtd@lists.infradead.org, dsterba@suse.cz, tytso@mit.edu, "Mark
- Fasheh" <mark@fasheh.com>, "Joel Becker" <jlbec@evilplan.org>, "Joseph Qi" <joseph.qi@linux.alibaba.com>
-In-Reply-To: <20261113-work-fs-sb_rdonly-v3-17-0be92bb73709@kernel.org>
+To: "Christian Brauner" <brauner@kernel.org>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, "Mark Fasheh" <mark@fasheh.com>, "Joel
+ Becker" <jlbec@evilplan.org>, "Joseph Qi" <joseph.qi@linux.alibaba.com>
+In-Reply-To: <20261113-work-fs-sb_rdonly-v3-18-0be92bb73709@kernel.org>
 References: <20261113-work-fs-sb_rdonly-v3-0-0be92bb73709@kernel.org>
- <20261113-work-fs-sb_rdonly-v3-17-0be92bb73709@kernel.org>
+ <20261113-work-fs-sb_rdonly-v3-18-0be92bb73709@kernel.org>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Sat, 14 Nov 2026 12:03:35 +0000
+Date: Sat, 14 Nov 2026 12:03:38 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -62,78 +62,30 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-Thank you for your contribution! Sashiko AI review found 1 potential
-issue to consider:
-- [Medium] ufs: cylinder group leak and SB_RDONLY clear in
-  ufs_reconfigure()
---
+> With errors=3Dremount-ro, the hpfs default, hpfs_error() sets SB_RDONLY on
+> the first error without holding s_umount. If that happens while the
+> filesystem is frozen through bdev_freeze() thaw_super() sees a read-only
+> superblock and leaves the s_writers rwsems locked so every writer hangs.
+>=20
+> hpfs_error() is also called from hpfs_fill_super() where nothing can
+> freeze the superblock yet, so keep setting SB_RDONLY there. After that
+> call sb_set_emergency_ro() instead and let the VFS refuse modifications.
+> FITRIM is refused and unmark_dirty() does nothing in that state so the
+> next mount reports the volume as improperly stopped. hpfs_map_dnode()
+> and hpfs_lookup() treat the state like read-only so lookups behave as
+> before.
+>=20
+> After a remount to read-only a remount to read-write fails until umount.
+> A plain remount to read-write right after the error succeeds but the
+> filesystem stays read-only. A remount to read-only doesn't write the
+> spare block. Writes through file descriptors opened before the error
+> fail with EROFS.
+>=20
+> Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 
-commit eaf412f5390fa6f1c30001040b118660141a9bd6
-Author: Christian Brauner <brauner@kernel.org>
-
-ufs: don't set SB_RDONLY after filesystem errors
-
-This commit switches ufs_error() and ufs_panic() from setting SB_RDONLY to
-calling sb_set_emergency_ro(), and keeps cylinder group structures allocated
-across read-only remounts after an error so inode eviction can still use
-them.
-
-> diff --git a/fs/ufs/super.c b/fs/ufs/super.c
-> index 3569ac92b065b..d82cf73360a79 100644
-> --- a/fs/ufs/super.c
-> +++ b/fs/ufs/super.c
-
-[ ... ]
-
-> @@ -1265,14 +1281,20 @@ static int ufs_reconfigure(struct fs_context *fc)
->  	 * fs was mouted as rw, remounting ro
->  	 */
->  	if (fc->sb_flags & SB_RDONLY) {
-> -		ufs_put_super_internal(sb);
-> -		usb1->fs_time =3D ufs_get_seconds(sb);
-> -		if ((flags & UFS_ST_MASK) =3D=3D UFS_ST_SUN
-> -		  || (flags & UFS_ST_MASK) =3D=3D UFS_ST_SUNOS
-> -		  || (flags & UFS_ST_MASK) =3D=3D UFS_ST_SUNx86)=20
-> -			ufs_set_fs_state(sb, usb1, usb3,
-> -				UFS_FSOK - fs32_to_cpu(sb, usb1->fs_time));
-> -		ubh_mark_buffer_dirty (USPI_UBH(uspi));
-> +		/*
-> +		 * After an error leave the superblock alone and keep the
-> +		 * cylinder groups, evict still needs them.
-> +		 */
-> +		if (!sb_emergency_ro(sb)) {
-> +			ufs_put_super_internal(sb);
-> +			usb1->fs_time =3D ufs_get_seconds(sb);
-> +			if ((flags & UFS_ST_MASK) =3D=3D UFS_ST_SUN
-> +			  || (flags & UFS_ST_MASK) =3D=3D UFS_ST_SUNOS
-> +			  || (flags & UFS_ST_MASK) =3D=3D UFS_ST_SUNx86)
-> +				ufs_set_fs_state(sb, usb1, usb3,
-> +					UFS_FSOK - fs32_to_cpu(sb, usb1->fs_time));
-> +			ubh_mark_buffer_dirty (USPI_UBH(uspi));
-> +		}
->  		sb->s_flags |=3D SB_RDONLY;
->  	} else {
->  	/*
-
-[Severity: Medium]
-Can reconfiguring via fspick() after an error and a read-only remount
-leak the retained cylinder group structures and clear SB_RDONLY?
-
-When a read-write mount hits an error and is then remounted read-only,
-this branch skips ufs_put_super_internal() so sbi->s_csp, sbi->s_ucg, and
-sbi->s_ucpi stay allocated while SB_RDONLY is set on sb->s_flags.
-
-If userspace then reconfigures the mount via fspick() and fsconfig()
-without specifying ro or rw (for example, changing onerror=3D), fc->sb_flags
-and fc->sb_flags_mask are both 0.  reconfigure_super() only rejects
-sb_emergency_ro(sb) when SB_RDONLY is in fc->sb_flags_mask, and
-ufs_reconfigure() checks (bool)(fc->sb_flags & SB_RDONLY) =3D=3D sb_rdonly(=
-sb)
-without consulting fc->sb_flags_mask.  Execution then falls into the else
-branch, where ufs_read_cylinder_structures() overwrites the existing
-sbi->s_csp, sbi->s_ucg, and sbi->s_ucpi pointers (leaking memory and
-buffer_heads) and clears SB_RDONLY from sb->s_flags.
+Sashiko has reviewed this patch and found no issues.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261113-work-fs-sb=
-_rdonly-v3-0-0be92bb73709@kernel.org?part=3D17
+_rdonly-v3-0-0be92bb73709@kernel.org?part=3D18
+
