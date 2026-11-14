@@ -1,57 +1,58 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794657814;
-	b=sehpExuddvVcPideG86mccEVK/YTFDbydeCNFula15lPgpMZVgA7UDIyGtDq2fjyBOia
-	 DOLnOygvuohz8mtDGqSykNMBtsCqMeF0NTRTBYPhkoPk5gPxnghI76WwPGringXchEDxP
-	 Jk3HbyKLpS/r4pw4XfIoCVz3GzkEzt5bFzWzJGKkwgTFaLzvH/FzNrfQ1WVa2jGbXHBgl
-	 nSTHuTGBw4heDBoRZ06rpawtVJJPdpImMjfhJSa9y0SyiSyQNl9SAebQUXlhtnQIC/tNB
-	 gQAPavsFToS8FEfGaJTFlDFoNtvaRZBpTgXlDLI5DqyPmGE9PZqd4NDPGqAdjdz4cqQ==
+	t=1794657815;
+	b=J/Bcbcsf4SIfgXBiGlTb/SXNuA20sAGn16jqk2YrQqahS+DLvq4m0hsD9FtqJQMDjsvn
+	 ZGPo72C/FtjEZ2PQS/Wzg77KqnvBbaly+BiIgczN2fbqOaf6iMjGqPh6Seu7BrTP2rmee
+	 ePnUFXqJcrrUM0KIZEIUXBUvqnnjOdyCALNy0VhbFl8h3+AiRAtSuS/xbr/b7TellmezZ
+	 wEi8l4TmI2ZC3YD3xP7MTPtXooQz8K+Pnf88o4R+m1CaHbJ7mkb0OqfosnfGjEjReS9Na
+	 6ZQdMDDllWO5w45ji8TIbfdGq6UJTeBVrDoS1+y5DAWn7txKAmR3Lhsq09MfcCL/Lwg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794657814;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794657815;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=mBj0pNnT6ZmTV4Sfk7l6RPmHEPeHMBZ88EemaVBM708=;
-	b=tYccJy0LZ4bs3uqMsyfm0mVVG6QBFxvSLaEnnbz0GdNNHZv6BjGQMUN5hsJuw0pxbdEJ
-	 4OnWwoBi5vT/VMhpixy/qKqO6Az9CEVVRekFcvU6zntu9uZf7iSc/Tc0IogDNbZOYtRf+
-	 auC7xbLKAVvF4fFRRfPa2fsoZjPrTGjilHg2bW1E3fqcQUtNG0GjlVgQ+Vyok/DDZa4o3
-	 INVSchsXACM7cTc0rj6FtsRRxIPf1Rx3pp0Z4LUJOJwOEwywDGXF8IUAHtaNbIP4ei8Gk
-	 DsXINCrM+Da9zbdbNJcWA5Tf4SuRfHzeZyGBzcM6ISK7L708izUFtj6xmXrih/+ZVhA==
+	bh=sHrC0OOzwO9cTErJhqSuau16cuQJeq2/BgddghVoY3U=;
+	b=oY6Wur3VxV9Jfgh9B6uuUBXPBGSy/GSdINFMq6M6ltROahC2dkjAMMkXlNIURO5Q4BZu
+	 1xQQzYEiAWM7v0js2XPgYSthcfb0gOYu64IyNwPxLKaLdC6El81jFxkHQ0W3mFiVkld/V
+	 7Qys1RrUa89xVEEAr/Y55p96Zw0UUjQ0B1I33OxoVemWLyKC9g/YarM0hdJeFsGV5JQyt
+	 EoR3btM/R74ZUAWdHL0jK+p7eDKd2tOTvwNfhyLNoGGm28osmjvpjlV4AITO4ZISU59Ok
+	 6rVM+qnpfhtH/I9fu0JhqB2voMZYLgP393xUSEdma6HvSQNk67cmn4VIVZa4fkPtn6Q==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=kGpsqxq9;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="d/AZR7vn";
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 64238606A323
-	for <linux-ext4@vger.kernel.org>; Sat, 14 Nov 2026 12:03:34 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0B787606A336
+	for <linux-ext4@vger.kernel.org>; Sat, 14 Nov 2026 12:03:35 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=kGpsqxq9
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id ABDBD1F000C4;
-	Sat, 14 Nov 2026 12:03:33 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=d/AZR7vn
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 94BF71F000C4;
+	Sat, 14 Nov 2026 12:03:34 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
 	s=k20260515; t=1794657814;
-	bh=mBj0pNnT6ZmTV4Sfk7l6RPmHEPeHMBZ88EemaVBM708=;
+	bh=sHrC0OOzwO9cTErJhqSuau16cuQJeq2/BgddghVoY3U=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=kGpsqxq9d2NVVM80oAgjWBrlycKFsR87GMIXxf2Y60PaR844WZmrsB6+FOAjV2ncM
-	 vM26L1nUWZuY/QAoJvhMHeTbm9dhB44OqoYkXxn1l11hld6lYghhTEtNEP65vAYJsx
-	 GJQ9rNhjQ4g83mjWk2utdhmTW2Fa7N/K9lB5se1CAEuacaw0UQ62hC2+m12qNGWwUD
-	 KqlQYBfYNJ9g2WYuSztugQo3aeNACQjDvSuHbm4wf+bl6CQ4tBvPPnUw5Wz3zhOqiU
-	 8N9TejNYlt8RN0/eFCHpPE2O+l9MNqyrBiFP8xW7sWEYdUyJ8pg/KLf8Q/oWm0kASP
-	 XBrqm5HGcWGGA==
-Message-ID: <sashiko-outbox-214465@kernel.org>
+	b=d/AZR7vn1H6Ue/6H4KCb6b5UhJsEngX+AxId5Qr+b2IbA90+ubVRbYX3uYa1zErh8
+	 6UxuIOHAdqPuirMHmbOqr1bD3wqP+PTCalePxsb8hGkY1OUXex/1iahWqeifm39bB7
+	 mMhomCd+BTMsb5MIldMY1oQX9GS1T7YUZDkfVqBEVHnEz2sPVqUt5LF/DXIoH3zsjQ
+	 eOwLh4Vnwe+VzprYOZeEYm9QsJBSUG8HXeqW3I/l8AbSMOvgxkEuo0yCYQ8ADCHxZo
+	 cZjnkCdxNyqgPtQdQt8SZSMe+noQKNFHHuvtVO7MnaA3FIHB/3+C18gZX2BMU+iRmW
+	 f4sfE+7nkjFOQ==
+Message-ID: <sashiko-outbox-214466@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH v3 14/33] hfs: use the generic emergency read-only state
+Subject: Re: [PATCH v3 15/33] hfsplus: don't set SB_RDONLY when creating the
+ attributes tree
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Christian Brauner" <brauner@kernel.org>
 Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, "Mark Fasheh" <mark@fasheh.com>, "Joel
  Becker" <jlbec@evilplan.org>, "Joseph Qi" <joseph.qi@linux.alibaba.com>
-In-Reply-To: <20261113-work-fs-sb_rdonly-v3-14-0be92bb73709@kernel.org>
+In-Reply-To: <20261113-work-fs-sb_rdonly-v3-15-0be92bb73709@kernel.org>
 References: <20261113-work-fs-sb_rdonly-v3-0-0be92bb73709@kernel.org>
- <20261113-work-fs-sb_rdonly-v3-14-0be92bb73709@kernel.org>
+ <20261113-work-fs-sb_rdonly-v3-15-0be92bb73709@kernel.org>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Sat, 14 Nov 2026 12:03:33 +0000
+Date: Sat, 14 Nov 2026 12:03:34 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -61,11 +62,19 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-> Set SB_STATE_EMERGENCY_RO instead of a private bit and drop the checks
-> the VFS does now. What's left is hfs_get_block(), hfs_file_truncate(),
-> write_begin, O_DIRECT writes, the hfs.type and hfs.creator xattrs and
-> the MDB commit, close and dirtying paths.
+> hfs_btree_open() sets SB_RDONLY when the map record of a b-tree doesn't
+> mark the header node as used. That's fine while mounting. But
+> hfsplus_create_attributes_file() calls it too when the first extended
+> attribute is set on a filesystem that has no attributes file yet. That
+> runs on the live filesystem without s_umount and a filesystem must not
+> change SB_RDONLY behind the VFS' back.
 >=20
+> hfsplus_create_attributes_file() opens a tree it has just created itself
+> with the header node marked as used, so there's nothing to check there.
+> Move the check into hfsplus_fill_super() and do it for every tree it
+> opens. No functional changes.
+>=20
+> Suggested-by: Viacheslav Dubeyko <slava@dubeyko.com>
 > Reviewed-by: Viacheslav Dubeyko <slava@dubeyko.com>
 > Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 
@@ -73,5 +82,5 @@ Sashiko has reviewed this patch and found no issues.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261113-work-fs-sb=
-_rdonly-v3-0-0be92bb73709@kernel.org?part=3D14
+_rdonly-v3-0-0be92bb73709@kernel.org?part=3D15
 
