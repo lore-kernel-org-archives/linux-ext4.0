@@ -1,245 +1,100 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=103.168.172.143
-ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794705614;
-	b=sUPLmNV/pQsRGUJGjtN7E9MI1H+P9CsenYNbqRiUfiQpVwN1IwgchZVOb6rE+T7IC7pU
-	 kLNNeIcxSZVj31JT3ma3z/LYOInolIge0o1MoCVZ+XjrZV2OYc7sT7pFXvvLpKAi5oABN
-	 sAANaQcE4+ohrOi8VbFjN2YHYs8SMAWpf6n+yjuXCEq/v04EkQtn4mmitlpW5j9bGAnpE
-	 /wN+/aw1aojesU2k+mEQZULJxFelWgWcUbOWlzna7w4DxnvWF9/dYumGuGkLPySJaZy0W
-	 jaGF8lwsIr6GKAB96J7OgHdGpKO0452iu7IQMzoCzVzDI9uOKry0/hMnnCVUnPcjRdQ==
-ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794705614;
-	h=DMARC-Filter:Received:Received:DKIM-Signature:DKIM-Signature:
-	 X-DKIM2-Info:DKIM2-Signature:X-DKIM2-Info:Message-Instance:
-	 X-ME-Sender:X-ME-Received:X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:
-	 Received:Date:From:To:Cc:Subject:Message-ID:Mail-Followup-To:
-	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
-	bh=QIES4zNTDxRjCnYHiHcWq6p6uX7fK/EWYh7I/zXroHQ=;
-	b=EMDI0DufUZLFADU48eArO/P6pJ5yTW0JEdGrpNAhYwnPqUkDN4bkP7aqF05CzTF5PF+x
-	 5EZgl8NgmG0EBa3nah9v87J46X+XbZbszXFjNBdYWDRUm5bQ1w0P7R1svn2peBW1NkORe
-	 viTyCelJ6A/Spr6gloQfgqVj3gAJrhqwjqqLTgU2KyGUYmKTvAfqJNxBXEGfR1wvHLPEr
-	 T9eFE0WGkHjaFJFLpJqKBejQ7Uq2LuBVJ4rUcBgAWgmMqdlJ5zdFM98kGew6GLiIfHUiz
-	 U3PrOIgD42c2flPt5D2lf7sAh+EcoBXq1E5Q0/U3ZLuet9LjSRlW/xxGZ3ou0/LXFbA==
-ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=sakamocchi.jp;
-	spf=pass smtp.mailfrom=sakamocchi.jp;
-	dkim=pass header.d=sakamocchi.jp header.i=@sakamocchi.jp header.a=rsa-sha256 header.s=fm3 header.b="pjuVmr/L";
-	dkim=pass header.d=messagingengine.com header.i=@messagingengine.com header.a=rsa-sha256 header.s=fm3 header.b=syy3aDEc;
-	arc=none smtp.remote-ip=103.168.172.143
-Received: from flow-a8-smtp.messagingengine.com (flow-a8-smtp.messagingengine.com [103.168.172.143])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.218.48
+ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
+	t=1794742999;
+	b=CYxzJSM8rv1eKw85/gZkIKgy+H1HPhuNT8tpx9E+gcSkyhMg+HSMY1DcGQHs9b0VvNdf
+	 MfvFZPLW0tmZ3tZj0R39Yw27rpkPZ5qNRyoRb5ZyGzuywqmvCBrh+ZqOztjbm404GQfq6
+	 OKN4wRElyx81sEZDBVAL1i7P735khm32cXCWFqpSmLC4nbw2jFSS6bdcjCm055lzz6Pyi
+	 pD0ql8KjqF6tw2cIm9W1bpbNdApCCWa3Oo4EZbpAcPo/Pi5vjvO6Ju55fo/euZW8gyd6G
+	 DS9+WDDgZJ8gkLSmfs/H7c6PUOooJo/BimKcPPA3Y6GufuR0yOhNKnqCigsgdx+QXfw==
+ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794742999;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:
+	 MIME-Version:References:In-Reply-To:From:Date:X-Gm-Features:
+	 Message-ID:Subject:To:Cc:Content-Type:Content-Transfer-Encoding;
+	bh=qjPej5w11WbikcynHTF6kveEbA3S0oHjvCfUZQriRUU=;
+	b=ytRlV//JLCCHbCPZB+cVIaHDUeFsTFCjOGdsOHVtjwaSkqhSk2Zks4pO54Z3rPRrpRIf
+	 /7z4ckDvz+AjniRnozDLkKn9Rn6gbBczkQj+1XI9cav6DD0UUKeZfXNeE8Dp9gQ31yJ7m
+	 osgKAEjODVorFkhExv9oNz5e/BkAGe3qR1gcaHI4fK+rbjlr5sBMQyVv7cGxMFnM98KPv
+	 JP68na1yGoR3n2Fa3072z1N0iEHDVUTx2RyFP95698LwalqAU9MFEtQsrE+TDkiqej987
+	 wjv5JSo6qpdNbKEKO2Xr46O85CDtjJLdtkmnnQZNbfJ7M49yDTZ/vIheeqWDiWyHZjw==
+ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
+	dmarc=pass header.from=gmail.com;
+	spf=pass smtp.mailfrom=gmail.com;
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=NgMq15ZT;
+	arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.218.48
+Received: from mail-ej1-f48.google.com (mail-ej1-f48.google.com [209.85.218.48])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 83DD2606A896
-	for <linux-ext4@vger.kernel.org>; Sun, 15 Nov 2026 01:20:12 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 83DD2606A896
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=sakamocchi.jp
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=sakamocchi.jp
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E0EB3606A31A
+	for <linux-ext4@vger.kernel.org>; Sun, 15 Nov 2026 11:43:17 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org E0EB3606A31A
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=sakamocchi.jp header.i=@sakamocchi.jp header.a=rsa-sha256 header.s=fm3 header.b=pjuVmr/L;
-	dkim=pass (2048-bit key, unprotected) header.d=messagingengine.com header.i=@messagingengine.com header.a=rsa-sha256 header.s=fm3 header.b=syy3aDEc
-Received: from phl-compute-02.internal (phl-compute-02.internal [10.202.2.42])
-	by mailflow.phl.internal (Postfix) with ESMTP id C2F6E1381D43
-	for <linux-ext4@vger.kernel.org>; Sat, 14 Nov 2026 20:20:09 -0500 (EST)
-Received: from phl-frontend-04 ([10.202.2.163])
-  by phl-compute-02.internal (MEProxy); Sat, 14 Nov 2026 20:20:09 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=sakamocchi.jp;
-	 h=cc:cc:content-type:content-type:date:date:from:from
-	:in-reply-to:in-reply-to:message-id:mime-version:references
-	:reply-to:subject:subject:to:to; s=fm3; t=1794705609; x=
-	1794712809; bh=QIES4zNTDxRjCnYHiHcWq6p6uX7fK/EWYh7I/zXroHQ=; b=p
-	juVmr/LC7nCJ0SQ2rWUhRQGDMnlVGg/71zflyfizaeCefqOj8Wyp1bv5cUdTgRb8
-	7XUxKSQFA4h5chwE1lADu0vrwg8OhHP6GoQHRhO7+gqlPzaI30gfxszAJ8iBZnAq
-	w6LhtavpJKSJHCgIMJ9jaiAQhtgloSfAXiebl32YH12R4n49k4Dhf+Y8W3pLV4v+
-	Lk6DFTk8SpQ9jSXzpScexBSvyhdEJDbrQwMC0927YExgznJjfLZe0flh8fHQL7IO
-	vj78LH6slSiU2T+/dLzxP/iDcsVNxx1fb6S0NI/BKneEKfRIjGfp58LmRDVhLSom
-	qjpjx4Q11TfgHJQJAHUUA==
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
-	messagingengine.com; h=cc:cc:content-type:content-type:date:date
-	:feedback-id:feedback-id:from:from:in-reply-to:in-reply-to
-	:message-id:mime-version:references:reply-to:subject:subject:to
-	:to:x-me-proxy:x-me-sender:x-me-sender:x-sasl-enc; s=fm3; t=
-	1794705609; x=1794712809; bh=QIES4zNTDxRjCnYHiHcWq6p6uX7fK/EWYh7
-	I/zXroHQ=; b=syy3aDEccFqwMWi7OqQgN+5WtM3ZAfMLRFvK6Ty6zA65HPirgvN
-	ilcYb0Q1wBWUsxvkCfegkY1pzVtpHUOC6WAP6pTtbZPWcSU2JRmZq5bj3XtaI5mJ
-	5KZK4MCZjfikGyCw8udPD79DzKX657SNeo8VKm+NBs1zDN72HR3ZemlLBm38jus1
-	WDdVI20E7k3nTziG5v/jPkof/xTKUHTBh7LLvCto0jlE2c4pmQs/fxRRAq0SyBeZ
-	lruY2Ddh8f3CbRk7/EsENeVrGkeN2qYTfTHHssLqQwRRARUN/edAoqWV9ygwuEYm
-	jIS3U35+DcIoM5H/MAq31DLvDAGEUQlNvVA==
-X-DKIM2-Info: draft=ietf-dkim-dkim2-spec-09;
-	repo=github.com/dkim2wg/interop; date=2026-11-03; sw=lmtpprox;
-	action=sign d=sakamocchi.jp a=rsa-sha256;
-DKIM2-Signature: i=1; m=1; t=1794705609; d=sakamocchi.jp;
-	mf=PG8tdGFrYXNoaUBzYWthbW9jY2hpLmpwPg==;
-	rt=PGxpbnV4LWV4dDRAdmdlci5rZXJuZWwub3JnPg==;
-	s=fm3:rsa-sha256:LkyzpZ29reXccf1OvsbbSbw1rJFmveXZUiF6yKg/AAstPQj
-	/OZJsnvJ0ltKN7sxZJL/pstVHKDbYO3GvhDTbJTt8Uj8nEwm5pA9IAvSoJFBiSB5
-	9oo1CDzbOJpxw9c7EX3svboO2SWyx0D2kBRl8KF6/JqYkTBcFiJT3R9Satl64mES
-	1cIYevTSCHHHeKVoyzp7F/uvGzbodMcpByu9Ass5tAmxg7cTLtXqqLenIh8bNgaC
-	IzopFK6zmpNOjl/PWc8Z/us2mGrEFZUVsIoaimpZ7Tg2tSmc+wpJ0s1HDp9avUF0
-	uqZsMWXhGox+bkoDiTtWWmbnHRaspdWTqc/uQ3w==;
-X-DKIM2-Info: draft=ietf-dkim-dkim2-spec-09;
-	repo=github.com/dkim2wg/interop; date=2026-11-03; sw=lmtpprox;
-	action=mi-m=1; hc=13;
-	hn=cc,content-disposition,content-type,date,feedback-id,from,
-	in-reply-to,mail-followup-to,message-id,mime-version,references,
-	subject,to;
-Message-Instance: m=1; h=sha256:ntV32t7KOIfGMot6swX3CNi9IkfeqivW9U6qBDwCqc8=:4RP5xhIBVdE4nHZvdVXdOxDGDwEwdGMsIHWUj8/gqfI=;
-X-ME-Sender: <xms:xQj5aiop4gg9dsJ6_Vn6u45zXMYueatHm6sTqNkrPjF6p_uliIn0fA>
-    <xme:xQj5ao-c0CruU-TGxTE7NFYZSaEuQncLSSmM997vVUnXnDFfvxt3Mt5vMRNmSfmhf
-    34fKN--fbmH87piFvayMBFAxnjq6WHAkHe46t3SFxeylFtFg6aPnx9A>
-X-ME-Received: <xmr:xQj5atXGMWjP8faJlCtXj9RrVZeBW-gqDucCpC0ZXa191cT5jnWReGYw_Z8rYiOMsAtlcaNqIM8bDcRsKH9aHiPzWCfQ_w>
-X-ME-Proxy-Cause: dmFkZTGQstm6GOmXFdPQXDqZqAYG7aQouPeZUHJ4IBXrRYWFH6lFNnMWIuGsSOCFSsBuXW
-    LbDJxfVrfV3cl+wc1JM2qA4EvGILGxXqZILW7GfZPYDe6vWDeehuWas6PsFLq2rp3ZCMLK
-    vb2ZkQs61G65smsTsr3W8fx/U8N5II0Wva1plTCgHg5UpMnhi5PWu1EQKVr47yDlfh1UvS
-    LYKjU/U9x7MTbsMHbdhB5rWUTX8pbvj9eAIRg5DGXYvFzZokg4/nvH5yq0IUoDc8xEYNrb
-    hSXdXqov4GW1obuCd3P9CA8Y5vszeSouSKwogVvelkFQGttmZKq/NF5ipA4vDPXyrU1Xrm
-    Zrz3WElYlhVCDcPNRnAGrD/gNAj1b7M9bHXUiJrCqgmTebsAx0cfPWnZGZ3/j9Ea2UWcPj
-    qqJZ67js4v5NriJFPwSb5fBisbBQrZL2hM4YjWQCJ9uoloExIgLFI0L7sZA853RBWP4ncp
-    DBuj0o8Fkgdi7cJEPrTBBMdPRnMErqVngCb+aWeUA0zKt+uaR6UB1bg9ZicNV0ayYa37yt
-    I8T18lqRGBzHHbPK9Mrtu/1JSrYmpYKqgKJaY1owBZ4nprZ++3QPl5fwcLNIPsiGvSmzop
-    Zbr1xrRPLyP5mMh+v5LgBzIwywaOGj2L4LIDZM+0lWqxfhjtWj2WgxvXglrg
-X-ME-Proxy: <xmx:xQj5avAwgflb4ksIG5XRwHT6xxt96MMxRO3omUvuEt-3k_ppqJzgYw>
-    <xmx:xQj5aka9rFrx7_oeihBM0qdilVdSsLFNvKaV60FpVwOaq7EoVM3bNQ>
-    <xmx:xQj5ak3AzNFqwOx2mTfPhYibu1bQ_UDkW9NgFtUhfBWBcyXvs0uL4A>
-    <xmx:xQj5aoGo_8KYcqvEjpNAxM_sotiXZsyQPcuJ_BoRuwGjdfls4pLNfg>
-    <xmx:yQj5amBDENmX5NhRabHbZy5mqP0Iv6_jzPBpOZyadDNP-V1uD_qCKZw->
-Feedback-ID: ie8e14432:Fastmail
-Received: by mail.messagingengine.com (Postfix) with ESMTPA; Sat,
- 14 Nov 2026 20:19:47 -0500 (EST)
-Date: Sun, 15 Nov 2026 10:19:45 +0900
-From: Takashi Sakamoto <o-takashi@sakamocchi.jp>
-To: Randy Dunlap <rdunlap@infradead.org>
-Cc: linux-kernel@vger.kernel.org, Jonathan Corbet <corbet@lwn.net>,
-	Shuah Khan <skhan@linuxfoundation.org>, linux-doc@vger.kernel.org,
-	David Hildenbrand <david@kernel.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Jason Gunthorpe <jgg@nvidia.com>,
-	Leon Romanovsky <leonro@nvidia.com>, linux-mm@kvack.org,
-	Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>,
-	linux-sound@vger.kernel.org, Jens Axboe <axboe@kernel.dk>,
-	linux-block@vger.kernel.org, Marcel Holtmann <marcel@holtmann.org>,
-	Luiz Augusto von Dentz <luiz.dentz@gmail.com>,
-	linux-bluetooth@vger.kernel.org,
-	Willem de Bruijn <willemdebruijn.kernel@gmail.com>,
-	Jason Wang <jasowangio@gmail.com>, David Heidelberg <david@ixit.cz>,
-	oe-linux-nfc@lists.linux.dev, Chas Williams <3chas3@gmail.com>,
-	linux-atm-general@lists.sourceforge.net,
-	"David S. Miller" <davem@davemloft.net>,
-	Eric Dumazet <edumazet@kernel.org>,
-	Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>,
-	netdev@vger.kernel.org, Helge Deller <deller@gmx.de>,
-	linux-fbdev@vger.kernel.org, dri-devel@lists.freedesktop.org,
-	MPT-FusionLinux.pdl@broadcom.com,
-	"James E.J. Bottomley" <James.Bottomley@hansenpartnership.com>,
-	"Martin K. Petersen" <mkp@kernel.org>, linux-scsi@vger.kernel.org,
-	Miquel Raynal <miquel.raynal@bootlin.com>,
-	Richard Weinberger <richard@nod.at>,
-	Vignesh Raghavendra <vigneshr@ti.com>,
-	Zhihao Cheng <chengzhihao1@huawei.com>,
-	linux-mtd@lists.infradead.org, Neill Kapron <nkapron@google.com>,
-	Andrey Konovalov <andreyknvl@gmail.com>,
-	Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-	linux-usb@vger.kernel.org, Juergen Gross <jgross@suse.com>,
-	Stefano Stabellini <sstabellini@kernel.org>,
-	xen-devel@lists.xenproject.org, Hans de Goede <hansg@kernel.org>,
-	Arnd Bergmann <arnd@arndb.de>,
-	"Michael S. Tsirkin" <mst@redhat.com>,
-	Eugenio =?iso-8859-1?Q?P=E9rez?= <eperezma@redhat.com>,
-	Sean Christopherson <seanjc@google.com>,
-	Paolo Bonzini <pbonzini@redhat.com>, kvm@vger.kernel.org,
-	virtualization@lists.linux.dev, Jan Kara <jack@suse.cz>,
-	linux-fsdevel@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org, Mike Marshall <hubcap@omnibond.com>,
-	devel@lists.orangefs.org, Paulo Alcantara <pc@manguebit.org>,
-	Namjae Jeon <linkinjeon@kernel.org>, linux-cifs@vger.kernel.org,
-	Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>,
-	linux-f2fs-devel@lists.sourceforge.net,
-	Florian Fainelli <florian.fainelli@broadcom.com>,
-	Broadcom internal kernel review list <bcm-kernel-feedback-list@broadcom.com>,
-	linux-rpi-kernel@lists.infradead.org,
-	linux-arm-kernel@lists.infradead.org,
-	Tzung-Bi Shih <tzungbi@kernel.org>,
-	Benson Leung <bleung@chromium.org>,
-	David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>,
-	Alex Deucher <alexander.deucher@amd.com>,
-	Christian =?iso-8859-1?Q?K=F6nig?= <christian.koenig@amd.com>,
-	amd-gfx@lists.freedesktop.org,
-	Jani Nikula <jani.nikula@linux.intel.com>,
-	Joonas Lahtinen <joonas.lahtinen@linux.intel.com>,
-	Rodrigo Vivi <rodrigo.vivi@intel.com>,
-	Tvrtko Ursulin <tursulin@ursulin.net>,
-	intel-gfx@lists.freedesktop.org,
-	Matthew Brost <matthew.brost@intel.com>,
-	Thomas =?iso-8859-1?Q?Hellstr=F6m?= <thomas.hellstrom@linux.intel.com>,
-	intel-xe@lists.freedesktop.org
-Subject: Re: [PATCH 02/12] docs: ioctl-number: update sound entries
-Message-ID: <20261115011945.GA238787@sakamocchi.jp>
-Mail-Followup-To: Randy Dunlap <rdunlap@infradead.org>,
-	linux-kernel@vger.kernel.org, Jonathan Corbet <corbet@lwn.net>,
-	Shuah Khan <skhan@linuxfoundation.org>, linux-doc@vger.kernel.org,
-	David Hildenbrand <david@kernel.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Jason Gunthorpe <jgg@nvidia.com>,
-	Leon Romanovsky <leonro@nvidia.com>, linux-mm@kvack.org,
-	Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>,
-	linux-sound@vger.kernel.org, Jens Axboe <axboe@kernel.dk>,
-	linux-block@vger.kernel.org, Marcel Holtmann <marcel@holtmann.org>,
-	Luiz Augusto von Dentz <luiz.dentz@gmail.com>,
-	linux-bluetooth@vger.kernel.org,
-	Willem de Bruijn <willemdebruijn.kernel@gmail.com>,
-	Jason Wang <jasowangio@gmail.com>, David Heidelberg <david@ixit.cz>,
-	oe-linux-nfc@lists.linux.dev, Chas Williams <3chas3@gmail.com>,
-	linux-atm-general@lists.sourceforge.net,
-	"David S. Miller" <davem@davemloft.net>,
-	Eric Dumazet <edumazet@kernel.org>,
-	Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>,
-	netdev@vger.kernel.org, Helge Deller <deller@gmx.de>,
-	linux-fbdev@vger.kernel.org, dri-devel@lists.freedesktop.org,
-	MPT-FusionLinux.pdl@broadcom.com,
-	"James E.J. Bottomley" <James.Bottomley@hansenpartnership.com>,
-	"Martin K. Petersen" <mkp@kernel.org>, linux-scsi@vger.kernel.org,
-	Miquel Raynal <miquel.raynal@bootlin.com>,
-	Richard Weinberger <richard@nod.at>,
-	Vignesh Raghavendra <vigneshr@ti.com>,
-	Zhihao Cheng <chengzhihao1@huawei.com>,
-	linux-mtd@lists.infradead.org, Neill Kapron <nkapron@google.com>,
-	Andrey Konovalov <andreyknvl@gmail.com>,
-	Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-	linux-usb@vger.kernel.org, Juergen Gross <jgross@suse.com>,
-	Stefano Stabellini <sstabellini@kernel.org>,
-	xen-devel@lists.xenproject.org, Hans de Goede <hansg@kernel.org>,
-	Arnd Bergmann <arnd@arndb.de>,
-	"Michael S. Tsirkin" <mst@redhat.com>,
-	Eugenio =?iso-8859-1?Q?P=E9rez?= <eperezma@redhat.com>,
-	Sean Christopherson <seanjc@google.com>,
-	Paolo Bonzini <pbonzini@redhat.com>, kvm@vger.kernel.org,
-	virtualization@lists.linux.dev, Jan Kara <jack@suse.cz>,
-	linux-fsdevel@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org, Mike Marshall <hubcap@omnibond.com>,
-	devel@lists.orangefs.org, Paulo Alcantara <pc@manguebit.org>,
-	Namjae Jeon <linkinjeon@kernel.org>, linux-cifs@vger.kernel.org,
-	Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>,
-	linux-f2fs-devel@lists.sourceforge.net,
-	Florian Fainelli <florian.fainelli@broadcom.com>,
-	Broadcom internal kernel review list <bcm-kernel-feedback-list@broadcom.com>,
-	linux-rpi-kernel@lists.infradead.org,
-	linux-arm-kernel@lists.infradead.org,
-	Tzung-Bi Shih <tzungbi@kernel.org>,
-	Benson Leung <bleung@chromium.org>,
-	David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>,
-	Alex Deucher <alexander.deucher@amd.com>,
-	Christian =?iso-8859-1?Q?K=F6nig?= <christian.koenig@amd.com>,
-	amd-gfx@lists.freedesktop.org,
-	Jani Nikula <jani.nikula@linux.intel.com>,
-	Joonas Lahtinen <joonas.lahtinen@linux.intel.com>,
-	Rodrigo Vivi <rodrigo.vivi@intel.com>,
-	Tvrtko Ursulin <tursulin@ursulin.net>,
-	intel-gfx@lists.freedesktop.org,
-	Matthew Brost <matthew.brost@intel.com>,
-	Thomas =?iso-8859-1?Q?Hellstr=F6m?= <thomas.hellstrom@linux.intel.com>,
-	intel-xe@lists.freedesktop.org
-References: <20261114202653.3113381-1-rdunlap@infradead.org>
- <20261114202653.3113381-3-rdunlap@infradead.org>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=NgMq15ZT
+Received: by mail-ej1-f48.google.com with SMTP id a640c23a62f3a-c4cac7a7d3cso334556866b.3
+        for <linux-ext4@vger.kernel.org>; Sun, 15 Nov 2026 03:43:17 -0800 (PST)
+ARC-Seal: i=1; a=rsa-sha256; t=1794742996; cv=none;
+        d=google.com; s=arc-20260327;
+        b=qcazXp/YBiM55AGwRRRic8NDO8svtqdYc0AZwdINurhf4SCjcXMNscQm8kn/cJ5vJs
+         9/354iwomy0ksTStCvHm5aoYOQurDPx4sA2ZOS1J1LJq3aAeZkndzxC+LCREihsQWDpX
+         hD3G2LUIepTA3Ad8DcdgzQ4ESVpYRuE2iwRoORDArhlpVGUVA/EigLeeqajGJPSczIXM
+         YVRoso4zhMxe5RMOHLahch8X0B1t515zJt5fE9sa6TrcFJL48wW6l6kPne+59GEoaBTa
+         LyEn2kFn25ZVrYkAqJsp5oI89gO6WWF0FLrL7kS+cSTuGjZj1LDdhYG2cIvWb3mbvW69
+         Jp4w==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:dkim-signature;
+        bh=qjPej5w11WbikcynHTF6kveEbA3S0oHjvCfUZQriRUU=;
+        fh=iO3OJoeeRt0DiAiHcLnuwZsTB0qWbOWcfR5htb6RnN0=;
+        b=VMRvfMwHaQcZ7XOI/q/B9jYhj3hMBDKmvYDceZfBSh+xLDApLzephX6yU9Tr2ZT/ko
+         AfGq3UHNJqPJhl2fPpQnvAVPwzSTynOBxhZIGJliQbgCcD3ZtaWOB2P5bN/M3m4pod7a
+         LjtDwfToOfbieR9dhBJBwWl0rQ5KAuBIPnPdLLF9nyN4JE7DSHeClsmwHmDWNjdzf7/C
+         oM3VPiae1tsbQjLT755mfwm9ORFvlhzKk7vApOGlZaTxVNYSbFwYmF3XnlqynOHYN1bR
+         kJOAIuXyJk6aNd+gi/qVfIS+zOSPl2lrj62zxa0uGgjK5+YvkkDbuFHhdXAEVY9om3AV
+         Enug==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20260707; t=1794742996; x=1795347796; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=qjPej5w11WbikcynHTF6kveEbA3S0oHjvCfUZQriRUU=;
+        b=NgMq15ZTWXW4+TO4lims5QvJ843nwsfQ1lMyAIl5Oxdu0N1VHHby8kgomJHx+RQYdw
+         eXieXjUW1jyH4u2GK/nxeM784opwix3HC1Z9JhAawLtrUBs4Xnd9H88hiG5j0GQOZ0Fz
+         E5wpEcw4UpqSiNVjEkqNROa+yPrLBc8afMvhqLlhtGN9IXklieU/8LjvdeZO8TrsWmQ4
+         pUuFMnyIXm1u9iAXpOP2Wn8WpH+B0wC59byObJELDhndZAdKHQtRuR21fbPoji/shbs0
+         /rf9Kc4xS6lmkXOVu9ffW15FwNhYvQx2THr5xGX/jujM0uE2NkhVH9+N8UM3cybYyqxI
+         Lxhg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1794742996; x=1795347796;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=qjPej5w11WbikcynHTF6kveEbA3S0oHjvCfUZQriRUU=;
+        b=cBdwESEsCQjzDRHoeL47c08WbEWADRsmt71X50RGp947SUV9ZyjGvtz9If07lC1My5
+         lDHAKQiYQC6QrADb+IRxcytVLRRTjP7YjNGz6j1zmrGVc28n+116QgMYo76BF28SB/im
+         9yLq/4j/ghitrzxDUphzYoDzyKUuH+h/wKzK0fguqJzmfsdieUiTgu0BnuSt4qhplQd9
+         nA8dB+hJ6sd7qAoPZT1U2Z+SBhRqYbYUeI4DQVHyGpPSwm2eJPMbYlhaFg4g+BIUiV0P
+         UW6UaKQTVRVN/iCaQ09slc2ht/jX32m+iUtB51UonrcRPx3Dug5N27IIG9VFh5gQbYzB
+         Ic9w==
+X-Forwarded-Encrypted: i=1; AL+hErGDRntMy6lsnl8p7vRjGTsJ37J/AgK8WRPdwoMdA6dfsTLXbXdosa1sBWDen7Sb9/tqrh2N6dWUwZqE@vger.kernel.org
+X-Gm-Message-State: APuU4Z/d+0FkfaT4i5DpqaurLwNN/TRgCdD1YE7xssbktY2m7q15zEuv
+	bKTw1jRtVVYil+BkNfYf/G/rwqVXklcpaque2IHadWApH5/5Arjo31XgmEGKPhkaxGcyaYe4NK3
+	aAgs+bTU/carckWItla2P+BpBg2Si9MY=
+X-Gm-Gg: AYBFou0/aCLsPCipjxv9VRnVsU8XUcJ245UpUFOk9Kf7UUJu2nUGdTWgIWOVqhIm2Uy
+	d0uaGAkbqzxqkJFqh6Jep0E7AuO+8TmEp+qxxog6NBTGM2ZruFHGlooN5nxc1mKzHTXUTBedSab
+	3fLIrqXKf4oB1TNJbNzc5is62mpIMndWtKu7tdjEpyj/FKN+Sgj6N0qlGueq4qkxly9FG2KjrSC
+	KpOZd9LKc6kaY02/qsfsC12apxICVXy0alK3BhknLZ56NgYdKPd+ii90UDZLSjo0a8l6zpSHWKg
+	ms+M/8OWSF0uzWUjeOOVi8j5zNXObhL9Ed3CEbmrMb8gJN1Z1RzHGKvlZnStRF+a3xEV3kWII7p
+	EyPF6ptgt74EsO5tTmooslMpSnHnCrPaWXBuASw==
+X-Received: by 2002:a17:907:c13:b0:c42:e6c8:e494 with SMTP id
+ a640c23a62f3a-c5096547278mr574061066b.37.1794742995902; Sun, 15 Nov 2026
+ 03:43:15 -0800 (PST)
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -249,55 +104,109 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20261114202653.3113381-3-rdunlap@infradead.org>
+References: <20261021085635.3633692-1-r772577952@gmail.com>
+In-Reply-To: <20261021085635.3633692-1-r772577952@gmail.com>
+From: Jiaming Zhang <r772577952@gmail.com>
+Date: Sun, 15 Nov 2026 19:42:39 +0800
+X-Gm-Features: AclHuK90wWzGoA4H29cy11pmb1JHH3C1yF5Eojyo_HIgeidC5_U6uD5eFeRWITg
+Message-ID: <CANypQFYkEkoxA4vJzGd_TzoqV+_TA1nk6-ResYvG7PZ80221WQ@mail.gmail.com>
+Subject: Re: [PATCH v2] ext4: clear in-inode xattr space before adding the
+ first xattr
+To: jack@suse.cz, linux-ext4@vger.kernel.org, tytso@mit.edu, 
+	adilger.kernel@dilger.ca
+Cc: libaokun@linux.alibaba.com, linux-kernel@vger.kernel.org, 
+	ojaswin@linux.ibm.com, ritesh.list@gmail.com, stable@vger.kernel.org, 
+	yi.zhang@huawei.com
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-Hi,
-
-On Sat, Nov 14, 2026 at 12:26:40PM -0800, Randy Dunlap wrote:
-> Update the list of files where sound ioctls are defined and update
-> the ranges of function numbers that are used.
-> 
-> Signed-off-by: Randy Dunlap <rdunlap@infradead.org>
+Jiaming Zhang <r772577952@gmail.com> =E4=BA=8E2026=E5=B9=B410=E6=9C=8821=E6=
+=97=A5=E5=91=A8=E4=B8=89 16:56=E5=86=99=E9=81=93=EF=BC=9A
+>
+> An inode can hold extended attributes in the space that follows its extra
+> fields, whose size is given by i_extra_isize.  When ext4 loads an inode,
+> ext4_iget_extra_inode() validates that space only if it starts with the
+> xattr magic, and only then sets EXT4_STATE_XATTR.  Without the magic, the
+> space is treated as empty and is not checked.
+>
+> ext4_xattr_ibody_set() passes the space to ext4_xattr_set_entry() whether
+> or not EXT4_STATE_XATTR is set.  ext4_xattr_set_entry() walks the entries
+> there to find min_offs, the lowest value offset.  That offset decides
+> whether the new value fits and where the value is copied:
+>
+>         free =3D min_offs - ((void *)last - s->base) - sizeof(__u32);
+>         ...
+>         void *val =3D s->base + min_offs - new_size;
+>
+> A crafted image can leave non-zero bytes in that space without the magic
+> where ext4 looks for it, for example by shrinking i_extra_isize.  Those
+> bytes are parsed as entries, and an entry that claims an in-inode value a=
+t
+> offset 0 sets min_offs to 0.  Because free is a size_t, the subtraction
+> then wraps around to a huge value, and the free space check passes althou=
+gh
+> the value does not fit.  The value is copied new_size bytes before the
+> start of the space, over the inode's own fields and, for a large value, t=
+he
+> memory in front of the inode.
+>
+> On a kernel without KASAN, the copy corrupts memory: it overwrites the
+> inode's own fields and, for a large value, also the memory in front of th=
+e
+> inode.  The bytes and their length are decided by the setxattr() caller.
+> Nothing is freed and reused here, so the use-after-free in the report onl=
+y
+> reflects where the write happened to land.
+>
+> Triggering this issue requires mounting a crafted image, which needs
+> CAP_SYS_ADMIN or automounting of removable media; after that, any
+> setxattr() on the file reaches this path.  The issue was found by fuzzing
+> and has not been seen in production; a reproducer is available in the
+> linked report.
+>
+> When EXT4_STATE_XATTR is not set, zero the first 32 bits of the space in
+> ext4_xattr_ibody_set() before calling ext4_xattr_set_entry().  These are
+> the bits IS_LAST_ENTRY() reads, so the space is treated as empty and the
+> walk stops before reading any stale entry.
+>
+> Fixes: ac27a0ec112a ("[PATCH] ext4: initial copy of files from ext3")
+> Closes: https://lore.kernel.org/lkml/CANypQFZzxTAH=3D4QRRDoqH6VAw1daAq88N=
+DWiQKoM7QTOnP40sg@mail.gmail.com/
+> Cc: stable@vger.kernel.org
+> Assisted-by: Claude Code:claude-opus-5-5
+> Signed-off-by: Jiaming Zhang <r772577952@gmail.com>
 > ---
-> [Since having multiple maintainers trying to merge these would
-> cause some conflicts, it would be more manageable for Jon to
-> take all of these through the docs-next tree.]
-> 
-> Cc: Jonathan Corbet <corbet@lwn.net>
-> Cc: Shuah Khan <skhan@linuxfoundation.org>
-> Cc: linux-doc@vger.kernel.org
-> Cc: Jaroslav Kysela <perex@perex.cz>
-> Cc: Takashi Iwai <tiwai@suse.com>
-> Cc: linux-sound@vger.kernel.org
-> 
->  Documentation/userspace-api/ioctl/ioctl-number.rst |   12 +++++++++--
->  1 file changed, 10 insertions(+), 2 deletions(-)
-> 
-> --- linux-next-20261111.orig/Documentation/userspace-api/ioctl/ioctl-number.rst
-> +++ linux-next-20261111/Documentation/userspace-api/ioctl/ioctl-number.rst
-> ...(snip)...
-> @@ -168,7 +174,7 @@ Code  Seq#    Include File
->  'H'   C0-DF  net/bluetooth/cmtp/cmtp.h                                 conflict!
->  'H'   C0-DF  net/bluetooth/bnep/bnep.h                                 conflict!
->  'H'   F1     linux/hid-roccat.h                                        <mailto:erazor_de@users.sourceforge.net>
-> -'H'   F8-FA  sound/firewire.h
-> +'H'   F8-FE  sound/firewire.h                                          conflict!
-> ...(snip)...
+> Changes in v2:
+> - Zero only the first 32 bits space instead of the whole space.
+> - Add a comment above the check.
+> - v1: https://lore.kernel.org/lkml/20260916084723.877552-1-r772577952@gma=
+il.com/
+>
+>  fs/ext4/xattr.c | 8 ++++++++
+>  1 file changed, 8 insertions(+)
+>
+> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+> index 5c310747b965..8e1fd26329d3 100644
+> --- a/fs/ext4/xattr.c
+> +++ b/fs/ext4/xattr.c
+> @@ -2274,6 +2274,14 @@ int ext4_xattr_ibody_set(handle_t *handle, struct =
+inode *inode,
+>                 if (IS_ERR(ea_inode))
+>                         return PTR_ERR(ea_inode);
+>         }
+> +
+> +       /*
+> +        * Make sure xattr space is properly initialized so that
+> +        * IS_LAST_ENTRY() returns true for its first entry
+> +        */
+> +       if (!ext4_test_inode_state(inode, EXT4_STATE_XATTR))
+> +               *(__u32 *)s->first =3D 0;
+> +
+>         error =3D ext4_xattr_set_entry(i, s, handle, inode, ea_inode,
+>                                      false /* is_block */);
+>         if (error) {
+> --
+> 2.43.0
+>
 
-I overlooked this entry when inserting the additional ioctl commands in
-the following commits:
-
-* 90e8ac5c9d446 ("ALSA: firewire-tascam: add new hwdep ioctl command to get state image")
-* 58b62ab702591 ("ALSA: firewire-motu: add ioctl command to read cached hardware meter")
-* ca15a09ccc5bd ("ALSA: firewire-motu: add ioctl command to read cached parameters in register DSP model")
-
-Thank you for catching and correcting this.
-
-Reviewed-by: Takashi Sakamoto <o-takashi@sakamocchi.jp>
-
-
-Thanks
-
-Takashi Sakamoto
+Friendly ping, please tell me if any further change is needed.
