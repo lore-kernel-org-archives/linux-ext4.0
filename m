@@ -1,48 +1,60 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794822670;
-	b=x9HCcftWI1bMoiDJU7O/7tAPXb7Cs9EdFPDq6WB4IQQdRTIQxbyEYnTHxgH8oBEaNdcp
-	 Xz66dHbjoQtKNZzc/DN9AjGu3ne0h4bDv5zVEBhR56CXixoGDOxcdqb+imjIrR0wCxszv
-	 dZE0I4+4DR4oKLTpuM5WYHFm0m4Z00vSTpBlzCgvyeUvHh2ccRvndvdcR0CoAFTJifzBR
-	 nOjCN9ZFmJl2AWDj0+3J2nS3zr6EzH7ulAd5/iIZuvbKNDIfw6zW8DhCdapzzhLT9qxRh
-	 sCPjS16T0MDuv0/aghQ+uSfFPv5rjnboVZHke0gvsR0EAOyxcR7DMQZRUyowjtDDNPw==
+	t=1794822837;
+	b=YYd5Md1puLE4oEEldfMgIqv4Qa0Z7+MJF9f2HxyP+SH32bCUFWIaRYpT8DxfaYRbRh2k
+	 G7BqhkddVILP2XAW3z1y1BCujmtw+OPrbasWJg/9j8yfJ9ESZ4xxhEZf3I/vWg4dfGvlT
+	 CK7AEGEY1ahGV+s3VuUJSqNDatdE+gFbptquuYQq5cfx5cg7mRTeZ6Df/godz9yDILovr
+	 5Ao6NVw5Hx6yQ0XFp1lOqnRP/RD/lcXEUSJpImlhGV2K2M2ofEj6uwWfqeOedHMFQ2Q9E
+	 jgCrRKRo004M92RN8/iSX3jsnWBFuLwt2PORZcoOplePIYTLyBB52lu4v2CiWbZHjUQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794822670;
-	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
-	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
-	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=L1lZ5wfKib47+5cbYuK6ksYT98WTq4lYB0XvmtFMUsk=;
-	b=wA6rD1zYqQ5s9YfD+wk0toqotos4w+kN3VJY/1YNDGTuWaindZVKqsNl4V/BFiHd1Lc+
-	 IUVkqWVo6xr4dI7xl+cshjQKKzES2sIMTGMCTmOKEYeabpuVCVPxDKFIFsvBcUGXRkH3w
-	 nNdiEonus2JOsFiC//RHa6dJz8YU/COFXtVAQu2O088AafcFezbz7MFlBJG6xdiw1z/Ta
-	 cJa7MRUR1PvIpGhBB0O+wAb849QLZFZNrucTC0xhzxZYWk02frtyBZYCm3R1ggI77ld8t
-	 V8zCNXGyN5JkTH+EXXpiSZKnG8d4JuFJdJmCr8NrCyPIzxwQdmxrm+Oo/Et1rer3pMw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794822837;
+	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
+	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
+	bh=ZJJAwrYiVuc03fJzpQ6JP1zmHcGVR+cvTb2BYqmzziU=;
+	b=SmBS51cPH3PWL4p1jqfbfTq67blorvOMeFK7DxAbpTikmv/sKwdK/23rVrjrD5duUpwW
+	 1YzRuPTp5LYuMFr3z9AcvPq6hcCQO+jJE9G5hU286/QRxNC3ol6K0gUWch+zPGKXm1W1d
+	 iiudvyXcFS44DvzIajhNo5tJvWeoZKwKEPCoYTgl3/mwmGPxECohO901/oxazAcAQ3lK4
+	 EswWtQfuYqppzLRfRc4DxqxF0z+xjuaeTBVrwhC1qikXB0UL/7YYCnXip2W7uUf49iQlC
+	 2/VCzE1AkAZy0tioaJxXwdgbxnPkTJAlkti/8EGvWGbNbqaf1P3TFVM7ooqKeDum4Ig==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ndmzvTxe;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ITfVd9wI;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9F5EE606A329;
-	Mon, 16 Nov 2026 09:51:10 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 67714606A32F;
+	Mon, 16 Nov 2026 09:53:57 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ndmzvTxe
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id CD3FB1F000CE;
-	Mon, 16 Nov 2026 09:51:06 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ITfVd9wI
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 755391F000C4;
+	Mon, 16 Nov 2026 09:53:51 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794822670;
-	bh=L1lZ5wfKib47+5cbYuK6ksYT98WTq4lYB0XvmtFMUsk=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=ndmzvTxeL7W9/Jdvz6YxY8P8py51Wjc6qNExCmjwvS+9JImEf9epaC85hzjy9eYR9
-	 uVUDbSmgWHfI5S2ZpnyUY95j+V+6dUc4x/eYgmcYHu6230ISr7IQbxB7A14/qh1SKI
-	 z/tb+w3N095FxQ0FXm2/FU4pUUqM9RlWmH+HUlWsxVqgM3WeZNtSwQQrNUl/6m6qRh
-	 pcxjjekvdoG0jkzcO1CZNWORgA41hbfuqMidkny80LdqROFR2yYY9l3tEwpYUDW1B3
-	 90dJoUAo/iHmuVyrQsl3XF0DD0Bz1kpLrlqVa624COZ5W1omJ7iv9DbKGwbhBw+vM0
-	 xBZY/TU+9NFfg==
+	s=k20260515; t=1794822837;
+	bh=ZJJAwrYiVuc03fJzpQ6JP1zmHcGVR+cvTb2BYqmzziU=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=ITfVd9wIQ+nAJl70v53f42aDy/XLw55ZzF4oM5tblfEkuK2iHhD8qpLtJZT0c0P+n
+	 HTtvLYBRLgESb81dQJ9PMlL8Si8rguYAg3MfEHU2CYldhRS9twbkP4WgHCBwgFXQT7
+	 b78SqT79oeCU7aHqQl3icLQCvN74FKTQYOIdftgBB/Pp9sTlail+VAzkjVRGlSgVUB
+	 wx6NDyYG0eJRW9+VWuvkpQkOs6ju3VgVddH1fqrpvs7U8MQOKu6shGaFMeZPkgQmZS
+	 O/Y6znUt0e5V4BVxF51ykZt+7guJX6IM2GRfuJSgYd1WbVXBzS0acGGTp0MhvwaUCn
+	 TYQGj8hI8awFA==
+Date: Mon, 16 Nov 2026 10:53:49 +0100
 From: Christian Brauner <brauner@kernel.org>
-Date: Mon, 16 Nov 2026 10:28:31 +0100
-Subject: [PATCH 2/3] exfat: keep the volume marked dirty after a shutdown
+To: linux-fsdevel@vger.kernel.org, Jan Kara <jack@suse.com>
+Cc: Al Viro <viro@zeniv.linux.org.uk>, ecryptfs@vger.kernel.org, 
+	linux-ext4@vger.kernel.org, jfs-discussion@lists.sourceforge.net, 
+	linux-nilfs@vger.kernel.org, exfat@lists.linux.dev, linux-mm@kvack.org, ntfs@lists.linux.dev, 
+	ocfs2-devel@lists.linux.dev, linux-btrfs@vger.kernel.org, gfs2@lists.linux.dev, 
+	linux-efi@vger.kernel.org, linux-mtd@lists.infradead.org, linux-xfs@vger.kernel.org, 
+	stable@vger.kernel.org, Farhad Alemi <farhad.alemi@berkeley.edu>, 
+	Tyler Hicks <code@tyhicks.com>, Jan Kara <jack@suse.cz>, 
+	Karl Mehltretter <kmehltretter@gmail.com>, Ryusuke Konishi <konishi.ryusuke@gmail.com>, 
+	Viacheslav Dubeyko <slava@dubeyko.com>, Hyunchul Lee <hyc.lee@gmail.com>, 
+	Joseph Qi <joseph.qi@linux.alibaba.com>, Christoph Hellwig <hch@lst.de>
+Subject: Re: [PATCH v3 00/33] fs: don't set SB_RDONLY after filesystem errors
+Message-ID: <20261116-kiesel-exekutive-liedchen-26b1c45fe533@brauner>
+References: <20261113-work-fs-sb_rdonly-v3-0-0be92bb73709@kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -52,61 +64,13 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261116-work-fs-sb_rdonly-fixes-v1-2-95a25ce917ad@kernel.org>
-References: <20261116-work-fs-sb_rdonly-fixes-v1-0-95a25ce917ad@kernel.org>
-In-Reply-To: <20261116-work-fs-sb_rdonly-fixes-v1-0-95a25ce917ad@kernel.org>
-To: linux-fsdevel@vger.kernel.org
-Cc: Jan Kara <jack@suse.com>, ecryptfs@vger.kernel.org, 
- linux-ext4@vger.kernel.org, jfs-discussion@lists.sourceforge.net, 
- linux-nilfs@vger.kernel.org, exfat@lists.linux.dev, linux-mm@kvack.org, 
- ntfs@lists.linux.dev, ocfs2-devel@lists.linux.dev, 
- linux-btrfs@vger.kernel.org, gfs2@lists.linux.dev, 
- linux-efi@vger.kernel.org, linux-mtd@lists.infradead.org, 
- linux-xfs@vger.kernel.org, 
- "Christian Brauner (Amutable)" <brauner@kernel.org>, stable@vger.kernel.org
-X-Mailer: b4 0.17-dev-ce4c1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1218; i=brauner@kernel.org;
- h=from:subject:message-id; bh=IuQsw0bjMfs69fKlB5zik2hJtUUfvF+Vp2c63qEi16c=;
- b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWT9uvhPuTT10dTm9V9DF81rmlGTNHO/a0zqhAtKP+fGb
- i+6d0DjQUcpC4MYF4OsmCKLQ7tJuNxynorNRpkaMHNYmUCGMHBxCsBEUm4zMvwL2pdfVbTdiSvs
- MMdFJu780kSe1jUN1zMVOM8IHBO6uoHhf+KNiUcqlSdfkfxX1DlX5Cf711LOF4I9HiELIqeWdgu
- WsgEA
-X-Developer-Key: i=brauner@kernel.org; a=openpgp;
- fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+In-Reply-To: <20261113-work-fs-sb_rdonly-v3-0-0be92bb73709@kernel.org>
 
-After a shutdown exfat_write_inode() and exfat_writepages() drop
-whatever is still dirty. But exfat_put_super() and a remount to
-read-only still clear VOLUME_DIRTY through exfat_set_vol_flags() which
-only leaves the boot sector alone on a read-only superblock. So after a
-shutdown with EXFAT_GOING_DOWN_NOSYNC the volume ends up marked clean
-although it may be inconsistent. Leave the boot sector alone after a
-shutdown too.
+This is now on vfs-7.5.super. There's a bunch of outstanding
+pre-existing fixes per-filesystems. So please, if you're a filesystem
+maintainer take a look.
 
-Fixes: f761fcdd289d ("exfat: Implement sops->shutdown and ioctl")
-Cc: stable@vger.kernel.org
-Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
----
- fs/exfat/super.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
-
-diff --git a/fs/exfat/super.c b/fs/exfat/super.c
-index 4943cef977418..eef7c159d32f4 100644
---- a/fs/exfat/super.c
-+++ b/fs/exfat/super.c
-@@ -98,8 +98,9 @@ static int exfat_set_vol_flags(struct super_block *sb, unsigned short new_flags)
- 
- 	/* skip updating volume dirty flag,
- 	 * if this volume has been mounted with read-only
-+	 * or was shut down (it stays dirty then)
- 	 */
--	if (sb_rdonly(sb))
-+	if (sb_rdonly(sb) || exfat_forced_shutdown(sb))
- 		return 0;
- 
- 	p_boot->vol_flags = cpu_to_le16(new_flags);
-
--- 
-2.53.0
-
+I will declare this series ready, otherwise this will turn from the yak
+shaving that this is right now into yak-herd shaving.
