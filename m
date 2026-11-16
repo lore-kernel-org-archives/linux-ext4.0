@@ -1,54 +1,110 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.167.198
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=202.12.124.159
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794816771;
-	b=ItjAXg06PZSZwYeFeWfAEGvYe7kaqYje/KNeAKVM5JcJBeFETVTJuNF3fPCpanNiDfZM
-	 OY/teEQ6oCEgAFPgxUBf/aMFwY3zKT//WPh4WdjrUCscMxHq+Y/EJjrYdNPEE9Xh4bbiM
-	 4WNKc1U8UU0DWGt71vvUr7WPxVZc2L7H9FixVKthmU9wJ69Eh4LRpvTMvQSE/XkUQK4WV
-	 OtOt+en68+hco18MlmYV70moEZI1d/aBFwnEkkaixIdPA0wLokQLlLncXDQIFd23p0RNK
-	 uuqxqNawwZogK9nh1I0GD2MNVVPCkymE3jUldtAJFm+xEhN5WqEZQjPliBlMSxO+rmg==
+	t=1794821480;
+	b=BUXKV1tVMU9KOJshpidAB3Vd3TKyosArUrtIW4jEXF6NMW+ctBHruvPFZcNMcZq9OkzD
+	 BUbmWG2Hu7TXKb0Jb6HOY2LzPup6MznYDO9dL4iX0WGBfR3JsqA2/qSLBT2CoyZ88qbxr
+	 Dyu2ze0rXv1dQQ+MUiB+glIsVDydjM4ZgbEQsLKQhMkaU9PutK458KqhlqF7JVjuE3LJu
+	 YE7a4YXeKx41VwqjyjIeZmtmIirF1tcpUUtwNM5uTJWAlBLQiHdCaNdLRMuk1shSlXiyW
+	 MvpH+RapyF4bIb/oImekfZ4U/zeIrvUXHLkRBLRYsT5bhWBoEjGJXd4Gy5zBdK18zIQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794816771;
-	h=DMARC-Filter:Received:X-Google-DKIM-Signature:X-Forwarded-Encrypted:
-	 X-Gm-Message-State:MIME-Version:X-Received:Date:
-	 X-Google-Appengine-App-Id:X-Google-Appengine-App-Id-Alias:Message-ID:
-	 Subject:From:To:Content-Type;
-	bh=tKJr2taXAbMNdxS2ld12zcXQJ7D7w6pOLh3/XuIBMz8=;
-	b=mAaD3ptEZthdmn0Anu72+58DOx18yK4DEOZnKk/s8RDqEb8mEErv2t18eytDoRVYVrQA
-	 nfOrGHZEhzoGbm++ymUWPfT+C/uuEsWwH7RTffporGvWNnmmu3/U0ni7fFqAzI8XkK2SH
-	 1BXED8BI7eE9VlCaE8HkKNs1O6m+M/tvckVPT6m8biCFjcgl2o+Tyer5krNOLMRJxVz2/
-	 0X2+TdcTNyv8VTAD2+z8qeSm6vGrf5Wgv0utFki1p9dIQfG9U2GkxA/I49xvRNy5Bksq0
-	 m3cp2/yKL9Wb/6ogspuBjAWNfptpDlE+rvK6UlJnTZLZCxLgc2OnmrMx/B3NoSeukVA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794821480;
+	h=DMARC-Filter:Received:Received:DKIM-Signature:DKIM-Signature:
+	 X-DKIM2-Info:DKIM2-Signature:X-DKIM2-Info:Message-Instance:
+	 X-ME-Sender:X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:X-Mailer:
+	 MIME-Version:Date:From:To:Cc:Message-Id:Subject:Content-Type:
+	 Content-Transfer-Encoding;
+	bh=SZMO+K4nb7HFDWV9r/yGO5C8vBQcAVEMtJaC8F6M0Z8=;
+	b=Dgo8R2+WyomNcquXiD8grVMo0iKaSfU/cr5OgyxvLmE0SQ4wshfGExvQ4YWnlxhMocSS
+	 sfONL1zDLY9epm/1MVQnDTPnxFn954jrt32gH6YZ86lk9hVFmijb7rqAj+HY79G5zbv9N
+	 VDIyMA3v+jnmhCOVEvrgNwbEN/ZChmSC2mx89CmTChhddM2QmJPyvmTPvpxR58KdJVtoP
+	 9LW1M8s32l9QBC9nzXcL+RH4h61FrM5o+y681JpqeMu535EjnMY2Y0MMY9ZPe5r5VVU5U
+	 amc5fV5fJLKH3Oja82V8zKO8jQcUMZiKdfSj+N/wPhnhQCq0k7cpaHaOrB3q5a2Jx1Q==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=fail header.from=syzkaller.appspotmail.com;
-	spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com;
-	arc=none smtp.remote-ip=209.85.167.198
-Received: from mail-oi1-f198.google.com (mail-oi1-f198.google.com [209.85.167.198])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	dmarc=pass header.from=tiukov.com;
+	spf=pass smtp.mailfrom=tiukov.com;
+	dkim=pass header.d=tiukov.com header.i=@tiukov.com header.a=rsa-sha256 header.s=fm2 header.b=IAh+IvHV;
+	dkim=pass header.d=messagingengine.com header.i=@messagingengine.com header.a=rsa-sha256 header.s=fm3 header.b=SFpLVnxq;
+	arc=none smtp.remote-ip=202.12.124.159
+Received: from fhigh-b8-smtp.messagingengine.com (fhigh-b8-smtp.messagingengine.com [202.12.124.159])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 39E79606A332
-	for <linux-ext4@vger.kernel.org>; Mon, 16 Nov 2026 08:12:51 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 39E79606A332
-Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
-Received: by mail-oi1-f198.google.com with SMTP id 5614622812f47-4c467e19391so4988697b6e.3
-        for <linux-ext4@vger.kernel.org>; Mon, 16 Nov 2026 00:12:51 -0800 (PST)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1794816770; x=1795421570;
-        h=content-type:to:from:subject:message-id:date:mime-version
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=tKJr2taXAbMNdxS2ld12zcXQJ7D7w6pOLh3/XuIBMz8=;
-        b=M0If2wtIMms3BxIBWMAbdQs9/72xf98fWthv7sU4/1N08Uz2qiV4LRdHC9JGcnqJEh
-         dK79IV/NRxbnaymiRfgyAPGJcIxLI/3vf7j0tTS20nZdy0lxD21ESYlWafClFD8PiTil
-         TTWBZMhgoYiukE4Hh+mTnPExxns82jvK1GcuZA6gM6hXA+eWJU6dI2GjIA4eAx4LeU7w
-         JPu7arYW27y4TUta2TAapL9HMnfUr7XWO3c3nmnScgCHIsEG8AY/B1653ThDtu9W6Wqz
-         FTkY/JJb/BXtcn5B2ydv82MTGD797Vl5Oy8G78Dcyd9Ifb7OtW/y4L7bITOYN0vqU1I7
-         g5IQ==
-X-Forwarded-Encrypted: i=1; AL+hErEHbm3Lxc4UySWMqBnukRfSceV0bu2Mq+nTRWPlgWM27F2jjtDQneL7/eApXUZVlloxed9bojEIY4ZW@vger.kernel.org
-X-Gm-Message-State: APuU4Z93jw3/FoPmcuLHZo46Ps0HBtJuPbMQLh7ebzixuQ832SkO4wgl
-	MVpG877rUIU+Eu2b31jfViS6uUDSLvsNfFa/CAwiwdM0j0jzPKTCvz033V1T4l8xJaAAZnELvq7
-	nfFeYhRDOcupSLObIMgINlYTtfEW+NraAOMoIRFepWZF2NyufNQ2lrhZUcEU=
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 63C77606A323
+	for <linux-ext4@vger.kernel.org>; Mon, 16 Nov 2026 09:31:19 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 63C77606A323
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=tiukov.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=tiukov.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key, unprotected) header.d=tiukov.com header.i=@tiukov.com header.a=rsa-sha256 header.s=fm2 header.b=IAh+IvHV;
+	dkim=pass (2048-bit key, unprotected) header.d=messagingengine.com header.i=@messagingengine.com header.a=rsa-sha256 header.s=fm3 header.b=SFpLVnxq
+Received: from phl-compute-09.internal (phl-compute-09.internal [10.202.2.49])
+	by mailfhigh.stl.internal (Postfix) with ESMTP id 84BA47A0013
+	for <linux-ext4@vger.kernel.org>; Mon, 16 Nov 2026 04:31:18 -0500 (EST)
+Received: from phl-imap-15 ([10.202.2.104])
+  by phl-compute-09.internal (MEProxy); Mon, 16 Nov 2026 04:31:18 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=tiukov.com; h=cc
+	:cc:content-transfer-encoding:content-type:content-type:date
+	:date:from:from:in-reply-to:message-id:mime-version:reply-to
+	:subject:subject:to:to; s=fm2; t=1794821477; x=1794907877; bh=SZ
+	MO+K4nb7HFDWV9r/yGO5C8vBQcAVEMtJaC8F6M0Z8=; b=IAh+IvHVTB/A/Uk3tE
+	dwNLlvOReoARKW8EcCMKYyncDKvP3uK8YnvIhjo5/tAoCjjpt/OGNr4UMH30MwhT
+	zg15b5nASHZLV1YgQDpPw7m9PeMxOzvuYz7Cte1kZjTgGqkpIwNf7arJ7H5/FKHG
+	OBkJ1hxkYfFdhlxiMwX7UwQ9xQgHF1r1iHtl21aARSyXeLKnh8Jf7e9yzUQ36T/1
+	V/Cn6+IgQOHwOgNVjzhRygbONgWnk+WaeAqllgQArCiKcktdR91siasb+p3HrIZh
+	z5IEEgw/ykTZ5zGXQDB0R5Jk3oUEs2F6bGwYDG5e6YCO2CU0+AoCGdFeUk35rDVQ
+	z8GQ==
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
+	messagingengine.com; h=cc:cc:content-transfer-encoding
+	:content-type:content-type:date:date:feedback-id:feedback-id
+	:from:from:in-reply-to:message-id:mime-version:reply-to:subject
+	:subject:to:to:x-me-proxy:x-me-sender:x-me-sender:x-sasl-enc; s=
+	fm3; t=1794821477; x=1794907877; bh=SZMO+K4nb7HFDWV9r/yGO5C8vBQc
+	AVEMtJaC8F6M0Z8=; b=SFpLVnxqH0HCU9iAKymzPZCudr8Bu58pHWPEZEbE033j
+	OZo4/YDbcAMsrEnPCtg5mkQUMq+6n0veh6NYr6QRS5BwyO0GhHkc7d8f/kfWaGwl
+	TOYG6iyBigRM8jX1zKNR1sQ9Cjx9W2f6LjT6wrNpxi6uIgk8BJtK+x6qKOCQ3w0j
+	ByWCLt0Tdk4L507hc3TMgHXvUYCltdDPJdl8sguNyBZ4uMbMyIhUXKaCZjp3sn98
+	VgV3wzETpUhc0W9589HHZO9bSPNSLT2wN0AClAcikJsI6OMUGbsLj4Uw8U8rkJtc
+	nXxDpnOBYskqdsSoffRms0tlWyF4LnkwCh2Zep3iZg==
+X-DKIM2-Info: draft=ietf-dkim-dkim2-spec-09;
+	repo=github.com/dkim2wg/interop; date=2026-11-03; sw=lmtpprox;
+	action=sign d=tiukov.com a=rsa-sha256;
+DKIM2-Signature: i=1; m=1; t=1794821477; d=tiukov.com;
+	mf=PGl2YW5AdGl1a292LmNvbT4=;
+	rt=PGxpbnV4LWV4dDRAdmdlci5rZXJuZWwub3JnPg==;
+	s=fm2:rsa-sha256:N4R8ZXWKG7HpkdyQCC3bjWRsNO6Gu4aCWhRfCLVx03ngyUO
+	ayQkd5N3m0pxQ5eKivGiycyZHyywkNHnYtBec/VMudvA6n5qSpo7Wec9PjNeXTI8
+	Cluo6UoWl4nJZFm/0VWI56IwfnE0Rn7wXRhAvKZxs9PjLk3diSqM36BiRQfW/LwF
+	8uvh1CBLiHT9znBqcskWBou+rzo6+MSa88Ty9sOdziZn3zxCP+HRAUjSgUqBPkQH
+	a9bqUqnNDbpTTCMuetbFYx7jJJh29ukzRxVnARM1ii5vi7x3CF4ggAboe95CNt8O
+	a5YyXTa3t7fMNCEf5Czitq4f6t4qZcKYYEv5MLQ==;
+X-DKIM2-Info: draft=ietf-dkim-dkim2-spec-09;
+	repo=github.com/dkim2wg/interop; date=2026-11-03; sw=lmtpprox;
+	action=mi-m=1; hc=10;
+	hn=cc,content-transfer-encoding,content-type,date,feedback-id,
+	from,message-id,mime-version,subject,to;
+Message-Instance: m=1; h=sha256:dis56LSwZsW2NsxyFUFazZOEJv0s0eYQxJkyqS795iQ=:QonS9ZldPhS2lrtUv56ngGFzPIABKkrWUmEKRgsosB4=;
+X-ME-Sender: <xms:Zc36alSRqFcUFJugf9Ls2Bz4AfxvZUGI4BgYJDnK-a6W-Ei0I0kJPg>
+    <xme:Zc36apksVnLsRXAFRnejd8moOCBsHvSL2hmd-SuFtc2KrdJwUvyo9OnMSSfIjAlC_
+    Bm7AqxmqEiGYD_4GCSvDJQa3rHiB_3-trM8zJ0W1oOBg0lcqDwcssU>
+X-ME-Proxy-Cause: dmFkZTGXSJGBWNgfZ8JnSomSi6fs+ioeyaky7BrB3lzR9xt6PsgiobQOpIkWrT6qZWwFF2
+    K97YwyZ/PrPG9GLZkrcf9QAIkkYtISYacS3dbR2TDaxp3bRemGHfWBnnKp1bC37AuuIMNO
+    jKZbOuZ/vTlNI0IPMkknQD09PUEdtfIlTYWGybt8IMLTMfnupzvQmwcMHlwALAC/Qb1roT
+    tvOEu4TooxsHNTEJih4trN2q1bgq1wkbv8HHO/AgrQJRQ9YsYCjAGIemjKJW9P2/ClDYvQ
+    TIhTme5awrGLEV3X4XrDoNaKFHkQwxTQvxJzo6MQha5E8cI0S7q5l8awtOcmpztacFQNok
+    wVXFoc6RKQH0HGgkSHd93LIlBL9tq8o0LHyRC4nw5v0JiiYICLvetAOwpJUu8eM5pxpZoK
+    XRKwiCnvCdElTKd/zvPpC4ACJj5mAgrzfG5bSFbev+5do9XZYNgvl/nvB7wCy+5ZCm+gSt
+    SbVS2IMsUZp9YT5BG0SicGTBLsPPu+YdgG7QV84N7GYpHtGpShSOAbOIAxlON+OJKXal9A
+    1Y713lfBpo0mDJ2Aztz7BAsjn+8y7dc4+YQFh0fXZJcp4cbwa8kiqEClecXb7vs99h1W1v
+    DuIEHPqsEWgatkl8XW+OkZilFmdC2bTzguMcvQwHbWhikItD9xwYMepZCyUg
+X-ME-Proxy: <xmx:Zc36aq4KLR0omtS1bLfrfyvhahvp6qeOkZKO3f3HKyCpvjoJ1ggRYQ>
+    <xmx:Zc36at8_e_LtMj6wWTbnQBjkRGplCQ3DpGdRuqBWDt5A_VGQdHWSFA>
+    <xmx:Zc36apXnSrFXvhunow3mjUFH_w0F_CxqUAh6F5PuC2dsifRYuPSPEA>
+    <xmx:Zc36aopzuQreBGgZaNHuen9AW9TivEMOWBp_pgM0nCbPKtF6nN4Jkw>
+    <xmx:Zc36avCxHEGoVJ6KS8t1RMnEvn69lXEftbl9WNh08KXGZPVqGl27hXZ1>
+Feedback-ID: i1ce0434e:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id 204CA780070; Mon, 16 Nov 2026 04:31:17 -0500 (EST)
+X-Mailer: MessagingEngine.com Webmail Interface
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -58,125 +114,261 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-X-Received: by 2002:a05:6808:148a:b0:4b9:e6ab:d07b with SMTP id
- 5614622812f47-56e634827b9mr7862955b6e.27.1794816770222; Mon, 16 Nov 2026
- 00:12:50 -0800 (PST)
-Date: Mon, 16 Nov 2026 00:12:50 -0800
-X-Google-Appengine-App-Id: s~syzkaller
-X-Google-Appengine-App-Id-Alias: syzkaller
-Message-ID: <6afabb02.3f8ef711.2cc87e.0003.GAE@google.com>
-Subject: [syzbot] [ext4?] WARNING in jbd2_journal_dirty_metadata (4)
-From: syzbot <syzbot+e8180f5590685cbc9037@syzkaller.appspotmail.com>
-To: jack@suse.cz, linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
-	syzkaller-bugs@googlegroups.com, tytso@mit.edu
-Content-Type: text/plain; charset="UTF-8"
+Date: Mon, 16 Nov 2026 11:30:56 +0200
+From: "Ivan Tiukov" <ivan@tiukov.com>
+To: linux-ext4@vger.kernel.org
+Cc: stable@vger.kernel.org, tytso@mit.edu, jack@suse.cz, adilger@dilger.ca,
+ dan.carpenter@linaro.org, willy@infradead.org
+Message-Id: <ef745013-2ea2-4e2d-86be-ac3e4a9d0cba@app.fastmail.com>
+Subject: [BUG] ext4: NULL deref in ext4_mb_load_buddy_gfp() on 6.1.y
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
 Hello,
 
-syzbot found the following issue on:
+Linux 6.1.y panics in ext4 under heavy unlink/truncate load. I believe this
+is a stable-only regression from the mballoc folio conversion in 6.1.191:
+the converted code assumes __filemap_get_folio() returns an ERR_PTR when it
+cannot hand out a folio, but 6.1.y still returns a plain NULL, so the NULL
+check that IS_ERR() is supposed to provide is not there.
 
-HEAD commit:    fa2933aac170 Merge tag 'x86-urgent-2026-11-15' of git://gi..
-git tree:       upstream
-console+strace: https://syzkaller.appspot.com/x/log.txt?x=144bd5a1580000
-kernel config:  https://syzkaller.appspot.com/x/.config?x=d16c0eae9c338e3c
-dashboard link: https://syzkaller.appspot.com/bug?extid=e8180f5590685cbc9037
-compiler:       Debian clang version 22.1.8 (1~deb13u4), Debian LLD 22.1.8
-syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=154c444d580000
-C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=113d0411580000
-
-Downloadable assets:
-disk image: https://storage.googleapis.com/syzbot-assets/40cdc2f6bae1/disk-fa2933aa.raw.xz
-vmlinux: https://storage.googleapis.com/syzbot-assets/f3aa3c064246/vmlinux-fa2933aa.xz
-kernel image: https://storage.googleapis.com/syzbot-assets/bae87f0bfa48/bzImage-fa2933aa.xz
-mounted in repro: https://storage.googleapis.com/syzbot-assets/6a29776e177b/mount_0.gz
-  fsck result: OK (log: https://syzkaller.appspot.com/x/fsck.log?x=164c444d580000)
-
-AI-generated root cause summary:
-In ext4 inline data writes, ext4_generic_write_inline_data() starts a
-transaction handle requesting only 1 credit for dirtying the inode buffer. When
-inline data is created or expanded, ext4_prepare_inline_data() consumes that
-sole credit by marking the inode table block (iloc.bh) dirty. If the subsequent
-userspace copy fails or is truncated (e.g. copying from a NULL/unmapped
-address), ext4_write_inline_data_end() invokes ext4_orphan_add(handle, inode),
-which attempts to dirty an orphan file or superblock block using the exhausted
-handle. jbd2_journal_dirty_metadata() encounters
-jbd2_handle_buffer_credits(handle) <= 0, warns, and returns -ENOSPC, causing
-__ext4_handle_dirty_metadata() to abort the journal handle and trigger ext4
-filesystem error handling.
-
-full analysis:  https://syzkaller.appspot.com/x/ai_root_cause?x=e8180f5590685cbc9037
-
-IMPORTANT: if you fix the issue, please add the following tag to the commit:
-Reported-by: syzbot+e8180f5590685cbc9037@syzkaller.appspotmail.com
-
-EXT4-fs (loop0): mounted filesystem 104feaea-39f8-49fa-9fe9-3052f307e139 r/w with ordered data mode. Quota mode: journalled.
-------------[ cut here ]------------
-jbd2_handle_buffer_credits(handle) <= 0
-WARNING: fs/jbd2/transaction.c:1598 at jbd2_journal_dirty_metadata+0xb84/0xef0 fs/jbd2/transaction.c:1598, CPU#0: syz-executor284/5618
-Modules linked in:
-CPU: 0 UID: 0 PID: 5618 Comm: syz-executor284 Not tainted syzkaller #0 PREEMPT_{RT,(full)} 
-Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 11/06/2026
-RIP: 0010:jbd2_journal_dirty_metadata+0xb84/0xef0 fs/jbd2/transaction.c:1598
-Code: 39 03 00 00 45 8b 06 48 c7 c7 a0 bf a7 8b 89 ee 89 da 4c 89 f9 e8 bc 6f 80 fe b8 ea ff ff ff e9 40 fd ff ff e8 dd f5 20 ff 90 <0f> 0b 90 b8 e4 ff ff ff e9 2d fd ff ff 44 89 e1 80 e1 07 38 c1 0f
-RSP: 0018:ffffc90004a5f0f8 EFLAGS: 00010293
-RAX: ffffffff82a6f833 RBX: 1ffff11008908f20 RCX: ffff88804117be80
-RDX: 0000000000000000 RSI: 0000000000000000 RDI: 0000000000000000
-RBP: 0000000000000000 R08: 0000000000000000 R09: 0000000000000000
-R10: dffffc0000000000 R11: fffffbfff21ab638 R12: dffffc0000000000
-R13: ffff888044847908 R14: ffff888044853900 R15: 0000000000000008
-FS:  000055558b2f3400(0000) GS:ffff888124709000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: 000000000046af40 CR3: 000000002ae66000 CR4: 00000000003526f0
-Call Trace:
- <TASK>
- __ext4_handle_dirty_metadata+0x198/0x9f0 fs/ext4/ext4_jbd2.c:392
- ext4_quota_write+0x3ca/0x580 fs/ext4/super.c:7503
- qtree_write_dquot+0x244/0x5e0 fs/quota/quota_tree.c:462
- v2_write_dquot+0x183/0x260 fs/quota/quota_v2.c:372
- dquot_commit+0x36e/0x440 fs/quota/dquot.c:540
- ext4_write_dquot+0x20a/0x380 fs/ext4/super.c:7096
- mark_dquot_dirty fs/quota/dquot.c:398 [inline]
- mark_all_dquot_dirty+0x1fe/0x460 fs/quota/dquot.c:438
- __dquot_free_space+0x817/0xc00 fs/quota/dquot.c:1901
- dquot_free_space_nodirty include/linux/quotaops.h:372 [inline]
- dquot_free_space+0x1b/0x30 include/linux/quotaops.h:377
- swap_inode_boot_loader+0xbe6/0x1070 fs/ext4/ioctl.c:503
- __ext4_ioctl fs/ext4/ioctl.c:1731 [inline]
- ext4_ioctl+0x2379/0x4b70 fs/ext4/ioctl.c:1932
- vfs_ioctl fs/ioctl.c:52 [inline]
- __do_sys_ioctl fs/ioctl.c:598 [inline]
- __se_sys_ioctl+0xff/0x170 fs/ioctl.c:584
- do_syscall_x64 arch/x86/entry/syscall_64.c:61 [inline]
- do_syscall_64+0x171/0x540 arch/x86/entry/syscall_64.c:89
- entry_SYSCALL_64_after_hwframe+0x77/0x7f
-RIP: 0033:0x7f163c16d949
-Code: c0 79 93 eb d5 48 8d 7c 1d 00 eb 99 0f 1f 44 00 00 48 89 f8 48 89 f7 48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff ff 73 01 c3 48 c7 c1 d8 ff ff ff f7 d8 64 89 01 48
-RSP: 002b:00007ffe5b174698 EFLAGS: 00000246 ORIG_RAX: 0000000000000010
-RAX: ffffffffffffffda RBX: 0031656c69662f2e RCX: 00007f163c16d949
-RDX: 0000000000000000 RSI: 0000000000006611 RDI: 0000000000000004
-RBP: 0000000000000001 R08: 000055558b2f4560 R09: 000055558b2f4560
-R10: 0000000000000000 R11: 0000000000000246 R12: 00007ffe5b1746c0
-R13: 0000000000000002 R14: 431bde82d7b634db R15: 00007f163c1cd04b
- </TASK>
+The crash reproduced three times on one host within eight hours; the trace
+below is from the third one, captured over netconsole because the machine
+went down before journald could persist anything.
 
 
----
-This report is generated by a bot. It may contain errors.
-See https://goo.gl/tpsmEJ for more information about syzbot.
-syzbot engineers can be reached at syzkaller@googlegroups.com.
+= Crash
+--------
 
-syzbot will keep track of this issue. See:
-https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
+Kernel: 6.1.192-1 (Debian 6.1.0-55-amd64), x86_64, 4 vCPU KVM guest, 8 GB.
+Process: rpmsign, doing unlink() of large RPM files on ext4 root.
 
-If the report is already addressed, let syzbot know by replying with:
-#syz fix: exact-commit-title
+  BUG: kernel NULL pointer dereference, address: 0000000000000000
+  #PF: supervisor read access in kernel mode
+  #PF: error_code(0x0000) - not-present page
+  PGD 0 P4D 0
+  Oops: 0000 [#1] PREEMPT SMP NOPTI
+  CPU: 3 PID: 12736 Comm: rpmsign Not tainted 6.1.0-55-amd64 #1 Debian 6.1.192-1
+  Hardware name: Red Hat KVM, BIOS 1.16.0-4.module_el8.9.0+3659+9c8643f3 04/01/2014
+  RIP: 0010:ext4_mb_load_buddy_gfp+0xbc/0x380 [ext4]
+  Code: 89 44 24 08 f7 3c 24 48 63 d8 89 54 24 0c ba 01 00 00 00 48 89 de
+        e8 d3 6e ff f2 49 89 c7 48 3d 00 f0 ff ff 0f 87 28 01 00 00 <48>
+        8b 00 a8 04 0f 84 12 01 00 00 49 8b 07 a8 01 0f 85 07 01 00 00
+  RSP: 0018:ffffd065089bfae8 EFLAGS: 00010207
+  RAX: 0000000000000000 RBX: 000000000000004c RCX: 0000000000000003
+  RDX: 000000000000000c RSI: ffff8ecec175f908 RDI: ffff8ecdd505e000
+  RBP: ffff8ecee0983000 R08: ffff8ecec1582f70 R09: 0000000000000000
+  R10: 0000000000000000 R11: ffff8ece2a13eff0 R12: ffffd065089bfb80
+  R13: 0000000000008c40 R14: ffff8ecec0420a78 R15: 0000000000000000
+  CR2: 0000000000000000 CR3: 00000000150b2000 CR4: 0000000000750ee0
+  Call Trace:
+   <TASK>
+   ext4_free_blocks+0x410/0xbb0 [ext4]
+   ext4_ext_remove_space+0x7ff/0x15d0 [ext4]
+   ext4_ext_truncate+0xb4/0xd0 [ext4]
+   ext4_truncate+0x314/0x490 [ext4]
+   ? __ext4_journal_start_sb+0x105/0x120 [ext4]
+   ext4_evict_inode+0x2f8/0x710 [ext4]
+   evict+0x112/0x2c0
+   do_unlinkat+0x173/0x320
+   __x64_sys_unlink+0x3e/0x70
+   do_syscall_64+0x5d/0xb0
+   entry_SYSCALL_64_after_hwframe+0x6e/0xd8
+   </TASK>
+  Kernel panic - not syncing: Fatal exception
 
-If you want to overwrite report's subsystems, reply with:
-#syz set subsystems: new-subsystem
-(See the list of subsystem names on the web dashboard)
 
-If the report is a duplicate of another one, reply with:
-#syz dup: exact-subject-of-another-report
+= Analysis
+----------
 
-If you want to undo deduplication, reply with:
-#syz undup
+The faulting instruction is in the fast path of ext4_mb_load_buddy_gfp():
+
+  folio = __filemap_get_folio(inode->i_mapping, pnum, FGP_ACCESSED, 0);
+  if (IS_ERR(folio) || !folio_test_uptodate(folio) || folio_test_locked(folio)) {
+
+No FGP_CREAT is passed, so when the folio is not in the page cache
+__filemap_get_folio() reaches no_page: and, on 6.1.y, simply does
+"return folio;" with folio == NULL.
+
+  IS_ERR(NULL) is false, so the guard falls through to
+  folio_test_locked(folio), which dereferences NULL.
+
+RAX == 0 at the fault and CR2 == 0 confirm the returned value was NULL. I
+also disassembled the shipped ext4.ko to make sure this is the code being
+executed:
+
+  315c8: call  __filemap_get_folio
+  315cd: mov   %rax,%r15
+  315d0: cmp   $0xfffffffffffff000,%rax    # IS_ERR() only
+  315d6: ja    <slow path>
+  315dc: mov   (%rax),%rax                 # +0xbc, faults with RAX == NULL
+
+There is no NULL test anywhere between the call and the dereference.
+
+Commit a8d83471c560 ("ext4: fix error pointer dereference in
+ext4_mb_load_buddy_gfp()") added the IS_ERR() checks. That is correct for
+mainline, where __filemap_get_folio() returns ERR_PTR(-ENOENT), but it does
+not cover 6.1.y, where the function returns NULL for the same situation.
+
+
+= Why this is 6.1.y only
+-------------------------
+
+__filemap_get_folio() changed its no-folio convention in v6.4:
+
+  66dabbb65d67  mm: return an ERR_PTR from __filemap_get_folio
+  38a55db9877c  filemap: Handle error return from __filemap_get_folio()
+
+That change is a semantics change for every caller, so it was never a
+stable candidate and 6.1.y does not have it. What 6.1.y did get, in
+6.1.191, is the ext4 side of the folio conversion (862483175d3d, d34e4fd4e73f
+and the a8d83471c560 follow-up), which was written against the post-6.4
+semantics.
+
+I checked the tree heads:
+
+  branch         ext4 guard               __filemap_get_folio   result
+  linux-6.6.y    IS_ERR(folio) || ...     ERR_PTR(-ENOENT)      ok
+  linux-6.12.y   IS_ERR(folio) || ...     ERR_PTR(-ENOENT)      ok
+  linux-6.1.y    IS_ERR(folio) || ...     NULL                  NULL deref
+
+So 6.1.y is the only affected stable branch, and it stays broken in 6.1.192
+and in linux-6.1.y HEAD. 5.15.y still uses find_get_page_flags() here and is
+not affected.
+
+
+= Minor: a second latent site in the same file
+-----------------------------------------------
+
+ext4_mb_get_buddy_page_lock() has the same assumption:
+
+  folio = __filemap_get_folio(inode->i_mapping, pnum,
+                  FGP_LOCK | FGP_ACCESSED | FGP_CREAT, gfp);
+  if (IS_ERR(folio))
+          return PTR_ERR(folio);
+  BUG_ON(folio->mapping != inode->i_mapping);
+
+Here NULL does come back from FGP_CREAT when the allocation fails, and
+PTR_ERR(NULL) is 0, so the function reports success and then dereferences
+NULL in BUG_ON(). Same root cause, different symptom. I folded it into the
+patch below.
+
+No other file under fs/ext4/ calls __filemap_get_folio() in 6.1.192, so
+mballoc.c is the whole surface.
+
+
+= Proposed fix (against 6.1.192)
+---------------------------------
+
+Use IS_ERR_OR_NULL() and translate NULL into -ENOMEM. This keeps working
+unchanged if 6.1.y ever picks up the ERR_PTR() semantics, and it is a no-op
+for mainline.
+
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -1375,8 +1375,8 @@ static int ext4_mb_get_buddy_page_lock(s
+ 	poff = block % blocks_per_page;
+ 	folio = __filemap_get_folio(inode->i_mapping, pnum,
+ 			FGP_LOCK | FGP_ACCESSED | FGP_CREAT, gfp);
+-	if (IS_ERR(folio))
+-		return PTR_ERR(folio);
++	if (IS_ERR_OR_NULL(folio))
++		return folio ? PTR_ERR(folio) : -ENOMEM;
+ 	BUG_ON(folio->mapping != inode->i_mapping);
+ 	e4b->bd_bitmap_folio = folio;
+ 	e4b->bd_bitmap = folio_address(folio) + (poff * sb->s_blocksize);
+@@ -1389,8 +1389,8 @@ static int ext4_mb_get_buddy_page_lock(s
+ 	/* blocks_per_page == 1, hence we need another page for the buddy */
+ 	folio = __filemap_get_folio(inode->i_mapping, block + 1,
+ 			FGP_LOCK | FGP_ACCESSED | FGP_CREAT, gfp);
+-	if (IS_ERR(folio))
+-		return PTR_ERR(folio);
++	if (IS_ERR_OR_NULL(folio))
++		return folio ? PTR_ERR(folio) : -ENOMEM;
+ 	BUG_ON(folio->mapping != inode->i_mapping);
+ 	e4b->bd_buddy_folio = folio;
+ 	return 0;
+@@ -1533,7 +1533,8 @@ ext4_mb_load_buddy_gfp(struct super_bloc
+ 
+ 	/* Avoid locking the folio in the fast path ... */
+ 	folio = __filemap_get_folio(inode->i_mapping, pnum, FGP_ACCESSED, 0);
+-	if (IS_ERR(folio) || !folio_test_uptodate(folio) || folio_test_locked(folio)) {
++	if (IS_ERR_OR_NULL(folio) || !folio_test_uptodate(folio) ||
++	    folio_test_locked(folio)) {
+ 		/*
+ 		 * folio_test_locked is employed to detect ongoing folio
+ 		 * migrations, since concurrent migrations can lead to
+@@ -1543,11 +1544,11 @@ ext4_mb_load_buddy_gfp(struct super_bloc
+ 		 * try to get the folio with lock in both cases to avoid
+ 		 * concurrency.
+ 		 */
+-		if (!IS_ERR(folio))
++		if (!IS_ERR_OR_NULL(folio))
+ 			folio_put(folio);
+ 		folio = __filemap_get_folio(inode->i_mapping, pnum,
+ 				FGP_LOCK | FGP_ACCESSED | FGP_CREAT, gfp);
+-		if (!IS_ERR(folio)) {
++		if (!IS_ERR_OR_NULL(folio)) {
+ 			if (WARN_RATELIMIT(folio->mapping != inode->i_mapping,
+ 	"ext4: bitmap's mapping != inode->i_mapping\n")) {
+ 				/* should never happen */
+@@ -1567,8 +1568,8 @@ ext4_mb_load_buddy_gfp(struct super_bloc
+ 			folio_unlock(folio);
+ 		}
+ 	}
+-	if (IS_ERR(folio)) {
+-		ret = PTR_ERR(folio);
++	if (IS_ERR_OR_NULL(folio)) {
++		ret = folio ? PTR_ERR(folio) : -ENOMEM;
+ 		goto err;
+ 	}
+ 	if (!folio_test_uptodate(folio)) {
+@@ -1585,12 +1586,13 @@ ext4_mb_load_buddy_gfp(struct super_bloc
+ 	poff = block % blocks_per_page;
+ 
+ 	folio = __filemap_get_folio(inode->i_mapping, pnum, FGP_ACCESSED, 0);
+-	if (IS_ERR(folio) || !folio_test_uptodate(folio) || folio_test_locked(folio)) {
+-		if (!IS_ERR(folio))
++	if (IS_ERR_OR_NULL(folio) || !folio_test_uptodate(folio) ||
++	    folio_test_locked(folio)) {
++		if (!IS_ERR_OR_NULL(folio))
+ 			folio_put(folio);
+ 		folio = __filemap_get_folio(inode->i_mapping, pnum,
+ 				FGP_LOCK | FGP_ACCESSED | FGP_CREAT, gfp);
+-		if (!IS_ERR(folio)) {
++		if (!IS_ERR_OR_NULL(folio)) {
+ 			if (WARN_RATELIMIT(folio->mapping != inode->i_mapping,
+ 	"ext4: buddy bitmap's mapping != inode->i_mapping\n")) {
+ 				/* should never happen */
+@@ -1609,8 +1611,8 @@ ext4_mb_load_buddy_gfp(struct super_bloc
+ 			folio_unlock(folio);
+ 		}
+ 	}
+-	if (IS_ERR(folio)) {
+-		ret = PTR_ERR(folio);
++	if (IS_ERR_OR_NULL(folio)) {
++		ret = folio ? PTR_ERR(folio) : -ENOMEM;
+ 		goto err;
+ 	}
+ 	if (!folio_test_uptodate(folio)) {
+
+
+= Trigger and testing
+----------------------
+
+The window is narrow but not exotic: the block group must be initialised
+while its buddy folio has been evicted from the page cache, and then any
+free/alloc in that group takes the fast path with a cold folio. On this host
+it happened under rm -rf of a large tree and under rpm --addsign of several
+hundred MB of RPMs, both with the page cache under pressure.
+
+I have not boot-tested a 6.1.y build with the patch applied. The diagnosis
+itself is confirmed on the affected kernel: the oops, the NULL in RAX/CR2,
+and the disassembly of the shipped module. I am happy to build and run a
+patched 6.1.y if that helps; the host is available for retesting.
+
+Workaround for anyone hitting this: stay on 6.1.190 or earlier until 6.1.y
+carries a fix, or run 6.6.y/6.12.y.
+
+-- 
+Ivan Tiukov (www.tiukov.com)
