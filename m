@@ -1,108 +1,110 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.130
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794832651;
-	b=ea3tPrUm56p9zqlL5iHG/CtHMcVK5MSj7J91tGqVH2dAXPnmXlgZETUcpSj94rYY78SC
-	 5P2MA1VDMuwqxCq1rFvdN8z1XpLHXvvveYIs+TAVpCjQAQU1bMeAhpI5JwFTW9LBDjAVZ
-	 2xgVKMtF4QQfq8ZIwDowgHgHvIjM1kzVxAAme7qWZPgzUp1LyG4/JjciQOm0lKzmQ0IOS
-	 J+iavESevhCsswKy2LM8vEWp2fh4UcHLn22b5EnGFUTKnDp8vCnzocEw1bMUaKPH8iouE
-	 /ufWF/YUrCs2WR1xcHy/QkqFW+8jBzJq+uJ5cq65rK0QYkCYzKMM2W3POm7i8298YtA==
+	t=1794833326;
+	b=hkgShAa/XCp8yM0g34Lq8sOQPvVvaF06P6qx/jprZu6dYV1rWBysdOd5xRR8mXdpNSC8
+	 akM+LK62Tgvi2pqexGtdFpaglcCde911QPFFASCYN/s0z9R+2NS2ZJLhDXNcob4sOejJu
+	 /oikNuWDVwT+aWx1X0vAdVJc5WIKfWV1hUwSBle2uQIRyqTWhamjKl7t4PBE3nbDfFFPa
+	 DWW8KxEpPhQiYe9bzZL2jt9Eqi1PwhUoHkTCbAPUQCUc6cKfJXq6GTFw1WghaOBLk46qB
+	 GP1xo8f8wavD4HrDsUiImpER/GVk22imDJHKL+Cp+N84egNPUx46MGzLjPPs9VKzcmQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794832651;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794833326;
 	h=DMARC-Filter:Received:DKIM-Signature:DKIM-Signature:DKIM-Signature:
 	 DKIM-Signature:Received:Received:Received:Date:From:To:Cc:Subject:
 	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
-	 In-Reply-To:X-Spam-Flag:X-Spam-Level:X-Spamd-Result:X-Spam-Score;
-	bh=8sdoLOBhsgHCl/XuDqgaw5ckZV6lC7JqKjQIjSfIFbY=;
-	b=ZV45BOrGsV5e6SvUgD7XL13MHFrw2Mlyoxu4AYFbEu/UpFVRKgGBPl9DRJz7z2xYKeTH
-	 7C59ZhYau0+aIlquZGlcBp+ISlF7pcZV5TNTmtlkvXDn5StRqXYQE6F6utseHDxaoUF8v
-	 XA0j0EgJmSa/j3W0+UCg1y6LUco43Rzgk5oPG7Lo+QzSqLgfHcleh4nOBsnkf5sU9Ji63
-	 DiNR5O7oRz4U6gAbLlMHFL+/PYmVP1S9H+r5UX7rtaVpQckggGw8TGlOoLKcfMDdOLPMp
-	 FjGwm2aR4TwJwVXYmPgbOgErfnNNqJhkxKFPI0KBaP/UEDCR8yZB8n0wMWP5/2Bvtdw==
+	 In-Reply-To:X-Spamd-Result:X-Rspamd-Server:X-Rspamd-Action:
+	 X-Spam-Flag:X-Spam-Score:X-Spam-Level:X-Rspamd-Queue-Id;
+	bh=muCsOHPgshNynmm1OLGJYfu6W2sds6nitTgZ+7QRuR4=;
+	b=HhQlsZDDaUFD6hhoQH1jOj2Zdh+3yoyJhBJuQ/NWILETV1gS0ddIPg1mf7fJgieCrm56
+	 m/a7T9mGv0qkTd5kb/S/rOgd7mXM8FtTlPo9jKniS9lA5cUmOQrjFtxSOnv0rQhf6nK0o
+	 fMiFr8gyGagwmDbP7o4nmQUrsP0kuSkyZ7dHo+HR3p0YnXmJEBKPS3ZFkT04oyLnebZeT
+	 vpZJqXE7TfYDMlfq+mWoDDMKeq0TTNpe9BoHr0iC7phaJENOlQ0e1gTsr8VroT6io+FDO
+	 BWnyg17+uiK9+IFml73zIs1Vohy6vf6QprduBsl3U1U1wvKPU3lzZEynxw+4CGbPxCQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=none header.from=suse.cz;
 	spf=pass smtp.mailfrom=suse.cz;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b="xZ/3SU/y";
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b="FGhvwlq/";
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=NxnPW3cY;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=uQkZelfd;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=apNPIfb6;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b="hgy7725/";
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=nt0QvDaP;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=7VcVi+gM;
 	arc=none smtp.remote-ip=195.135.223.130
 Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 45496606A31C;
-	Mon, 16 Nov 2026 12:37:31 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 45496606A31C
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 70FD1606A323;
+	Mon, 16 Nov 2026 12:48:45 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 70FD1606A323
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=xZ/3SU/y;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=FGhvwlq/;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=NxnPW3cY;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=uQkZelfd
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=apNPIfb6;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=hgy7725/;
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=nt0QvDaP;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=7VcVi+gM
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 3C221222F0;
-	Mon, 16 Nov 2026 12:37:28 +0000 (UTC)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id 11C6321DFE;
+	Mon, 16 Nov 2026 12:48:41 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1794832649; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1794833322; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=8sdoLOBhsgHCl/XuDqgaw5ckZV6lC7JqKjQIjSfIFbY=;
-	b=xZ/3SU/yIb57H7e00MpJyKf5I5BkUufyHA60Q8yZA43wwp/eaPnDDlWekiy3P0guPLk2vM
-	mq6oCfaX83nD3rdTvVNb/qTELVe3HVgzio9OjKsaw0IiefRXr97QVfsFzHHdqaDHdNlz8u
-	e4r8mVTWNLkskw7Wt732ZDtr40QGSDQ=
+	bh=muCsOHPgshNynmm1OLGJYfu6W2sds6nitTgZ+7QRuR4=;
+	b=apNPIfb66Va+LbqfktNNcArsxTUjia89+nO/IYZNRhXcjercHexCX3wF4Z8dKN3pqHUWXw
+	L8XtP+arAXjuvXYmHKIHMNxyrxiLIKpgqpPRW43i2eU+SotAKPYJypRJomsqbemy0vTZAS
+	Hv5ktoWrb0nHq9ByOZWrmFQlGG0giAg=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1794832649;
+	s=susede2_ed25519; t=1794833322;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=8sdoLOBhsgHCl/XuDqgaw5ckZV6lC7JqKjQIjSfIFbY=;
-	b=FGhvwlq/fWgH1H3X5yarUne45mIZ84zYcFiefHMPa4rAP4pU34OUFMbX42aW+pZ2mHHPH0
-	s0QIszhp/589zeCQ==
+	bh=muCsOHPgshNynmm1OLGJYfu6W2sds6nitTgZ+7QRuR4=;
+	b=hgy7725/CWunCK/JEauo/zXGDcWesrJSLGsgx8IbV256dgQKX8nLgj9HtxsxCoYHbySmCr
+	g/f6wLVdLgAz24DA==
 Authentication-Results: smtp-out1.suse.de;
-	none
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=nt0QvDaP;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=7VcVi+gM
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1794832648; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1794833321; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=8sdoLOBhsgHCl/XuDqgaw5ckZV6lC7JqKjQIjSfIFbY=;
-	b=NxnPW3cY3zPIp1sIWfvIkmv98IOJnC1WlTPsoXZgNF29BAFSHouhC0yYNVUWGIQL+OmR0N
-	SwMG3PoFHSqO66+kQpLe3SPokAuF7obBWAmhqhegVUifAKciTYwyb1axYrbZB7pyn92w4B
-	KYHqG0xcIsoYtGC7GznOtJyUWvcI2B8=
+	bh=muCsOHPgshNynmm1OLGJYfu6W2sds6nitTgZ+7QRuR4=;
+	b=nt0QvDaPvJcwKrIUlO6ggIpwTTPxr7Opu0/elsnR9U7gJ2OhcxPILAhFrD+jIqgMuNjfBd
+	6ceNeSJ+9aEcxACrXMJuTjke+t97jBfJ5NE2xFo5amxT/vejhq5liqc5KHoxP4ZMyjGRtX
+	egZvl51K1P2dH4q3arSwDHbTyziMFDA=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1794832648;
+	s=susede2_ed25519; t=1794833321;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=8sdoLOBhsgHCl/XuDqgaw5ckZV6lC7JqKjQIjSfIFbY=;
-	b=uQkZelfduej10fPuK9xI2jNZ6vIu0vfJOFqrg8bG6hQ0C4KK2g51SYuoboRltRZQwv+qJ6
-	1io8q5HsdiigNYCQ==
+	bh=muCsOHPgshNynmm1OLGJYfu6W2sds6nitTgZ+7QRuR4=;
+	b=7VcVi+gMZSY9k49upLnc8L9D7Wb05qnPsarEcKvnSzv4bSm3BHTTQG+GWLklbkASkHzUs8
+	8BoUPh2o6xtHvVAg==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 1D0751334C;
-	Mon, 16 Nov 2026 12:37:28 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id DD98E1334C;
+	Mon, 16 Nov 2026 12:48:40 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id DDsGAQj5+mrCcAAAD6G6ig
-	(envelope-from <jack@suse.cz>); Mon, 16 Nov 2026 12:37:28 +0000
+	id aZdtLaj7+mpOfAAAD6G6ig
+	(envelope-from <jack@suse.cz>); Mon, 16 Nov 2026 12:48:40 +0000
 Received: by quack.suse.cz (Postfix, from userid 1000)
-	id A924C24DF0; Mon, 16 Nov 2026 13:37:27 +0100 (CET)
-Date: Mon, 16 Nov 2026 13:37:27 +0100
+	id 7044024DF8; Mon, 16 Nov 2026 13:48:36 +0100 (CET)
+Date: Mon, 16 Nov 2026 13:48:36 +0100
 From: Jan Kara <jack@suse.cz>
-To: Chris Wiseman <chriswiseman@google.com>
-Cc: Theodore Ts'o <tytso@mit.edu>, 
-	Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.cz>, Baokun Li <libaokun@linux.alibaba.com>, 
-	Ojaswin Mujoo <ojaswin@linux.ibm.com>, "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, 
-	Zhang Yi <yi.zhang@huawei.com>, linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] ext4: free HTree fname rb-tree at EOF in
- ext4_dx_readdir()
-Message-ID: <wsdefflvbpuic6qmqy5xfftq3d6oikzbvypvcs6itdxlykpowb@w4gttnixj4dj>
-References: <18e865672dda2d41.3137322e32332e3235332e313736.36f4d7.0000sendgmr@google.com>
+To: Alan <3164729207@qq.com>
+Cc: tytso@mit.edu, adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, 
+	jack@suse.cz, ojaswin@linux.ibm.com, ritesh.list@gmail.com, 
+	yi.zhang@huawei.com, harshadshirwadkar@gmail.com, linux-ext4@vger.kernel.org, 
+	linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Subject: Re: [PATCH] ext4: reserve inode write access before unlinking entry
+Message-ID: <otvuclstcoaysrnywzdttapxbxg7hq3p7lp3iexy7u5cuj6plx@waqfsi2dg2p4>
+References: <tencent_D60E766CE07D3A1847B81DE9BC37B4466908@qq.com>
+ <tencent_69B311F4356254E166A5EFDC981AA138D80A@qq.com>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -114,87 +116,102 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <18e865672dda2d41.3137322e32332e3235332e313736.36f4d7.0000sendgmr@google.com>
-X-Spam-Flag: NO
-X-Spam-Level: 
-X-Spamd-Result: default: False [-11.30 / 50.00];
+In-Reply-To: <tencent_69B311F4356254E166A5EFDC981AA138D80A@qq.com>
+X-Spamd-Result: default: False [-11.51 / 50.00];
 	SUSE_INTERNAL_BYPASS(-9.00)[];
 	BAYES_HAM(-3.00)[100.00%];
 	SUSPICIOUS_RECIPS(1.50)[];
 	NEURAL_HAM_LONG(-1.00)[-1.000];
 	MID_RHS_NOT_FQDN(0.50)[];
+	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
 	NEURAL_HAM_SHORT(-0.20)[-1.000];
 	MIME_GOOD(-0.10)[text/plain];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	ARC_NA(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	TAGGED_RCPT(0.00)[];
+	MX_GOOD(-0.01)[];
 	MIME_TRACE(0.00)[0:+];
-	RCPT_COUNT_SEVEN(0.00)[10];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	TO_DN_SOME(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	FREEMAIL_CC(0.00)[mit.edu,dilger.ca,suse.cz,linux.alibaba.com,linux.ibm.com,gmail.com,huawei.com,vger.kernel.org];
-	RCVD_COUNT_THREE(0.00)[3];
-	FROM_EQ_ENVFROM(0.00)[];
-	RCVD_TLS_LAST(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	ARC_NA(0.00)[];
+	RCPT_COUNT_TWELVE(0.00)[12];
 	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,suse.com:email,suse.cz:email]
-X-Spam-Score: -11.30
+	RCVD_COUNT_THREE(0.00)[3];
+	FREEMAIL_TO(0.00)[qq.com];
+	RCVD_TLS_LAST(0.00)[];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com,qq.com];
+	TO_DN_SOME(0.00)[];
+	DNSWL_BLOCKED(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	TAGGED_RCPT(0.00)[];
+	MISSING_XM_UA(0.00)[];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	FREEMAIL_CC(0.00)[mit.edu,dilger.ca,linux.alibaba.com,suse.cz,linux.ibm.com,gmail.com,huawei.com,vger.kernel.org];
+	DKIM_TRACE(0.00)[suse.cz:+];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.cz:dkim,suse.com:email]
+X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
+X-Rspamd-Action: no action
+X-Spam-Flag: NO
+X-Spam-Score: -11.51
+X-Spam-Level: 
+X-Rspamd-Queue-Id: 11C6321DFE
 
-On Mon 16-11-26 02:25:44, Chris Wiseman wrote:
-> When ext4_dx_readdir() finishes scanning the last HTree leaf block of
-> an indexed directory, ext4_htree_fill_tree() sets info->next_hash to
-> ~0.  On the final iteration, once rb_next(info->curr_node) returns NULL,
-> ext4_dx_readdir() sets ctx->pos to ext4_get_htree_eof(file) and breaks
-> out of the loop without calling free_rb_tree_fname(&info->root).
-> 
-> While ext4_dx_readdir() frees info->root when advancing across leaf
-> blocks or resetting on seek, reaching EOF leaves the final leaf block's
-> red-black tree of struct fname nodes pinned in file->private_data until
-> the directory fd is closed in ext4_release_dir().  Processes and daemons
-> that keep directory descriptors open after reading to EOF retain those
-> slab allocations for the lifetime of the open fd.
-> 
-> Free info->root before returning EOF when info->next_hash == ~0.  If the
-> caller later seeks back, the existing !info->curr_node check at the top
-> of the loop repopulates the tree on demand.
-> 
-> Benchmark results (/proc/allocinfo, 256 open HTree dirs at EOF):
-> 
->   Metric                                  Before        After     Delta
->   ----------------------------------  -----------  ----------  --------
->   ext4_htree_store_dirent live slab   1,007,616 B         0 B   -100.0%
->   ext4_htree_store_dirent live objs        10,496           0   -100.0%
->   /proc/meminfo SUnreclaim delta        +1,246 kB     +133 kB    -89.3%
-> 
-> Signed-off-by: Chris Wiseman <chriswiseman@google.com>
 
-Looks sensible. Feel free to add:
+Hi!
 
-Reviewed-by: Jan Kara <jack@suse.cz>
+On Mon 16-11-26 15:35:19, Alan wrote:
+> Hi Ted, Jan and ext4 reviewers,
+> 
+> A gentle ping on this patch from October 27. Are there any comments on the
+> approach?
+
+So for me it is unclear whether this needs addressing at all. Because
+realistically the only reason why getting write access to inode bh can fail
+is due to aborted journal in which case no transaction will get committed
+anyway. So this looks mostly like a problem specific to this error
+injection testing...
 
 								Honza
 
-> ---
->  fs/ext4/dir.c | 1 +
->  1 file changed, 1 insertion(+)
+
 > 
-> diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-> index 8d7b81e6948e..435300cd2c61 100644
-> --- a/fs/ext4/dir.c
-> +++ b/fs/ext4/dir.c
-> @@ -640,6 +640,7 @@ static int ext4_dx_readdir(struct file *file, struct dir_context *ctx)
->  			info->curr_minor_hash = fname->minor_hash;
->  		} else {
->  			if (info->next_hash == ~0) {
-> +				free_rb_tree_fname(&info->root);
->  				ctx->pos = ext4_get_htree_eof(file);
->  				break;
->  			}
-> -- 
-> 2.56.0
+> I have additional validation from November 2 using QEMU blkdebug to fail an
+> actual guest block READ. These results supplement the source-derived fault
+> injection described in the original mail.
+> 
+> On the unpatched Linux 6.12.1 test kernel, with errors=continue, the failed
+> read was at sector 2312, in the parent inode-table block (block 289, parent
+> inode 13). The kernel reported:
+> 
+>   I/O error, dev vda, sector 2312 op 0x0:(READ)
+>   ext4_get_inode_loc:4554: inode #13: block 289: unable to read itable block
+>   __ext4_unlink:3469: inode #13: mark_inode_dirty error
+> 
+> unlink returned EIO. After normal unmount, /p/file was absent, but raw
+> inode 2064 still had Links: 1. e2fsck -fn reported:
+> 
+>   Unattached inode 2064
+> 
+> In this case the inode-table read fails in ext4_get_inode_loc(), before the
+> journal write-access call. A separate run of the same block-read failure
+> traced JBD2 through unlink, sync and normal unmount:
+> 
+>   jbd2_journal_abort() probe hits: 0
+>   unlink handle at jbd2_journal_stop(): TID 7, T_RUNNING
+>   h_err=0, h_aborted=0, j_errno=0, journal JBD2_ABORT flag clear
+>   jbd2_journal_stop() return value: 0
+>   jbd2_start_commit: transaction 7
+>   jbd2_end_commit: transaction 7
+> 
+> The offline filesystem check still reported the unattached inode. This
+> demonstrates that this read-error path can commit the directory change
+> without a journal abort when mounted with errors=continue.
+> 
+> With the fix, the same clean input and block-read error failed before the
+> directory entry was removed. After normal unmount, /p/file remained present,
+> inode 2064 still had Links: 1, and e2fsck -fn completed without diagnostics.
+> 
+> Thanks,
+> Alan
 > 
 -- 
 Jan Kara <jack@suse.com>
