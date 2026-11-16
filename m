@@ -1,63 +1,54 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=18.9.28.11
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794865207;
-	b=R8/u0lKmPlnovDE70hG3ow4fNWyzcRWU/417RvZWJyJH1Z62pfkT3dIyKYt3nOAON2TH
-	 h/N4Eeh62NLqzsX9W9vSdeEv9dnRuqCkj/I2Pj6GkIYEBMw85LrcumsRh+UZ9E+FVrhKc
-	 73dYmxlhLOcWxqelKKKFaMJii6DmXl7i1JYEpkhyojt+Lq5QBPGeaf1MBCFN7WnbXJkz8
-	 X07gCMtjLNmgulrmiZnDhgijF0J8PFawKjgOeKYMhCe0BpgbuJzTqF4wC+r6oATGNU0E+
-	 KPCb9UDp9kB5viDBirtoTC4Qiwg5UOmfwShebqn42F1lBBb0HuZdkEDw85g3+1NYfSg==
+	t=1794867478;
+	b=A9RuHG3qnUiuYphiFVqIzOkM4Pn7PMAkt8lgAYbWS/397/90wcQ5L481WaIlY9v2Ytbw
+	 LzyQqgSTOK/ITVN2eqXyI930yJwfVMW9qBrwAGbBvOo6mAIY/byaYfzaNjk9aFslbba8E
+	 0k/0u8rQrtwwnqEpf4yGQPVLaL3u7I8o1SEh9ENufABFWbPrmJrXGJ+/NNbPoG9rvK4hi
+	 7A8soarEB3uLC9OBKXpoEpUvxelF4k41fs5wAy0RhHLaxbMQgLt6/rlAi25AdFLQi41NG
+	 xCdFLpBjxgyhWB8qGJQTBwtYXbGvdwbh3Ko3bs6+1zGHMoAZUM0sAj6DcplmzlPRqCQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794865207;
-	h=DMARC-Filter:Received:DKIM-Signature:Received:Date:From:To:Cc:
-	 Subject:Message-ID:References:MIME-Version:Content-Type:
-	 Content-Disposition:In-Reply-To;
-	bh=blfgXIbOe9CLDWymWGfeRse6331aW3AgoqdoPjSZ3Ys=;
-	b=p+F18kwdMS77Ila27gGvsF7+5K9zjWfdosDaGzZ99y82vHMfWrqbUaP1Vjl5vLYHfOEu
-	 y+iasTF+erEhpu30RcwCsdViZQjyOfRCF7a7baA/m3B5Z3yopIiiKDV1ao7U7DvEYM3j5
-	 2HCVYv6jaXve+aKv0XBfRe8zSZOjqnCWlV8CaTtOx+ukqkC2LjGjpl9HY4zsOTP7OUpFl
-	 YeJSufL/enHYhM8lx+ou2QGk0Akna0ZQSeNwFHvnSUnY9kTuFoyY6j0W/NpBybG3h1snU
-	 3x5v2ynYcWuyWWc85eIx5FKTH8zvgsPq/7TxJLj3A6+E2pNJHX/VK0BCo1B1QIPRHMQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794867478;
+	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
+	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
+	bh=IGRRZW3J6UJvu7JeelLqLUevH1B+4V5oWdry0fvPc5s=;
+	b=Yd/ujMaldT6Ckqyr4Gm3vGwDZOAqce6UkoKkmIwX5Df3B5KNmyisAECEUtvhllkt459a
+	 M3/xwuER8SKsMbi3gkWFv+k9FsoaFvCGmnZ7hEmV/wDRMbL5BdyLw8a4Kuv370mCoiuSW
+	 QVnDrf0elaLBeciuOFDc3O9Fn0cF2fNOjckXN1/k0AREvOCBhBOLoXJ9xukOa+C00wK2Z
+	 BwoSV8ymRGvKMImbVzPtIAHOQv3o1c9NJFZ2MHEWvTkllfSYm2cxBSyGVJ5VgQp38BNsk
+	 3UTy75ja9MfzRy961Ao6PXja0rmLoLGaK7JhHosFVryskLTohkXk0MDEyFU+NRRIhsw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=mit.edu;
-	spf=pass smtp.mailfrom=mit.edu;
-	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=MlIBBcXs;
-	arc=none smtp.remote-ip=18.9.28.11
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=iUELJt1e;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F1F29606A322
-	for <linux-ext4@vger.kernel.org>; Mon, 16 Nov 2026 21:40:06 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org F1F29606A322
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 67532606A31C
+	for <linux-ext4@vger.kernel.org>; Mon, 16 Nov 2026 22:17:58 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=MlIBBcXs
-Received: from macsyma.thunk.org (c-73-9-28-129.hsd1.il.comcast.net [73.9.28.129])
-	(authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AGLdslR013263
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Mon, 16 Nov 2026 16:39:55 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1794865196; bh=blfgXIbOe9CLDWymWGfeRse6331aW3AgoqdoPjSZ3Ys=;
-	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-	b=MlIBBcXs++B0CmfEY5tzsrnmG0YK9tVG3u5qFebBSppFPavbYLiuOjm12F9NaUfBv
-	 IcTSs+huF++/GwhAW4YQtlT2cSpEXhb/ZKSlFTpebKAPTbulSdplbkniIw2hxGeY6C
-	 f80hX2YBoOlyQq40PMh6hfyk6Ig0X2ETRxWz5nO+7yq89kW1a8LtoAoCa62mS791pZ
-	 2U3gVKq23bQvoBBB1erXpvRsWRXVUe/36tc94DWuGdL8mQ9JhcUmYwLtpASvAxswgz
-	 WbsX+ZxuCM/WgFNxYXzbWlZ2TSokY/ElrDxK9+C6gR5CFnf/6UyL07sShvC1M9Z+sk
-	 bXkfud17OL7uA==
-Received: by macsyma.thunk.org (Postfix, from userid 15806)
-	id B879727ACFA1; Mon, 16 Nov 2026 16:39:53 -0500 (EST)
-Date: Mon, 16 Nov 2026 16:39:53 -0500
-From: "Theodore Tso" <tytso@mit.edu>
-To: Ahmed Khan <ahmadpsn95@gmail.com>
-Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [BUG] ext4: NULL pointer dereference in
- jbd2_journal_file_inode() during inline data conversion
-Message-ID: <avt1ObnHmA4AmSmc@mit.edu>
-References: <CAOaS1==g3mdoqmS2AjOC0_-woXJbA_X0LJQt7+M7d1=+gfyQqw@mail.gmail.com>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=iUELJt1e
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1D64E1F000C4;
+	Mon, 16 Nov 2026 22:17:58 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1794867478;
+	bh=IGRRZW3J6UJvu7JeelLqLUevH1B+4V5oWdry0fvPc5s=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=iUELJt1eOd/g9UyDCTbz2fTcx1RBh59CAtYyrnE1cGc/5OZBvL+NG/cEXMDw+tH6e
+	 E6o/dfdPjb4XPzA4dd4+kByQo+te+AvaZfFtEc05mTtAg9dzBNX0IOZIgwRqZ9+bbe
+	 QntjMQqPn9q/jSKHpU7GhxDfWoMcUZJMzAz+0b8plJrwTsXu+kraVWHniavXXpoigm
+	 A/u8FeGK+apI/2x0g42xklyjs736IY5iSxWjnelThuMeHO7fccfL6GNH0eOaAsDEXy
+	 gpOwuEUz7cm2aMaQFmR4ITorlM9aqwVmHN7PGsYyg0c4om54NOF7VYYLNzM2xH1Zq/
+	 JgQvwvXXCxRgg==
+Date: Mon, 16 Nov 2026 22:17:56 +0000
+From: Eric Biggers <ebiggers@kernel.org>
+To: Alberto Garcia <berto@igalia.com>
+Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+	Baokun Li <libaokun@linux.alibaba.com>
+Subject: Re: [PATCH v2] e2fsck: set the encrypt feature if the filesystem has
+ encrypted inodes
+Message-ID: <20261116221756.GF229817@google.com>
+References: <20261116142812.85180-1-berto@igalia.com>
+ <20261116191853.GB229817@google.com>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -69,41 +60,35 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <CAOaS1==g3mdoqmS2AjOC0_-woXJbA_X0LJQt7+M7d1=+gfyQqw@mail.gmail.com>
+In-Reply-To: <20261116191853.GB229817@google.com>
 
-On Sat, Nov 14, 2026 at 07:43:08PM -0500, Ahmed Khan wrote:
+On Mon, Nov 16, 2026 at 07:18:53PM +0000, Eric Biggers wrote:
+> On Mon, Nov 16, 2026 at 03:28:11PM +0100, Alberto Garcia wrote:
+> > A filesystem without the encrypt feature can still contain encrypted
+> > inodes, either due to corruption or because the image was crafted that
+> > way.
+> > 
+> > e2fsck currently accepts such inodes without complaint. Since those
+> > inodes can be decrypted, this should be fixed by setting the encrypt
+> > feature on the filesystem.
+> > 
+> > Note that the Linux kernel does not currently support encryption when
+> > the block size is larger than the page size. After this change, such
+> > a filesystem will be rejected at mount time (see the kernel commit
+> > 709f0f1f1bf5, "ext4: add checks for large folio incompatibilities
+> > when BS > PS"). However, since this depends on the page size of the
+> > machine where the filesystem is mounted, and the kernel could lift
+> > that limitation in the future, e2fsck does not take it into account.
+> > 
+> > Fix this by adding a new problem (PR_1_ENCRYPT_FEATURE) and a
+> > regression test.
+> > 
+> > Signed-off-by: Alberto Garcia <berto@igalia.com>
 > 
-> My name is Ahmed Khan, I am a security researcher from Canada. I
-> believe I found a bug within the Linux Kernel, specifically, version
-> 7.3.4 affecting all major distros. I will be candid and state that I
-> used AI heavily in fuzzing the kernel using "syzkaller"....
+> Reviewed-by: Eric Biggers <ebiggers@kernel.org>
+> 
 
-When you say "syzkaller", are you referring to your own instance of
-syzkaller, which you may have modified to use AI-directed fuzzing?
+As I mentioned on v1 though, it would be nice if the function comment of
+add_encrypted_file() were to be updated to mention the new behavior.
 
-> This corresponds to syzbot crash ID:
-> 3eb9083d961b1b97587d103692546ba06797de4e
-
-This crash ID doesn't appear to be one which is recognized by
-https://syzkaller.appspot.com --- which would make sense if it's your
-own Syzkaller instance.
-
-> Please let me know if you would like the standalone C reproducer or
-> the minimal ext4 disk image attached inline. I have this in a private
-> repo and would be happy to add you as a project contributor.
-
-Yes, please send the standalone C reproducer and minimal crafted ext4 image.
-That would be most helpful.
-
-Note that we don't really consider crashes which require a crafted
-file system image to trigger to be a security vulnerability, unless
-the file system corruption is not caught by e2fsck (or triggers a
-memory pointer bug or other issue in e2fsck).  Not running fsck on an
-untrusted file system before introducing it to the Trusted Computing
-Base of the linux kernel is roughly equivalent to running "dd
-if=/dev/zero of=/dev/mem".  Sure, it might crash the system, but
-that's really a PEBCAK system administrator issue.  :-)
-
-Regards,
-
-					- Ted
+- Eric
