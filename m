@@ -1,95 +1,95 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.210.175
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.215.180
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794811460;
-	b=GbgilLjGKQl34KHuTHSyhHaXELGaPS8SfoGvBnHkQahG+YqnxCwpQY+l05UMkQs8P6uI
-	 4bIZ0efgKAV3hmfigZ9+yAJ0G18Pdob2o26rY6QPLiehBCFwGe335+XuNwOdRrXW7twCo
-	 LE7xx09bvJdC1XgXL2qCTthY6xC4wFWAMMQZuYTLt63wSsO76XaJ5Sqwt8LG0O7P9TJq4
-	 IxWzlwv2nBhJo1JTUlhkNZ8DdTsYWHvdQufK0RPmOjfispkffElLQ+1RxNSrejJZDheOf
-	 9vbRSoa53kMnKPfLBq04rP71gKgGNzHdBVrAmsQlPAuXKFy3M5w6XK+RXsjl2KKIgHA==
+	t=1794811674;
+	b=jvPWtuU1WDzuTJ0mLFGIwdRzHSSCHeiJWDX2AjoyCS4Q48vlKAXHY1WxobOpLmWyQ0ze
+	 pKv3n+wD42BsuSwexb4NBRpEY0+jARn1ll6FqRMB45sG9VewuCE5oDx3hLY8utPyJSG5t
+	 7os25p/LPDM5k4hXqos5saS818y4YCCQoPdyPHHTqmM5xA0nlXO3cOv/ctGs+KHJIU5P8
+	 8/UkLS2OFwesA7evz7Gk+KvHn4lZa2PUcnkjJi8Bx3cVXxNHE5kSjEzKyPcLSfsIE3N/P
+	 8otgivrDyVezhXSLKDvJY2Y2mwX1Aej5wnXEc1s3XbgaeW3CTojdCr1T03ulppu6WiA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794811460;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794811674;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
 	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:From:To:Cc:Subject:
 	 Date:Message-Id:X-Mailer:In-Reply-To:References:MIME-Version:
 	 Content-Transfer-Encoding;
-	bh=EGwNz6ppLcP5RRVJzdX+lGT9M/xGWs8Ami8GLD0jWdk=;
-	b=zWs4LZ9sEC5h5nnsKEudru0N4wRkZ9CrnEfwa1X8+o2R7a0N2hRop0hApIY1o1UUrf+H
-	 Jv0x8PPi2E7R+qt5sa4MN6TaXaziH+cmb++orLz1KbfncOiOrYt4XY00qFNTg0EETNo/X
-	 0kZyWsQR2HSRXy9GbtlY/7aK+mJP7c6SO3dpVKLpdAI8+gjtbl476ykUU7jFAUY2XGFzA
-	 1lh8bNw4Q4UWxXQvp5ztcHn7BTgrF7KE51xr+jI0uP3YWPgu91RufqctzaUoSG7MdFPHj
-	 GG+vA+IaPhl3a4J7jVmyVxolrBAEK0WMbOWb22IXVgu3LOCWYUrfZ/GHY2sKEOqmXsA==
+	bh=1xMijYxEq2DY42+gfrgrYfxYgWe0jA8VIyoiqLP2xVo=;
+	b=FMW4yJfzUnvGSF0lYziyeyFrDajqYUfkkKlf4K3kVvoxuX2MVfwu8DGLIx2dQ3CNpgN/
+	 rSxa+Qy2UhPM7v96kzWHPuiQlx3U6BQ64W5J+kvTj2K7kwRd9HaQf44QanLKTJrdGrPkk
+	 5FTk5PPg0TJXEAj5SW4nOOFRnPrdkAU9ZKVofkewQum9VCqgVaM72eWTo2swIPnPNKgXU
+	 7gznjXV0ciqOcRlwxwmvq/3+GMr3aTcftVSfJzJUjDJdUUHLK3eGmbaH5NgayJip6XmmR
+	 VaaT7CVVZjPJdwZ76Nbg8xk6md1fts/qNSVNhDzPvrZG3Sq20UoMYyJZbJ+EW0INZzA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=bytedance.com;
 	spf=pass smtp.mailfrom=bytedance.com;
-	dkim=pass header.d=bytedance.com header.i=@bytedance.com header.a=rsa-sha256 header.s=google header.b=LjuG5yU8;
-	arc=none smtp.remote-ip=209.85.210.175
-Received: from mail-pf1-f175.google.com (mail-pf1-f175.google.com [209.85.210.175])
+	dkim=pass header.d=bytedance.com header.i=@bytedance.com header.a=rsa-sha256 header.s=google header.b=GzZ7YPHo;
+	arc=none smtp.remote-ip=209.85.215.180
+Received: from mail-pg1-f180.google.com (mail-pg1-f180.google.com [209.85.215.180])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DC4DE606A31C
-	for <linux-ext4@vger.kernel.org>; Mon, 16 Nov 2026 06:44:19 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org DC4DE606A31C
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 02BC5606A33A
+	for <linux-ext4@vger.kernel.org>; Mon, 16 Nov 2026 06:47:53 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 02BC5606A33A
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=bytedance.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.a=rsa-sha256 header.s=google header.b=LjuG5yU8
-Received: by mail-pf1-f175.google.com with SMTP id d2e1a72fcca58-8a05b210703so1223759b3a.0
-        for <linux-ext4@vger.kernel.org>; Sun, 15 Nov 2026 22:44:19 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.a=rsa-sha256 header.s=google header.b=GzZ7YPHo
+Received: by mail-pg1-f180.google.com with SMTP id 41be03b00d2f7-cddac941ed1so1373584a12.2
+        for <linux-ext4@vger.kernel.org>; Sun, 15 Nov 2026 22:47:53 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=bytedance.com; s=google; t=1794811459; x=1795416259; darn=vger.kernel.org;
+        d=bytedance.com; s=google; t=1794811673; x=1795416473; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=EGwNz6ppLcP5RRVJzdX+lGT9M/xGWs8Ami8GLD0jWdk=;
-        b=LjuG5yU8Mu0KCfjvoxXtCUxmmZje3dPsgUa9aFicpAwQ0r4eWo+LggvkfCW5tFFpNe
-         ceVkHgSncETFuZ05KL5Xt2usgxYadgpVdrOZJcP/13/upp+VrWyGmWX/Z0bS0sCo+sGE
-         dOZUdjsEMCeMhXaj+mv5faJXc25y258ooqLeEN0wLuhRufA6SwUbwBT8DOxNQz2KZC5X
-         MbNbtXqZhDK33p0WHAJh2p+8SuMBkaHmlHbtLbWGJK9N3ZcZSbXx8JM3MGlku4xCa71g
-         qyhXbyVuVwnejDy56oJTKG0NMDbHF5w9E7FeyUKNzGZuvSOrtnMxGURvgSvEm2PZRhCe
-         VwWw==
+        bh=1xMijYxEq2DY42+gfrgrYfxYgWe0jA8VIyoiqLP2xVo=;
+        b=GzZ7YPHoPJwiEq77cUWOFAFNHwimuZWlqnFCyZugpe/FX6nS71j4oUZSAB1iRR+l0g
+         9pBvONrVloINn0qwaXugC4i1iQu4vRoDECsqokJ6BQa5+AZ3UlxLvxDCGKn2e0JhLTHI
+         p/xJV9oHA0aCeGzXoYZIQn95MsMFXb9bIGuI8mFBMghn0JKHWAdsF6677viyfv7WCMlk
+         fU0zrPmgHjuPJfycphuzL+LELUDwx9JY3T35Kp+7SdSWngWCwpnxRVj2TSixw+gWhkU+
+         4EWRunkcjshmptZ5RRxcr4nJw5osi/eu/8hsCcttH9pQkQYd1GWn1snPy9qy9GRT8kTA
+         XjIQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1794811459; x=1795416259;
+        d=1e100.net; s=20260707; t=1794811673; x=1795416473;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=EGwNz6ppLcP5RRVJzdX+lGT9M/xGWs8Ami8GLD0jWdk=;
-        b=WFsM4iphvpIIIdFMcVO3wDYTaAoEqN996pvFxLqfY1dQPs3Gb2ijRwjdlxlaNCmmCp
-         R2ehwKDwUxXvRpI/j/ugNxpJIJSzGK80imOAakeIqQ/myKvcfVqcu14SnVE8gqGOqFtQ
-         riXAtisG3mjBW+/6GpmuUjQWUDmCc94p+qF2NWEMcd35oFA4y4LzWYxuAN53KNNNbdIa
-         opoPqZDQFoPYKwCMwVLOjWVRAM4xB+7ZXLQ8ObHeLDYxfzY/xcJucIJzmAKBsmq8HnlM
-         s6uQ7LwunJyUj9AFCLYfrz1Pa6Wk+W7Jo5NNmST7bWVpMQeuV0fPWTNUnYm65QvxsgwC
-         tNtA==
-X-Gm-Message-State: APuU4Z8vhgpvISbS4aDZau5I5/8ziVIsqvTWMmm5AsxPIJhW5zZDnEWv
-	0GJ2xVeNXQtZKyiE7O7rYW902+B2QAFZI079LqCPPRp11YxNLXzwn69DU3WqFkGGkYhVh13TjQL
-	iKsAtUaU=
-X-Gm-Gg: AYBFou00iQQAix8Mps+rMkl7kGCX3X3yV0n4gDjccg+ClMWCJ2VioHX2TbLas/zGDtm
-	TraOb/K/U8Jmbqd73gVA7jvYQiSS5mKD7rM3+r4ZOcRMHfTlct5Poh4rtCLAaAIeVmjYNLbl6Md
-	oLpoFHVu5S6slOBfS8I9neimcrtI/fvbbFueJ/MhS7F8kqP3zBjUME91lFrXl0/hqraCU/nH0V4
-	Cjsf+fjNbwx/eULAuwyndapMQBDXJTAzVpX2/LFq1pn1jYmWv8MoNWvs47UgDovx8B1a91ockPG
-	+mfspQzAeHVfXO84jzAkHqJx/rFG85GOhpLbLBuQYJqAkOuDF/O8S57XPfSGZVTljyI0QiAI0n4
-	M/cpTWYmaM4LpKbuTOHqmLoALkhEd4IjM9qf7c9G5aMUXSePW4jjzOjdhGUXhenaSUQSY1WJkic
-	J5lhAwJFh0kHq3OX/NnRDFK0sWaOfHz5nz7ED7hO011ET1bf9ybhnoicBnRA88LaZel2xWqWAbc
-	x6S0+gClLPKKvB+g2FcauNqapefM0EE48ysV/G1x/gO7o5idApl6fcGdL3A/EMlSy+kqus2sfwl
-	i2ZjJxtqYd+K7LVEPqgqJgpe5DovJXyXbno9
-X-Received: by 2002:a05:6a00:94dc:b0:886:a52a:316f with SMTP id d2e1a72fcca58-8beb2e7e862mr8254778b3a.4.1794811458904;
-        Sun, 15 Nov 2026 22:44:18 -0800 (PST)
-Received: from localhost ([116.132.239.148])
-        by smtp.gmail.com with ESMTPSA id d2e1a72fcca58-8bed2d11ac8sm3144409b3a.55.2026.11.15.22.44.17
+        bh=1xMijYxEq2DY42+gfrgrYfxYgWe0jA8VIyoiqLP2xVo=;
+        b=sUb6O0s+3BSiqFBFcfdzJ/sk5V3sO7XiC0aqBQwa1R7fLCo5hVmCqX3ewDj+AEyMgG
+         +BWkXq0Tx7MF/aczg7Wmam86E5Kot3PZTX+RGINXIJqGIuCa8+ODCXKuVKIkWqmBxDpx
+         lVn8gM/hf4RojHI3GbDbeIbgs3vQOykCy8zW3HNCjfKFe0ICrOPj4tv7BKSQ1w/T/Kxp
+         1C/46PHuiwF0ci/x891vlJgonLeB7zEVlCeGFJh1IenQdZMVvNiUVqgvo0IXof0ASuUk
+         9EY0Hw0nLQTDBDCOexxNG7tGhbXBBlezL0hkeh2/MmqIo+blyZd0TAUJWGHm+o+6Un9q
+         K1mg==
+X-Gm-Message-State: APuU4Z9bmLmQXs5dMg9zThZfoCtzZFAy0n9I/SmwHVvUHZduyh4khxgG
+	/dsUtxknHjD4wy3mXurSGqZpjZgIij5j7/5T0O1AYhsQ+Wld/rK2USikzQgnh+KKYCV5lcx3/9V
+	3NBBw0G4=
+X-Gm-Gg: AYBFou3Q7YQ0lF0g27VgQK11DOpM0Oi4tH5e2Nc6cQJN5dTowy3s+buWYdoXqC3AgkM
+	yMszjSkMzjhpvh4hyxJ/psOtmf7djmcYfmtZXkmk3pzqz63pgvnfroFLPed7NKsc02LylkgeUh+
+	+NuJxZbQCuTQF9zg9k2aJbY/WQHGousa3kB+uRjz4EkBdn8AUr7yn5bN6LTFRTnUmW69ZHRNYVr
+	/lw0wdDUYc20szrR+w4yi2nN6g+sThS4ZUIrO+IMJopzyMAth1Bgp1jrtG1owf9p7KOrV09eYzd
+	5+zW/4VjOlqXbv2cNvk+JzSrc41422YKhRZ4Ozaw1KJDxjk9Vjaiz8onLHt4BQr8E78rlf98Oii
+	+Eu/UIudX1M20HIR+JKevS9qTDT2/Jl4avdlFPnrBWUtaP1gWCxsYyq3+DS+ccqR8y8urg2aTjD
+	hN0uLsSNGqgSl/m0+O0MaHSiXHqR5jDmiI0D4FpyjyIqY9AU6ELIz9DqfnFBODgfSxCEI4li/aq
+	hrpJ8aINpt4VAU6gVZpEzRX1cs6ugwFLpVE43FyOoggHUgqth6r6NuFY6j0Fg+KyRW9WMXqEl4O
+	buYg4rp92SDhGmU5TBMys/lspSV5dVRpUB/eKE19z1mHINX1tE0+OalK
+X-Received: by 2002:a05:6300:8095:b0:3e0:da23:874a with SMTP id adf61e73a8af0-3f7a75bfd52mr6847823637.18.1794811673236;
+        Sun, 15 Nov 2026 22:47:53 -0800 (PST)
+Received: from localhost ([116.132.239.159])
+        by smtp.gmail.com with ESMTPSA id 41be03b00d2f7-cddc186fc81sm3863213a12.8.2026.11.15.22.47.52
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sun, 15 Nov 2026 22:44:18 -0800 (PST)
+        Sun, 15 Nov 2026 22:47:52 -0800 (PST)
 From: Julian Sun <sunjunchao@bytedance.com>
 To: linux-ext4@vger.kernel.org
-Cc: yi.zhang@huawei.com,
+Cc: yi.zhang@huaweicloud.com,
 	jack@suse.cz,
 	tytso@mit.edu,
 	adilger.kernel@dilger.ca,
 	libaokun@linux.alibaba.com,
 	ojaswin@linux.ibm.com,
 	riteshh@linux.ibm.com
-Subject: [PATCH v3 1/3] ext4: fix a race between partial writeback and truncation
-Date: Mon, 16 Nov 2026 14:44:02 +0800
-Message-Id: <20261116064404.189911-2-sunjunchao@bytedance.com>
+Subject: [PATCH v3 2/3] ext4: submit mapped buffers after fatal mapping errors
+Date: Mon, 16 Nov 2026 14:47:48 +0800
+Message-Id: <20261116064749.194146-1-sunjunchao@bytedance.com>
 X-Mailer: git-send-email 2.39.5
 In-Reply-To: <20261116064404.189911-1-sunjunchao@bytedance.com>
 References: <20261116064404.189911-1-sunjunchao@bytedance.com>
@@ -104,186 +104,121 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-After a retryable mapping error, mpage_submit_partial_folio() submits the
-mapped buffers, advances start_pos into the folio and unlocks it.
-mpage_release_unused_pages() subsequently looks up the remaining range
-and skips the partial folio by comparing its position with start_pos.
+When the block size is smaller than the folio size, mapping an earlier
+extent in a folio can succeed before mapping a later extent fails.
+mpage_map_and_submit_extent() submits the mapped buffers after retryable
+mapping errors, but discards them along with the rest of the folio after
+fatal errors. Mapped buffers are also left unsubmitted if allocating an
+io_end_vec for a later extent fails.
 
-Once unlocked, the folio can be truncated and replaced by smaller folios.
-A replacement at or beyond start_pos passes the position check even
-though writeback does not own its lock. Cleanup can then hit the locked
-folio assertion or unlock a folio held by another task.
+Besides losing dirty data that could still be submitted, this can expose
+stale data with dioread_nolock: the mapped ranges remain in io_end's
+unwritten conversion list and can be converted without their data having
+been submitted.
 
-The race was reproduced reliably using local code instrumentation to
-widen the race window, triggering BUG_ON(!folio_test_locked(folio)) in
-mpage_release_unused_pages().
-The issue could no longer be reproduced after applying this patch.
+A failure to map a later extent does not invalidate the mappings already
+established for earlier buffers. Submit those buffers after a fatal
+mapping error when the filesystem is not in an emergency state. Also
+submit them if allocating an io_end_vec for a later extent fails.
 
-On this retryable error path, cleanup only needs to unlock unused folios.
-The partial folio has already been unlocked. Its buffers still needing
-mapping remain dirty, and ext4_bio_write_folio() redirties the folio for a
-later writeback attempt. The existing code therefore intends to leave
-it alone. Any new folios inserted into the same range were not locked by
-this writeback operation and must also be excluded. The following unused
-folios still need their locks released.
+Buffers still needing mapping remain dirty for a later writeback attempt.
+Preserve their extent status entries and delayed allocation reservations,
+and invalidate only the unused folios after the partially submitted folio
+on fatal errors. If a later attempt encounters a fatal mapping error
+before making progress, the existing invalidation path can discard the
+folio.
 
-Record the end of the partially submitted folio before unlocking it,
-and start cleanup at that offset.
-
-Fixes: ded2d726a304 ("ext4: fix stale data if it bail out of the extents mapping loop")
+Suggested-by: Zhang Yi <yi.zhang@huaweicloud.com>
+Fixes: c8cc88163f40 ("ext4: Add support for blocksize < pagesize in dioread_nolock")
 Cc: stable@vger.kernel.org
 Signed-off-by: Julian Sun <sunjunchao@bytedance.com>
 ---
- fs/ext4/inode.c |   42 +++++++++++++++++++++++++++++-------------
- 1 file changed, 29 insertions(+), 13 deletions(-)
+ fs/ext4/inode.c |   43 ++++++++++++++++++++++++-------------------
+ 1 file changed, 24 insertions(+), 19 deletions(-)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index e3129353d4ed..6dad9eea7824 100644
+index 6dad9eea7824..ff33ae870b35 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -1825,22 +1825,27 @@
- };
+@@ -2600,6 +2600,7 @@
+ 	int progress = 0;
+ 	ext4_io_end_t *io_end = mpd->io_submit.io_end;
+ 	struct ext4_io_end_vec *io_end_vec;
++	bool fatal = false;
  
- static void mpage_release_unused_pages(struct mpage_da_data *mpd,
--				       bool invalidate)
-+				       bool invalidate, loff_t release_start)
- {
- 	unsigned nr, i;
- 	pgoff_t index, end;
- 	struct folio_batch fbatch;
- 	struct inode *inode = mpd->inode;
- 	struct address_space *mapping = inode->i_mapping;
-+	loff_t start_pos = max(mpd->start_pos, release_start);
+ 	io_end_vec = ext4_alloc_io_end_vec(io_end);
+ 	if (IS_ERR(io_end_vec))
+@@ -2610,8 +2611,10 @@
+ 		if (err < 0) {
+ 			struct super_block *sb = inode->i_sb;
  
- 	/* This is necessary when next_pos == 0. */
- 	if (mpd->start_pos >= mpd->next_pos)
- 		return;
- 
-+	/* A partially submitted folio may need another writeback pass. */
- 	mpd->scanned_until_end = 0;
-+	if (start_pos >= mpd->next_pos)
-+		return;
-+
- 	if (invalidate) {
- 		ext4_lblk_t start, last;
--		start = EXT4_B_TO_LBLK(inode, mpd->start_pos);
-+		start = EXT4_B_TO_LBLK(inode, start_pos);
- 		last = mpd->next_pos >> inode->i_blkbits;
- 
- 		/*
-@@ -1853,7 +1858,7 @@
- 	}
- 
- 	folio_batch_init(&fbatch);
--	index = mpd->start_pos >> PAGE_SHIFT;
-+	index = start_pos >> PAGE_SHIFT;
- 	end = mpd->next_pos >> PAGE_SHIFT;
- 	while (index < end) {
- 		nr = filemap_get_folios(mapping, &index, end - 1, &fbatch);
-@@ -1862,7 +1867,7 @@
- 		for (i = 0; i < nr; i++) {
- 			struct folio *folio = fbatch.folios[i];
- 
--			if (folio_pos(folio) < mpd->start_pos)
-+			if (folio_pos(folio) < start_pos)
- 				continue;
- 			if (folio_next_index(folio) > end)
- 				continue;
-@@ -2523,7 +2528,8 @@
-  * This is used to submit mapped buffers in a single folio that is not fully
-  * mapped for various reasons, such as insufficient space or journal credits.
-  */
--static int mpage_submit_partial_folio(struct mpage_da_data *mpd)
-+static int mpage_submit_partial_folio(struct mpage_da_data *mpd,
-+				      loff_t *release_start)
- {
- 	struct inode *inode = mpd->inode;
- 	struct folio *folio;
-@@ -2544,13 +2550,17 @@
- 
- 	mpage_submit_folio(mpd, folio);
- 	/*
--	 * Update start_pos to prevent this folio from being released in
--	 * mpage_release_unused_pages(), it will be reset to the aligned folio
--	 * pos when this folio is written again in the next round. Additionally,
-+	 * Update start_pos to the mapped boundary. It will be reset to the aligned
-+	 * folio pos when this folio is written again in the next round. Additionally,
- 	 * do not update wbc->nr_to_write here, as it will be updated once the
- 	 * entire folio has finished processing.
-+	 *
-+	 * Once unlocked, the folio can be removed from the page cache and
-+	 * replaced. Set release_start past this folio so that
-+	 * mpage_release_unused_pages() skips its entire range.
- 	 */
- 	mpd->start_pos = pos;
-+	*release_start = folio_next_pos(folio);
- 	folio_unlock(folio);
- 	folio_put(folio);
- 	return 0;
-@@ -2565,6 +2575,8 @@
-  * @give_up_on_write - we set this to true iff there is a fatal error and there
-  *                     is no hope of writing the data. The caller should discard
-  *                     dirty pages to avoid infinite loops.
-+ * @release_start - minimum byte offset for releasing unused folios.
-+ *                  The caller must initialize it to zero.
-  *
-  * The function maps extent starting at mpd->lblk of length mpd->len. If it is
-  * delayed, blocks are allocated, if it is unwritten, we may need to convert
-@@ -2578,7 +2590,8 @@
-  */
- static int mpage_map_and_submit_extent(handle_t *handle,
- 				       struct mpage_da_data *mpd,
--				       bool *give_up_on_write)
-+				       bool *give_up_on_write,
-+				       loff_t *release_start)
- {
- 	struct inode *inode = mpd->inode;
- 	struct ext4_map_blocks *map = &mpd->map;
-@@ -2612,7 +2625,8 @@
- 				 * corresponding data to prevent stale data.
- 				 */
- 				if (progress) {
--					if (mpage_submit_partial_folio(mpd))
-+					if (mpage_submit_partial_folio(mpd,
-+								       release_start))
- 						goto invalidate_dirty_pages;
- 					goto update_disksize;
- 				}
-@@ -3017,7 +3031,7 @@
- 	}
- 	ret = mpage_prepare_extent_to_map(mpd);
- 	/* Unlock pages we didn't use */
--	mpage_release_unused_pages(mpd, false);
-+	mpage_release_unused_pages(mpd, false, 0);
- 	/* Submit prepared bio */
- 	ext4_io_submit(&mpd->io_submit);
- 	ext4_put_io_end_defer(mpd->io_submit.io_end);
-@@ -3026,6 +3040,8 @@
- 		goto unplug;
- 
- 	while (!mpd->scanned_until_end && wbc->nr_to_write > 0) {
-+		loff_t release_start = 0;
-+
- 		/* For each extent of pages we use new io_end */
- 		mpd->io_submit.io_end = ext4_init_io_end(inode, GFP_KERNEL);
- 		if (!mpd->io_submit.io_end) {
-@@ -3070,7 +3086,7 @@
- 		ret = mpage_prepare_extent_to_map(mpd);
- 		if (!ret && mpd->map.m_len)
- 			ret = mpage_map_and_submit_extent(handle, mpd,
--					&give_up_on_write);
-+					&give_up_on_write, &release_start);
- 		/*
- 		 * Caution: If the handle is synchronous,
- 		 * ext4_journal_stop() can wait for transaction commit
-@@ -3087,7 +3103,7 @@
- 			mpd->do_map = 0;
+-			if (ext4_emergency_state(sb))
+-				goto invalidate_dirty_pages;
++			if (ext4_emergency_state(sb)) {
++				*give_up_on_write = true;
++				return err;
++			}
+ 			/*
+ 			 * Let the uper layers retry transient errors.
+ 			 * In the case of ENOSPC, if ext4_count_free_blocks()
+@@ -2619,18 +2622,7 @@
+ 			 */
+ 			if ((err == -ENOMEM) || (err == -EAGAIN) ||
+ 			    (err == -ENOSPC && ext4_count_free_clusters(sb))) {
+-				/*
+-				 * We may have already allocated extents for
+-				 * some bhs inside the folio, issue the
+-				 * corresponding data to prevent stale data.
+-				 */
+-				if (progress) {
+-					if (mpage_submit_partial_folio(mpd,
+-								       release_start))
+-						goto invalidate_dirty_pages;
+-					goto update_disksize;
+-				}
+-				return err;
++				break;
+ 			}
+ 			ext4_msg(sb, KERN_CRIT,
+ 				 "Delayed block allocation failed for "
+@@ -2644,9 +2636,8 @@
+ 				 "be lost\n");
+ 			if (err == -ENOSPC)
+ 				ext4_print_free_blocks(inode);
+-		invalidate_dirty_pages:
+-			*give_up_on_write = true;
+-			return err;
++			fatal = true;
++			break;
  		}
- 		/* Unlock pages we didn't use */
--		mpage_release_unused_pages(mpd, give_up_on_write);
-+		mpage_release_unused_pages(mpd, give_up_on_write, release_start);
- 		/* Submit prepared bio */
- 		ext4_io_submit(&mpd->io_submit);
+ 		progress = 1;
+ 		/*
+@@ -2655,10 +2646,24 @@
+ 		 */
+ 		err = mpage_map_and_submit_buffers(mpd);
+ 		if (err < 0)
+-			goto update_disksize;
++			break;
+ 	} while (map->m_len);
  
+-update_disksize:
++	if (err < 0) {
++		/*
++		 * We may have already allocated extents for some bhs inside
++		 * the folio, issue the corresponding data to prevent stale
++		 * data.
++		 */
++		if (progress && mpage_submit_partial_folio(mpd, release_start))
++			fatal = true;
++
++		if (fatal)
++			*give_up_on_write = true;
++		if (!progress)
++			return err;
++	}
++
+ 	/*
+ 	 * Update on-disk size after IO is submitted.  Races with
+ 	 * truncate are avoided by checking i_size under i_data_sem.
 -- 
 2.39.5
