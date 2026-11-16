@@ -1,70 +1,76 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=213.97.179.56
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.210.197
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794838501;
-	b=QrIm/T0+taT8RhHOUFUu1O5J5Z/Y7UAH8Jmlb4CDEXDls2pwzuWJEWcpFgvymSUqRgqs
-	 UIYXiC42ucXBlBdzR2lcSIMgg2Y7GltUqoYVV6g4k55LY6IGN2R91SZK9RYRQFEMjkit3
-	 3XgeNjhz7HiiS6BIu9mpaGaK2MCsLThr4Sz9GnvHCBsfrCohSRir38HFTgNXyPJKCwK0W
-	 OiXj8oJWIc0wOd4ZBWFXeVvR6RTs7W0myBHHORoZogM7kDy4s0W0Je4pOY/vAXCNoSPPC
-	 IAYLSSZ01WBlSJSH9ffb6+AXVd9fPxoyuIRBcKLe0mGVd+FANuDYl5Rt125T9yn5GKw==
+	t=1794839185;
+	b=1odNVsJEezR4nF+x8FnhYyY6w8OOON4wJvwTfIU1EI3xo1Olf+SskzHKNL5gmuws/ehC
+	 4/G2bzRmSAfXoGyF1jjoigtyXEE0dgG5KiHCDWF6bOMXonRQ9dxMFv7g59NkjMt2APKj2
+	 jzPFgXOaYJLMBaLsQjCs2Vs1vaZpgx3P440hAlwGMfmcMRiTOKVA1ysM3K3MjUkTVqT9P
+	 IsZ5ol13W/e6/fZOa6vEsNI9c6wAfG3sC7PzoaINnqMasYqYsI7vtLVHQmrGxw/XAiDqw
+	 3lv2QZTsLz216AMk6bNBOFgQFyLsSzyh3yqrTJpiqxpd0nJQKhfQQDtMhSgjnWWg6Ng==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794838501;
-	h=DMARC-Filter:DKIM-Signature:Received:Received:Received:Date:From:To:
-	 Cc:Subject:Message-ID:References:MIME-Version:Content-Type:
-	 Content-Disposition:In-Reply-To:X-Spam-Report:X-Spam-Score:X-Spam-Bar:
-	 X-Rspamd-Score:X-Rspamd-Action:X-Rspamd-Bar;
-	bh=2UkHVzyevf8mcT5oA3OyY73DOQDr9qNy1lyBRMiXQvc=;
-	b=urB3K9nLrS3rxhsDkx3v6EIxMil9GNDSB4kwyNrQDdw2kROfR5zqYissC2Vn1aMZvJdP
-	 IWuZg5dUR8XPG+1euGaEEuMoIBNvhpnYNjEs+R6sc6//tCn9EBugc2UpFnVBAIR7wS4a5
-	 iNpexUGK/e9vlZvk0AGXOySQMv8mRfCgvxsSJMZAQA/4Q0hP6VvK/ZObWJKDNBneZrfJg
-	 cEX6tx8XBqRD2HW4F75SuS53W8qKhF9QZ/I9Rm2GxqXZ0oYLgvZYwgDZElAPIyWCvdQ7b
-	 z99Suy6OKTwZZp6je06fdICCJEd1fMFkppQ1lR3t16q+C3Fl6i54smhxi0AnXGriOmQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794839185;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Received:Date:In-Reply-To:
+	 Mime-Version:References:Message-ID:Subject:From:To:Cc:Content-Type:
+	 Content-Transfer-Encoding;
+	bh=Julx96UTlwUpy/yEEb6XKUMDaihQ6nHqBxqUTRWWoDs=;
+	b=lYcZ3oQVm4ftvaiHE62+awtDfjrVjkuEU8sJvO84UF+tzzIubDTQC9YXPrEsO3yPQkwC
+	 JI5/AZeHPDjbujaAuSQYaFIa4Sh8keQKPBbz0W2mqpblNyNiDDIiFBP1vG1ge/rAIsMeV
+	 dIp5ri0eUoBI4RDJQJyC4NEEGkIvjj5n+xK0FkHKRnJB0l1GSY8avhXr23EEPUkmixiIS
+	 5aYCSixDXn7S8kuVYCBKP6fMBeizT9TbAVgt1Cmyu3fwDQVFyUfzRTRzQNYXsSLC3hMya
+	 XLdQmC8DoJQuVmWaWxizR39e0aHefhideaW4b/x8blQFFbkZmzE9GX6F1p8U3ExCbJw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=igalia.com;
-	spf=pass smtp.mailfrom=igalia.com;
-	dkim=pass header.d=igalia.com header.i=@igalia.com header.a=rsa-sha256 header.s=20170329 header.b=IyHsvvN+;
-	arc=none smtp.remote-ip=213.97.179.56
-Received: from fanzine2.igalia.com (fanzine2.igalia.com [213.97.179.56])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange ECDHE (prime256v1) server-signature ECDSA (prime256v1) server-digest SHA256)
+	dmarc=pass header.from=google.com;
+	spf=pass smtp.mailfrom=flex--seanjc.bounces.google.com;
+	dkim=pass header.d=google.com header.i=@google.com header.a=rsa-sha256 header.s=20260707 header.b=o04lO8GG;
+	arc=none smtp.remote-ip=209.85.210.197
+Received: from mail-pf1-f197.google.com (mail-pf1-f197.google.com [209.85.210.197])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6DF62606A31C
-	for <linux-ext4@vger.kernel.org>; Mon, 16 Nov 2026 14:14:59 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 6DF62606A31C
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=igalia.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=igalia.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0FFC6606A337
+	for <linux-ext4@vger.kernel.org>; Mon, 16 Nov 2026 14:26:24 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 0FFC6606A337
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=flex--seanjc.bounces.google.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=igalia.com header.i=@igalia.com header.a=rsa-sha256 header.s=20170329 header.b=IyHsvvN+
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; d=igalia.com;
-	s=20170329; h=Content-Type:MIME-Version:Message-ID:Subject:Cc:To:From:Date:
-	From:Reply-To; bh=2UkHVzyevf8mcT5oA3OyY73DOQDr9qNy1lyBRMiXQvc=; t=1794838499;
-	x=2110198499; b=IyHsvvN+L+iz/STOUgkf2TRf32J/Thw3ftkI789r335RoweHcqJQEu/J6lk/n
-	82jQ3CHZSRRUz3U/xGPyle6KXjqldSsmWLjaCQLw6vYwqK7+qrjvYeZWnu0m+aoZSfIzcRXoW+OSH
-	hQtgPA2v3i2bGCSYdy9SItyCGAjj9Loj92FDi84dNqCGK6Eg32T03X8JqGNVVOCmZEVK8R/T4FFr1
-	z6OSbJJxIftjW3nZXKL3+hgIH+V2Of7uVgT2SuxzYx/lGYKoB9cjOpXjZuR3Zoaju12lZPXHowyvx
-	B5h5ZAEF7x1FVbrxHHzKpbFF0Hq9DMLV6/tRFe7uWD8P67Obew==;
-Received: from maestria.local.igalia.com ([192.168.10.14] helo=mail.igalia.com)
-	by fanzine2.igalia.com with esmtps 
-	(Cipher TLS1.3:ECDHE_SECP256R1__RSA_PSS_RSAE_SHA256__AES_256_GCM:256) (Exim)
-	id 1xSxU0-00000000DmK-0DyG;
-	Mon, 16 Nov 2026 15:14:56 +0100
-Received: from gate.service.igalia.com ([192.168.21.52])
-	by mail.igalia.com with esmtp (Exim)
-	id 1xSxTz-0000000GWXT-0ySl;
-	Mon, 16 Nov 2026 15:14:55 +0100
-Received: from berto by gate.service.igalia.com with local (Exim 4.96)
-	(envelope-from <berto@igalia.com>)
-	id 1xSxTz-00FrZX-0U;
-	Mon, 16 Nov 2026 14:14:55 +0000
-Date: Mon, 16 Nov 2026 15:14:55 +0100
-From: Alberto Garcia <berto@igalia.com>
-To: Eric Biggers <ebiggers@kernel.org>
-Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-	Baokun Li <libaokun@linux.alibaba.com>
-Subject: Re: [PATCH] e2fsck: set the encrypt feature if the filesystem has
- encrypted inodes
-Message-ID: <avsP3xlSwVjj3GJh@igalia.com>
-References: <20261113162143.824544-1-berto@igalia.com>
- <20261113202745.GA29151@quark>
+	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.a=rsa-sha256 header.s=20260707 header.b=o04lO8GG
+Received: by mail-pf1-f197.google.com with SMTP id d2e1a72fcca58-8b69b8c6dd5so4468417b3a.3
+        for <linux-ext4@vger.kernel.org>; Mon, 16 Nov 2026 06:26:24 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=google.com; s=20260707; t=1794839184; x=1795443984; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:cc:to:from:subject
+         :message-id:references:mime-version:in-reply-to:date:from:to:cc
+         :subject:date:message-id:reply-to:content-type;
+        bh=Julx96UTlwUpy/yEEb6XKUMDaihQ6nHqBxqUTRWWoDs=;
+        b=o04lO8GGgXrESFKdzPFhg+2CZ66oWV/D9RCdkmGQv5zmRx4ocR7cMj49UAZWLzQ08p
+         Exgjw5nzv+VU/noSZj1qNSRM42Efhd5UU9M4zYhj9hYL33RguWZjEdRIwhZZKtjjmAWK
+         CZHQW0LenzCeV4Az+D9oYTYe1+JdnXTThTdnyyA0qyK3iEfA5CNu2rFJPxjCMaEbDPPa
+         4GWRcxQfsKciv2s2Xnp6TE4BCnhHiUeXbt2eHpPmzKjfbnT06BfdZVvWfMuXAZ4NfG2z
+         lvfm/r/kXhSPWJ2Thy+3cctCZhv0qphjwQepT6O3eDBYyRmyUCFE1kDkMxO3F8tlJaEg
+         ursQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1794839184; x=1795443984;
+        h=content-transfer-encoding:content-type:cc:to:from:subject
+         :message-id:references:mime-version:in-reply-to:date
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=Julx96UTlwUpy/yEEb6XKUMDaihQ6nHqBxqUTRWWoDs=;
+        b=b9P7xW9F6yuaXp8oWHJhWWPmmq7C0vVeWuRPZ68e/8QGjrxI1gGKLp6R+hmx5kx7oS
+         cwWNC68Yo6aKM9Kq6TUgNbvuhNfiBdiLZrm9NX5ueMHdkjVDAhxz/AR8PeBZ0N33O8wg
+         IjR911Me0dB/7RtauZ6gKu4gSiniTTeT6tb1KL34SC+C7COW7y05vP3nu/5+vCH9xCyH
+         wYixxWRDf/niRlqvAGx/uUcmswimcaZPeZoLzgF6NTBCt9fGpMzvMiY4ICQJR5D3bGmg
+         CfYRuYSDa3pjOPstMaYz/gByNVb1zCGnrJeIIJemolYq/pla/MClke3RxbJGc5tlsDoK
+         hbwA==
+X-Forwarded-Encrypted: i=1; AL+hErEuDtT837Z8ilUFXiIWEU3Z505Ln9tPKM9B2bC0C9bM/cJwvapY+spYapYjxpFP6mY2uP6fJ9PQvPvz@vger.kernel.org
+X-Gm-Message-State: APuU4Z/ApiZKM0LxCy47V35T6FgWOyCun1Icp/SDxve9SCY1sp3vL3I3
+	+SwWeenz+MdjxjAGipwJhvPAleADcNhwQ8IMJzQmaZ848CQnXgdEVJ4Vgp38LA035iAnz2AHff9
+	wkgI+uA==
+X-Received: from pffm4-n2.prod.google.com ([2002:a05:6a00:c304:20b0:8a0:70d8:a2ef])
+ (user=seanjc job=prod-delivery.src-stubby-dispatcher) by 2002:a05:6a00:4fc3:b0:89f:b166:bde6
+ with SMTP id d2e1a72fcca58-8beb8cc8ad6mr9720424b3a.54.1794839183449; Mon, 16
+ Nov 2026 06:26:23 -0800 (PST)
+Date: Mon, 16 Nov 2026 06:26:22 -0800
+In-Reply-To: <20261114202653.3113381-10-rdunlap@infradead.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -73,100 +79,222 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20261113202745.GA29151@quark>
-X-Spam-Report: NO, Score=-4.9, Tests=ALL_TRUSTED=-3,BAYES_00=-1.9,KAM_DMARC_STATUS=0.007
-X-Spam-Score: -48
-X-Spam-Bar: ----
-X-Rspamd-Score: -2.5
-X-Rspamd-Action: no action
-X-Rspamd-Bar: --
+Mime-Version: 1.0
+References: <20261114202653.3113381-1-rdunlap@infradead.org> <20261114202653.3113381-10-rdunlap@infradead.org>
+Message-ID: <avsSjioXqbCOn834@seanjc-mac.roam.internal>
+Subject: Re: [PATCH 09/12] docs: ioctl-number: update virtualization entries
+From: Sean Christopherson <seanjc@google.com>
+To: Randy Dunlap <rdunlap@infradead.org>
+Cc: linux-kernel@vger.kernel.org, Jonathan Corbet <corbet@lwn.net>, 
+	Shuah Khan <skhan@linuxfoundation.org>, linux-doc@vger.kernel.org, 
+	David Hildenbrand <david@kernel.org>, Andrew Morton <akpm@linux-foundation.org>, 
+	Jason Gunthorpe <jgg@nvidia.com>, Leon Romanovsky <leonro@nvidia.com>, linux-mm@kvack.org, 
+	Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>, linux-sound@vger.kernel.org, 
+	Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org, 
+	Marcel Holtmann <marcel@holtmann.org>, Luiz Augusto von Dentz <luiz.dentz@gmail.com>, 
+	linux-bluetooth@vger.kernel.org, 
+	Willem de Bruijn <willemdebruijn.kernel@gmail.com>, Jason Wang <jasowangio@gmail.com>, 
+	David Heidelberg <david@ixit.cz>, oe-linux-nfc@lists.linux.dev, 
+	Chas Williams <3chas3@gmail.com>, linux-atm-general@lists.sourceforge.net, 
+	"David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+	Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, netdev@vger.kernel.org, 
+	Helge Deller <deller@gmx.de>, linux-fbdev@vger.kernel.org, 
+	dri-devel@lists.freedesktop.org, MPT-FusionLinux.pdl@broadcom.com, 
+	"James E.J. Bottomley" <James.Bottomley@hansenpartnership.com>, 
+	"Martin K. Petersen" <mkp@kernel.org>, linux-scsi@vger.kernel.org, 
+	Miquel Raynal <miquel.raynal@bootlin.com>, Richard Weinberger <richard@nod.at>, 
+	Vignesh Raghavendra <vigneshr@ti.com>, Zhihao Cheng <chengzhihao1@huawei.com>, linux-mtd@lists.infradead.org, 
+	Neill Kapron <nkapron@google.com>, Andrey Konovalov <andreyknvl@gmail.com>, 
+	Greg Kroah-Hartman <gregkh@linuxfoundation.org>, linux-usb@vger.kernel.org, 
+	Juergen Gross <jgross@suse.com>, Stefano Stabellini <sstabellini@kernel.org>, xen-devel@lists.xenproject.org, 
+	Hans de Goede <hansg@kernel.org>, Arnd Bergmann <arnd@arndb.de>, "Michael S. Tsirkin" <mst@redhat.com>, 
+	"Eugenio =?utf-8?B?UMOpcmV6?=" <eperezma@redhat.com>, Paolo Bonzini <pbonzini@redhat.com>, kvm@vger.kernel.org, 
+	virtualization@lists.linux.dev, Jan Kara <jack@suse.cz>, 
+	linux-fsdevel@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org, 
+	Mike Marshall <hubcap@omnibond.com>, devel@lists.orangefs.org, 
+	Paulo Alcantara <pc@manguebit.org>, Namjae Jeon <linkinjeon@kernel.org>, linux-cifs@vger.kernel.org, 
+	Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>, 
+	linux-f2fs-devel@lists.sourceforge.net, 
+	Florian Fainelli <florian.fainelli@broadcom.com>, 
+	Broadcom internal kernel review list <bcm-kernel-feedback-list@broadcom.com>, 
+	linux-rpi-kernel@lists.infradead.org, linux-arm-kernel@lists.infradead.org, 
+	Tzung-Bi Shih <tzungbi@kernel.org>, Benson Leung <bleung@chromium.org>, 
+	David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+	Alex Deucher <alexander.deucher@amd.com>, 
+	"Christian =?utf-8?B?S8O2bmln?=" <christian.koenig@amd.com>, amd-gfx@lists.freedesktop.org, 
+	Jani Nikula <jani.nikula@linux.intel.com>, 
+	Joonas Lahtinen <joonas.lahtinen@linux.intel.com>, Rodrigo Vivi <rodrigo.vivi@intel.com>, 
+	Tvrtko Ursulin <tursulin@ursulin.net>, intel-gfx@lists.freedesktop.org, 
+	Matthew Brost <matthew.brost@intel.com>, 
+	"Thomas =?utf-8?Q?Hellstr=C3=B6m?=" <thomas.hellstrom@linux.intel.com>, intel-xe@lists.freedesktop.org
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
 
-On Fri, Nov 13, 2026 at 12:27:45PM -0800, Eric Biggers wrote:
-> A few comments on the diff:
-> 
-> >  tests/f_encrypt_feature_missing/image.gz   | Bin 0 -> 5566 bytes
-> 
-> This image has a 4096-byte block of incompressible ciphertext in it.
-> An empty file would exercise this new code just as well and result
-> in a filesystem image of around 1.5 KB.
+On Sat, Nov 14, 2026, Randy Dunlap wrote:
+> Update the list of files where virtualization ioctls are defined.
+>=20
+> Signed-off-by: Randy Dunlap <rdunlap@infradead.org>
+> ---
+> [Since having multiple maintainers trying to merge these would
+> cause some conflicts, it would be more manageable for Jon to
+> take all of these through the docs-next tree.]
+>=20
+> Cc: Jonathan Corbet <corbet@lwn.net>
+> Cc: Shuah Khan <skhan@linuxfoundation.org>
+> Cc: linux-doc@vger.kernel.org
+> Cc: Juergen Gross <jgross@suse.com>
+> Cc: Stefano Stabellini <sstabellini@kernel.org>
+> Cc: xen-devel@lists.xenproject.org
+> Cc: Hans de Goede <hansg@kernel.org>
+> Cc: Arnd Bergmann <arnd@arndb.de>
+> Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+> Cc: "Michael S. Tsirkin" <mst@redhat.com>
+> Cc: Jason Wang <jasowangio@gmail.com>
+> Cc: Eugenio P=C3=A9rez <eperezma@redhat.com>
+> Cc: Sean Christopherson <seanjc@google.com>
+> Cc: Paolo Bonzini <pbonzini@redhat.com>
+> Cc: kvm@vger.kernel.org
+> Cc: virtualization@lists.linux.dev
+>=20
+>  Documentation/userspace-api/ioctl/ioctl-number.rst |    6 ++++++
+>  1 file changed, 6 insertions(+)
+>=20
+> --- linux-next-20261113.orig/Documentation/userspace-api/ioctl/ioctl-numb=
+er.rst
+> +++ linux-next-20261113/Documentation/userspace-api/ioctl/ioctl-number.rs=
+t
+> @@ -200,6 +200,7 @@ Code  Seq#    Include File
+>  'M'   01-03  drivers/scsi/megaraid/megaraid_sas.h
+>  'M'   00-03  drivers/video/fbdev/mb862xx/mb862xxfb.h
+>  'M'   00-0F  drivers/video/fsl-diu-fb.h                                c=
+onflict!
+> +'M'   01-03  xen/interface/xen-mca.h                                   c=
+onflict!
+>  'N'   00-1F  drivers/usb/scanner.h
+>  'N'   40-7F  uapi/linux/nvme_ioctl.h
+>  'N'   80-83  uapi/linux/ntsync.h and uapi/linux/nvme_ioctl.h           c=
+onflict!
+> @@ -239,6 +240,7 @@ Code  Seq#    Include File
+>  'U'   64     drivers/usb/misc/usbtest.c                                c=
+onflict!
+>  'V'   all    linux/vt.h                                                c=
+onflict!
+>  'V'   all    linux/videodev2.h                                         c=
+onflict!
+> +'V'   00-1F  linux/vboxguest.h                                         c=
+onflict!
+>  'V'   C0     linux/ivtvfb.h                                            c=
+onflict!
+>  'V'   C0     linux/ivtv.h                                              c=
+onflict!
+>  'V'   C0     media/si4713.h                                            c=
+onflict!
+> @@ -357,6 +359,7 @@ Code  Seq#    Include File
+>  '|'   80-9F  samples/                                                  A=
+ny sample and example drivers
+>  0x80  00-1F  linux/fb.h
+>  0x81  00-1F  linux/vduse.h
+> +             drivers/vdpa/vdpa_user/vduse_dev.c
+>  0x89  00-07  asm-generic/sockios.h
+>  0x89  06-07  linux/sockios.h
+>  0x89  0B-DF  linux/sockios.h
+> @@ -398,8 +401,11 @@ Code  Seq#    Include File
+>                                                                         <=
+mailto:kvm@vger.kernel.org>
+>  0xAE  40-FF  linux/kvm.h                                               K=
+ernel-based Virtual Machine
+>                                                                         <=
+mailto:kvm@vger.kernel.org>
+> +0xAE  C6     arch/x86/kvm/x86.c                                        X=
+86 KVM
 
-Sounds good, I'll update the test.
+I'd rather omit this entry.  0xAE C6 is covered by the entry above, and the=
+ horror
+in arch/x86/kvm/x86.c is purely a 32-bit compatibility alias for an ioctl t=
+hat is
+defined in kvm.h (the structure payload defines an pointer instead of a __u=
+64).
 
-> > @@ -389,6 +389,13 @@ int add_encrypted_file(e2fsck_t ctx, struct problem_context *pctx)
-> >  		return 0;
-> 
-> The function comment of add_encrypted_file() should be updated to
-> mention the new behavior.
+If it's a sticking point, e.g. this will trip automated tooling over and ov=
+er, then
+I vote to move the relevant definitions to uapi headers, e.g.
 
-Done.
+diff --git a/arch/x86/include/uapi/asm/kvm.h b/arch/x86/include/uapi/asm/kv=
+m.h
+index 00ce265391e1..e02ef7a39f7c 100644
+--- a/arch/x86/include/uapi/asm/kvm.h
++++ b/arch/x86/include/uapi/asm/kvm.h
+@@ -230,6 +230,18 @@ struct kvm_msr_filter {
+ 	struct kvm_msr_filter_range ranges[KVM_MSR_FILTER_MAX_RANGES];
+ };
 
-> > +	/* The inode is encrypted, so the filesystem needs the encrypt feature */
-> > +	if (!ext2fs_has_feature_encrypt(ctx->fs->super) &&
-> > +	    fix_problem(ctx, PR_1_ENCRYPT_FEATURE, pctx)) {
-> > +		ext2fs_set_feature_encrypt(ctx->fs->super);
-> > +		ext2fs_mark_super_dirty(ctx->fs);
-> > +	}
-> 
-> I'm a little surprised the fix is to set the feature flag, rather
-> than clear the inode.  It looks like e2fsck does this for other
-> feature flags though, so I guess this is consistent with that.
++struct kvm_msr_filter_range_compat {
++	__u32 flags;
++	__u32 nmsrs;
++	__u32 base;
++	__u32 bitmap;
++};
++
++struct kvm_msr_filter_compat {
++	__u32 flags;
++	struct kvm_msr_filter_range_compat ranges[KVM_MSR_FILTER_MAX_RANGES];
++};
++
+ struct kvm_cpuid_entry {
+ 	__u32 function;
+ 	__u32 eax;
+diff --git a/arch/x86/kvm/x86.c b/arch/x86/kvm/x86.c
+index 0771efaf94c8..ef9f92cba589 100644
+--- a/arch/x86/kvm/x86.c
++++ b/arch/x86/kvm/x86.c
+@@ -4260,21 +4260,6 @@ int kvm_vm_ioctl_enable_cap(struct kvm *kvm,
+ }
 
-That's also what I understood from the previous conversation at
-https://lore.kernel.org/linux-ext4/armU51iuvA9d7zvR@igalia.com/
+ #ifdef CONFIG_KVM_COMPAT
+-/* for KVM_X86_SET_MSR_FILTER */
+-struct kvm_msr_filter_range_compat {
+-	__u32 flags;
+-	__u32 nmsrs;
+-	__u32 base;
+-	__u32 bitmap;
+-};
+-
+-struct kvm_msr_filter_compat {
+-	__u32 flags;
+-	struct kvm_msr_filter_range_compat ranges[KVM_MSR_FILTER_MAX_RANGES];
+-};
+-
+-#define KVM_X86_SET_MSR_FILTER_COMPAT _IOW(KVMIO, 0xc6, struct kvm_msr_fil=
+ter_compat)
+-
+ long kvm_arch_vm_compat_ioctl(struct file *filp, unsigned int ioctl,
+ 			      unsigned long arg)
+ {
+diff --git a/include/uapi/linux/kvm.h b/include/uapi/linux/kvm.h
+index 8dff2fc1972e..54dbdabd0e9b 100644
+--- a/include/uapi/linux/kvm.h
++++ b/include/uapi/linux/kvm.h
+@@ -1477,6 +1477,7 @@ struct kvm_enc_region {
 
-So this patch assumes that the inode is correctly encrypted but the
-feature flag is missing (because it was accidentally removed or
-something).
+ /* Available with KVM_CAP_X86_MSR_FILTER */
+ #define KVM_X86_SET_MSR_FILTER	_IOW(KVMIO,  0xc6, struct kvm_msr_filter)
++#define KVM_X86_SET_MSR_FILTER_COMPAT _IOW(KVMIO, 0xc6, struct kvm_msr_fil=
+ter_compat)
 
-A different situation would be if the inode has the encryption flag
-when it shouldn't, but the basic case is already handled by e2fsck
-(would we need an additional test for this?):
+ /* Available with KVM_CAP_DIRTY_LOG_RING */
+ #define KVM_RESET_DIRTY_RINGS		_IO(KVMIO, 0xc7)
 
-# dd if=/dev/zero of=image bs=4096 count=128
-# mke2fs -b 4096 -N 128 image
-# debugfs -w -R "mkdir edir" image
-# debugfs -w -R "sif edir flags 0x800" image
-# e2fsck -vf image
-e2fsck 1.47.4 (6-Mar-2025)
-Pass 1: Checking inodes, blocks, and sizes
-Inode 12 has encrypt flag but no encryption extended attribute.
-Clear flag<y>?
-
-Other possibilities:
-
-- The flag is set, the xattr is corrupt: this is already checked
-  (immediately before the code added by this patch).
-- The flag is unset, the xattr is present: this situation is
-  not detected, but I don't think it has any consequences?
-- The flag is set, the xattr seems valid (or unknown) although the
-  file is not supposed to be encrypted. This is the only problematic
-  case, here e2fsck would suggest to set the feature flag. But this
-  looks like a very unlikely scenario, or am I missing something?
-
-> Given that it's done this way, though, let's consider the case
-> where the user declines to fix this problem, either interactively
-> or via 'e2fsck -n'.  In that case, the problem gets reported for
-> all thousands/millions of inodes that could have the problem.
-> Perhaps it should be reported only for the first, by checking
-> 'info->file_ranges_count == 0'?
-
-Yes, I think that's a good idea, thanks for the suggestion.
-
-> > +	/*
-> > +	 * Encrypted inode found but the filesystem is missing the
-> > +	 * encrypt feature
-> > +	 */
-> > +	{ PR_1_ENCRYPT_FEATURE,
-> > +	  N_("@i %i is encrypted but @S is missing ENCRYPT feature\n"),
-> > +	  PROMPT_FIX, PR_PREEN_OK, 0, 0, 0 },
-> 
-> Isn't this missing '/* xgettext:no-c-format */'?
-
-Hmmm... I think you're right, and it looks like there are more strings
-with this problem on the same file. I was using other entries as an
-example and I didn't notice this.
-
-Berto
+>  0xAE  20-3F  linux/nitro_enclaves.h                                    N=
+itro Enclaves
+>  0xAF  00-1F  linux/fsl_hypervisor.h                                    F=
+reescale hypervisor
+> +0xAF  00-8F  linux/vhost.h                                             c=
+onflict!
+> +0xAF  31-32  drivers/vhost/test.h                                      c=
+onflict!
+>  0xB0  all                                                              R=
+ATIO devices in development:
+>                                                                         <=
+mailto:vgo@ratio.de>
+>  0xB1  00-1F                                                            P=
+PPoX
