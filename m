@@ -1,64 +1,74 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=95.215.58.4
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=18.9.28.11
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794925433;
-	b=mIwXfot/xFYnX6+tsFMrYOJk4KvPKcxMRoUCGFqH+G1MT868iXsGg8OxwrSEjJfl7jKA
-	 QsXiR+0VqdIpd4oHiwM7ElwbtqaIUQyQ5uVfoStJnpPnuY/a37iV8EqCkvEiv9rUGHOFW
-	 t9tFe3QTNHQ7yE5IVvVdvTZH+P0CX1rSuNkaoYyq0+akoWYRdXyWH8LcBEDvmJDxg2wRT
-	 8TlR+9XWYr/5VlrRjVhijgJVzbcO+JaiLZmB3xxablt7FoKd61TCOCuv5+107Gt4pNS3H
-	 WlzFaZEiqKi+HRxBCTQsGZ6SnGqlQqZzzsA74Pt7gpgS0Xuy9e3Qcb8rXzkKc8XFlgw==
+	t=1794927302;
+	b=BUjN9pUnis8Vevlj7f5lgiw18lhEiCDNlz0RXGtEFjksgdxx2eO4HkpGh0uLH6lbbL9A
+	 0Xab5c0AN/3YYawSkNIWZfUZ4knNtGi25OVqv/XKeTpjGiIrId5Mvx4mmfn5wMEsLSw8q
+	 mfCSwEDNHYQp1fRaU/VkdYK5SLJGYFIRdRIb4FYcq96xvZbS0HUwMj/0RkSfsrK8DbRVe
+	 C9cS2X6udjO/qnPSaoQljYer9nhScTtTkfOgEIC5oT+R0vXbG2NFpM1IlqF+TiqMhg0fO
+	 n2Kn5hqXx6GUpqIqRT385kyUecThFcgrm0zsY2qCQd0zbv2C8+ogZ9bgajtzPf9lZSw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794925433;
-	h=DMARC-Filter:X-Envelope-To:DKIM-Signature:X-Envelope-To:Received:
-	 X-Mizu-Trace-ID:X-Migadu-Flow:Date:From:To:Cc:Subject:Message-ID:
-	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
-	bh=+guh6iE7xYHMDxDlAuP+z2BJ/SuqIHLRli0tfKpcKSA=;
-	b=nJy2prXRHgc2eknF8muSxLESjnARNrzmLmdVzBN9jaxJaYa1auDb9H7arZtrUxRW7Xti
-	 ozkGj8LGmDDTwCtZv9+CgbCxu3UnoC2aBKMja3x/KTMjgImil9UdKLFG9WNEIlvOQ+bHn
-	 24bA14bhfckogZ8vcedFnKQQuBJjSZz4QYkRm59/Ozx+oT/1WJPCUSLJO9mtUguWnDvi3
-	 +nHobkiW6qs29jIQoNNxifS6hlxikZfC+cjZpv6dS2uwj6rrSCoXM1DQijbkeJTQWIO3v
-	 T/2r/bJBhO8w4uErC7uEdZgJMXvbyt9qKAkybGghhMH+MDDlmeTsJHt9KKhxUjFrBmg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794927302;
+	h=DMARC-Filter:Received:DKIM-Signature:Received:Date:From:To:Cc:
+	 Subject:Message-ID:References:MIME-Version:Content-Type:
+	 Content-Disposition:In-Reply-To;
+	bh=JZ67Ln6ziaBPsKaIzdqErWNCSGgvnSYlqc/yhQf9HX0=;
+	b=2rX2ROQ9tMnIAIRlNPikQgHkbg8vidVakRmo9DakoXIG1GPgYs9U23WUIR8pTGcGDYN4
+	 ODvq3D0e1Ag5zr20GWuhenjth/cq4HKroMVofN+OJO2CqedlhGAaIqCxFNHr5vjd7s+vF
+	 F54UsLWyjjueeohqBDy26nry1fQtGIaGZJDWcIO2J2k152mO2SXOH+FGM8LbTFTOz4ZOk
+	 GMJ2EBzmCBdVQdYlnKZRDCX6zHE7v6Uq6niY2SXsFimdNUGiitbDs6z1V/j+wns5e5Mae
+	 qTc4IgpTz8OMMLIP4EFtrbEjPyAlhFmKi+bd1eo1JrnjwqOn6C6gIkAMjPyqWW9eg4A==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=linux.dev;
-	spf=pass smtp.mailfrom=linux.dev;
-	dkim=pass header.d=linux.dev header.i=@linux.dev header.a=rsa-sha256 header.s=key1 header.b=n8EjsBSG;
-	arc=none smtp.remote-ip=95.215.58.4
-Received: from mta1.migadu.com (out-4.mta1.migadu.com [95.215.58.4])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	dmarc=pass header.from=mit.edu;
+	spf=pass smtp.mailfrom=mit.edu;
+	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=cxPrl4Mm;
+	arc=none smtp.remote-ip=18.9.28.11
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 00FB8606A31C
-	for <linux-ext4@vger.kernel.org>; Tue, 17 Nov 2026 14:23:52 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 00FB8606A31C
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.dev
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E55D8606A31C
+	for <linux-ext4@vger.kernel.org>; Tue, 17 Nov 2026 14:55:01 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org E55D8606A31C
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=linux.dev header.i=@linux.dev header.a=rsa-sha256 header.s=key1 header.b=n8EjsBSG
-X-Envelope-To: linux-ext4@vger.kernel.org
-DKIM-Signature: a=rsa-sha256; bh=vVEQh/xrnvg3iNH7ktwVr6B+e0axcBBg8VcjYROWAzs=;
- c=simple/simple; d=linux.dev;
- h=from:to:subject:date:message-id:mime-version:content-type; s=key1;
- t=1794925431; v=1; x=1795530231;
- b=n8EjsBSG+Ee9ykzmSLTJnG/Cibj9X7WjI++nFAR8yngKRKtOUu4zPtZ9VUsIDASylbFGOavJ
- rijtRk+aSB2JzY4FQj48ufPfHyh8k3PlppMcvn+eIEh11MHpRQok1gVO0kWoiHyxS/RN/ZWSTaq
- EkFxlUv8TIAqaNTBxkwL46XM=
-X-Envelope-To: linux-ext4@vger.kernel.org
-Received: by smtp.migadu.com with ESMTPS id 08b26d05a708a200;
-	Tue, 17 Nov 2026 14:23:50 +0000
-X-Mizu-Trace-ID: 08b26d05a708a200
-X-Migadu-Flow: FLOW_OUT
-Date: Tue, 17 Nov 2026 14:23:46 +0000
-From: "Jose Fernandez (Anthropic)" <jose.fernandez@linux.dev>
-To: Zhang Yi <yi.zhang@huaweicloud.com>, Theodore Ts'o <tytso@mit.edu>
-Cc: Jan Kara <jack@suse.cz>, Baokun Li <libaokun@linux.alibaba.com>, 
-	Ojaswin Mujoo <ojaswin@linux.ibm.com>, Andreas Dilger <adilger.kernel@dilger.ca>, 
-	"Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, guolingxing <guolingxing@tju.edu.cn>, 
-	Josef Bacik <josef@toxicpanda.com>, Chris Mason <mason@kernel.org>, linux-ext4@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, regressions@lists.linux.dev
-Subject: Re: [REGRESSION] ext4: silent data loss when a split at I/O
- completion gets ENOSPC
-Message-ID: <20261117-jf-ext4-enospc-reply-zhangyi-v9-b19eeb966ad0@linux.dev>
-References: <d400205a-0d3d-4ec3-a916-6c0a085841b4@linux.dev>
- <d8ac3185-44c8-41e7-9cbf-3d1baa27f272@huaweicloud.com>
+	dkim=pass (2048-bit key, unprotected) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=cxPrl4Mm
+Received: from macsyma.thunk.org (c-73-9-28-129.hsd1.il.comcast.net [73.9.28.129])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AHEsWAV025356
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Tue, 17 Nov 2026 09:54:35 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1794927277; bh=JZ67Ln6ziaBPsKaIzdqErWNCSGgvnSYlqc/yhQf9HX0=;
+	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
+	b=cxPrl4Mm1T30CBSddcZy5wnEp6gC/wd8ru0R7LA87M2l8dJaIPqQsiEnyxIe2ZUCU
+	 eygzAr76BDUzp/18d24nDpDp54kiP9TiW4gx5pRs2JjFcjPA2j8s0FhAxU1sBKC/Ns
+	 2wYcU39Se3OKsn0M4KHgbKq8MaZ9WrdqgSJ8RVv/BGGfvXOLpNvakevm0PinCI5Lqq
+	 160eXk9lwAXj4dwMpeqCKzXwGRdgDLChvNGzx5Zs/A3xWNx0h5c43cHAOednZoLbE4
+	 mItAna7bt2OFZ55xE4AomDkNmIffUWVZKGnCZE56UOJ0rloMcwNFABBHIPxd8yFtoN
+	 95wDlCS2Zo9hQ==
+Received: by macsyma.thunk.org (Postfix, from userid 15806)
+	id A03EE27D8EC8; Tue, 17 Nov 2026 09:54:32 -0500 (EST)
+Date: Tue, 17 Nov 2026 09:54:32 -0500
+From: "Theodore Tso" <tytso@mit.edu>
+To: David Laight <david.laight.linux@gmail.com>
+Cc: Gabriel Krisman Bertazi <krisman@suse.de>,
+        Sarthak Kukreti <sarthakkukreti@google.com>,
+        Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Christian Brauner <brauner@kernel.org>,
+        Gabriel Krisman Bertazi <krisman@collabora.co.uk>,
+        Eric Biggers <ebiggers@google.com>, Dmitry Torokhov <dtor@google.com>,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH 1/3] libfs: reject casefolded names that fold to ".",
+ "..", or empty
+Message-ID: <avxe5v6r1C7ZG7E2@mit.edu>
+References: <20261113065332.929085-1-sarthakkukreti@google.com>
+ <20261113065332.929085-2-sarthakkukreti@google.com>
+ <878q2swoxp.fsf@cartola>
+ <avu0X5E298dHRBHY@mit.edu>
+ <20261117084727.0cfa196a@pumpkin>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -70,32 +80,27 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <d8ac3185-44c8-41e7-9cbf-3d1baa27f272@huaweicloud.com>
+In-Reply-To: <20261117084727.0cfa196a@pumpkin>
 
-On Tue, Nov 17, 2026 Zhang Yi wrote:
-> I think the solution should be based on Ojaswin's counting approach in
-> [1] or the PENDING_CONVERSION solution we discussed, and then, after
-> extent splitting fails, try to flush the journal and retry.
+On Tue, Nov 17, 2026 at 08:47:27AM -0500, David Laight wrote:
+> > Sigh... I really think these characters are *evil*.  I wonder if we
+> > should simply drop those code points unconditionally when they are fed
+> > to the kernel --- not only folding to themselves, but *not* preserving
+> > them when a misguided application tries to create a file with one of
+> > these misbegotten Unicode charactesr.
+> 
+> Doesn't that assume that filenames are UTF8 rather than just sequences
+> of bytes with everything except '\0' and '/' being valid.
+> Casefolding is itself so evil/impossible it shouldn't have been allowed.
 
-Thanks for the quick POC. Our agents ran it on [1] rebased on
-23c62304dde2 with the report's reproducer, in two separate setups (QEMU
-without KVM). None of 72 files lost data in either, against 42 and 53 of
-72 with [1] alone.
+We would only do this if casefolding is enabled.  For better or for
+worse, it's better than what it replaced which was this terrible
+wrapfs hack that was a trivial to trigger deadlocks using fsstress ---
+which was even more evil.
 
-They found two gaps:
+The other way we can deal with this is that if case folding is
+enabled, we change the VFS to call the case-folding for incoming
+filename *before* it does its special case checking for '.' and '..'
+if casefolding is enabled.
 
-- The new branch in ext4_ext_handle_unwritten_extents() skips both
-  ext4_update_inode_fsync_trans() calls, so fdatasync() and O_DSYNC can
-  return before the commit. On a full filesystem mounted with
-  commit=3600, a shutdown test lost the write in all 13 buffered
-  fdatasync() and O_DSYNC cases that reach the zeroout. They pass with
-  [1] alone and with that call added.
-
-- Direct writes into preallocated files can still get ENOSPC with the
-  POC, on a few percent of files in both setups, with no data lost.
-
-The POC tries the zeroout before the commit and retry. Should it be the
-other way around? And will you take guolingxing's patch ([2] in my
-report) as well?
-
-- Jose
+					- Ted
