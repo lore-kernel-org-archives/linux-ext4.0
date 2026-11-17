@@ -1,58 +1,57 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
 	t=1794909083;
-	b=L6idBuA+DDztU3RqLvdOXrMhlQpcVWl6L7tl0ik5Ycmdg68JNqkVHTHa8tNJMcAyDEIT
-	 hpoxNtwPajNxFjmEJazuVgeEnitfL6Wn/5xCiYqN7e+6joilQrh9vhhGHnoyXYjNcr+in
-	 0N0Tyf3Z7qSEHM4Ts04sH9yrSUvS0kW0oAl4LMqyYYrzddc4N3hSFsFCn9UWq8E+VyHbl
-	 W1FCNiaMojh4O0+FPA3394PQp9pzeskRIPgqozDqNnP9zhIBVUnO6t21bUbqG6ClQBpMV
-	 fbmA5u6n4+EancNDeXpf7sGlvGw6hHICOsmB9NFG+hUAt37yCwaAMiC7I+sHmSsl0Bg==
+	b=YBkd7g+dup2GV67c5C/W2KP+y94dvYKmuZ+2noSwZFYg7shbzhL7/DN+HHqEyfPl6e2t
+	 W1J7Ovcl/zjVTuA7zxmjkMaJXfaGWX4XiEa4X+cAk3otYgeHdrfhvC/ksbqZqY1filImB
+	 hf4kIOWc4oimjD02gRl4AARLOu47n5+1F8zSo1OPfgZg+rtJ+Z8SLVrh5hCN2Yvh35aHV
+	 23fM0yVpOvS5a7eC212nb0Qw8RMRU0dYgnNo2yQg2D5c/wN8qRtaEnEsNW4ZYAXSkIWFN
+	 n5k8sqnaJQsZ9LIHUSI1ezddp10nogNmlZroWNax1uvy3Wdgf3cYZAEGlvp9YLSHWig==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
 	a=rsa-sha256; c=relaxed/relaxed; t=1794909083;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=IgWorztv2BHlor1T6Axd/Nq2sNHTNA8oBQHQSlfJdi4=;
-	b=3F7WdL6SB7NJ9WYngMACTUgQOLqvj+7sPLZIoz7aPURDlH0fkHQ7kMQjZIEyn0ibW1WG
-	 MSG3guxpEdGH+tmzx0RVrTf4N9k4i+P5VPsTv+cnanlip3UdDRmw2S2EUF7UXkhn8uO7N
-	 lTuEckbhku2YfsAYwApzp/H9T+jfG1OjFM0MJwJQa0pVwTkhEa3WnXcz1FqUCChAgZR3B
-	 FkFwjXrhd26pznYQk33Gk5f26mMSxV25eHiQUfMoKv4fphp/7cT0foxUZ4nXuGLougRYN
-	 3eDYJZiIARjnSKXvkbLaOYe9/L4q9iH+v//5CtqpKYwqUr564jIU1u3p1rKol8oSrfg==
+	bh=bSiEa6c5RbiJISAh9MazCmsYgQZGJRi1v4E7Avxq3w8=;
+	b=swQl4pZ4l1Hpz59fL8DZB9ptqQaeyexm8Lwe2SYldZ0FmaRtdL8TGDk46PQe+Jb8kggm
+	 wfKJqKnIFlPYNnRALzaVMIpQ7nkauCfzKIT37PvZL8YlTUn+4PgNXOEqqjNWNM1M8Rt7W
+	 gV/U6ZKCkZ40OjlRf0gdoYW5C/PlAXbXxUlXlfwVtPMk/F61V6azXZem4Iyrq9z1smDun
+	 AckRTHqivCIyLsgO2sajnViCpRDYhj7PdBJGCxg2j9/Q816WeiNfC6Pdg+AYQfFR7tebq
+	 +GATJ1zcR2tCS2PIc1CGNYq042o+bXNk4jCOmuBsjnLwoZ69qRVlQ4dvK2VLVp16KSw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ammEKiKC;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=HaMbWk30;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EC639606A333;
-	Tue, 17 Nov 2026 09:51:22 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CB0DF606A333
+	for <linux-ext4@vger.kernel.org>; Tue, 17 Nov 2026 09:51:23 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ammEKiKC
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4D9C81F000C4;
-	Tue, 17 Nov 2026 09:51:22 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=HaMbWk30
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4D77E1F000C5;
+	Tue, 17 Nov 2026 09:51:23 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794909082;
-	bh=IgWorztv2BHlor1T6Axd/Nq2sNHTNA8oBQHQSlfJdi4=;
+	s=k20260515; t=1794909083;
+	bh=bSiEa6c5RbiJISAh9MazCmsYgQZGJRi1v4E7Avxq3w8=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=ammEKiKCdIdyCVZgC/j7JtdKyM6HDM47RW0+62Wq+RK1zS5F7otycEtBFf6a8b7GL
-	 T8OFTwYhAT+rtnMSu4E4U2HOoFCrBq4YNpbs2byR8wgY0ul+t5h5uTPwotJ/pIJHJU
-	 ZXc0vTVYbaSRx/nmmS9B3WwiJE7bzy+OmUITRwFeddJEwqg9ejhbZEbJOZBV1z8byG
-	 tx2nM8Qy17jXG6sYjCTOH7SngDREzscNaNbgEhoirAzPZWru3N5P82mcN6Z673HN8q
-	 4kD3T7R/SSAGgkoahMLNDdtftjITuqlozGsERONYZF8d1fAOaliy0JLkeBol/A8VOt
-	 rZqE/leZAHe4A==
-Message-ID: <sashiko-outbox-218535@kernel.org>
+	b=HaMbWk30/U8Sw1bGnlBntmgnDr1IwLXwIxExItCxdKPGfE+CRo+Usf/FWTiE4BbZh
+	 7ECDZa8j9BeabhUqkib577l59o9B0oDTVbIYmnhRA/TRIV5x8XxHf7kRSwoajuIwa3
+	 Ujyc905ybNZywFtGLTkBah+IXkE77OkkXiPpYXmEYlfdxlKc0Z1I7GbeoXgAdqGdFq
+	 Ud3fhDhgR6TaS2tBa0g2Bs9HT+P7D/u3VfKU6ahTiBLS+o6QwtyVTC9kKFH/o7DITQ
+	 hyzbIeRT2UYuPXhgbz5zLibVd9zmqTco4PC6YfAPGkNDQPpH5caSogYxLLZxlMDlBJ
+	 bM9SJj1ApPd7w==
+Message-ID: <sashiko-outbox-218536@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH 2/3] exfat: keep the volume marked dirty after a
- shutdown
+Subject: Re: [PATCH 3/3] jfs: refuse inodes with a negative size
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Christian Brauner" <brauner@kernel.org>
-Cc: "Jan Kara" <jack@suse.com>, linux-ext4@vger.kernel.org, linux-mm@kvack.org, linux-efi@vger.kernel.org, linux-mtd@lists.infradead.org, dsterba@suse.cz, tytso@mit.edu, "Mark
- Fasheh" <mark@fasheh.com>, "Joel Becker" <jlbec@evilplan.org>, "Joseph Qi" <joseph.qi@linux.alibaba.com>
-In-Reply-To: <20261116-work-fs-sb_rdonly-fixes-v1-2-95a25ce917ad@kernel.org>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, "Mark Fasheh" <mark@fasheh.com>, "Joel
+ Becker" <jlbec@evilplan.org>, "Joseph Qi" <joseph.qi@linux.alibaba.com>
+In-Reply-To: <20261116-work-fs-sb_rdonly-fixes-v1-3-95a25ce917ad@kernel.org>
 References: <20261116-work-fs-sb_rdonly-fixes-v1-0-95a25ce917ad@kernel.org>
- <20261116-work-fs-sb_rdonly-fixes-v1-2-95a25ce917ad@kernel.org>
+ <20261116-work-fs-sb_rdonly-fixes-v1-3-95a25ce917ad@kernel.org>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Tue, 17 Nov 2026 09:51:21 +0000
+Date: Tue, 17 Nov 2026 09:51:22 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -62,40 +61,19 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-Thank you for your contribution! Sashiko AI review found 1 potential
-issue to consider:
-- [Low] exfat: Fixes trailer cites f761fcdd289d instead of 46a557694b46
---
-
-commit a1d3dffdfc2b9385cf2e9ba0e7b99bd916f22ffa
-Author: Christian Brauner <brauner@kernel.org>
-
-> exfat: keep the volume marked dirty after a shutdown
->
-> After a shutdown exfat_write_inode() and exfat_writepages() drop
-> whatever is still dirty. But exfat_put_super() and a remount to
-> read-only still clear VOLUME_DIRTY through exfat_set_vol_flags() which
-> only leaves the boot sector alone on a read-only superblock. So after a
-> shutdown with EXFAT_GOING_DOWN_NOSYNC the volume ends up marked clean
-> although it may be inconsistent. Leave the boot sector alone after a
-> shutdown too.
->
-> Fixes: f761fcdd289d ("exfat: Implement sops->shutdown and ioctl")
+> copy_from_dinode() takes di_size as is and a crafted image can store a
+> size that is negative as a loff_t. For a symlink that passes the signed
+> i_size >=3D IDATASIZE test in jfs_iget(), so it's treated as a fast
+> symlink and i_link[i_size] =3D '\0' writes out of bounds. Refuse a
+> negative size when reading the inode like a corrupt dtroot.
+>=20
+> Fixes: d69e83d99cf8 ("jfs: ensure symlinks are NUL-terminated")
 > Cc: stable@vger.kernel.org
 > Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 
-[Severity: Low]
-Should the Fixes tag reference 46a557694b46 ("exfat: do not clear volume
-dirty flag during sync") instead?
-
-In f761fcdd289d ("exfat: Implement sops->shutdown and ioctl"),
-exfat_clear_volume_dirty() was only called from exfat_sync_fs(), which
-returned early on exfat_forced_shutdown(sb).  It was 46a557694b46
-("exfat: do not clear volume dirty flag during sync") that removed
-exfat_sync_fs() along with its shutdown check and moved the
-exfat_clear_volume_dirty() calls into exfat_put_super() and
-exfat_reconfigure().
+Sashiko has reviewed this patch and found no issues.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261116-work-fs-sb=
-_rdonly-fixes-v1-0-95a25ce917ad@kernel.org?part=3D2
+_rdonly-fixes-v1-0-95a25ce917ad@kernel.org?part=3D3
+
