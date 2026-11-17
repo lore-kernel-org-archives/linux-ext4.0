@@ -1,57 +1,60 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=79.135.106.27
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=109.224.244.20
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794893286;
-	b=m/RWxqUYBGN8IXFKngXU6mJ8+QesBzMXPwl937v7Pc3zcAon6gUs0xXsdhgRMh8HsEnG
-	 JtLKsfWYiK6sKobDHKTmF1U4asW3GHfvZQRQx9ywgpBprM9bqwpm77NaYLQ+QK/l1THlM
-	 oyPwPqPu3Lo2UuzbtPJ0DkFQKbbEpqeCtuYy5yl/TBxEGxv8wSXqEhFxImmoTxFOzVVLB
-	 SXHmEB2txgnCCBA/8Efp8TnM8FQlklpPZlsojW9dATaCac91/cUwpNl43fmziJ3cVlrEj
-	 1sZOx99eAzoFXuu7ruFUkO9p1zVC7WlsmxtjiMCSpbiSsjqISW6gVki242QTDE5xxDQ==
+	t=1794893291;
+	b=nzWp/UIPRWUJtTfZIKayOlhyimz8mPWtlggSfPyM9p3ZsqlnCKdL1EE0LTzno3dNwx9a
+	 U9ksUocP8Nu29j6fuJsSjThbjaA2AoXpWPjHH6VzQtCYxYXqCkLLhtB/H7WpcadZzJSxi
+	 esN/o4GatXXM1VuLx/aPVKJIAmxTmJ8b1gsmCPJTe4gu4EbjDIBBPL6ecgSK46FaK7qRU
+	 w79fNMKpWVTDIHpJrpjF3g/VFCvIXpw81/GJYP9Y7rzrxchzGF8LCtlL1Qz23OfKTeR3G
+	 KDVAr24PxVgaLWwXQk4SSMfmttF//jPy+XYfw87i+kmlW7oWVrTj6yMSMY6X5hsUGtA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794893286;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794893291;
 	h=DMARC-Filter:DKIM-Signature:Date:To:From:Cc:Subject:Message-ID:
-	 Feedback-ID:X-Pm-Message-ID:MIME-Version:Content-Type:
-	 Content-Transfer-Encoding;
-	bh=2ozDtAX6fngmVkbtCv2yTK/ANg4ulVzze2Q8cAf4UeY=;
-	b=jKWWn7JC+TR3eseQUKiS1FSXbtB8P/D29dPaA8poLKFYoOIAA8A5cpBfSa5gISlkOvU2
-	 r23/K5g+jduaimdgbgKvAYYWJrSRZSVTtEc4LHow6/nJlTCPLlDsk4ER5V70gcvl2ZyvC
-	 ycZmHcjov5A0w5ZhNIs+IeiwKwOw454cwyTWPwX68q4THfi8EuM9wZCCXJIbDsuuZQZxS
-	 cttyWy5i0a0Yzn+yce1qlgOihKlU2QDEi9rgYLlxEkXhwDbU7g861Uy4dEtdzIlRLMB7I
-	 oMT0B4hjnMEHNdZBoLh6jy5PaaBGLhKPnA0d7CHRSslQyatuDswPuoK1UFbJOf4FUVQ==
+	 In-Reply-To:References:Feedback-ID:X-Pm-Message-ID:MIME-Version:
+	 Content-Type:Content-Transfer-Encoding;
+	bh=F0BfjDuPCwYzytmSMe8p4WKLbs7JbmnbinkYTy+oL80=;
+	b=wLU0n8GF2dY6sEQBPqy4CabZ47pCuFmX012UD6Bfm4tS14HSPPJzcq2xLUivqbAYiLm+
+	 WLxGudjLH8sS1QYV9M4+zW6MEquIc9WOo7+bK5rqoS8cGFdjP4OsjWkHgnNgMcLtZt+mE
+	 Vb0UYyY+hbzb+xZXZv2j8mW/Vjc2ZzLeeQ5Yicg14zev7Eb4XeX09XtJA8rdeHw/8taYs
+	 HCC7836jxDpIi2T6v5XOsXBbm515ichf0VO8XdzOMF9C7R0xpZcN5BnVwlxv/IaiQSTw4
+	 HNhOTyaJz6iYDk+xqgqsNWAVdYHcc8EnpRm6GSaQgp4m14pFn4SpmQHWsteZaRRc8eg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=logarcheon.com;
 	spf=pass smtp.mailfrom=logarcheon.com;
-	dkim=pass header.d=logarcheon.com header.i=@logarcheon.com header.a=rsa-sha256 header.s=protonmail3 header.b=M6SHJD6j;
-	arc=none smtp.remote-ip=79.135.106.27
-Received: from mail-10627.protonmail.ch (mail-10627.protonmail.ch [79.135.106.27])
+	dkim=pass header.d=logarcheon.com header.i=@logarcheon.com header.a=rsa-sha256 header.s=protonmail3 header.b="lm/5TxJx";
+	arc=none smtp.remote-ip=109.224.244.20
+Received: from mail-24420.protonmail.ch (mail-24420.protonmail.ch [109.224.244.20])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6EDC1606A32C
-	for <linux-ext4@vger.kernel.org>; Tue, 17 Nov 2026 05:28:03 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 6EDC1606A32C
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 617AA606A32A
+	for <linux-ext4@vger.kernel.org>; Tue, 17 Nov 2026 05:28:10 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 617AA606A32A
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=logarcheon.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=logarcheon.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=logarcheon.com header.i=@logarcheon.com header.a=rsa-sha256 header.s=protonmail3 header.b=M6SHJD6j
+	dkim=pass (2048-bit key, unprotected) header.d=logarcheon.com header.i=@logarcheon.com header.a=rsa-sha256 header.s=protonmail3 header.b=lm/5TxJx
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=logarcheon.com;
-	s=protonmail3; t=1794893281; x=1795152481;
-	bh=2ozDtAX6fngmVkbtCv2yTK/ANg4ulVzze2Q8cAf4UeY=;
-	h=Date:To:From:Cc:Subject:Message-ID:Feedback-ID:From:To:Cc:Date:
-	 Subject:Reply-To:Feedback-ID:Message-ID:BIMI-Selector;
-	b=M6SHJD6jRQN4Ne+ymm/1/+8YDcXF7eIlH9IkiAogJ71Dm9H1ffbn1AAIJovEicsGV
-	 63y7agDt1br32tlW89zP6RrbGIdwPU00tsLI9xrvdGZok8smfWUCULQ9vM/AjZeCgE
-	 hmAr6r60J577q7wvg2BT84aVtv8x30X7E0ivxDEHzRdVGKZLAUyfuzGBxHMd3vMXk0
-	 EQt9bEVoPbPPTrGGMj5gKawtep2hUCGl8nBTNymBuw/UUyrQ8ofjWCNXTBfhvQ6aMm
-	 3mIcP5XhTFbs6SRKaeFysBKGLOcTeqKp7CZTbEpWiUbWjngfhQLsMHhZnnqp+2FpNb
-	 cKIYsf5p2d8xQ==
-Date: Tue, 17 Nov 2026 05:27:57 +0000
+	s=protonmail3; t=1794893288; x=1795152488;
+	bh=F0BfjDuPCwYzytmSMe8p4WKLbs7JbmnbinkYTy+oL80=;
+	h=Date:To:From:Cc:Subject:Message-ID:In-Reply-To:References:
+	 Feedback-ID:From:To:Cc:Date:Subject:Reply-To:Feedback-ID:
+	 Message-ID:BIMI-Selector;
+	b=lm/5TxJx8VE7ORU4aDFXSYn1lgNKFOirHog6nJDzNKABDXtWWkvKQ5CBBI183LO7/
+	 jduQvYGy94cGtV6+smDi9Xw++jf0+KrXXZsjTNo6Cd5aHTsrwDTLuFd7+b7fSL50Hj
+	 IbiivlrljqDGCPfR3AJ540m/+dJgZkdLDA7y5GiutiNf5Ml60G3s3SkG9EaFadoa2m
+	 hkL23AX8RrC5df6MPCS75sSRzA9ePWVp4wysytloxdSemATu1azrI5hZR65fH+QS2w
+	 fpK3r6/CE1RuDkVqpID+4fCq2JZhySE5uAi4/mTRcQmwyKTXvZmVJONOGY+t1YRHSb
+	 soFld53a8cZxA==
+Date: Tue, 17 Nov 2026 05:28:04 +0000
 To: Theodore Ts'o <tytso@mit.edu>
 From: William Chuang <founder@logarcheon.com>
 Cc: Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.cz>, Ojaswin Mujoo <ojaswin@linux.ibm.com>, Ritesh Harjani <ritesh.list@gmail.com>, linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, syzbot+e8180f5590685cbc9037@syzkaller.appspotmail.com, syzkaller-bugs@googlegroups.com
-Subject: [PATCH 0/2] ext4: fix two journal credit shortfalls behind one syzbot report
-Message-ID: <20261117052750.2955-1-founder@logarcheon.com>
+Subject: [PATCH 1/2] ext4: reserve quota credits in swap_inode_boot_loader()
+Message-ID: <20261117052750.2955-2-founder@logarcheon.com>
+In-Reply-To: <20261117052750.2955-1-founder@logarcheon.com>
+References: <20261117052750.2955-1-founder@logarcheon.com>
 Feedback-ID: 145408520:user:proton
-X-Pm-Message-ID: 85f0608268d50119822b560b6ebb69d9e144fa1a
+X-Pm-Message-ID: 6a86ac27491d2e56f2b2503700f7257f3972ec44
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -64,32 +67,68 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
 
-syzbot report e8180f5590685cbc9037 ("WARNING in jbd2_journal_dirty_metadata
-(4)") collects crashes from two separate paths. Both hit the same WARN:
-a handle dirties a new metadata block after its credits are used up.
+swap_inode_boot_loader() starts its handle with 2 credits, enough for
+the two inode table blocks it dirties.  Since commit aa507b5faf38
+("ext4: update quota information while swapping boot loader inode") it
+also calls dquot_free_space() or dquot_alloc_space() under the same
+handle.  On a filesystem with quota enabled, that marks the dquots
+dirty and ext4_write_dquot() writes them to the quota file.  The
+nested ext4_journal_start() in ext4_write_dquot() reuses the running
+handle and adds no credits, so the quota block write can find the
+handle with no credits left:
 
-1. EXT4_IOC_SWAP_BOOT: swap_inode_boot_loader() reserves 2 credits, then
-   updates quota under the same handle (crashes of 15 and 16 Nov).
+  WARNING: fs/jbd2/transaction.c:1598 at jbd2_journal_dirty_metadata
+  Call Trace:
+   __ext4_handle_dirty_metadata
+   ext4_quota_write
+   qtree_write_dquot
+   v2_write_dquot
+   dquot_commit
+   ext4_write_dquot
+   mark_all_dquot_dirty
+   __dquot_free_space
+   swap_inode_boot_loader
+   ext4_ioctl
 
-2. Inline data buffered write with a short user copy:
-   ext4_generic_write_inline_data() reserves 1 credit, and
-   ext4_write_inline_data_end() then calls ext4_orphan_add() (crashes of
-   12-14 Nov, x86_64 and arm64, including data=3Djournal).
+jbd2 returns -ENOSPC and the journal is aborted.  The ioctl still
+returns 0, and the filesystem is left with the wrong i_blocks on the
+swapped inode and inconsistent quota usage, which e2fsck reports.
 
-Both were reproduced on UML at 666539eec ("Merge tag
-'assoc-array-fixes-v2'") with small standalone reproducers, before and
-after each fix; details are in each changelog. One patch per path, so
-each can be reviewed alone. Both patches carry the same Reported-by
-tag, and the report closes only when both are applied.
+Reserve one quota block per quota type, as ext4_ext_migrate() does.
 
-William Chuang (2):
-  ext4: reserve quota credits in swap_inode_boot_loader()
-  ext4: reserve an orphan credit for inline data writes
+Tested on UML with a filesystem made by "mke2fs -O quota": write and
+sync a file, then issue EXT4_IOC_SWAP_BOOT on it.  Without this patch
+the WARN fires ("credits 3/0") and e2fsck -fn reports errors; with it
+there is no warning and e2fsck -fn is clean.
 
- fs/ext4/inline.c | 7 ++++++-
- fs/ext4/ioctl.c  | 7 ++++++-
- 2 files changed, 12 insertions(+), 2 deletions(-)
+Fixes: aa507b5faf38 ("ext4: update quota information while swapping boot lo=
+ader inode")
+Reported-by: syzbot+e8180f5590685cbc9037@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=3De8180f5590685cbc9037
+Signed-off-by: William Chuang <founder@logarcheon.com>
+---
+ fs/ext4/ioctl.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
 
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index e8e579498..ae03eb834 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -425,7 +425,12 @@ static long swap_inode_boot_loader(struct super_block =
+*sb,
+ =09truncate_inode_pages(&inode->i_data, 0);
+ =09truncate_inode_pages(&inode_bl->i_data, 0);
+=20
+-=09handle =3D ext4_journal_start(inode_bl, EXT4_HT_MOVE_EXTENTS, 2);
++=09/*
++=09 * Two inode table blocks, plus one quota block per quota type for
++=09 * the dquot_free_space()/dquot_alloc_space() update below.
++=09 */
++=09handle =3D ext4_journal_start(inode_bl, EXT4_HT_MOVE_EXTENTS,
++=09=09=09=09    2 + EXT4_MAXQUOTAS_TRANS_BLOCKS(sb));
+ =09if (IS_ERR(handle)) {
+ =09=09err =3D -EINVAL;
+ =09=09goto err_out;
 --=20
 2.43.0
 
