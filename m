@@ -1,53 +1,71 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=18.9.28.11
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794870080;
-	b=YWHJ7xBqM8niSHxmhCFOCCttzGMkCKk+HnUrHJ/zLk0mS0ABL1poSiNjCjVPRaa68ycj
-	 /NcL3Wy7/xNvRwhdHox8VlMvzPkxm6MkJGztpzqRZSvVhEy6SW8ffFN2S3QtUlAZbxUYO
-	 YgcHJ7aJvKD4WMFGlxUPfk+wVebhtCwnXuylG7Fqc8m8ELVnqVNxxS51YzsrfgJwuIHU7
-	 gPs/96gtgNb8Yso+v1bWfY4WQTZtFO1w+vy9Vy8KcKDksr/0l0FpaxQzN+OHbitURFg/g
-	 xmi9W8ff2++k3VsUROj6UHL4wGUARNCAFFD77435gUzJmC00tsp81A2bmZiVEoyHkkg==
+	t=1794880839;
+	b=vnArVrTYZdBQEZ7uU0QLnSj1mPjQgLqsDNFn6rZHpS8v6TDlT8DxZExHSeFeXBrX693g
+	 KgOHCebYKcJJ1wzUInafq8PK8Bd+JsAgkrHscnQQDpeNH+srKRwdCzQe6nkSYMp7DOjIM
+	 J47V8Tr6V6UQJ2X3kFqkERBepKTiTse7pH86neffW481E93FTw/a96j2N7ft7ostmohb7
+	 bJcCt7Ade+COa3h1w4aFp5mhFu2RkTUGupWbedcSCug3HuhCmL8Bv+m1xyfHOHrPqp8Sm
+	 g+dzWCAWOUSXuKi4MCtUnNUPYqUtjVwBuOMcj58vPTRpyVhTCV0jMpsGaTBOKB97lpg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794870080;
-	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
-	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
-	bh=71SNAf4uv9b2FndV2ULwhSnXNI+lMZguIe0QvnUNp28=;
-	b=W8NBNg+rTM0OGIC0ziqbVK2s3dhjZWr4h1sDT5cXxI2crXIRo2axpR7o4rSibP8oW6Ae
-	 zMenXxY7ShSUO7oZGkKNfbiH7o1O+KKoZ4vxX1OHjhjU2zbOoMew12TVl+QXkwRRF3aKT
-	 M2AaOcj4YlwyxYVo6bmor8Xkwg9ymnmtZu6SRUgJb29HK0NUHssYU4OF6+z/WdP0CwKVn
-	 7/h87bZSdxdMQJcM8bsm7k5i4TpIAMQkRfQ44upiZSeo+neyyaOhjg9C0vghTIOJ0Plqd
-	 zDagXbjVoJMLfMZ7h9+lk+AeYMR8y7+otTsDF4KO45NZ6Tk/k9Z505NRKCxrKl1dSbg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794880839;
+	h=DMARC-Filter:Received:DKIM-Signature:Received:Date:From:To:Cc:
+	 Subject:Message-ID:References:MIME-Version:Content-Type:
+	 Content-Disposition:In-Reply-To;
+	bh=VkLy1I0kQBdGGFa3JjJKMLWd5KGqUrPpkyuEnh2673M=;
+	b=AqKdU1EeeBIYct3hz7ISCYVBuB3l18CmMeiylmceNrLRAhV3gp8537uh+6YSPQFHSaKC
+	 hjcIPLLT0gxpO5QUvaZVjKwBxZ1HsJSe2fBoYTuUqorkk3mCw7YmBVguOjqlwsC+LzeNh
+	 ydba/dZVpxnltSWi3aNOmbs/VdXKcOFYfP+CCZ18E/ukmfKuHqbfG7DD0dDC8ztmn6Df/
+	 284q8KNEWcjAtO7NBNZcpSr5OowEVwv6kRHTtWM2QNm3hV8CTJwoFG/ottTRhhmt2FyNV
+	 cJcESKmTKBb71ozD4n080o/A8zBTlJn+T2qc7zeveI51u0ORn7pRJ0/AMMZIIglZNTg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=SIxVrEXK;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=pass header.from=mit.edu;
+	spf=pass smtp.mailfrom=mit.edu;
+	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=WcdmYwdK;
+	arc=none smtp.remote-ip=18.9.28.11
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BFE49606A329
-	for <linux-ext4@vger.kernel.org>; Mon, 16 Nov 2026 23:01:20 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 46B3D606A31C
+	for <linux-ext4@vger.kernel.org>; Tue, 17 Nov 2026 02:00:37 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 46B3D606A31C
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=SIxVrEXK
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 743901F000C7;
-	Mon, 16 Nov 2026 23:01:20 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794870080;
-	bh=71SNAf4uv9b2FndV2ULwhSnXNI+lMZguIe0QvnUNp28=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=SIxVrEXKBczbN5B1RQ2IeKDNUsvRPobnmGsUQJW/VONGYqWWjW8hEc0QfOC5Nw5Wu
-	 WYhJ5EcT1PSVR5KBZu5DWAIbyNk1L/UxIioMwj5u6KgybmgFlAfITE4033ueuQc8Of
-	 kxH7o/CSFsKTNa181c6Rysbn/w94MGBNZxQiVUc6rrsApOTLWIxJ7cAD0Kzm8u0tDK
-	 tsfkFp5LUMVVLwl2/OfbyneyXgyxcUb4u+ixGLujol8uTmx2AE1BsxDgN1mzBsDLH3
-	 9OajkyW4FsaVIOHtU57B4czrc+6oi2R8v/CBqLwahY97+XhjUDScixO/78g85glwK5
-	 2W1SK/HruSuzg==
-Date: Mon, 16 Nov 2026 23:01:19 +0000
-From: Eric Biggers <ebiggers@kernel.org>
-To: Alberto Garcia <berto@igalia.com>
-Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-	Baokun Li <libaokun@linux.alibaba.com>
-Subject: Re: [PATCH v3] e2fsck: set the encrypt feature if the filesystem has
- encrypted inodes
-Message-ID: <20261116230119.GG229817@google.com>
-References: <20261116225208.108150-1-berto@igalia.com>
+	dkim=pass (2048-bit key, unprotected) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=WcdmYwdK
+Received: from macsyma.thunk.org (c-73-9-28-129.hsd1.il.comcast.net [73.9.28.129])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AH206Us030545
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Mon, 16 Nov 2026 21:00:08 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1794880810; bh=VkLy1I0kQBdGGFa3JjJKMLWd5KGqUrPpkyuEnh2673M=;
+	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
+	b=WcdmYwdK/b8BiflVThD+QvJau9tSH5SE0/LeO3ZvbLeNGt+w+JTi/Sr5h1QYXdwCh
+	 vhh9bZBTJSX81ajwsFfm/ZzCNVwpLM7Ygihz39Mp+HA7wL8H08KTMUTikdKbdbw4S6
+	 dzV1+AsWE6sRU7DAAHFtAJMpCI05dgkmvBsM2wbQW3z+VveeYwsd3iNai6Ra12arfc
+	 /t5e+iRwK4fGFR8U55PGXmcJ/qCDk9aClAg/19fUSu+QZ8EVn7/0vQ41Uo20BYoI3F
+	 xLegQQAOPNKf4IxmHDG7ZoqFdE5Z42UnsoUpXFg7XPHQdS8xTuOhoFKvg31cIwn6ou
+	 6J19UUH4mLIIg==
+Received: by macsyma.thunk.org (Postfix, from userid 15806)
+	id 8394627BABE9; Mon, 16 Nov 2026 21:00:06 -0500 (EST)
+Date: Mon, 16 Nov 2026 21:00:06 -0500
+From: "Theodore Tso" <tytso@mit.edu>
+To: Gabriel Krisman Bertazi <krisman@suse.de>
+Cc: Sarthak Kukreti <sarthakkukreti@google.com>,
+        Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Christian Brauner <brauner@kernel.org>,
+        Gabriel Krisman Bertazi <krisman@collabora.co.uk>,
+        Eric Biggers <ebiggers@google.com>, Dmitry Torokhov <dtor@google.com>,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH 1/3] libfs: reject casefolded names that fold to ".",
+ "..", or empty
+Message-ID: <avu0X5E298dHRBHY@mit.edu>
+References: <20261113065332.929085-1-sarthakkukreti@google.com>
+ <20261113065332.929085-2-sarthakkukreti@google.com>
+ <878q2swoxp.fsf@cartola>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -59,30 +77,30 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20261116225208.108150-1-berto@igalia.com>
+In-Reply-To: <878q2swoxp.fsf@cartola>
 
-On Mon, Nov 16, 2026 at 11:52:06PM +0100, Alberto Garcia wrote:
-> A filesystem without the encrypt feature can still contain encrypted
-> inodes, either due to corruption or because the image was crafted that
-> way.
-> 
-> e2fsck currently accepts such inodes without complaint. Since those
-> inodes can be decrypted, this should be fixed by setting the encrypt
-> feature on the filesystem.
-> 
-> Note that the Linux kernel does not currently support encryption when
-> the block size is larger than the page size. After this change, such
-> a filesystem will be rejected at mount time (see the kernel commit
-> 709f0f1f1bf5, "ext4: add checks for large folio incompatibilities
-> when BS > PS"). However, since this depends on the page size of the
-> machine where the filesystem is mounted, and the kernel could lift
-> that limitation in the future, e2fsck does not take it into account.
-> 
-> Fix this by adding a new problem (PR_1_ENCRYPT_FEATURE) and a
-> regression test.
-> 
-> Signed-off-by: Alberto Garcia <berto@igalia.com>
+On Mon, Nov 16, 2026 at 02:34:26PM -0500, Gabriel Krisman Bertazi wrote:
+> Either way, this issue is another example of why treating ignorable code
+> points as 0-length strings was a bad idea.  I'd very much rather
+> utf8_casefold would treat all ignorable code points as foldable to
+> themselves, (i.e. commit 5c26d2f1d3f5 ("unicode: Don't special case
+> ignorable code points")), but that was tried and broke applications
+> that relied on variant selectors code-points being ignored.
 
-Reviewed-by: Eric Biggers <ebiggers@kernel.org>
+Sigh... I really think these characters are *evil*.  I wonder if we
+should simply drop those code points unconditionally when they are fed
+to the kernel --- not only folding to themselves, but *not* preserving
+them when a misguided application tries to create a file with one of
+these misbegotten Unicode charactesr.
 
-- Eric
+I'd prefer to simply reject creating them with an EINVAL, but it's
+likely that will break those stupid applications....
+
+Eventually we can have e2fsck offer to fix directories with those
+characters, and eventually we can make these characters become a bad
+memory.
+
+The other question is what *other* evil misdesigns are in the unicode
+spec that we should be preactively trying to addressw hile we're at it?
+
+     	     	       		   	     - Ted
