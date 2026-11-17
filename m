@@ -1,57 +1,104 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.221.49
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794899747;
-	b=0ZSFo5d+3/deokMolsQ3lGJxJ+zLiFxUWG+iv+Rg9gcqi0Wr5UWwTPnqdMFSPWVuN+c+
-	 EXIIpMogudOSZiVgB0uU2qbl+e7RnqYYYnbAJmRFeE7oy4BtsTp4FG5DuybLYT2RZZvHN
-	 b4qw02kg7tcf7cFMmgLEJ5Cp/0Nw8LHzF+uc2w7+xQstjxBEV3heFuEtS/9aUyrOl909E
-	 gJ+YGY9X34MBPlUaWXbKrhQtTqzc7FvCwP6T6ELM4ZL2ygfGFlYvTI4FYgv1r6MdscGBi
-	 TF8hLMkDAg9bMo7cKZYmGuMSsikrZiph/vngfKrPj6+sgTQLJFts5B4uQUxaOVwZBNw==
+	t=1794905254;
+	b=y0iEz9er+fbgJXQ//3sp0Dsw75Y69ddniQG9DJlLB++Y0MkBGdTGOCKgd5VDZ7qPd49I
+	 U38FkUYb/nKaO6I1DK0TAGdQ4dzk2SvZYACz732p+ved8lHel/AkPP4cWKO2ZiygQfKDW
+	 kujxScW/7VBaf4aSk2VWHYOtjKH7mSswYdQwHdOAJ4c4qo7eU3UIiDvA2CUv+gMhQe2mb
+	 Y1IOC8bi+q/TyzBm0pI0VWjVquHtelAU0AGMSPNW2LA/XCXJjembTrpfJegs+wkt+DtBO
+	 EasRM06NiviaIzgSK+bAGS07xkZ17AZ0irmoFkIAmCbwUOHyz95V4ZxD2bt3ryEMsFQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794899747;
-	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
-	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=p/WrGjueSJQqMVA4FslRTNx0ggX6D4SXT88SEFVh0MI=;
-	b=IxGZxxzBNB6TS7qZh+G4kpBW6MhVe6HvsbbOhcrZAgiOGEm52TlBMIrpEeyNPseEBL4J
-	 bBV2Fne5lCBqUojo2lYS31XJjZdNZfYC7dTsAqTmHjWYuNJkNSgZbZIY0yDvx0ERJ0ZcI
-	 4FjOrIP8TZ6uA8HFwfnA4weAEgs6lXosmrNCRw+nfCmBs+A/+hmf0ssF5zVD0H6pTTRJQ
-	 uWhs9Y1PWHOhU73aU45ax5Ot6Wy9kw1skQslVmmo6968QpDXljnZ3+0nHuv/YJcVpagSE
-	 GngC2S9uoO9fol+LLqnR1kjBBpl4T5Nxw45XzC8xfcXBl3+HTbW0vkh6K2iH4VwEbKA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794905254;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
+	 Date:From:To:Cc:Subject:Message-ID:In-Reply-To:References:X-Mailer:
+	 MIME-Version:Content-Type:Content-Transfer-Encoding;
+	bh=s3M1bSOBYt5gL2unmdOFOAn92UpRxf2onmyD1mml+iQ=;
+	b=ajmGjvt9Q9b52AcRJHOR07dInPXYV3lUnu0U38HVNoPvMlrkFXci8xx7nlSkQ0ZXPD+0
+	 BV8hpHqcN4ZlfxXNqxsHKwyzeDw4+B9qUFjvCpiZXplbxQ4GyvlZPWdo6mmBrE+P49ruy
+	 wEpNXIs+5vbPSDCnQPMxDkpjV83Mzz1YPf90pVtpDWEEbqK0POmwicRVzOp+rt8DTIz+t
+	 jIXDdQXPvMLgZVYy+coE+0sgY9oAZHN5OFDLRlRkEr6Q8mkh/8SoYeSSoYzZW9x/aKKbS
+	 HXmKNsLXhDfpZkcYG9TDT5cJvjyUglRlxIvcbv/6C1hpxvAF2oEEDkBdcnmJZYSxr/g==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=fddc2xlE;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=pass header.from=gmail.com;
+	spf=pass smtp.mailfrom=gmail.com;
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=paG2evd6;
+	arc=none smtp.remote-ip=209.85.221.49
+Received: from mail-wr1-f49.google.com (mail-wr1-f49.google.com [209.85.221.49])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 94D82606A323
-	for <linux-ext4@vger.kernel.org>; Tue, 17 Nov 2026 07:15:47 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5DCEE606A8A6
+	for <linux-ext4@vger.kernel.org>; Tue, 17 Nov 2026 08:47:34 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 5DCEE606A8A6
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=fddc2xlE
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 174721F000C4;
-	Tue, 17 Nov 2026 07:15:46 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794899747;
-	bh=p/WrGjueSJQqMVA4FslRTNx0ggX6D4SXT88SEFVh0MI=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=fddc2xlEBJNWEKDz5S4Hri2eHSdnZpOQAUeGw2QPblnOIJSV96G/ITW0Mm3ByQ8m3
-	 hdKAyakTwDLVet1AbavN7eDgOHX9pFgQ/4I9rIrOOffr7GeDTgIjkXYwxpSNJRvgHP
-	 F7mneFh/MjBQa/hv3ddXTe1CavvfX+4PbWJxnm2RuAsZHkuUoldaYCXD/ExWdWJ/ak
-	 e87Qg44UL73oa/cSB2UCN/8ueKRfUpCudE8qHCZZXwqilOujnUHtYDgRD+vXFWGx2+
-	 4bNk8fP9sl5+w8ORIgudWfnf0a1MhCrS+R31dBVOGEbIQnOzIfRJtxDP3PBDKJWv9V
-	 4aBNtaUbsrqXw==
-Message-ID: <sashiko-outbox-218310@kernel.org>
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH v2] ext4: reject a non-regular boot loader inode in
- EXT4_IOC_SWAP_BOOT
-Reply-To: sashiko-reviews@lists.linux.dev
-To: "William Chuang" <founder@logarcheon.com>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-In-Reply-To: <20261117065645.4409-1-founder@logarcheon.com>
-References: <20261117061822.3826-1-founder@logarcheon.com>
- <20261117065645.4409-1-founder@logarcheon.com>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Tue, 17 Nov 2026 07:15:45 +0000
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=paG2evd6
+Received: by mail-wr1-f49.google.com with SMTP id ffacd0b85a97d-498f5fa4f70so4528874f8f.0
+        for <linux-ext4@vger.kernel.org>; Tue, 17 Nov 2026 00:47:34 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20260707; t=1794905253; x=1795510053; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:mime-version:references
+         :in-reply-to:message-id:subject:cc:to:from:date:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=s3M1bSOBYt5gL2unmdOFOAn92UpRxf2onmyD1mml+iQ=;
+        b=paG2evd6MD9xh5NrI3KFfHIvZHv4F2/vrRCU9ssrPWN5wCLSTZBF23eoz4I8dCC+/c
+         2ugnJY5Wxct2xzBsFpiEAthtgG0dlSHV91NMwhNci0H6Mzz+l8+LsJnw2bh89kHjn4Jt
+         50/dLxzD5nqtaxJXY6wlIkg+FT0Ibf7E2dBQJdcgLlc9mykk8YCLZrbJePv45Cu+t340
+         klDoQtgwpY1C81Wm1chUo9HmWscyCgQ4aOMSr3RQXcrRlou+8WjbuKgAItgYH7F819dN
+         6BhWO11IagfyEvdROrCQHJv3QvWsqAuNjHVu68TEumbWmFXtNmbSKzmEeaBfWM+/+zeJ
+         ooWg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1794905253; x=1795510053;
+        h=content-transfer-encoding:content-type:mime-version:references
+         :in-reply-to:message-id:subject:cc:to:from:date:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=s3M1bSOBYt5gL2unmdOFOAn92UpRxf2onmyD1mml+iQ=;
+        b=kN3sdiWc9muzmAYDRhwtGZEfj2k57YU+HAGND+/TmivtDM4nvUXO05tM9sr9cjWRaZ
+         Jka5U8XnTftkxn53cFyMsigou/ppPzUitL/7g56/UHA8HnqWSBnwISbGZ0151VSKdatS
+         ep58H9iBrV2HDSKmswAmNgVDmZTJRGqXLf43XzvVpnSOXcZcnO/5xzwICv+9BzhwcBTk
+         NtWOod1KewW1dQntOGxla5Dr+nnUqMnuJpCwNm2HtmGnels9NAQ6JYHn7Gdw7Zfty3pU
+         3wmPFAiqjpzsvqiFFwQltsSYsYjL5IJAUgItqYqlKStlqwGlH/JmW7XDURebdSnDoOXd
+         HSmQ==
+X-Forwarded-Encrypted: i=1; AL+hErFx7rXm1BSRIbS4BwP0KNKFPmCtxoj54XL84IWwKuGDVWlQwq9LMd0YyWScBTGFfFRpnQDLkjOQ4bo2@vger.kernel.org
+X-Gm-Message-State: APuU4Z/qcSYfDzO317DIgYZtZ7CdCAWH+H9EDjOQKNtkq8vVOTGgMhDr
+	OJmn7Y4VpijLqkeMMqgOSnKqyIcg5niu6R9/WwVrKyBP4jMvgiKGaIw3
+X-Gm-Gg: AZFdTZcBXuDfXcaqG7VV077lUuexSUVfD+E51IjCp4VMJtAJDKDFq3D3r/2XM6EQ9XW
+	z10YBPIAYvNX/xLg/1vbc2PG3kWWD5H6XJ89Durv6zzBFW0aQugtEdr5o1A7sdELcnshqD9sQQj
+	A1kPCwjJie8Gcc5/HC3i9yd0aGYPOK+31sQpVF6hGji6mqgCnRX4Xo+8bj1pM6bhm9i7Q7fGwTs
+	ZEkWDzUX4VYwJCjjK8VKZV8npp3fxdbhW1Z8MNEqs6AqDjucCnHRcGl6OeYXUqz7pU6K7Dn03tL
+	BAgL3nMHbNlctELfu0ulaVi/AIcOgUcg9z3HW73jy9M7bIBNxBcU/G7WX9gU9G93iUZzStheQ+C
+	exMkbEe1jy+KQ94CMILeuEFEVfK7DVOxpp9BeZlnkyLbvqqX6FDrvysmnRE4LryCI1vVZ3ZzPgL
+	Mzg19NurlxbdYLxAehCwQeOFYq0sFEI7lg+v5KE8c1KR2lV36tZHwjmHQG6evSiSeoyn5/Ikqp4
+	PBWv1lwXsuh6b27dv3XHQe3QR9TEC3tsktYaIyqeE6qLX3YuKqqzD8qmsV9F+CTpWEz2uN+lr2v
+	euDvXCkNST0RbmWY88TbU9TEEbjh/rDARSx4tfaSs0RBDgTUVKSDu6uO9usXh9MVGw==
+X-Received: by 2002:a05:6000:46c2:b0:48f:db47:6ebf with SMTP id ffacd0b85a97d-49c729bb31fmr19089884f8f.38.1794905252525;
+        Tue, 17 Nov 2026 00:47:32 -0800 (PST)
+Received: from pumpkin (82-69-66-36.dsl.in-addr.zen.co.uk. [82.69.66.36])
+        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-4a43775f9b9sm2739633f8f.26.2026.11.17.00.47.32
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Tue, 17 Nov 2026 00:47:32 -0800 (PST)
+Date: Tue, 17 Nov 2026 08:47:27 +0000
+From: David Laight <david.laight.linux@gmail.com>
+To: "Theodore Tso" <tytso@mit.edu>
+Cc: Gabriel Krisman Bertazi <krisman@suse.de>, Sarthak Kukreti
+ <sarthakkukreti@google.com>, Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu
+ <chao@kernel.org>, Alexander Viro <viro@zeniv.linux.org.uk>, Christian
+ Brauner <brauner@kernel.org>, Gabriel Krisman Bertazi
+ <krisman@collabora.co.uk>, Eric Biggers <ebiggers@google.com>, Dmitry
+ Torokhov <dtor@google.com>, linux-fsdevel@vger.kernel.org,
+ linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+ linux-kernel@vger.kernel.org
+Subject: Re: [PATCH 1/3] libfs: reject casefolded names that fold to ".",
+ "..", or empty
+Message-ID: <20261117084727.0cfa196a@pumpkin>
+In-Reply-To: <avu0X5E298dHRBHY@mit.edu>
+References: <20261113065332.929085-1-sarthakkukreti@google.com>
+	<20261113065332.929085-2-sarthakkukreti@google.com>
+	<878q2swoxp.fsf@cartola>
+	<avu0X5E298dHRBHY@mit.edu>
+X-Mailer: Claws Mail 4.1.1 (GTK 3.24.38; arm-unknown-linux-gnueabihf)
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -60,109 +107,44 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 
-Thank you for your contribution! Sashiko AI review found 2 potential
-issues to consider:
-- [Medium] ext4: unlocked make_bad_inode() in swap_inode_boot_loader()
-  races with iget
-- [Low] ext4: redundant !S_ISREG() check left in
-  swap_inode_boot_loader()
---
+On Mon, 16 Nov 2026 21:00:06 -0500
+"Theodore Tso" <tytso@mit.edu> wrote:
 
-commit 92e1647560c592675448976b5391a26f9a8b9d29
-Author: William Chuang <founder@logarcheon.com>
+> On Mon, Nov 16, 2026 at 02:34:26PM -0500, Gabriel Krisman Bertazi wrote:
+> > Either way, this issue is another example of why treating ignorable code
+> > points as 0-length strings was a bad idea.  I'd very much rather
+> > utf8_casefold would treat all ignorable code points as foldable to
+> > themselves, (i.e. commit 5c26d2f1d3f5 ("unicode: Don't special case
+> > ignorable code points")), but that was tried and broke applications
+> > that relied on variant selectors code-points being ignored.  
+> 
+> Sigh... I really think these characters are *evil*.  I wonder if we
+> should simply drop those code points unconditionally when they are fed
+> to the kernel --- not only folding to themselves, but *not* preserving
+> them when a misguided application tries to create a file with one of
+> these misbegotten Unicode charactesr.
 
-ext4: reject a non-regular boot loader inode in EXT4_IOC_SWAP_BOOT
+Doesn't that assume that filenames are UTF8 rather than just sequences
+of bytes with everything except '\0' and '/' being valid.
+Casefolding is itself so evil/impossible it shouldn't have been allowed.
 
-This commit rejects EXT4_IOC_SWAP_BOOT when the boot loader inode is not a
-regular file, marking the inode bad before dropping the reference.
+David
 
-Link: https://lore.kernel.org/all/tencent_DABB2333139E8D1BCF4B5D1B2725FABA9=
-108@qq.com/T/
-Link: https://sashiko.dev/#/bug/linux-8cfc8e22-8259-4c89-8a8b-64c16e4481a5
+> 
+> I'd prefer to simply reject creating them with an EINVAL, but it's
+> likely that will break those stupid applications....
+> 
+> Eventually we can have e2fsck offer to fix directories with those
+> characters, and eventually we can make these characters become a bad
+> memory.
+> 
+> The other question is what *other* evil misdesigns are in the unicode
+> spec that we should be preactively trying to addressw hile we're at it?
+> 
+>      	     	       		   	     - Ted
+> 
 
-> diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-> index e8e579498c990..8990122f585df 100644
-> --- a/fs/ext4/ioctl.c
-> +++ b/fs/ext4/ioctl.c
-> @@ -390,6 +390,26 @@ static long swap_inode_boot_loader(struct super_bloc=
-k *sb,
->  		return PTR_ERR(inode_bl);
->  	ei_bl =3D EXT4_I(inode_bl);
-> =20
-> +	/*
-> +	 * An unused boot loader inode comes back from ext4_iget() as a bad
-> +	 * inode, which make_bad_inode() leaves as S_IFREG.  Any other type
-> +	 * means the on-disk inode is corrupted; its type cannot be changed
-> +	 * in place below.
-> +	 */
-> +	if (!S_ISREG(inode_bl->i_mode)) {
-> +		EXT4_ERROR_INODE(inode_bl,
-> +				 "boot loader inode is not a regular file (mode 0%o)",
-> +				 inode_bl->i_mode);
-> +		/*
-> +		 * Drop it as a bad inode, as ext4_get_journal_inode() does:
-> +		 * with i_nlink =3D=3D 0, a plain iput() would try to delete the
-> +		 * reserved inode, and otherwise it would stay cached.
-> +		 */
-> +		make_bad_inode(inode_bl);
-> +		iput(inode_bl);
-> +		return -EFSCORRUPTED;
-> +	}
-> +
->  	/* Protect orig inodes against a truncate and make sure,
->  	 * that only 1 swap_inode_boot_loader is running. */
->  	lock_two_nondirectories(inode, inode_bl);
-
-[Severity: Medium]
-Can calling make_bad_inode(inode_bl) on a live, unlocked inode race with a
-concurrent swap_inode_boot_loader() caller and trick it into treating the
-corrupted inode as an unused boot loader inode?
-
-When the on-disk boot loader inode has a valid non-regular mode,
-__ext4_iget() unlocks and returns it while it is hashed in the inode cache.
-make_bad_inode() overwrites inode_bl->i_mode with S_IFREG and sets
-inode_bl->i_op to &bad_inode_ops, which is the same state
-swap_inode_boot_loader() uses to identify an unused boot loader inode:
-
-CPU0                                  CPU1
-swap_inode_boot_loader()              swap_inode_boot_loader()
-  inode_bl =3D ext4_iget(...)
-  !S_ISREG(inode_bl->i_mode)
-  EXT4_ERROR_INODE(...)
-                                        inode_bl =3D ext4_iget(...)
-                                          /* gets same cached inode_bl */
-  make_bad_inode(inode_bl)
-    inode_bl->i_mode =3D S_IFREG
-    inode_bl->i_op =3D &bad_inode_ops
-  iput(inode_bl)
-                                        !S_ISREG(inode_bl->i_mode) /* false=
- */
-                                        ...
-                                        if (is_bad_inode(inode_bl) || ...)
-                                          /* reinitializes & swaps inode_bl=
- */
-
-CPU1 then bypasses the !S_ISREG(inode_bl->i_mode) check, enters the
-is_bad_inode(inode_bl) branch, and swaps the corrupted inode (preserving
-its stale i_blocks, i_bytes, and union fields) with the caller's file.
-
-[Severity: Low]
-This isn't a bug, but now that non-regular boot loader inodes are rejected
-upfront here, is the !S_ISREG(inode_bl->i_mode) check added by
-991ed014de08 ("ext4: fix bug_on in __es_tree_search caused by bad boot
-loader inode") further down in swap_inode_boot_loader() now redundant?
-
-fs/ext4/ioctl.c:swap_inode_boot_loader() {
-    ...
-	if (is_bad_inode(inode_bl) || !S_ISREG(inode_bl->i_mode)) {
-		/* this inode has never been used as a BOOT_LOADER */
-    ...
-}
-
-Dropping !S_ISREG(inode_bl->i_mode) from that condition would keep the two
-checks consistent.
-
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261117065645.4409=
--1-founder@logarcheon.com?part=3D1
