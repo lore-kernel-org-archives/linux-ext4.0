@@ -1,47 +1,72 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=124.71.93.112
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=18.194.254.142
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794973456;
-	b=l0bqn229lYAYoXSHaguzpSQ/oXmEf3WuHqJpOnMrVPmfEcxOrMTrQ2MgL5IDp1aMMmBV
-	 6aRiHmpZO9UkFJUPsW+Ukt4Ueb+7nYe+MY05Q0EvKuwuTwGRyBSQgDBBINki1JiAyC8TO
-	 kbEiZz1Rf2+PDTUxNl/l9V9L0omxAKg3pGUA8aLAXz6YQaBVVeGRi2jjoQjZoq7nvNNGs
-	 bUusrNasV/9u8E6thzrehOXzsQ9NO1hyh4O2a2yLoGxknzEGHx7HM+H/ZX6q1abipc6Sr
-	 RwnXFvzH2nEX+93aBDOfW1XucTKX0fHNQCqjkSO+odhcf9Q6TMbal6nLYEQvCsdUgEw==
+	t=1794988434;
+	b=NoNYD9rXetogoZxtuvvwwuOW9lO6zDlZs0AODS9aF9X/ZCYjgTwyzWOhe5BsGP2AlzvI
+	 b1FVO5rcFcoW1jNWuVOZ4VvclCAPCZ5AcDoxfv3Ww3EGaBeXOJFrESXcKMVMLBsdB+qir
+	 Af2UamKc67E80Q0656e9OJwiTIYxr7ja3WVDw1fFVzuRq+pDa3apnHG29/sC3JUl1JZRZ
+	 dZcS58VMU127XzWgslNrZq6awq5ELO9NcSshg6dvmve8ktqhGLYJeI29FAJwmdVjefDmM
+	 zWj+6tr5siedqoyyQ/fkEvYEyi9Wv6P+MMPrtvgF5enZ/pVPSTyvq/GIf0g7VkQpbzg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794973456;
-	h=DMARC-Filter:Received:Received:Received:Message-ID:Date:MIME-Version:
-	 User-Agent:Subject:To:Cc:References:Content-Language:From:In-Reply-To:
-	 Content-Type:Content-Transfer-Encoding:X-CM-TRANSID:
-	 X-Coremail-Antispam:X-CM-SenderInfo;
-	bh=IBtTJsR0aB79rlDowaAPzzX1Tl49SYWolIzKHn+hN0I=;
-	b=SXR4nXlpxD1t2KZUFUjXR/WP5HwQ8xyzAliOFArPkdewV7AbZ1+yLhJmqO26n0nb77Y+
-	 ebeIZdEse2Pr3EuU0UzGpDqR0rfTQHJ60Nevcb3ZhHAAfKW3fs/UCCcOazhhte2dreGmG
-	 vfAIUWvkzwiB9CcozmGkWi0U2j4XqArM0PPH//LK00bI/sK15gv9R6Fb/s06NnSaTjKVZ
-	 uprxPPYUoyKz13umwQe2m1fdDFd2IW0CVXyqZZAXDR1O6x2F4eAI1AZD0WKAaBuqHLoeL
-	 Kt07gvwBHEG2A/vgTnOzR+KXQYUpfqpMMtkDqK2el7/eRKYh4dL4RL2WhTbMLnhCe4A==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794988434;
+	h=DMARC-Filter:DKIM-Signature:X-QQ-mid:X-QQ-Originating-IP:Received:
+	 X-QQ-SSF:X-QQ-GoodBg:X-BIZMAIL-ID:EX-QQ-RecipientCnt:From:To:Cc:
+	 Subject:Date:Message-ID:X-Mailer:MIME-Version:
+	 Content-Transfer-Encoding:X-QQ-SENDSIZE:Feedback-ID:X-QQ-XMAILINFO:
+	 X-QQ-XMRINFO:X-QQ-RECHKSPAM;
+	bh=of79InBT8mNzHXN/uvDqlWjI49LM2uy1zpAggkhCfQk=;
+	b=KowtFEjhtucc1PdZ6gTM1GIQBT28bs8P84+3V5FuJ8Xhw5te2hLQMlLimc8pqSVqtAfg
+	 r6RRZbUPsYSH+B/89vksShMaN33w1IEHxtH176/A3FfMSoyrV3ZODzDAVMLaSFtQlJF2J
+	 CiZibIcI7kApN1ASj/ybapmPeyysC5/iFUvdpk9D4oJSJX0GzgFellTUmp25tLltBB0Ab
+	 SZPB4ipD3kcS3UeRbaj8H7RWlMTP7JoMxfXL1tdb8h1vVHHyQT374OwdgP9y4HECNBpN3
+	 Knx0/d2frmnOo0/pt6WtOAsGcudO+9Klee+UUG509lzJ0ztvfxSETUfmbfa1XpkbbMg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=none header.from=huaweicloud.com;
-	spf=none smtp.mailfrom=huaweicloud.com;
-	arc=none smtp.remote-ip=124.71.93.112
-Received: from dggmsgout12.his.huawei.com (dggmsgout12.his.huawei.com [124.71.93.112])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	dmarc=pass header.from=uniontech.com;
+	spf=pass smtp.mailfrom=uniontech.com;
+	dkim=pass header.d=uniontech.com header.i=@uniontech.com header.a=rsa-sha256 header.s=onoh2408 header.b=ofh0vEwX;
+	arc=none smtp.remote-ip=18.194.254.142
+Received: from smtpbgeu2.qq.com (smtpbgeu2.qq.com [18.194.254.142])
+	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CEFCB606A880;
-	Wed, 18 Nov 2026 03:44:14 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org CEFCB606A880
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.198])
-	by dggmsgout12.his.huawei.com (SkyGuard) with ESMTP id 4jTnWD0DhHz1ymk;
-	Wed, 18 Nov 2026 11:43:20 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id C04AF40576;
-	Wed, 18 Nov 2026 11:44:10 +0800 (CST)
-Received: from [10.174.179.19] (unknown [10.174.179.19])
-	by APP4 (Coremail) with UTF8SMTPSA id gCh0CgB3tfQIH_1qxtIpEw--.10239S3;
-	Wed, 18 Nov 2026 11:44:10 +0800 (CST)
-Message-ID: <10712329-a587-496d-babf-620ebfd0e60e@huaweicloud.com>
-Date: Wed, 18 Nov 2026 11:44:08 +0800
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F1FF3606A31C;
+	Wed, 18 Nov 2026 07:53:49 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org F1FF3606A31C
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=uniontech.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=uniontech.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (1024-bit key, unprotected) header.d=uniontech.com header.i=@uniontech.com header.a=rsa-sha256 header.s=onoh2408 header.b=ofh0vEwX
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=uniontech.com;
+	s=onoh2408; t=1794988284;
+	bh=of79InBT8mNzHXN/uvDqlWjI49LM2uy1zpAggkhCfQk=;
+	h=From:To:Subject:Date:Message-ID:MIME-Version;
+	b=ofh0vEwX2TnHgebMdDCJFGREhMzfCWQToCZlYnduCWQhE3OZivn6egqQY5gvNudZ3
+	 SRn34XICFc7uB4efo9xdwv+2KBy99UwREvQ4UL68jRO17BbQvY4Vs6abd75C57oTF4
+	 U95ETboZC3wVFeWsqRgPdquIyIVvGugt4vVeD+SQ=
+X-QQ-mid: zesmtpgz4t1794988248t06460a35
+X-QQ-Originating-IP: 9zN4+xFYLMZXKnEV2ob/Lm33ZLoC513MCczzFOhJeks=
+Received: from uniontech.com ( [113.57.152.160])
+	by bizesmtp.qq.com (ESMTP) with 
+	id ; Wed, 18 Nov 2026 15:50:46 +0800 (CST)
+X-QQ-SSF: 0000000000000000000000000000000
+X-QQ-GoodBg: 1
+X-BIZMAIL-ID: 1648745034229925548
+EX-QQ-RecipientCnt: 12
+From: Yichong Chen <chenyichong@uniontech.com>
+To: tytso@mit.edu,
+	adilger.kernel@dilger.ca,
+	libaokun@linux.alibaba.com,
+	jack@suse.cz,
+	ojaswin@linux.ibm.com,
+	ritesh.list@gmail.com,
+	yi.zhang@huawei.com,
+	linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+Cc: guanwentao@uniontech.com,
+	niecheng1@uniontech.com,
+	Morduan Zang <zhangdandan@uniontech.com>
+Subject: [PATCH] ext4: keep ordered data and i_disksize consistent on size changes
+Date: Wed, 18 Nov 2026 15:50:42 +0800
+Message-ID: <D7EEAE1F0CDD3029+20261118075044.3511841-1-chenyichong@uniontech.com>
+X-Mailer: git-send-email 2.51.0
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -51,100 +76,316 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [REGRESSION] ext4: silent data loss when a split at I/O
- completion gets ENOSPC
-To: "Jose Fernandez (Anthropic)" <jose.fernandez@linux.dev>,
- Theodore Ts'o <tytso@mit.edu>
-Cc: Jan Kara <jack@suse.cz>, Baokun Li <libaokun@linux.alibaba.com>,
- Ojaswin Mujoo <ojaswin@linux.ibm.com>,
- Andreas Dilger <adilger.kernel@dilger.ca>,
- "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
- guolingxing <guolingxing@tju.edu.cn>, Josef Bacik <josef@toxicpanda.com>,
- Chris Mason <mason@kernel.org>, linux-ext4@vger.kernel.org,
- linux-kernel@vger.kernel.org, regressions@lists.linux.dev
-References: <d400205a-0d3d-4ec3-a916-6c0a085841b4@linux.dev>
- <d8ac3185-44c8-41e7-9cbf-3d1baa27f272@huaweicloud.com>
- <20261117-jf-ext4-enospc-reply-zhangyi-v9-b19eeb966ad0@linux.dev>
-Content-Language: en-US
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-In-Reply-To: <20261117-jf-ext4-enospc-reply-zhangyi-v9-b19eeb966ad0@linux.dev>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-X-CM-TRANSID:gCh0CgB3tfQIH_1qxtIpEw--.10239S3
-X-Coremail-Antispam: 1UD129KBjvJXoW7Kw4UWw4Dur4kWr1kKr1rWFg_yoW5JF1fpF
-	yF9Fy8Aw4DtF4Iyr97Zw43X3WUAwn3WrW3GrWrGrs8Zay5GFyagr4Sy3yYkFyFkrn5G3Wj
-	vFWjq34kCa4qvFJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUvjb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
-	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7Cj
-	xVAFwI0_Cr0_Gr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I
-	0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40E
-	x7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x
-	0Yz7v_Jr0_Gr1lF7xvr2IY64vIr41lFIxGxcIEc7CjxVA2Y2ka0xkIwI1lc7CjxVAaw2AF
-	wI0_Jw0_GFyl42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAqx4
-	xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r1q6r43
-	MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY6xkF7I
-	0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVWU
-	JVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjxUF1
-	v3UUUUU
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
+Content-Transfer-Encoding: 8bit
+X-QQ-SENDSIZE: 520
+Feedback-ID: zesmtpgz:uniontech.com:qybglogicsvrgz:qybglogicsvrgz3a-0
+X-QQ-XMAILINFO: N3KO+CQyl90OsWqLPlYFYkKCX63cC5HHaB4upXryfQgI+Ybk+pjAPCXt
+	Wju4gG5asynVOR9Zh4ud+Ui7F+qi9GnqDBpRq1xIZdym+pLPO9x57sJu8FZuInyg2+WiQbj
+	8vXnWiFL7gGF21fuo1RvUehVsHxDvCLvh20QKvCgUuvovJMAHkcm+YFJDueXy3f8/+MPEHf
+	PcUYdmcl9MV4UkL0nMs3GfCjblb927DsfaeiMk1hF0xKC1p0eg1c11xy+YCfP20dks4cdFF
+	Utqpf1HDNyEoJXgRlM0Q+iLhbCR2Nc6p2HHRcXtbx/k5rtP3Q8r7KAphvOfCTv/pJt2RxKW
+	iaan3ItWj3DHImQb3ALLuZnEPREAkmEf9ZX945Lq4jzGcdH45CJYwIkr6ubY9CI/7BJj17O
+	c6rlljyVuYlkGkwg/69IIsgVvTxvO2VqRSvpaAUH2ICIexhlpgXp3hVWh/r5CRMItNh834h
+	WbuI/nW08vdTSXQOiAO/JBihfmnpXZgN9w9VcmJX6Ck9moFOHfXr6vkEctaJK/mgWWq77ut
+	V2ZLsGldp/r+fYqP7KwCg77CDaLlsHHS9LlRU0fOcvTzWH2wwlMVRN7KFZ9yEJ51nOEkHEM
+	8Xg31ZnbdBhb4fnTcT8E04mm0Jbl3u7EHcDGs5R8UHWspU2Jrv+/AEfGD0ap2KGxBKhw7oK
+	7Ne+4cR7UBQybgM/Qy/VjRryWUhQUVBjgZhHnnA8N8IDTeeVZgefHHDHSJ+hjotv+6qAaMz
+	WiD0sB6tarH3Q1ANLv+WCO1zdwcIQd2JZM7J43J0mMsYjfJYL+L0QZ9Dw4KHJmDxSofT7w8
+	3qrlOesgou52zAYMbe98pH9UMHYffO21KF9pIARWzoYp84ulBkbeJp9YJ+pMpF5z/fgMQ2u
+	js7O7VDAPeKuVHsX7NxfkSX/U5lM0Xi36ZGD0gBEo3Q+HYt9F/eVnaxvCZ9dpE3cDhtEPrs
+	SVuBCwvVFGXUoNBI+CEWxPp/gaudIODWPOQMuZ7nxX+I1XmVScpjQng2RBSIxQlYiC7xdBm
+	NOd30tkq1sJB7KWOmHe0oa48VFONeQ/tn+f/1iN3+Ya23/hbGC
+X-QQ-XMRINFO: NS+P29fieYNwqS3WCnRCOn9D1NpZuCnCRA==
+X-QQ-RECHKSPAM: 0
 
-On 11/17/2026 10:23 PM, Jose Fernandez (Anthropic) wrote:
-> On Tue, Nov 17, 2026 Zhang Yi wrote:
->> I think the solution should be based on Ojaswin's counting approach in
->> [1] or the PENDING_CONVERSION solution we discussed, and then, after
->> extent splitting fails, try to flush the journal and retry.
-> 
-> Thanks for the quick POC. Our agents ran it on [1] rebased on
-> 23c62304dde2 with the report's reproducer, in two separate setups (QEMU
-> without KVM). None of 72 files lost data in either, against 42 and 53 of
-> 72 with [1] alone.
-> 
-> They found two gaps:
-> 
-> - The new branch in ext4_ext_handle_unwritten_extents() skips both
->   ext4_update_inode_fsync_trans() calls, so fdatasync() and O_DSYNC can
->   return before the commit. On a full filesystem mounted with
->   commit=3600, a shutdown test lost the write in all 13 buffered
->   fdatasync() and O_DSYNC cases that reach the zeroout. They pass with
->   [1] alone and with that call added.
+From: Morduan Zang <zhangdandan@uniontech.com>
 
-Yes, this is a pre-existing issue introduced by 5f1a1cccebf8 ("ext4:
-correct the mapping status if the extent has been zeroed"), but it
-healed itself after 5f18f60d56c0 when extent splitting was deferred
-until after I/O completion.
+ext4 propagates i_size into i_disksize on three size-changing paths:
+ext4_truncate_up(), the shrink branch of ext4_truncate_down(), and
+ext4_truncate() reached from a size-preserving ftruncate().  In ordered
+data mode these paths can commit the new size while data below it is still
+delalloc-only.  Delalloc data has no JBD2 ordered-data registration before
+writeback; the registration done while allocating its blocks cannot
+retroactively protect an earlier size update.
 
-Now the current POC brings the splitting before submitting I/O logic
-back in the bh buffered I/O path, so the issue has resurfaced. I can
-address this issue together in the formal fix patch.
+A crash between the metadata commit and writeback can therefore bring the
+file back with a non-zero size, zero blocks and no extents - the classic
+NULL file that generic/044..046 check for.
 
-> 
-> - Direct writes into preallocated files can still get ENOSPC with the
->   POC, on a few percent of files in both setups, with no data lost.
-> 
+Measured on 7.4.0-rc3 (aebb7274, x86_64, ext4, default mount options) on
+a copy of the xfstests scratch image, 20 files per run, pwrite then
+truncate with no delay in between, sleep 10s, then simulated crash:
 
-Could you provide a reproducer? My guess is that high concurrency causes
-the blocks freed by my current process to be taken by I/O issued by
-other processes, since we can no longer simply fall back to zeroing the
-entire extent as before, which was basically always effective.
+  write  truncate   result before the fix
+  64k    64k        size=65536 blocks=0 no extent    (generic/044)
+  64k    32k        size=32768 blocks=0 no extent    (generic/045)
+  32k    64k        size=65536 blocks=0 no extent    (generic/046)
 
-> The POC tries the zeroout before the commit and retry. Should it be the
-> other way around? 
+Fix both directions:
 
-I agree that doing zeroout first and then retrying does look a bit odd,
-and it is not friendly to large extents. However, since the previous
-logic would just do the zeroing directly when space allocation failed
-during splitting, the current POC does not break anything.
+ - A truncate that does not change i_size only has to discard preallocated
+   blocks past i_size.  It must not advance i_disksize, so route it to
+   __ext4_truncate(inode, false).  Every other caller (evict, orphan
+   cleanup, verity, real shrink) keeps advancing it, where the orphan list
+   makes the update safe.
 
-Besides, Ojaswin plans to refactor this part later and move zeroout into
-the fast path, so I suggest we keep it this way for now to reduce the
-probability of ENOSPC, and discuss further approaches later.
+ - When the size really changes, write out the still-delalloc range before
+   i_size/i_disksize are updated, via ext4_ordered_flush_to().  This runs
+   outside any journal handle so writeback can start its own transaction,
+   and before i_size is lowered so writeback still sees the old, larger
+   size.
 
-> And will you take guolingxing's patch ([2] in my report) as well?
+Start the writeback at i_disksize, but also search the extent status tree
+for the first delayed extent in the surviving range and use the lower of
+the two.  DIO and fallocate can advance i_disksize over older buffered
+delalloc data, so i_disksize alone is not sufficient to prove that all
+blocks below it exist.  For example, a buffered write followed by an
+extending fallocate and a shrink can otherwise still leave a NULL file.
 
-Yeah, we should merge this patch as well.
+The inode and invalidate locks held by ext4_setattr() prevent new delalloc
+extents from appearing.  Concurrent writeback can only remove delayed
+extents or advance i_disksize, making the selected range more conservative.
+Take the i_disksize snapshot under i_data_sem to serialize with writeback
+and avoid a torn 64-bit read on 32-bit systems.  Drop the lock before
+waiting.
 
-Best Regards,
-Yi.
+This avoids turning every size change into a whole-file sync point when
+there is no earlier delalloc data.  Inline data needs no separate flush
+because it is committed with the inode itself.
+
+The new writeback is limited to data=ordered: data=journal already keeps
+data in the journal, and data=writeback never made this guarantee.  The
+size-preserving change applies to all modes and simply avoids advancing
+i_disksize past delalloc data.
+
+Signed-off-by: Morduan Zang <zhangdandan@uniontech.com>
+---
+ fs/ext4/ext4.h     |  6 ++--
+ fs/ext4/extents.c  | 18 +++++++----
+ fs/ext4/indirect.c |  8 +++--
+ fs/ext4/inode.c    | 75 +++++++++++++++++++++++++++++++++++++++++-----
+ 4 files changed, 89 insertions(+), 18 deletions(-)
+
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index bf0325ecbec7..b948a5953760 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -3263,7 +3263,8 @@ static inline bool is_special_ino(struct super_block *sb, unsigned long ino)
+ extern int ext4_ind_map_blocks(handle_t *handle, struct inode *inode,
+ 				struct ext4_map_blocks *map, int flags);
+ extern int ext4_ind_trans_blocks(struct inode *inode, int nrblocks);
+-extern void ext4_ind_truncate(handle_t *, struct inode *inode);
++extern void ext4_ind_truncate(handle_t *handle, struct inode *inode,
++			      bool update_disksize);
+ extern int ext4_ind_remove_space(handle_t *handle, struct inode *inode,
+ 				 ext4_lblk_t start, ext4_lblk_t end);
+ 
+@@ -3965,7 +3966,8 @@ extern int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
+ ext4_lblk_t ext4_determine_insert_hole(struct inode *inode, ext4_lblk_t lblk,
+ 				       ext4_lblk_t hole_start,
+ 				       ext4_lblk_t hole_len);
+-extern int ext4_ext_truncate(handle_t *, struct inode *);
++extern int ext4_ext_truncate(handle_t *handle, struct inode *inode,
++			     bool update_disksize);
+ extern int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start,
+ 				 ext4_lblk_t end);
+ extern void ext4_ext_init(struct super_block *);
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index cd35e88bc372..fb5a16e5b176 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -4548,7 +4548,8 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
+ 	return err ? err : allocated;
+ }
+ 
+-int ext4_ext_truncate(handle_t *handle, struct inode *inode)
++int ext4_ext_truncate(handle_t *handle, struct inode *inode,
++		      bool update_disksize)
+ {
+ 	struct super_block *sb = inode->i_sb;
+ 	ext4_lblk_t last_block;
+@@ -4560,11 +4561,16 @@ int ext4_ext_truncate(handle_t *handle, struct inode *inode)
+ 	 * because page truncation is enough.
+ 	 */
+ 
+-	/* we have to know where to truncate from in crash case */
+-	__ext4_set_i_disksize(inode, inode->i_size);
+-	err = ext4_mark_inode_dirty(handle, inode);
+-	if (err)
+-		return err;
++	/*
++	 * A size-preserving truncate must not expose delalloc-only data by
++	 * advancing the on-disk size before writeback.
++	 */
++	if (update_disksize) {
++		__ext4_set_i_disksize(inode, inode->i_size);
++		err = ext4_mark_inode_dirty(handle, inode);
++		if (err)
++			return err;
++	}
+ 
+ 	last_block = (inode->i_size + sb->s_blocksize - 1)
+ 			>> EXT4_BLOCK_SIZE_BITS(sb);
+diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+index a495080df710..d4de88c802b8 100644
+--- a/fs/ext4/indirect.c
++++ b/fs/ext4/indirect.c
+@@ -1126,7 +1126,8 @@ static void ext4_free_branches(handle_t *handle, struct inode *inode,
+ 	}
+ }
+ 
+-void ext4_ind_truncate(handle_t *handle, struct inode *inode)
++void ext4_ind_truncate(handle_t *handle, struct inode *inode,
++		       bool update_disksize)
+ {
+ 	struct ext4_inode_info *ei = EXT4_I(inode);
+ 	__le32 *i_data = ei->i_data;
+@@ -1158,8 +1159,11 @@ void ext4_ind_truncate(handle_t *handle, struct inode *inode)
+ 	 * the new, shorter inode size (held for now in i_size) into the
+ 	 * on-disk inode. We do this via i_disksize, which is the value which
+ 	 * ext4 *really* writes onto the disk inode.
++	 *
++	 * A size-preserving truncate must not advance it past delalloc data.
+ 	 */
+-	ei->i_disksize = inode->i_size;
++	if (update_disksize)
++		ei->i_disksize = inode->i_size;
+ 
+ 	if (last_block == max_block) {
+ 		/*
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index e3129353d4ed..48de9716305f 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -5410,7 +5410,7 @@ int ext4_inode_attach_jinode(struct inode *inode)
+  * that's fine - as long as they are linked from the inode, the post-crash
+  * ext4_truncate() run will find them and release them.
+  */
+-int ext4_truncate(struct inode *inode)
++static int __ext4_truncate(struct inode *inode, bool update_disksize)
+ {
+ 	struct ext4_inode_info *ei = EXT4_I(inode);
+ 	unsigned int credits;
+@@ -5483,9 +5483,9 @@ int ext4_truncate(struct inode *inode)
+ 	ext4_discard_preallocations(inode);
+ 
+ 	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
+-		err = ext4_ext_truncate(handle, inode);
++		err = ext4_ext_truncate(handle, inode, update_disksize);
+ 	else
+-		ext4_ind_truncate(handle, inode);
++		ext4_ind_truncate(handle, inode, update_disksize);
+ 
+ 	up_write(&ei->i_data_sem);
+ 	if (err)
+@@ -5516,6 +5516,11 @@ int ext4_truncate(struct inode *inode)
+ 	return err;
+ }
+ 
++int ext4_truncate(struct inode *inode)
++{
++	return __ext4_truncate(inode, true);
++}
++
+ static inline u64 ext4_inode_peek_iversion(const struct inode *inode)
+ {
+ 	if (unlikely(EXT4_I(inode)->i_flags & EXT4_EA_INODE_FL))
+@@ -6881,6 +6886,48 @@ static inline void ext4_set_inode_size(struct inode *inode, loff_t newsize)
+ 	up_write(&EXT4_I(inode)->i_data_sem);
+ }
+ 
++/*
++ * Write back delalloc data before covering it with a new on-disk size.
++ *
++ * DIO and fallocate can advance i_disksize over older delalloc extents, so
++ * include the first delayed extent in the surviving range when choosing the
++ * start.  The inode and invalidate locks held by ext4_setattr() prevent new
++ * delalloc extents; concurrent writeback can only remove them and make the
++ * flush more conservative.
++ *
++ * Read i_disksize under i_data_sem to serialize with writeback and avoid a
++ * torn read on 32-bit systems.  Drop the lock before waiting because
++ * writeback needs it to advance i_disksize.
++ *
++ * Inline data is committed with the inode and needs no separate flush.
++ * Must be called without a journal handle and before i_size is lowered.
++ */
++static int ext4_ordered_flush_to(struct inode *inode, loff_t newsize)
++{
++	struct extent_status es;
++	ext4_lblk_t end_lblk;
++	loff_t start;
++
++	if (!ext4_should_order_data(inode) || ext4_has_inline_data(inode) ||
++	    newsize <= 0)
++		return 0;
++
++	end_lblk = (newsize - 1) >> inode->i_blkbits;
++	ext4_es_find_extent_range(inode, ext4_es_is_delayed, 0, end_lblk, &es);
++
++	down_read(&EXT4_I(inode)->i_data_sem);
++	start = EXT4_I(inode)->i_disksize;
++	up_read(&EXT4_I(inode)->i_data_sem);
++
++	if (es.es_len && es.es_lblk <= end_lblk)
++		start = min(start, EXT4_LBLK_TO_B(inode, es.es_lblk));
++	if (newsize <= start)
++		return 0;
++
++	return filemap_write_and_wait_range(inode->i_mapping, start,
++					    newsize - 1);
++}
++
+ static int ext4_truncate_up(struct inode *inode, loff_t oldsize, loff_t newsize)
+ {
+ 	ext4_lblk_t old_lblk, new_lblk;
+@@ -6900,6 +6947,10 @@ static int ext4_truncate_up(struct inode *inode, loff_t oldsize, loff_t newsize)
+ 			return ret;
+ 	}
+ 
++	ret = ext4_ordered_flush_to(inode, newsize);
++	if (ret)
++		return ret;
++
+ 	handle = ext4_journal_start(inode, EXT4_HT_INODE, 3);
+ 	if (IS_ERR(handle))
+ 		return PTR_ERR(handle);
+@@ -6931,10 +6982,20 @@ static int ext4_truncate_down(struct inode *inode, loff_t oldsize,
+ 	int ret;
+ 
+ 	/* Do not change i_size. */
+-	if (newsize == oldsize)
+-		goto truncate;
++	if (newsize == oldsize) {
++		/*
++		 * Only blocks past i_size need to be discarded.  Do not advance
++		 * i_disksize past data that may still be delalloc-only.
++		 */
++		truncate_pagecache(inode, newsize);
++		return __ext4_truncate(inode, false);
++	}
+ 
+ 	/* Shrink. */
++	ret = ext4_ordered_flush_to(inode, newsize);
++	if (ret)
++		return ret;
++
+ 	handle = ext4_journal_start(inode, EXT4_HT_INODE, 3);
+ 	if (IS_ERR(handle))
+ 		return PTR_ERR(handle);
+@@ -6971,11 +7032,9 @@ static int ext4_truncate_down(struct inode *inode, loff_t oldsize,
+ 
+ 	if (ext4_should_journal_data(inode))
+ 		ext4_wait_for_tail_page_commit(inode);
+-truncate:
+ 	/*
+ 	 * Truncate pagecache after we've waited for commit in data=journal
+-	 * mode to make pages freeable.  Call ext4_truncate() even if
+-	 * i_size didn't change to truncate possible preallocated blocks.
++	 * mode to make pages freeable.
+ 	 */
+ 	truncate_pagecache(inode, newsize);
+ 	return ext4_truncate(inode);
+-- 
+2.51.0
 
