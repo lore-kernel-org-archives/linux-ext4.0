@@ -1,60 +1,58 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795012011;
-	b=hIhsssHZdnkfwxeJM+HRvkCRZPvP/NLG/MAENDLZCsU/FZjC8jVEpWKgCc46DOeeVK2/
-	 boDrV2MZkoPJdR/7ih517OS8u6qI5kJxI5T7o2a5IkIX7lFJWIKgkfWmJuu2nCLAk7oIS
-	 I9KPN7B+LNGnqJ3ikoDEHBTKY79WvBI0Qduy4Snyek5QyTevo5Nc5t1K1aGU+I4C0NLy3
-	 Yl4lyRQX2bGRbxJ79rEdeBA8bOpy0RWN6TxrOtGb3Rf0I95325ikylZ0BwqWAf/vMjybc
-	 /f2Q5NVL8zIwpORd1ZM0NRRDERQWPRYcZj3e/72sPB+U8HBRdg77EK7FvjTY79a7FDg==
+	t=1795012667;
+	b=TOpHp0B01jp3NDinsU1hUJ+xbHzp48/+HJvNECf1mKiWLUcfRJS4TwksN5nNwd12lVbY
+	 xrsr9Nv1u6jQsH5gBYXQ9KyUouniyrm4l+DvD9YEy5HdCMxeuWfYNUhz2Olrx19bXyDrV
+	 XwE1YiANurh+42cpjd/SzJoBFL22n0EiWs6KJWxDM4NsUmZtIgzZiaSuiagTpgHindUaJ
+	 okCjl9QbXAwi2EkdNDtRT30542wP5gwRQmgDhoeQLDErm8q9toBlBe1sxlYIPushUK4C0
+	 6wB7t4jeZetsolqsRvSCjXDeLKkbW7dHRfof7YviOSg1ZtSOAjPklTuNaVFLtpAzJYw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795012011;
-	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
-	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=qbLRN0zV3BKuuC/K5aaeUCgukUpb5jt3XGVWoKFDT8I=;
-	b=h/qMr1SUGG4iZaZOXn4xLr0C6XDZNkhJaRaNHK7vlEQ/Uov3JpwlYed1a9KCBF4aWRDD
-	 pPP425LrwnBI7Tc1AwmUG/WjRZAdv49zme9QZVXIUYHZQmhsrpZ6Hd2oRt+RKp9LVlnP8
-	 idO1B1keM6AoXch3yUPpsNmy1cX6Sb6233OGKVMYANbMc9xIJpCVMR2H2+ZSNEkPT/C0L
-	 sv0zTD2jMXmOk+N8fqAmylreWkY9MqK2DnIBCKK3KaBWkLqzEtbbCO5T7av2LpMXKvVvR
-	 fFsXcd4lTcpqUTTJhbwiQxUY6DVEjZOJ2tyNT9OHoWgE4IRcPML2lCPjpKKShuSsmmA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795012667;
+	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
+	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
+	bh=TGCJR4zjTobiyQoKxWsb3iZGFyjLJLrqRE8qO4niVBM=;
+	b=GFzga564wFX4Uhi/oeojPR76z4wydXkAt0SfjCs1GY6d7/pB+RGI3TUNNbWZx8cZbxPC
+	 p+VEHHNxB02eJyq2yHK24DuCxzyedWVJfBMKMETkqXOZS1szN7mEwfH96ETiKfHYDOr0J
+	 afSBhlzCymy0pfOqOjDQNT4Zvq5uFc4Bf/qHn88WqWJ5P4Z6M7Wk9TmqwlEcJMUq1Qeo+
+	 KG9s6ovUPMM6hTvuSmruCGw4/s1xuhQ1hi8KZQeTOXBBnVN4YDAoEJ7SvTMqGC+uIdPQd
+	 KdwO+9kP4lXGTs562LaJ6l1FIKlfBtVF7GxXrCcibzhC5Y5HkP2GsdwV9TgvWGmga6A==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Hjk5PC8e;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=oDYEomrR;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CD9E660A2600
-	for <linux-ext4@vger.kernel.org>; Wed, 18 Nov 2026 14:26:51 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 466C2606A33A;
+	Wed, 18 Nov 2026 14:37:47 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Hjk5PC8e
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6DC9F1F000C4;
-	Wed, 18 Nov 2026 14:26:51 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=oDYEomrR
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C93221F000C5;
+	Wed, 18 Nov 2026 14:37:42 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795012011;
-	bh=qbLRN0zV3BKuuC/K5aaeUCgukUpb5jt3XGVWoKFDT8I=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=Hjk5PC8eAhNGbOXXdtPdmb4am4p4AdofAukB5LtZ2VVD+NRCTK0TAaTsSzdbpFffJ
-	 4uTAbrMvHVXpdoeOKmJkNBSBcAJK1eL3pNEONTABb3mXYQW11QXktfFOB1abkVzmwM
-	 493FXVAUYPJDJYc9kyhMkUM0XDj6imLWmx4yEc8fLyyj8bGlb3HW/NT2o1eDtgws0/
-	 nTo7lhfyYhcxVSnoO1I42BXzM+0gRJpDg5u3xlqwT31IgS35BkCNxN4Hra+6NZ3Lcp
-	 5Mfu7XhBVF0pEPIhoYYkciwVs+x8yZaRDSO2burnoUOCwu/8BL+QVAJapM743RA1wx
-	 +Z2/rMPSjsODA==
-Message-ID: <sashiko-outbox-221200@kernel.org>
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH v3] ext4: reserve inode write access before unlinking
- entry
-Reply-To: sashiko-reviews@lists.linux.dev
-To: Alan <3164729207@qq.com>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-In-Reply-To: <tencent_6D3188701BD3C36F588C221C4CD924FB7809@qq.com>
-References: <tencent_D60E766CE07D3A1847B81DE9BC37B4466908@qq.com>
- <tencent_69B311F4356254E166A5EFDC981AA138D80A@qq.com>
- <tencent_58D8BEFB60308A7011D26F6F7E8C941C2A09@qq.com>
- <zkqch3frmclz7yjyllhcvehbpnfeofs3zt5ylg6ska7hdkf6th@gvd7pv5zrehv>
- <tencent_6D3188701BD3C36F588C221C4CD924FB7809@qq.com>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Wed, 18 Nov 2026 14:26:51 +0000
+	s=k20260515; t=1795012667;
+	bh=TGCJR4zjTobiyQoKxWsb3iZGFyjLJLrqRE8qO4niVBM=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=oDYEomrR5K3bZcWLm0BHnYdfLDrjEtOk4qUHQdu5CunnSlo0oFC3UsTYO8jE6lSD9
+	 F76UQG9vImqYqTbWD4XFluTG9540X3UfSEV7J1IT64rV791qG1V2aqHWpj2eEEXC80
+	 iFydZyWoqcURurJ29XPW1uomDD2wxiQwUKBkJ5jfol0bPu8oLrFNC363+LZZX2JFlu
+	 0lXrP6f+PZS9e0YXf/Q420vdQpjiKNUXdG+Xv74ttt6RcsPu1J2bvoCEeueGIWZQCF
+	 tlV858zc2JvxAAm2a7OE3YiHHYM8K2EvdjxcZ3zacFENgUmwAKsSqNYpQkGHkF2c4l
+	 yOe5ZJiJNSy0g==
+Date: Wed, 18 Nov 2026 15:37:40 +0100
+From: Christian Brauner <brauner@kernel.org>
+To: Jan Koester <jan.koester@tuxist.de>, 
+	Alexander Viro <viro@zeniv.linux.org.uk>, "Serge E. Hallyn" <serge@hallyn.com>
+Cc: Jan Kara <jack@suse.cz>, "Theodore Y. Ts'o" <tytso@mit.edu>, 
+	Paul Moore <paul@paul-moore.com>, Arnd Bergmann <arnd@arndb.de>, linux-fsdevel@vger.kernel.org, 
+	linux-api@vger.kernel.org, linux-security-module@vger.kernel.org, 
+	linux-arch@vger.kernel.org, linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org, 
+	linux-cifs@vger.kernel.org, netdev@vger.kernel.org, audit@vger.kernel.org, 
+	keyrings@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [RFC PATCH v2 00/41] UUID and GUID user and group ids (*_r
+ system calls)
+Message-ID: <20261118-erleuchten-mitmischen-vorrecht-254c957863e1@brauner>
+References: <cover.1792552161.git.jan.koester@tuxist.de>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -63,65 +61,19 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+In-Reply-To: <cover.1792552161.git.jan.koester@tuxist.de>
 
-Thank you for your contribution! Sashiko AI review found 1 potential
-issue to consider:
-- [High] ext4: missing Signed-off-by trailer in commit message
---
+On Wed, Oct 21, 2026 at 05:15:20AM +0200, Jan Koester wrote:
+> - kuid_t and kgid_t become a tagged union (legacy number, UUID, GUID)
+>   instead of a u32.
 
-commit b509da876656fd700f861cfb297b84e9a09eede0
-Author: Alan <3164729207@qq.com>
+Oh boy, I'm not sure this is going to happen.
 
-> ext4: reserve inode write access before unlinking entry
->
-> __ext4_unlink() removes the directory entry before decrementing the target
-> inode's link count. It then dirties the parent inode. If the parent
-> inode-table block cannot be read, parent inode dirtying fails after the
-> entry has been removed, and unlink returns without dropping the target
-> inode's link count. With errors=3Dcontinue, this read error need not abort
-> the journal transaction, so the directory update can be committed without
-> the corresponding link-count update.
->
-> Reserve the target inode location and journal write access first. When the
-> directory entry is being removed, reserve the parent inode in the existing
-> branch before deleting the entry. This makes inode-table read and access
-> errors fail before the namespace is changed. Keep the existing namespace
-> and link-count update order, and release inode location references on eve=
-ry
-> exit path. Fast-commit replay can skip the parent update when the directo=
-ry
-> entry does not match the target inode, so only the target inode is reserv=
-ed
-> in that case.
->
-> The original source-derived injection at the journal write-access boundary
-> is not evidence for a committed inconsistency: an error after the journal
-> has already aborted cannot establish a committed transaction. The relevant
-> failure is an actual inode-table READ EIO before journal write access.
->
-> Tested on Linux 7.4-rc3 (torvalds/linux commit
-> aebb7274476403040d582c61478df8f4a7bf9cd3) with QEMU blkdebug and
-> errors=3Dcontinue. On the unpatched kernel, the READ EIO leaves the direc=
-tory
-> entry removed with Links: 1 after normal unmount; the JBD2 trace shows no
-> journal abort and records the transaction commit, and e2fsck -fn reports
-> an unattached inode. With this patch, the same error is returned before t=
-he
-> directory entry is removed; the file remains present with Links: 1 and
-> e2fsck -fn passes. No-fault controls pass on both kernels. Also built
-> fs/ext4/namei.o with W=3D1.
->
-> Fixes: 4209ae12b122 ("ext4: handle ext4_mark_inode_dirty errors")
-> Link: https://lore.kernel.org/linux-ext4/tencent_D60E766CE07D3A1847B81DE9=
-BC37B4466908@qq.com/
-> Cc: stable@vger.kernel.org
-
-[Severity: High]
-The commit message is missing a Signed-off-by trailer, which is required by
-the Developer's Certificate of Origin in
-Documentation/process/submitting-patches.rst before the patch can be applie=
-d.
-
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/tencent_6D3188701BD=
-3C36F588C221C4CD924FB7809@qq.com?part=3D1
+We are going to extend kuid_t to 64 bit for cells and isolated
+idmappings. But it stays a plain integer type though. Turning kuid_t and
+kgid_t into 20-byte tagged unions, adding a parallel *_r syscall family,
+a new POSIX ACL xattr format and new procfs fields seems very very
+unlikely.
