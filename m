@@ -1,98 +1,47 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.215.181
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=124.71.93.99
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794994564;
-	b=LapMf/OEAsfSegvLALxHNu0+N44JAcU8F9ivJSEGgPaKfmL3tIzfJhtv2+7XUWt4INNR
-	 xK7Uw5k5Zf2PC6g1R7gLaDY8m2IZx2kadqw+Qpqeq0hIVb/ENBiNruZSBhU58eTddzvMq
-	 O2hlVVsjxFhSMV6Pj2S0R0pBL6En/KRB7N8dlhDhyi2bgZjR7EnNH7zUqvU3gIRb0S/pi
-	 AjVQW2+wiDUarmRkSGztWPnB07LAsn6DPh4ecRlXuj/2K5VsEzMrFKzErPzzMzQ5+57wf
-	 tKQFOCFabZRkUq+sI06GX+utLrntsC8oH80wBpKSmSTwe1jzyZXsUqZKCvE4b2hC+Bw==
+	t=1794998968;
+	b=zKeGN/cWl5FZ91TKgJps9rF5YLu9BDMtqTfFa1THyQ2BJncnZC9qNIIJn6EJRaT+DzMR
+	 PmNFfN0w9p8AjTz0qCBY+LVqTMtENo40FXocE3GJ56lwKe/Vclcw9g2ezFqyYfqji++VD
+	 5uYyhzk2D42/yWKrgulEOTthBSYgP70Et/SuqvBRFqK5mRd8nyZd5B7vEkxYCJZnBs0uE
+	 +HzIhUY/yGgfTvuErE8Tm7AV80lr7M1ZcWTmZWfM7/vXmMAnv4aoFk80GSZgAsXDDoVx9
+	 b8XulWkrcM74YRo3bLzqtOVKK8j+oxrQyheHVZsi3Hiu1mV8Rb/PNTFS3+1cRPabb+w==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794994564;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
-	 From:To:Cc:Subject:In-Reply-To:References:Date:Message-ID:
-	 MIME-Version:Content-Type:Content-Transfer-Encoding;
-	bh=duUV49H96MPxft6pLFc1UF8z64munBlO0c9zGA7dLPU=;
-	b=0lbXeVk/P8kkej03OwsaDlKrVg3i2jMUFkfekXiNYK7g9OBVgbK5mP1+zhMp5S6YX8TP
-	 4zhYuKsvqshgwhnn49kJtp+JykvSDkw2qwHTTthPh03u6sXs/sMkw1mtuujzwNWmjE6sC
-	 8ZlEZ7Ludb3cpYTLLv62FMSlP3/hHdq+PbWoLJDjrmyub7uGVHLD/Ifxt9YkiZcpdHK54
-	 GKUl2cb26MhYv0lJmrenvRInL8iYZrObg4UGdNvzK45SvlgKSSgyp6/OhjPHt6dJbQvce
-	 eU4veNIKo4lyn65CWdUfthSMatgTE64/4yq28vkf2p1nr/6V4B3LZpCFkpU9pfnERfQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794998968;
+	h=DMARC-Filter:Received:Received:Received:Message-ID:Date:MIME-Version:
+	 User-Agent:Subject:To:Cc:References:Content-Language:From:In-Reply-To:
+	 Content-Type:Content-Transfer-Encoding:X-CM-TRANSID:
+	 X-Coremail-Antispam:X-CM-SenderInfo;
+	bh=yjddwcwOXL4YWgrbreUffyhglJyEjmO2zwDmfBYX+v8=;
+	b=ETcBv43sOZAIWcA5X8MpUixJGCwn3jYT1ABFk/QvJQbJeBWYH0gCHuAO6UTNDJooZAsm
+	 3Se1WoXkotDAuN5JpNxjfzydG5WB9Np8tl84SEZus6aKAuOJMDk6iyNXlDjPp9Dj6uEZi
+	 l+KLYE+fmw0FnayTKn47ZFxF7FTZvR03uFwGOHrd33eCi/S34M8+51QtwXPRVH2Q+vQxO
+	 QsFrcf0+x0JL901dxyAUE2XOdAeQ24Wkszke3sdUeROXfynao9YVWNRChLygboMVNS6Xo
+	 iwFzzIT+WUuRUztlAtiq4CCClOoL71n27XCVsffT6O7dGdsDCP3GfwcN8sYMtEjpoVg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=gmail.com;
-	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=mGOQR19o;
-	arc=none smtp.remote-ip=209.85.215.181
-Received: from mail-pg1-f181.google.com (mail-pg1-f181.google.com [209.85.215.181])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	dmarc=none header.from=huaweicloud.com;
+	spf=pass smtp.mailfrom=huaweicloud.com;
+	arc=none smtp.remote-ip=124.71.93.99
+Received: from dggmsgout11.his.huawei.com (dggmsgout11.his.huawei.com [124.71.93.99])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 94C71606A8A4
-	for <linux-ext4@vger.kernel.org>; Wed, 18 Nov 2026 09:36:04 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 94C71606A8A4
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=mGOQR19o
-Received: by mail-pg1-f181.google.com with SMTP id 41be03b00d2f7-cdb75699c7cso392181a12.2
-        for <linux-ext4@vger.kernel.org>; Wed, 18 Nov 2026 01:36:04 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1794994564; x=1795599364; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:mime-version:message-id:date
-         :references:in-reply-to:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=duUV49H96MPxft6pLFc1UF8z64munBlO0c9zGA7dLPU=;
-        b=mGOQR19ot4NvHLd3vZv0p8aKvwi0KLW/z0VSlaX8lnmOlrHdBFD47svrCSzVjodLNN
-         v9HvALjM7udwt4WlswzzkZEGKwD0zowPNR3LxZLt6bM29nQLMkBr+YXwS+YNks/nQrkU
-         6CY9dcEKoXEmTS/lR99f43Zfz1qDPF/JhEPlnkhaR9hNLCwt1EBRBnrvrhlirkFn1dWA
-         YXFxwx553vpm3UfEMLBkNMY//YG2Co4UNObZLKFeHy5SrmHqmWMWlpoqHH1AMzFGY2kv
-         RKQfZHUgzn3q/LqsLHFhENdMsaGTgsXs4tFpYIj21HsVfCnWo5B3dfcOEsuXMvSGxXo8
-         cZrQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1794994564; x=1795599364;
-        h=content-transfer-encoding:content-type:mime-version:message-id:date
-         :references:in-reply-to:subject:cc:to:from:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=duUV49H96MPxft6pLFc1UF8z64munBlO0c9zGA7dLPU=;
-        b=MvJX5JyoWsRIS46upynGQCmIbJWJT5+XHecviVLhppsiT3PMzYVtUr9NiGhSf+G3dp
-         GPPYUHc9kMykbmEe/uD1xxYSs0dYVPksAVcCexfF01xWGNUr5TlNKcu7WKx4UdKoSdn3
-         KGgyu1dnl0qurNHnQCukdVhRQh/7/aYbImlJJ8uqFzDvoDWdZsfKso7QZL8Xv1SX+DBH
-         p8bb64mQCrdH2pac0XePNtM+g/vsfjxQ40iQfoBie6n/D8DbEkHrTLmlHe4zKNkqz5c8
-         0FZhSQRY+zYqvID4T1fl7Iw3R3fXrlq/Z+bLwDuOwcJQDohkxNVFPrDDgqb7jFORlqNI
-         H+9Q==
-X-Forwarded-Encrypted: i=1; AL+hErEceWmTvFpbcSyiZzd0zCGzvtjom7YKV+EYGJM3ejFOJxynTGU2jiXN+5KyAHAe12g0wJdn+neb32Y+@vger.kernel.org
-X-Gm-Message-State: APuU4Z8PNeQsWqBfJo82XOdYuzn2KMt/4JoqjDLhNyJjsfj18bmvYPak
-	cnFjTUFs11IaEK1xzitrqw1H+Ia7utZmZUXnxJOaQrLYxbtbuWeQYJFoA7BxqQ==
-X-Gm-Gg: AZFdTZfAbH22mTzrpoa+oOqcdCe2ojoGjChhloVyvN6EVGNUcFX483u0fttC+Fb1C7g
-	qW9EiVPrEB9vXlR6zTEV9n5b6oENuJTehQqUCRnXWHOrAihhquIebuhbZUhUwm4D4Ep9M7v009Y
-	wiBwPsBK4Vi8LMRs7D7poTROP8frjS0u67wlSB7s9Ax8AwaILQ2rIFWD026iq4QNBS/u5QYvrkW
-	ECcy+M9Bfir9ZST8R3LmPvxtOJW6pg0aXciP/igpa5/HwtQVztv472UN8XmWX8hISCCvczhOZXl
-	UIDAtoyTu16bUj7AJcznA9qvn3kwx5QaBqEwnumdEE7rZHYcooqaN0Q2eJqYe68Bwae+k43KyY7
-	0AiDcGI6yAy0VYFftW6puZyrT+hb/c0wD2KXU84RuWZ2YCliGvNE4OFry0D+5l8Tg9QsQxuy2OC
-	aVfP/Z6Np9fANCpJpTouciX8HvFIR06BtDdpRSQwDskbQmg5oeVmcpxZFKNnyuUejYMNExCLBCF
-	sSomSByi81/JCR12ncimUfljsKS7L9VrRnc3d1MBGF1ynd0686tXUwOhPTanqBGcwWpewHrxfvW
-	74u+/aeFAJikZylcdKxEoYEMk0qNnUdcOmx5gkdUHeL1S4IgnwxG6q5C2BO0fp7grnaRSHFCVzL
-	gf3q9kZy05kkJ0xL7kKr1vxh/9C088yzy
-X-Received: by 2002:a17:90b:5343:b0:3ac:9176:e82b with SMTP id 98e67ed59e1d1-3b3d07c9cb1mr1972912a91.54.1794994563902;
-        Wed, 18 Nov 2026 01:36:03 -0800 (PST)
-Received: from reply-prefix.eml ([117.28.251.181])
-        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-3b3d143b9a6sm3505843a91.2.2026.11.18.01.36.00
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 18 Nov 2026 01:36:03 -0800 (PST)
-From: Chengfeng Lin <lin2530632123@gmail.com>
-To: Jia Zhu <zhujia.zj@bytedance.com>
-Cc: Theodore Ts'o <tytso@mit.edu>,
-    Andreas Dilger <adilger.kernel@dilger.ca>,
-    Matthew Wilcox <willy@infradead.org>,
-    Jan Kara <jack@suse.cz>,
-    linux-ext4@vger.kernel.org,
-    linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH v3 0/2] ext4: avoid tail walks for cached large-folio writes
-In-Reply-To: <20260609035202.90669-1-zhujia.zj@bytedance.com>
-References: <20260609035202.90669-1-zhujia.zj@bytedance.com>
-Date: Wed, 18 Nov 2026 17:12:32 +0800
-Message-ID: <20261118091232.ext4-write-t1k-prefix.3a08a@gmail.com>
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1C245606A33D;
+	Wed, 18 Nov 2026 10:49:25 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 1C245606A33D
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.198])
+	by dggmsgout11.his.huawei.com (SkyGuard) with ESMTP id 4jTyxn1Nw6z1c1lw;
+	Wed, 18 Nov 2026 18:48:29 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.128])
+	by mail.maildlp.com (Postfix) with ESMTP id E841040574;
+	Wed, 18 Nov 2026 18:49:21 +0800 (CST)
+Received: from [10.174.179.19] (unknown [10.174.179.19])
+	by APP4 (Coremail) with UTF8SMTPSA id gCh0CgAnZPOTgv1q3vJQEw--.21239S3;
+	Wed, 18 Nov 2026 18:49:21 +0800 (CST)
+Message-ID: <1102a630-de07-4494-aea2-207e5b84e2a0@huaweicloud.com>
+Date: Wed, 18 Nov 2026 18:48:50 +0800
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -102,57 +51,136 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+User-Agent: Mozilla Thunderbird
+Subject: Re: [REGRESSION] ext4: silent data loss when a split at I/O
+ completion gets ENOSPC
+To: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+Cc: "Jose Fernandez (Anthropic)" <jose.fernandez@linux.dev>,
+ Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+ Baokun Li <libaokun@linux.alibaba.com>,
+ Andreas Dilger <adilger.kernel@dilger.ca>,
+ "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
+ guolingxing <guolingxing@tju.edu.cn>, Josef Bacik <josef@toxicpanda.com>,
+ Chris Mason <mason@kernel.org>, linux-ext4@vger.kernel.org,
+ linux-kernel@vger.kernel.org, regressions@lists.linux.dev
+References: <d400205a-0d3d-4ec3-a916-6c0a085841b4@linux.dev>
+ <d8ac3185-44c8-41e7-9cbf-3d1baa27f272@huaweicloud.com>
+ <av1Z_RLuH4vd0Wyi@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
+Content-Language: en-US
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+In-Reply-To: <av1Z_RLuH4vd0Wyi@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 7bit
+X-CM-TRANSID:gCh0CgAnZPOTgv1q3vJQEw--.21239S3
+X-Coremail-Antispam: 1UD129KBjvJXoWxGF15ZryxJrW5Cry5Aw1xuFg_yoWrZr15pF
+	WF9a4Syr4qkr1v9r1xZa1UXFyFqayftrW3Krn5WrZaka98uFn7KrWfKa1YkFyDCrs7Gw4j
+	vrWF9ry3W3Z0yrJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUkEb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
+	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Jr0_JF4l84ACjcxK6xIIjxv20xvEc7Cj
+	xVAFwI0_Gr0_Cr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxV
+	AFwI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2
+	j2WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7x
+	kEbVWUJVW8JwACjcxG0xvEwIxGrwACI402YVCY1x02628vn2kIc2xKxwCY1x0262kKe7AK
+	xVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F4
+	0E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFyl
+	IxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxV
+	AFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j
+	6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x07UAwI
+	DUUUUU=
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-Hi Jia and all,
+On 11/18/2026 3:55 PM, Ojaswin Mujoo wrote:
+> On Tue, Nov 17, 2026 at 07:37:10PM +0800, Zhang Yi wrote:
+>> On 11/16/2026 10:27 AM, Jose Fernandez (Anthropic) wrote:
+>>> Ojaswin's cover letter [1] explains how, since commit ea96cb5c4ae3
+>>> ("ext4: don't split extent before submitting I/O"), the split of an
+>>> unwritten extent at I/O completion can get ENOSPC. [1] stops the zeroout
+>>> from hitting other writes in flight, and [2] reports the failed
+>>> conversion to fsync(). Neither gives the split its block, so data is
+>>> still lost.
+>>>
+>>> LLM agents working with me found that it happens with default options
+>>> on a filesystem that is not full, and ran the tests. write() and fsync()
+>>> return success, and after the pages are evicted part of the file reads
+>>> back as zeros.
+>>>
+>>> Under a load built to run the allocator dry (QEMU without KVM), 42 of
+>>> 72 files lost data at ea96cb5c4ae3, none of 72 at its parent and none
+>>> of 48 on v6.18.63. On mainline at 23c62304dde2 32 of 72 did. With [1]
+>>> rebased on it 42 of 72 still did, now as failed conversions in dmesg.
+>>> With [1] and [2] fsync() failed with ENOSPC on 47 of 72, and the other
+>>> 25 read back intact.
+>>>
+>>
+>> Hi Jose!
+>>
+>> I'm sorry for causing this regression. The cause of this problem is that
+>> the transaction freeing the file's space has not yet been committed and
+>> thus cannot be returned to the mb allocator, so the extent cannot be
+>> split at endio time to allocate space for metadata. This is easily
+>> reproduced in scenarios with frequent file creation and deletion, even
+>> though there is still plenty of free space on disk.
+>>
+>> I think the solution should be based on Ojaswin's counting approach in
+>> [1] or the PENDING_CONVERSION solution we discussed, and then, after
+>> extent splitting fails, try to flush the journal and retry. My idea is
+>> roughly as follows:
+>>
+>> 1. For the iomap buffered I/O path and the DIO path, this is relatively
+>>    simple. We just need to add journal flush and retry logic in
+>>    ext4_iomap_finish_ioend() and ext4_dio_write_end_io().
+>>
+>> 2. For the traditional bh buffered I/O path, we cannot flush the journal
+>>    in ext4_convert_unwritten_io_end_vec(), because this may lead to an
+>>    ABBA deadlock with data=ordered mode. The journal process needs to
+>>    wait for ordered folio writeback, but this folio may contain some
+>>    ranges that need to be converted, and if we flush the journal after
+>>    the conversion fails, it will form a mutual dependency with journal
+>>    flushing. Therefore, we have to fall back to splitting before issuing
+>>    I/O, and when splitting fails, flush the journal and retry via
+>>    jbd2_journal_force_commit_nested() in ext4_do_writepages().
+>>
+>> 3. Split the workqueues used at the end of iomap and bh writeback to
+>>    avoid deadlocks. Because the filesystem may simultaneously have
+>>    different inodes going through the bh path and the iomap path, if the
+>>    iomap completion worker is flushing the journal, it may need to wait
+>>    for the folio of another inode going through the bh path to finish
+>>    conversion, and that conversion worker still needs to be handled on
+>>    the same wq, thus causing a deadlock.
+>>
+>> The current bh buffered I/O handling flow cannot be unified with the
+>> other two, which is indeed not ideal. However, once data=ordered mode is
+>> sunset in the future, we should be able to unify them. What do you all
+>> think of this solution? Any better ideas?
+>>
+>> Thanks,
+>> Yi.
+> 
+> Hey Zhang, thanks for the poc, it looks largely okay. I agree that this
+> seems to be the right way forward although its unfortunate to have to
+> revert back the unwrit to unwrit split. Hopefully we can move completely
+> switch to iomap soon enough. 
+> 
+> On the extent status cache for zeroout approach, i'm currently fixing a
+> few bs < ps bugs I'm seeing in it and would clean it up and post it as
+> v2. My idea is to keep the first patch disabling zeroout and rest of
+> them implementing the es changes and renabling it. 
 
-In libMicro write_t1k, one worker overwrites a prepared ext4 file in
-1 KiB buffered writes. In our v6.15.11 / v7.3 / v6.15.11 comparison,
-with nine runs per endpoint, libMicro's reported time per write rose
-from about 0.233 to 0.502 us (about 115%). As discussed in this series,
-large folios amplify the existing buffer_head walks. The measurements
-below concern the remaining prefix cost after d09811183db2 and
-f10b9cc1eb20, both included in the tested v7.3 kernel.
+Hi Ojaswin,
 
-Before each run, I created a fresh 10 MiB file on ext4 with ten buffered
-1 MiB writes of zeros. Each batch seeks back to offset zero and performs
-10,000 sequential overwrites; each invocation runs for 30 seconds.
-The machine is an i7-12700KF, with THP=madvise. The worker was allowed on
-all 20 logical CPUs, without another benchmark running.
+Yeah, this makes sense to me. Looking forward to your v2. I'll re-adapt
+this POC based on your patch afterwards. :)
 
-I compared v7.3, the same kernel with ext4's maximum folio order capped
-at its minimum order, and v7.3 again. Each endpoint has nine clean runs:
+> We can just backport
+> the first patch. Along with your poc fixes here also backported to 7.0
+> i believe we should be good to go.
+> 
 
-                                v7.3 A   min-order   v7.3 B
-  Buffered write, us/1 KiB call  0.500237  0.245877    0.496312
-  Observed folio size            1 MiB     4 KiB       1 MiB
-  Buffers visited per walk       128.5      1          128.5
-  Of those, before write range   127.5      0          127.5
+Sorry, I don't quite understand. As far as I know, 7.0 is already EOL, so
+why does this still need to be backported to this version?
 
-The timing row averages libMicro's nine per-run medians at each
-endpoint. It covers the 1 KiB buffered overwrite loop, excluding file
-preparation. Maximum run-to-run CV was 0.59%; baseline drift was -0.78%.
+Thanks,
+Yi.
 
-For the traversal counts, I instrumented one separate run of the same
-workload at each endpoint. I counted buffer visits in the begin and
-commit walks separately for the first 1,024 writes from offset zero.
-At 1 KiB per write, that covers one full 1 MiB folio on the unmodified
-kernel.
 
-The min-order control reduced the reported time per 1 KiB buffered write
-by about 50.5%, or 0.25 us/call. This supports a remaining prefix-related
-cost, although changing folio size also changes allocation/cache
-granularity; the control is diagnostic, not a proposal to disable large
-folios generally.
-
-These counts quantify the prefix traversal that remains after the tail
-fixes and may be useful for future work on this path.
-
-The libMicro source is gormanm/libMicro at
-976d502afaa2d9b919564d7fa8a08fec286dfc89. The command was:
-
-  ./write -E -C 0 -D 30000 -B 10000 -L -S -W \
-      -N write_t1k -s 1k -f /path/on/ext4/data
-
-Thanks.
