@@ -1,111 +1,109 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.131
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795003364;
-	b=WFWiFS8xha8wWcyuUR0nsC7PhnLcqhkYHhR+ysk2dFbStcdnNOHiVXYQQE66INBtGdGO
-	 X2Uv5Qz7RzMYDJACx8fYrcPhyQCqVALijKCQ+CyW5DV8WMZJ/rhRWjHmMZTKpmkxIN4v4
-	 sP29jAnGB8MlLg6zCBbKQuXgTDXzgzEJq3I2E/b6H+Btgys4oEXTAfREqkQjc3WYcAUJe
-	 t4G7fCry6K8ASNKha0W1zaC/mWB19I3E8WsnpVYcFld8KsqJmlCKVBz1Li7DwBsSMF8Q7
-	 5o38eRGKEtTpti9ey3r4tslGrySqxO67DdINucUMWkKpxW+WaMXCs1vhxrUlfE0J0xw==
+	t=1795003462;
+	b=VXAqXNE34Tmyir9PkwpTkR7HJUX+lFV2vUwSv44JW2MGI3i+2P1wLUnKKaIrf4q3YQhf
+	 xfdC5yc9be5QmIbyMNDPi9KozbRab0fORzWaUNQc77rRrPEV39U5yZzItfERn8ybiOZQA
+	 VpozvrCq/2lmgV6+weiv8TJEqC79/MdrMUdkwM9CwDca7TYwd9l+cXMkW2JWk/U66VmoX
+	 Ig5Ufqg+0LaPeYDHfml4N+0Du5UP2Z5HZDID8BzLlPASvInUAAE15ojz3G97f7vEXSDGn
+	 2vgJoIc29zaEt5eHFnyGnYvpJwMgqXbzy/SjmmuSFW6OB3QsnGixnEP4kQs15yumNbg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795003364;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795003462;
 	h=DMARC-Filter:Received:DKIM-Signature:DKIM-Signature:DKIM-Signature:
 	 DKIM-Signature:Received:Received:Received:Date:From:To:Cc:Subject:
 	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
 	 In-Reply-To:X-Spamd-Result:X-Spam-Score:X-Spam-Level:X-Spam-Flag;
-	bh=d/gqrN+T8f/X92LPtrI/NRhzp7WqXSe1x4eYWu588a8=;
-	b=txbHRdSUIJQFf5HvQc9c94EBV60Bo4HwfHrp2gg9jyP8S1lMOIoK29Ot+5mhrBcnfKVk
-	 K1P7w+BdhE8ptUHHzTtWeQdN2D05ax++Bm2CfiGwlozi/hLRzFvuvVVkkg+4BOqx/7M/z
-	 +/MnHFJL2NegTPs56YbtjHe+YJsGs5lZT/9zOq660z2vlNf1Y4k83l+wKagA1I1iEhXpu
-	 3HO1DOhEqyMBc2wUwaTjmBZe+72sIGuW/FWOBVCLeZdyXLWaZT9rE/+XbcH27qn6EzqgN
-	 hTfvEUIoJ+3rQgUsiUd4aU64Qisp+w8T1H4R0YJcfEM3ouhIl/Aw8c2pxIed1kWP1Aw==
+	bh=LOuAsQjK+12ngHe0/jbf6hyVj03KNod9mZDaCuhJMi0=;
+	b=Qo63lrObqzDXWtQJayMhsQW7cQldj/+loLkj+ZQfoOvCg3cueQugyztfh9tVbdhOX9fR
+	 aOpYtjU4E5bvF5djo+ddaNuSQJo5pPJUQBmy9kBiycrmDzWJCxTi3kvyQdf/Va9HhQ21t
+	 5m6Qnjj7YG/V7W6TNWZU6cs6Tbc3Mctrj/AnFkAEU45TDweOenpMdhnfo5KuLlZ4C6rBE
+	 bCLhLwgnOsPHug+t63VtLKKTqHf9FsV4P0uHea45sstfvzQAOvhgBWKNvLhw9FL0Omgev
+	 JWc76bVTTtVBIOUXjsGWyJTgXKhRwy+eWA2nwdCLCYFK527lrh1SzeGa5g0qRBQSI8w==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=none header.from=suse.cz;
 	spf=pass smtp.mailfrom=suse.cz;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=Awu0qdCb;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=8PvYtibk;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=YTzCAvja;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=ghfpXtsR;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=w6dwGBYm;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=odxoIEns;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=w6dwGBYm;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=odxoIEns;
 	arc=none smtp.remote-ip=195.135.223.131
 Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DAC4A606A32F;
-	Wed, 18 Nov 2026 12:02:42 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org DAC4A606A32F
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 174A7606A31C;
+	Wed, 18 Nov 2026 12:04:21 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 174A7606A31C
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=Awu0qdCb;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=8PvYtibk;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=YTzCAvja;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=ghfpXtsR
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=w6dwGBYm;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=odxoIEns;
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=w6dwGBYm;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=odxoIEns
 Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id D7B661F8CD;
-	Wed, 18 Nov 2026 12:02:39 +0000 (UTC)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 166A71F827;
+	Wed, 18 Nov 2026 12:04:20 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1795003361; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1795003460; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=d/gqrN+T8f/X92LPtrI/NRhzp7WqXSe1x4eYWu588a8=;
-	b=Awu0qdCbJfUtrk6IjY1gulHMhK1xcyydaepV8v85dgYYhMmXk0q04itRySukxXCgL1EsZ7
-	CNBNqsfMmMKLQZZTn08Mqq2ztbxTkkKcETqxGJRGOUFQO2DMrrlhDGlUYqWyFfbaAL7y0J
-	b8grKHtSKoxIjDBPDvToLt3UQazemHI=
+	bh=LOuAsQjK+12ngHe0/jbf6hyVj03KNod9mZDaCuhJMi0=;
+	b=w6dwGBYmM5NYHYLn0UoR+iuFXtBGe3UdWXPjhmxDj6Hzf/Bxp0BGlUDcqkwvBw0Maex1vV
+	So6XCps3KKcKu1VlfFroIUMtNnEAv2YINe5belg8mMupHgO3bixPSOurbgqruw8ARgQ04G
+	Kj/b6F6ufS/qqTfyBpbgwpB+u0zDzFo=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1795003361;
+	s=susede2_ed25519; t=1795003460;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=d/gqrN+T8f/X92LPtrI/NRhzp7WqXSe1x4eYWu588a8=;
-	b=8PvYtibkVoHCNjqHAcp0h3cMQ9HbyolDO3HuCbbrSVL8iiEPNBbZcu/Rb7g5mwMh1jYA3T
-	Uh9SrXYlhasWQmAw==
+	bh=LOuAsQjK+12ngHe0/jbf6hyVj03KNod9mZDaCuhJMi0=;
+	b=odxoIEnsPcu1mAAddRb3r8QMQbdPHvT8o6Sr9ROfknBgbh9tXlv7md2shFeCivUelU4d6o
+	JGPRqcNENN5hqVDQ==
 Authentication-Results: smtp-out2.suse.de;
 	none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1795003359; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1795003460; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=d/gqrN+T8f/X92LPtrI/NRhzp7WqXSe1x4eYWu588a8=;
-	b=YTzCAvjaJ0U2kSsI6gutYXc9Z0odrKI0tin3WohBMFHqBH0E1KVnaI/Q3V403PJmdi5r7x
-	4pOkNV9Eqm2/2yhWuGMRIDFqEis1A0RgVpEOtidVI1p3XF4MQLVG6V9fGt0aCa0tZrc6+j
-	IT4UUfbRORfO43xl+UjdgsRfCyHY55c=
+	bh=LOuAsQjK+12ngHe0/jbf6hyVj03KNod9mZDaCuhJMi0=;
+	b=w6dwGBYmM5NYHYLn0UoR+iuFXtBGe3UdWXPjhmxDj6Hzf/Bxp0BGlUDcqkwvBw0Maex1vV
+	So6XCps3KKcKu1VlfFroIUMtNnEAv2YINe5belg8mMupHgO3bixPSOurbgqruw8ARgQ04G
+	Kj/b6F6ufS/qqTfyBpbgwpB+u0zDzFo=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1795003359;
+	s=susede2_ed25519; t=1795003460;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=d/gqrN+T8f/X92LPtrI/NRhzp7WqXSe1x4eYWu588a8=;
-	b=ghfpXtsR2c2N4OAgDYxN6eV15cc/h9ClfXQFJtrilhTD3fnOc1OrcQx2E4Uh0KWubg/rIN
-	m1Dgw+L0CYMxEGDA==
+	bh=LOuAsQjK+12ngHe0/jbf6hyVj03KNod9mZDaCuhJMi0=;
+	b=odxoIEnsPcu1mAAddRb3r8QMQbdPHvT8o6Sr9ROfknBgbh9tXlv7md2shFeCivUelU4d6o
+	JGPRqcNENN5hqVDQ==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id AEED8134E9;
-	Wed, 18 Nov 2026 12:02:39 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id E1FB7134E9;
+	Wed, 18 Nov 2026 12:04:19 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id sg7LId+T/WpbIwAAD6G6ig
-	(envelope-from <jack@suse.cz>); Wed, 18 Nov 2026 12:02:39 +0000
+	id meBdL0OU/WpUJQAAD6G6ig
+	(envelope-from <jack@suse.cz>); Wed, 18 Nov 2026 12:04:19 +0000
 Received: by quack.suse.cz (Postfix, from userid 1000)
-	id 3D3A525028; Wed, 18 Nov 2026 13:02:39 +0100 (CET)
-Date: Wed, 18 Nov 2026 13:02:39 +0100
+	id 772892502A; Wed, 18 Nov 2026 13:04:19 +0100 (CET)
+Date: Wed, 18 Nov 2026 13:04:19 +0100
 From: Jan Kara <jack@suse.cz>
-To: Alan <3164729207@qq.com>
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, 
-	jack@suse.cz, ojaswin@linux.ibm.com, ritesh.list@gmail.com, 
-	yi.zhang@huawei.com, harshadshirwadkar@gmail.com, linux-ext4@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Subject: Re: [PATCH v2] ext4: reserve inode write access before unlinking
- entry
-Message-ID: <zkqch3frmclz7yjyllhcvehbpnfeofs3zt5ylg6ska7hdkf6th@gvd7pv5zrehv>
-References: <tencent_D60E766CE07D3A1847B81DE9BC37B4466908@qq.com>
- <tencent_69B311F4356254E166A5EFDC981AA138D80A@qq.com>
- <otvuclstcoaysrnywzdttapxbxg7hq3p7lp3iexy7u5cuj6plx@waqfsi2dg2p4>
- <tencent_58D8BEFB60308A7011D26F6F7E8C941C2A09@qq.com>
+To: William Chuang <founder@logarcheon.com>
+Cc: Theodore Ts'o <tytso@mit.edu>, 
+	Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.cz>, Ojaswin Mujoo <ojaswin@linux.ibm.com>, 
+	Ritesh Harjani <ritesh.list@gmail.com>, linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
+	syzbot+e8180f5590685cbc9037@syzkaller.appspotmail.com, syzkaller-bugs@googlegroups.com
+Subject: Re: [PATCH 1/2] ext4: reserve quota credits in
+ swap_inode_boot_loader()
+Message-ID: <emqu2ydrdock22ssfqg7sm2gjlzcmep3mbaqeqmpzrcshdxo3q@4cccpl7jgqf2>
+References: <20261117052750.2955-1-founder@logarcheon.com>
+ <20261117052750.2955-2-founder@logarcheon.com>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -117,7 +115,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <tencent_58D8BEFB60308A7011D26F6F7E8C941C2A09@qq.com>
+In-Reply-To: <20261117052750.2955-2-founder@logarcheon.com>
 X-Spamd-Result: default: False [-11.30 / 50.00];
 	SUSE_INTERNAL_BYPASS(-9.00)[];
 	BAYES_HAM(-3.00)[100.00%];
@@ -127,120 +125,96 @@ X-Spamd-Result: default: False [-11.30 / 50.00];
 	NEURAL_HAM_SHORT(-0.20)[-1.000];
 	MIME_GOOD(-0.10)[text/plain];
 	RCVD_VIA_SMTP_AUTH(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	TAGGED_RCPT(0.00)[];
 	ARC_NA(0.00)[];
-	RCPT_COUNT_TWELVE(0.00)[12];
+	MISSING_XM_UA(0.00)[];
+	TAGGED_RCPT(0.00)[e8180f5590685cbc9037];
 	MIME_TRACE(0.00)[0:+];
-	FREEMAIL_TO(0.00)[qq.com];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com,qq.com];
+	RCPT_COUNT_SEVEN(0.00)[10];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
 	TO_DN_SOME(0.00)[];
 	FROM_HAS_DN(0.00)[];
-	FREEMAIL_CC(0.00)[mit.edu,dilger.ca,linux.alibaba.com,suse.cz,linux.ibm.com,gmail.com,huawei.com,vger.kernel.org];
+	FREEMAIL_CC(0.00)[mit.edu,dilger.ca,suse.cz,linux.ibm.com,gmail.com,vger.kernel.org,syzkaller.appspotmail.com,googlegroups.com];
 	RCVD_COUNT_THREE(0.00)[3];
 	FROM_EQ_ENVFROM(0.00)[];
 	RCVD_TLS_LAST(0.00)[];
 	TO_MATCH_ENVRCPT_ALL(0.00)[];
 	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,inode_iloc.bh:url,qq.com:email,dir_iloc.bh:url,imap1.dmz-prg2.suse.org:helo]
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,suse.cz:email,imap1.dmz-prg2.suse.org:helo]
 X-Spam-Score: -11.30
 X-Spam-Level: 
 X-Spam-Flag: NO
 
-On Tue 17-11-26 11:39:38, Alan wrote:
-> __ext4_unlink() removes the directory entry before decrementing the target
-> inode's link count. It then dirties the parent inode. If the parent
-> inode-table block cannot be read, parent inode dirtying fails after the
-> entry has been removed, and unlink returns without dropping the target
-> inode's link count. With errors=continue, this read error need not abort
-> the journal transaction, so the directory update can be committed without
-> the corresponding link-count update.
+On Tue 17-11-26 05:28:04, William Chuang wrote:
+> swap_inode_boot_loader() starts its handle with 2 credits, enough for
+> the two inode table blocks it dirties.  Since commit aa507b5faf38
+> ("ext4: update quota information while swapping boot loader inode") it
+> also calls dquot_free_space() or dquot_alloc_space() under the same
+> handle.  On a filesystem with quota enabled, that marks the dquots
+> dirty and ext4_write_dquot() writes them to the quota file.  The
+> nested ext4_journal_start() in ext4_write_dquot() reuses the running
+> handle and adds no credits, so the quota block write can find the
+> handle with no credits left:
 > 
-> Reserve the inode locations and journal write access for the parent and
-> target inodes before removing the directory entry. This makes inode-table
-> read and access errors fail before the namespace is changed. Keep the
-> existing namespace and link-count update order, and release the inode
-> location references on every exit path. Fast-commit replay can skip the
-> parent update when the directory entry does not match the target inode, so
-> reserve only the target inode in that case.
+>   WARNING: fs/jbd2/transaction.c:1598 at jbd2_journal_dirty_metadata
+>   Call Trace:
+>    __ext4_handle_dirty_metadata
+>    ext4_quota_write
+>    qtree_write_dquot
+>    v2_write_dquot
+>    dquot_commit
+>    ext4_write_dquot
+>    mark_all_dquot_dirty
+>    __dquot_free_space
+>    swap_inode_boot_loader
+>    ext4_ioctl
 > 
-> The original source-derived injection at the journal write-access boundary
-> is not evidence for a committed inconsistency: an error after the journal
-> has already aborted cannot establish a committed transaction. The relevant
-> failure is an actual inode-table READ EIO before journal write access.
+> jbd2 returns -ENOSPC and the journal is aborted.  The ioctl still
+> returns 0, and the filesystem is left with the wrong i_blocks on the
+> swapped inode and inconsistent quota usage, which e2fsck reports.
 > 
-> Tested on Linux 7.4-rc3 (torvalds/linux commit
-> aebb7274476403040d582c61478df8f4a7bf9cd3) with QEMU blkdebug and
-> errors=continue. On the unpatched kernel, the READ EIO leaves the directory
-> entry removed with Links: 1 after normal unmount; the JBD2 trace shows no
-> journal abort and records the transaction commit, and e2fsck -fn reports
-> an unattached inode. With this patch, the same error is returned before the
-> directory entry is removed; the file remains present with Links: 1 and
-> e2fsck -fn passes. No-fault controls pass on both kernels. Also built
-> fs/ext4/namei.o with W=1.
+> Reserve one quota block per quota type, as ext4_ext_migrate() does.
 > 
-> Fixes: 4209ae12b122 ("ext4: handle ext4_mark_inode_dirty errors")
-> Link: https://lore.kernel.org/linux-ext4/tencent_D60E766CE07D3A1847B81DE9BC37B4466908@qq.com/
-> Cc: stable@vger.kernel.org
-> Signed-off-by: Alan <3164729207@qq.com>
-> ---
->  fs/ext4/namei.c | 21 +++++++++++++++++++++
->  1 file changed, 21 insertions(+)
+> Tested on UML with a filesystem made by "mke2fs -O quota": write and
+> sync a file, then issue EXT4_IOC_SWAP_BOOT on it.  Without this patch
+> the WARN fires ("credits 3/0") and e2fsck -fn reports errors; with it
+> there is no warning and e2fsck -fn is clean.
 > 
-> v2:
-> - Clarify that the committed inconsistency is reproduced by an inode-table
->   READ EIO before journal write access, not by an already-aborted journal.
-> - Revalidate the unmodified and fixed paths on current Linux 7.4-rc3 mainline.
+> Fixes: aa507b5faf38 ("ext4: update quota information while swapping boot loader inode")
+> Reported-by: syzbot+e8180f5590685cbc9037@syzkaller.appspotmail.com
+> Closes: https://syzkaller.appspot.com/bug?extid=e8180f5590685cbc9037
+> Signed-off-by: William Chuang <founder@logarcheon.com>
 
-Ah, OK, now it makes more sense. Thanks! One nit below:
+Looks good. Feel free to add:
 
-> @@ -3269,6 +3270,22 @@ int __ext4_unlink(struct inode *dir, const struct qstr *d_name,
->  	if (IS_DIRSYNC(dir))
->  		ext4_handle_sync(handle);
->  
-> +	/*
-> +	 * Read the inode-table blocks and get journal write access before
-> +	 * removing the directory entry. Otherwise, a read error while updating
-> +	 * either inode can leave the name removed but the link count unchanged.
-> +	 */
-> +	dir_iloc.bh = NULL;
-> +	inode_iloc.bh = NULL;
-> +	if (!skip_remove_dentry) {
-> +		retval = ext4_reserve_inode_write(handle, dir, &dir_iloc);
-> +		if (retval)
-> +			goto out_handle;
-> +	}
-> +	retval = ext4_reserve_inode_write(handle, inode, &inode_iloc);
-> +	if (retval)
-> +		goto out_handle;
-
-Let's first grab inode_iloc and move grabbing of dir_iloc into the
-	if (!skip_remove_dentry) {
-branch below so that we don't test for it twice.
-
-Otherwise the patch looks good.
+Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
 
-> +
->  	if (!skip_remove_dentry) {
->  		retval = ext4_delete_entry(handle, dir, de, bh);
->  		if (retval)
-> @@ -3293,6 +3310,10 @@ int __ext4_unlink(struct inode *dir, const struct qstr *d_name,
->  	if (dentry && !retval)
->  		ext4_fc_track_unlink(handle, dentry);
->  out_handle:
-> +	if (dir_iloc.bh)
-> +		brelse(dir_iloc.bh);
-> +	if (inode_iloc.bh)
-> +		brelse(inode_iloc.bh);
->  	ext4_journal_stop(handle);
->  out_bh:
->  	brelse(bh);
+> ---
+>  fs/ext4/ioctl.c | 7 ++++++-
+>  1 file changed, 6 insertions(+), 1 deletion(-)
 > 
-> base-commit: d135ab453a7400a34930bdda1ef4bdc8acfac80e
+> diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+> index e8e579498..ae03eb834 100644
+> --- a/fs/ext4/ioctl.c
+> +++ b/fs/ext4/ioctl.c
+> @@ -425,7 +425,12 @@ static long swap_inode_boot_loader(struct super_block *sb,
+>  	truncate_inode_pages(&inode->i_data, 0);
+>  	truncate_inode_pages(&inode_bl->i_data, 0);
+>  
+> -	handle = ext4_journal_start(inode_bl, EXT4_HT_MOVE_EXTENTS, 2);
+> +	/*
+> +	 * Two inode table blocks, plus one quota block per quota type for
+> +	 * the dquot_free_space()/dquot_alloc_space() update below.
+> +	 */
+> +	handle = ext4_journal_start(inode_bl, EXT4_HT_MOVE_EXTENTS,
+> +				    2 + EXT4_MAXQUOTAS_TRANS_BLOCKS(sb));
+>  	if (IS_ERR(handle)) {
+>  		err = -EINVAL;
+>  		goto err_out;
 > -- 
-> 2.53.0
+> 2.43.0
+> 
 > 
 -- 
 Jan Kara <jack@suse.com>
