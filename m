@@ -1,47 +1,108 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=124.71.93.99
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.131
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794998968;
-	b=zKeGN/cWl5FZ91TKgJps9rF5YLu9BDMtqTfFa1THyQ2BJncnZC9qNIIJn6EJRaT+DzMR
-	 PmNFfN0w9p8AjTz0qCBY+LVqTMtENo40FXocE3GJ56lwKe/Vclcw9g2ezFqyYfqji++VD
-	 5uYyhzk2D42/yWKrgulEOTthBSYgP70Et/SuqvBRFqK5mRd8nyZd5B7vEkxYCJZnBs0uE
-	 +HzIhUY/yGgfTvuErE8Tm7AV80lr7M1ZcWTmZWfM7/vXmMAnv4aoFk80GSZgAsXDDoVx9
-	 b8XulWkrcM74YRo3bLzqtOVKK8j+oxrQyheHVZsi3Hiu1mV8Rb/PNTFS3+1cRPabb+w==
+	t=1795000552;
+	b=vN42M5MswnyJbb05syUvv/WEm1+UDvqDSBDb4yeR+SmrryoTSYR8WTCZtGFuhBLwUgWl
+	 HxG9yktzXj7hvXQrXVUqJjnaOB4va6c2cv1njopWPspmm9GHacWtD562D9be65okSmWCu
+	 MrkWxlYwPu/4oVhW8EHdAuF67tS037xekzBf3H68dR88yka6wPZe1+TXUbMfZvYnoeSyU
+	 m1ITOYLhnKA5RpwZ4XRQlkPBujCa0xTjvnvO5Bl4WAx2+wdLU9BTiDHgafgw7pKdvnBrW
+	 ongdNzerNWePEhdp9oPyRj9gj0ARkrw7yWZr8UfG1Bz1oy8K5a8HPoKSzVBQap4sFSg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794998968;
-	h=DMARC-Filter:Received:Received:Received:Message-ID:Date:MIME-Version:
-	 User-Agent:Subject:To:Cc:References:Content-Language:From:In-Reply-To:
-	 Content-Type:Content-Transfer-Encoding:X-CM-TRANSID:
-	 X-Coremail-Antispam:X-CM-SenderInfo;
-	bh=yjddwcwOXL4YWgrbreUffyhglJyEjmO2zwDmfBYX+v8=;
-	b=ETcBv43sOZAIWcA5X8MpUixJGCwn3jYT1ABFk/QvJQbJeBWYH0gCHuAO6UTNDJooZAsm
-	 3Se1WoXkotDAuN5JpNxjfzydG5WB9Np8tl84SEZus6aKAuOJMDk6iyNXlDjPp9Dj6uEZi
-	 l+KLYE+fmw0FnayTKn47ZFxF7FTZvR03uFwGOHrd33eCi/S34M8+51QtwXPRVH2Q+vQxO
-	 QsFrcf0+x0JL901dxyAUE2XOdAeQ24Wkszke3sdUeROXfynao9YVWNRChLygboMVNS6Xo
-	 iwFzzIT+WUuRUztlAtiq4CCClOoL71n27XCVsffT6O7dGdsDCP3GfwcN8sYMtEjpoVg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795000552;
+	h=DMARC-Filter:Received:DKIM-Signature:DKIM-Signature:DKIM-Signature:
+	 DKIM-Signature:Received:Received:Received:Date:From:To:Cc:Subject:
+	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
+	 In-Reply-To:X-Spamd-Result:X-Spam-Score:X-Spam-Level:X-Spam-Flag;
+	bh=FFCp4KDT2LcWcGOoxahgST59aYtC1T0hU0v/3EFzywc=;
+	b=j0hAWGIralJIzM5FJ9ExXwFzZGEv5fFFm4v2LLRNs3DlsyaTRRxmd6xWpQjE5aDg2WTy
+	 RU7AwThia5oEAs4PYUt/5Tp1HTPBaB0rviy+BvHkRnvbGCZkN6ygJTjtBVK3flNvVGE0I
+	 JgQbVirI60j+aOey+pJQAEMRsdC4FfvxqiWtLSthQXdCrUE6y451qbegTVN8MObTw3BdJ
+	 tdW42l3/uOpToNlBH5lPAqFc0pDgRkFQTssinyEhu1ur2QMvSJbg003cGhTOQb+XbFur8
+	 jXsCBxH8muZnNSJZFfbiLau8bcfCQ8MZI11QZ9zaOmjodIMMh5ijJaGFEdg9HHxD5GA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=none header.from=huaweicloud.com;
-	spf=pass smtp.mailfrom=huaweicloud.com;
-	arc=none smtp.remote-ip=124.71.93.99
-Received: from dggmsgout11.his.huawei.com (dggmsgout11.his.huawei.com [124.71.93.99])
+	dmarc=none header.from=suse.cz;
+	spf=pass smtp.mailfrom=suse.cz;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=Yse+GBIg;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=lvK3ADAO;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=Yse+GBIg;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=lvK3ADAO;
+	arc=none smtp.remote-ip=195.135.223.131
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1C245606A33D;
-	Wed, 18 Nov 2026 10:49:25 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 1C245606A33D
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.198])
-	by dggmsgout11.his.huawei.com (SkyGuard) with ESMTP id 4jTyxn1Nw6z1c1lw;
-	Wed, 18 Nov 2026 18:48:29 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id E841040574;
-	Wed, 18 Nov 2026 18:49:21 +0800 (CST)
-Received: from [10.174.179.19] (unknown [10.174.179.19])
-	by APP4 (Coremail) with UTF8SMTPSA id gCh0CgAnZPOTgv1q3vJQEw--.21239S3;
-	Wed, 18 Nov 2026 18:49:21 +0800 (CST)
-Message-ID: <1102a630-de07-4494-aea2-207e5b84e2a0@huaweicloud.com>
-Date: Wed, 18 Nov 2026 18:48:50 +0800
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9CB34606A32F;
+	Wed, 18 Nov 2026 11:15:51 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 9CB34606A32F
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=Yse+GBIg;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=lvK3ADAO;
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=Yse+GBIg;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=lvK3ADAO
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id A92FE1FB67;
+	Wed, 18 Nov 2026 11:15:49 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1795000549; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=FFCp4KDT2LcWcGOoxahgST59aYtC1T0hU0v/3EFzywc=;
+	b=Yse+GBIg+n7Sp/Yubh70gI36P41cCiW9uL9zFe68ACj0ZIDkZZSiCPYO0XHaQBioFVmZCa
+	glWDb1eBxbwrBucV6pJz3jZZLR40N8+8iNM/hLed3R60QUImLr8wd1WX9sHy3hVI6o6Nh3
+	IMQLxkSqcmJO2b3h2GQeTpoVEO3JTco=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1795000549;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=FFCp4KDT2LcWcGOoxahgST59aYtC1T0hU0v/3EFzywc=;
+	b=lvK3ADAOGQT7D2kpGGiLCEJkvJo+w5L2uKkmYiLL7fEUn+M1FG+fRxr1/Y4X6b4qhbf3UB
+	d89NynRIctWYS/CA==
+Authentication-Results: smtp-out2.suse.de;
+	none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1795000549; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=FFCp4KDT2LcWcGOoxahgST59aYtC1T0hU0v/3EFzywc=;
+	b=Yse+GBIg+n7Sp/Yubh70gI36P41cCiW9uL9zFe68ACj0ZIDkZZSiCPYO0XHaQBioFVmZCa
+	glWDb1eBxbwrBucV6pJz3jZZLR40N8+8iNM/hLed3R60QUImLr8wd1WX9sHy3hVI6o6Nh3
+	IMQLxkSqcmJO2b3h2GQeTpoVEO3JTco=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1795000549;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=FFCp4KDT2LcWcGOoxahgST59aYtC1T0hU0v/3EFzywc=;
+	b=lvK3ADAOGQT7D2kpGGiLCEJkvJo+w5L2uKkmYiLL7fEUn+M1FG+fRxr1/Y4X6b4qhbf3UB
+	d89NynRIctWYS/CA==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 825181334C;
+	Wed, 18 Nov 2026 11:15:49 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id Li/QF+WI/WqdcQAAD6G6ig
+	(envelope-from <jack@suse.cz>); Wed, 18 Nov 2026 11:15:49 +0000
+Received: by quack.suse.cz (Postfix, from userid 1000)
+	id 0D5802500B; Wed, 18 Nov 2026 12:15:49 +0100 (CET)
+Date: Wed, 18 Nov 2026 12:15:49 +0100
+From: Jan Kara <jack@suse.cz>
+To: Zhao Gongyi <zhaogongyi@bytedance.com>
+Cc: Jan Kara <jack@suse.cz>, tytso@mit.edu, linux-ext4@vger.kernel.org, 
+	linux-kernel@vger.kernel.org, adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, 
+	ojaswin@linux.ibm.com, ritesh.list@gmail.com, yi.zhang@huawei.com
+Subject: Re: [PATCH] ext4: use a stable source for the kmmpd thread name
+Message-ID: <x2m3ypyugjn25myfovxs42jgctnctmz6iof77juya3464o3bbl@qlsx2mk4smhr>
+References: <20261114172523.5888-1-zhaogongyi@bytedance.com>
+ <qz2gh5bbbyqjqfqclatkq34pgxnvbu3ey5kf3octnlykstzhx2@s65dxum2wdso>
+ <da634961-1d13-4d21-b181-f366fd72e0d1@bytedance.com>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -51,136 +112,63 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [REGRESSION] ext4: silent data loss when a split at I/O
- completion gets ENOSPC
-To: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-Cc: "Jose Fernandez (Anthropic)" <jose.fernandez@linux.dev>,
- Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
- Baokun Li <libaokun@linux.alibaba.com>,
- Andreas Dilger <adilger.kernel@dilger.ca>,
- "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
- guolingxing <guolingxing@tju.edu.cn>, Josef Bacik <josef@toxicpanda.com>,
- Chris Mason <mason@kernel.org>, linux-ext4@vger.kernel.org,
- linux-kernel@vger.kernel.org, regressions@lists.linux.dev
-References: <d400205a-0d3d-4ec3-a916-6c0a085841b4@linux.dev>
- <d8ac3185-44c8-41e7-9cbf-3d1baa27f272@huaweicloud.com>
- <av1Z_RLuH4vd0Wyi@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
-Content-Language: en-US
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-In-Reply-To: <av1Z_RLuH4vd0Wyi@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-X-CM-TRANSID:gCh0CgAnZPOTgv1q3vJQEw--.21239S3
-X-Coremail-Antispam: 1UD129KBjvJXoWxGF15ZryxJrW5Cry5Aw1xuFg_yoWrZr15pF
-	WF9a4Syr4qkr1v9r1xZa1UXFyFqayftrW3Krn5WrZaka98uFn7KrWfKa1YkFyDCrs7Gw4j
-	vrWF9ry3W3Z0yrJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUkEb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
-	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Jr0_JF4l84ACjcxK6xIIjxv20xvEc7Cj
-	xVAFwI0_Gr0_Cr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxV
-	AFwI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2
-	j2WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7x
-	kEbVWUJVW8JwACjcxG0xvEwIxGrwACI402YVCY1x02628vn2kIc2xKxwCY1x0262kKe7AK
-	xVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F4
-	0E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFyl
-	IxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxV
-	AFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j
-	6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x07UAwI
-	DUUUUU=
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <da634961-1d13-4d21-b181-f366fd72e0d1@bytedance.com>
+X-Spamd-Result: default: False [-11.30 / 50.00];
+	SUSE_INTERNAL_BYPASS(-9.00)[];
+	BAYES_HAM(-3.00)[100.00%];
+	SUSPICIOUS_RECIPS(1.50)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	ARC_NA(0.00)[];
+	MISSING_XM_UA(0.00)[];
+	TAGGED_RCPT(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	RCPT_COUNT_SEVEN(0.00)[10];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	TO_DN_SOME(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	FREEMAIL_CC(0.00)[suse.cz,mit.edu,vger.kernel.org,dilger.ca,linux.alibaba.com,linux.ibm.com,gmail.com,huawei.com];
+	RCVD_COUNT_THREE(0.00)[3];
+	FROM_EQ_ENVFROM(0.00)[];
+	RCVD_TLS_LAST(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,imap1.dmz-prg2.suse.org:helo]
+X-Spam-Score: -11.30
+X-Spam-Level: 
+X-Spam-Flag: NO
 
-On 11/18/2026 3:55 PM, Ojaswin Mujoo wrote:
-> On Tue, Nov 17, 2026 at 07:37:10PM +0800, Zhang Yi wrote:
->> On 11/16/2026 10:27 AM, Jose Fernandez (Anthropic) wrote:
->>> Ojaswin's cover letter [1] explains how, since commit ea96cb5c4ae3
->>> ("ext4: don't split extent before submitting I/O"), the split of an
->>> unwritten extent at I/O completion can get ENOSPC. [1] stops the zeroout
->>> from hitting other writes in flight, and [2] reports the failed
->>> conversion to fsync(). Neither gives the split its block, so data is
->>> still lost.
->>>
->>> LLM agents working with me found that it happens with default options
->>> on a filesystem that is not full, and ran the tests. write() and fsync()
->>> return success, and after the pages are evicted part of the file reads
->>> back as zeros.
->>>
->>> Under a load built to run the allocator dry (QEMU without KVM), 42 of
->>> 72 files lost data at ea96cb5c4ae3, none of 72 at its parent and none
->>> of 48 on v6.18.63. On mainline at 23c62304dde2 32 of 72 did. With [1]
->>> rebased on it 42 of 72 still did, now as failed conversions in dmesg.
->>> With [1] and [2] fsync() failed with ENOSPC on 47 of 72, and the other
->>> 25 read back intact.
->>>
->>
->> Hi Jose!
->>
->> I'm sorry for causing this regression. The cause of this problem is that
->> the transaction freeing the file's space has not yet been committed and
->> thus cannot be returned to the mb allocator, so the extent cannot be
->> split at endio time to allocate space for metadata. This is easily
->> reproduced in scenarios with frequent file creation and deletion, even
->> though there is still plenty of free space on disk.
->>
->> I think the solution should be based on Ojaswin's counting approach in
->> [1] or the PENDING_CONVERSION solution we discussed, and then, after
->> extent splitting fails, try to flush the journal and retry. My idea is
->> roughly as follows:
->>
->> 1. For the iomap buffered I/O path and the DIO path, this is relatively
->>    simple. We just need to add journal flush and retry logic in
->>    ext4_iomap_finish_ioend() and ext4_dio_write_end_io().
->>
->> 2. For the traditional bh buffered I/O path, we cannot flush the journal
->>    in ext4_convert_unwritten_io_end_vec(), because this may lead to an
->>    ABBA deadlock with data=ordered mode. The journal process needs to
->>    wait for ordered folio writeback, but this folio may contain some
->>    ranges that need to be converted, and if we flush the journal after
->>    the conversion fails, it will form a mutual dependency with journal
->>    flushing. Therefore, we have to fall back to splitting before issuing
->>    I/O, and when splitting fails, flush the journal and retry via
->>    jbd2_journal_force_commit_nested() in ext4_do_writepages().
->>
->> 3. Split the workqueues used at the end of iomap and bh writeback to
->>    avoid deadlocks. Because the filesystem may simultaneously have
->>    different inodes going through the bh path and the iomap path, if the
->>    iomap completion worker is flushing the journal, it may need to wait
->>    for the folio of another inode going through the bh path to finish
->>    conversion, and that conversion worker still needs to be handled on
->>    the same wq, thus causing a deadlock.
->>
->> The current bh buffered I/O handling flow cannot be unified with the
->> other two, which is indeed not ideal. However, once data=ordered mode is
->> sunset in the future, we should be able to unify them. What do you all
->> think of this solution? Any better ideas?
->>
->> Thanks,
->> Yi.
+Hello,
+
+On Tue 17-11-26 00:36:50, Zhao Gongyi wrote:
+> On 11/16/26 8:16 PM, Jan Kara wrote:
+> > What can change it? I don't see anything that should be doing that...
 > 
-> Hey Zhang, thanks for the poc, it looks largely okay. I agree that this
-> seems to be the right way forward although its unfortunate to have to
-> revert back the unwrit to unwrit split. Hopefully we can move completely
-> switch to iomap soon enough. 
-> 
-> On the extent status cache for zeroout approach, i'm currently fixing a
-> few bs < ps bugs I'm seeing in it and would clean it up and post it as
-> v2. My idea is to keep the first patch disabling zeroout and rest of
-> them implementing the es changes and renabling it. 
+> A concurrent buffered write to the loop block device can change it. In
+> one diagnostic run, the write reached the page-cache buffer ext4 was
+> using for MMP. mmp_bdevname is embedded at bh->b_data + 0x50.
 
-Hi Ojaswin,
+Ah, I see. So you're corrupting the filesystem through the block device
+while it is mounted.
 
-Yeah, this makes sense to me. Looking forward to your v2. I'll re-adapt
-this POC based on your patch afterwards. :)
+> I understand that raw writes to a block device during ext4 access can
+> corrupt metadata. The proposed change gives the two-pass thread-name
+> formatting a stable source; it does not change MMP's protection logic.
+> I can provide the full diagnostic diff, kprobe module, and console log
+> if useful.
 
-> We can just backport
-> the first patch. Along with your poc fixes here also backported to 7.0
-> i believe we should be good to go.
-> 
+Yes, sorry, but this isn't really something we care about. It is in
+principle very similar as corrupting memory through /dev/mem and the
+filesystem can crash in many different ways. When you are fuzzing, you
+should disable BLK_DEV_WRITE_MOUNTED config which will also disallow
+corruption like this.
 
-Sorry, I don't quite understand. As far as I know, 7.0 is already EOL, so
-why does this still need to be backported to this version?
-
-Thanks,
-Yi.
-
-
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
