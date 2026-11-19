@@ -1,60 +1,60 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=18.9.28.11
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
 	t=1795115856;
-	b=mY/01ZQfafP2NvF5CzX4kf5Z11r3tZx+CTozFyrATyKEvN6IlubSqS9dcg9gUjx5lS3N
-	 fnl3AwjLYcHJikhmlARZUGtNX4Zp9NpOIxsGHNpe/WGua/wyyC9PaIxH+Wzo8y9ykUx+E
-	 NFwKbA2rhdQkhCYRsKugXMax+JgSX+cEANRBRvaC2eoZW0me2jdlDKkYO6ifA0RSoGsdY
-	 Bwr0VnbIq5UhnopMPqVaAPa0p3wmEQ7n59A8A2ic+qFR6O5veOlnKfc+MGocbsLpnOKRb
-	 ot6GFodiYHefvIs2526B4in516nBf20SaJaTtxD0lDRZXC3kNToMHkJRWnbbV5Np1ew==
+	b=Wd2YxWAakMuVP90dptU1w6j1hGxvzBgDvJzv641dP943HN4QancrAehcWaAo807k9ETJ
+	 4WsAn7kUrDNi/Ls9BRXDqjMzP3wmHVanjAwlszG0MIqjiONnBg7q87KZY31O9ivrGB1mO
+	 iPCJzNVj5+wuj3fENCL2bO4c4fvVnD/o+SyZGTylIzhgyErHZSlB7nPx4iD+rSJ+bsZYc
+	 bghSwZId/M/w+hJVk9VZ79QfsnKY6zd+rXQ3trspN/WZZ2Gqr3M2oKgI3/oGKRbV+abpm
+	 hUxTIMZlgItufiUCWE40iIvAsYaBcdH/Xi1lj17HMLRGwSEfC3mqVAsK3kdmSEcpFuA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
 	a=rsa-sha256; c=relaxed/relaxed; t=1795115856;
 	h=DMARC-Filter:Received:DKIM-Signature:Received:From:To:Cc:Subject:
 	 Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
 	 Content-Transfer-Encoding;
-	bh=Lbp43MGHJB3rxMflNejkGAi7lGYC8VWQCaB0tmVPE+I=;
-	b=m2C7zr93AIoMHByh6i/5k1doRIMc0l0UJxaXzG1k7qUjTljJiEiocqP3BjoObnFQUt1p
-	 3YlN3jKRkKGiteSlPTbxagBTLLXNmyoqBXX5oGJqbVOywBHlJ9h9U96J7FCWJ4QYVoB1F
-	 uj327vlmdg1wuezG5goznl1aKd+iReSbvPk239AirlU1acuwJMzyt5RC+WGpHhR+TTY3T
-	 y0a62hEpCMvWGkj5yd3iAuBzJjk60dM/z25CwI8eDyKVNT06PhAmupcJaICgdXrm9WahZ
-	 9lTnGYxhmZqj4c0noCy5OFZt3EgGrCZyUPiPQaKTS8Iqcng0i8JaMt4gm0j9gf3R32A==
+	bh=xY3kA8k3+7TJH81q8y7iAov5pinxYNiw9PdgLHaglcg=;
+	b=oJ3+9MXLJMEXYfwGQ+45srtNX+12bWRjc2GMsjZQYrE2WFscuwJvc6Uvd/dYetil9lYw
+	 1mbw6iB0wS8WOKsyXx9JltaYLXN92Vl+p8miiHr7qt2kDhR2rHN/hdz6dODii1SnAy6Qq
+	 sYOW2amcGDDIFYGtkM0yf3uM1oq5QjFaFu5yOyFu09NhsGPYmEBCNI6XPcnNYVF7jKOhC
+	 oj1+gHwiNoV/VKuUJepEDvCaC/2DNgQn7677eCsJAOwmDUPeKmIPrvbI86NnsS7QLfg0q
+	 0QVCSbHNy2Pq84ElG3rmGA2EsCzOrxPjJEoNVlystJhipEQuX9UhIlPYcxhJK59RjtA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=mit.edu;
 	spf=pass smtp.mailfrom=mit.edu;
-	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b="p/8uAWR8";
+	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=EGD1KxZG;
 	arc=none smtp.remote-ip=18.9.28.11
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E6A76606A336
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C6B56606A334
 	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2026 19:17:35 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org E6A76606A336
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org C6B56606A334
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=p/8uAWR8
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=EGD1KxZG
 Received: from trampoline.thunk.org (pool-173-48-114-214.bstnma.fios.verizon.net [173.48.114.214])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AJJHWBW029881
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AJJHWXx029863
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
 	Thu, 19 Nov 2026 14:17:33 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1795115853; bh=Lbp43MGHJB3rxMflNejkGAi7lGYC8VWQCaB0tmVPE+I=;
+	t=1795115853; bh=xY3kA8k3+7TJH81q8y7iAov5pinxYNiw9PdgLHaglcg=;
 	h=From:Subject:Date:Message-ID:MIME-Version;
-	b=p/8uAWR8w72QC9OUmyhFcT35QQ42EssmT673F14B/grXKgAxuY3Ud3gea++MnNI14
-	 Il45lp27WUKGbJw0J1nhJVaDhBE6B+ckn3ezyc8b9SFf5+z61HVce5rc/7W8Jq0FmD
-	 qNindjk1OYaBxoS2czb2YLD97VUPDaHy1YZhOILo4YUEiS3IKSqROiY49Buc0T935j
-	 CdV8JUEm0z7di5m009/RG4Lctou+pXx5CvWAxsoHNWKnFP5NpgIIBTkjM10ST4kzbb
-	 J9SbsLWVRcB5HRNxEeNYuSJKUJvQXbLDAiStCNVmZdetq7GD39QMZdQa3fAMb7JPNg
-	 StnUT7qi75WsQ==
+	b=EGD1KxZGmgXgZDcqXykDBgx1yi4ZFqpoP1vjtqyV7KUvN20WnXwkEuf4PVEvB1nsq
+	 lPhiWXdOlkiOrGkZZJ3cS/lAL3p5BV6E7Skt4dOSG8jf5/dBaXWNQ/JLQo0VAU6x8j
+	 8Wn853bysQzthwH2pVxcJ79RW+OqXRCONBYhfWBmDM0l1Enw0OvKho7G3GIz0KUuYM
+	 vCuQluviecjLTCKr8ByiyyFR2myIr1B5qSvhwX7fgaIcdHqrfbLHdum7ut+03qnnZa
+	 N+cz7jJ2koWHaE90DqcQdK7raa9p2lfhNwGylNCAX10ATZ5iShlYA5BjSka6DvhFmO
+	 1KG4vbVBWIeiw==
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id 3335C2E0150; Thu, 19 Nov 2026 14:17:31 -0500 (EST)
+	id 2CDAD2E014E; Thu, 19 Nov 2026 14:17:31 -0500 (EST)
 From: "Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Cc: "Theodore Ts'o" <tytso@mit.edu>
-Subject: [PATCH -v2 11/32] ext4: handle flex groups straddling s_first_meta_bg in online resize
-Date: Thu, 19 Nov 2026 14:16:58 -0500
-Message-ID: <20261119191719.1943298-12-tytso@mit.edu>
+Subject: [PATCH -v2 09/32] ext4: fix err_report_sec_store() timer and value handling
+Date: Thu, 19 Nov 2026 14:16:56 -0500
+Message-ID: <20261119191719.1943298-10-tytso@mit.edu>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <20261119191719.1943298-1-tytso@mit.edu>
 References: <20261119191719.1943298-1-tytso@mit.edu>
@@ -69,269 +69,190 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-When a file system without resize_inode is grown online past the last
-GDT block, ext4_resize_fs() converts it to meta_bg and sets
-s_first_meta_bg to the current number of GDT blocks.  Descriptor
-blocks below s_first_meta_bg keep the traditional layout (backed up
-right after each backup superblock in groups < s_first_meta_bg *
-EXT4_DESC_PER_BLOCK), the later ones use the meta_bg layout.  The
-online resize code does not handle this boundary correctly:
+err_report_sec_store() has several problems:
 
- - ext4_flex_group_add() decides meta_bg and padding_blocks once, from
-   the first descriptor block touched by the flex group.  When a flex
-   group straddles s_first_meta_bg (possible whenever the flex_bg size
-   exceeds EXT4_DESC_PER_BLOCK, e.g. 1k blocks, 64bit and -G 32), the
-   meta_bg descriptor blocks are passed to update_backups() as
-   traditional ones, so their physical block number is used as an
-   in-group offset.  This writes descriptor blocks over free or data
-   blocks (and over backup superblocks) of unrelated groups, or past
-   the end of the file system, while the real meta_bg backups are never
-   written.
+ - Writing 0 calls timer_delete_sync() and then jumps past the
+   assignment, so s_err_report_sec keeps its old value.  Reading the
+   attribute still returns the old interval, writing the old interval
+   back to re-enable reporting is treated as a no-op, and the periodic
+   report is restarted by the next error even though it was disabled.
 
- - Even with the layout known per block, update_backups() copies a
-   traditional GDT block into every sparse group below s_groups_count,
-   including the newly added groups beyond s_first_meta_bg, which have
-   no traditional GDT backup area.  This again overwrites blocks that
-   are free (or meta_bg descriptor backups) in those groups.
+ - Changing the interval from 0 to a non-zero value calls
+   timer_setup() on s_err_report.  The timer is already initialized at
+   mount time, and it may still be pending (e.g. armed by
+   ext4_update_super() or the timer callback racing with the store), in
+   which case re-initializing it corrupts the timer list.
 
- - setup_new_flex_group_blocks() skips copying the GDT blocks into a
-   new backup group whenever the meta_bg feature is set.  Sparse groups
-   added below s_first_meta_bg still have a traditional backup area of
-   s_first_meta_bg blocks (reserved in the block bitmap), but only the
-   last traditional GDT block gets written there later by
-   update_backups(), leaving stale contents in the backup copies of all
-   earlier GDT blocks.
+ - Any non-zero write arms the timer even if no errors have ever been
+   recorded, so print_daily_error_info() wakes up and re-arms itself
+   forever without having anything to report.
 
-Add ext4_gdb_is_meta_bg() and use it to decide the layout per
-descriptor block in ext4_flex_group_add() and per group in
-setup_new_flex_group_blocks(), and limit the backups of traditional GDT
-blocks in update_backups() to the groups below s_first_meta_bg.
+ - Concurrent writers are not serialized, so the timer state can end
+   up inconsistent with the stored interval.
 
-ext4_add_new_descs() does not need changing: a new descriptor block is
-always number s_gdb_count, and s_first_meta_bg can never exceed it (it
-is checked at mount time and set to the current GDT block count during
-online conversion).
+Rework the function to always store the new value (with WRITE_ONCE(),
+since the timer callback and ext4_update_super() read it locklessly),
+drop the timer_setup() call, delete the timer when the interval is set
+to 0, and otherwise only (re)arm it when errors have been recorded;
+ext4_update_super() starts it when the first error is recorded.
+Serialize writers with a function-local mutex.  s_error_notify_mutex
+cannot be used for this, since ext4_unregister_sysfs() holds it across
+kobject_del(), which waits for active sysfs store callbacks to finish.
 
-Fixes: 01f795f9e0d6 ("ext4: add online resizing support for meta_bg and 64-bit file systems")
-Fixes: a6b3bfe176e8 ("ext4: fix corruption during on-line resize")
+Also read s_err_report_sec once with READ_ONCE() in
+print_daily_error_info(), so the value tested is the value used to
+re-arm the timer.
+
+Fixes: d518215c2719 ("ext4: add sysfs attribute err_report_sec to control s_err_report timer")
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/resize-test.c | 80 +++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/resize.c      | 55 ++++++++++++++++++++++-------
- 2 files changed, 122 insertions(+), 13 deletions(-)
+ fs/ext4/super.c      |  7 ++++--
+ fs/ext4/sysfs-test.c | 55 ++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/sysfs.c      | 21 ++++++++++-------
+ 3 files changed, 73 insertions(+), 10 deletions(-)
 
-diff --git a/fs/ext4/resize-test.c b/fs/ext4/resize-test.c
-index 81c9fd96816c..da08bfbd2fe2 100644
---- a/fs/ext4/resize-test.c
-+++ b/fs/ext4/resize-test.c
-@@ -1312,6 +1312,85 @@ static void test_resize_fs_across_resize_inode_to_meta_bg(struct kunit *test)
- 			34U * RESIZE_TEST_INODES_PER_GRP);
- }
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 6a3079c29988..f54b02650de6 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -3798,6 +3798,7 @@ void print_daily_error_info(struct timer_list *t)
+ 	struct ext4_sb_info *sbi = timer_container_of(sbi, t, s_err_report);
+ 	struct super_block *sb = sbi->s_sb;
+ 	struct ext4_super_block *es = sbi->s_es;
++	unsigned long err_report_sec;
  
-+static bool resize_blk_matches(struct resize_test_ctx *ctx, ext4_fsblk_t blk,
-+			       struct buffer_head *src)
-+{
-+	struct buffer_head *bh = resize_lookup_bh(ctx, blk);
-+
-+	return bh && !memcmp(bh->b_data, src->b_data, src->b_size);
-+}
-+
-+/*
-+ * Test 9: ext4_resize_fs() on a file system without resize_inode, where a
-+ * single 64-group flex batch (groups 20..63) straddles s_first_meta_bg (2).
-+ * GDT blocks 0 and 1 use the traditional layout and must be backed up only
-+ * into sparse groups below 32 (including new groups 25 and 27); GDT blocks
-+ * 2 and 3 use the meta_bg layout and must be backed up into the second and
-+ * last group of their meta group, without scribbling over other blocks.
-+ */
-+static void test_resize_fs_flex_group_straddles_first_meta_bg(struct kunit *test)
-+{
-+	struct resize_test_ctx *ctx = test->priv;
-+	struct super_block *sb = ctx->sb;
-+	struct ext4_sb_info *sbi = &ctx->sbi;
-+	struct ext4_super_block *backup_es;
-+	struct buffer_head *gdb[4], *bh;
-+	ext4_fsblk_t target_blks;
-+	unsigned int i;
-+
-+	/* 20 groups: GDT block 0 full, GDT block 1 holds groups 16..19 */
-+	resize_configure_fs(test, 20, 0, 6, RESIZE_TEST_BLOCKS_PER_GRP);
-+	target_blks = RESIZE_TEST_FIRST_DATA_BLK +
-+		      64ULL * RESIZE_TEST_BLOCKS_PER_GRP;
-+
-+	KUNIT_ASSERT_EQ(test, ext4_resize_fs(sb, target_blks), 0);
-+	KUNIT_ASSERT_EQ(test, sbi->s_groups_count, 64U);
-+	KUNIT_ASSERT_EQ(test, sbi->s_gdb_count, 4UL);
-+	KUNIT_ASSERT_TRUE(test, ext4_has_feature_meta_bg(sb));
-+	KUNIT_ASSERT_EQ(test, le32_to_cpu(ctx->es->s_first_meta_bg), 2U);
-+
-+	for (i = 0; i < ARRAY_SIZE(gdb); i++)
-+		gdb[i] = sbi_array_rcu_deref(sbi, s_group_desc, i);
-+
-+	/* Traditional GDT backups in the new sparse groups 25 and 27 */
-+	KUNIT_EXPECT_TRUE(test, resize_blk_matches(ctx,
-+			  ext4_group_first_block_no(sb, 25) + 1, gdb[0]));
-+	KUNIT_EXPECT_TRUE(test, resize_blk_matches(ctx,
-+			  ext4_group_first_block_no(sb, 25) + 2, gdb[1]));
-+	KUNIT_EXPECT_TRUE(test, resize_blk_matches(ctx,
-+			  ext4_group_first_block_no(sb, 27) + 1, gdb[0]));
-+	KUNIT_EXPECT_TRUE(test, resize_blk_matches(ctx,
-+			  ext4_group_first_block_no(sb, 27) + 2, gdb[1]));
-+
-+	/* meta_bg descriptor backups in groups 33/47 and 49/63 */
-+	KUNIT_EXPECT_TRUE(test, resize_blk_matches(ctx,
-+			  ext4_group_first_block_no(sb, 33), gdb[2]));
-+	KUNIT_EXPECT_TRUE(test, resize_blk_matches(ctx,
-+			  ext4_group_first_block_no(sb, 47), gdb[2]));
-+	KUNIT_EXPECT_TRUE(test, resize_blk_matches(ctx,
-+			  ext4_group_first_block_no(sb, 49) + 1, gdb[3]));
-+	KUNIT_EXPECT_TRUE(test, resize_blk_matches(ctx,
-+			  ext4_group_first_block_no(sb, 63), gdb[3]));
-+
-+	/* Backup superblock in group 49 must not be overwritten */
-+	bh = resize_lookup_bh(ctx, ext4_group_first_block_no(sb, 49));
-+	KUNIT_ASSERT_NOT_NULL(test, bh);
-+	backup_es = (struct ext4_super_block *)bh->b_data;
-+	KUNIT_EXPECT_EQ(test, le16_to_cpu(backup_es->s_magic),
-+			EXT4_SUPER_MAGIC);
-+	KUNIT_EXPECT_EQ(test, le16_to_cpu(backup_es->s_block_group_nr), 49U);
-+
-+	/*
-+	 * Free blocks must not be written: the start of group 35 (meta_bg
-+	 * GDT block 2 treated as a traditional offset) and the block after
-+	 * group 49's meta_bg backup (traditional GDT block 1 copy).
-+	 */
-+	KUNIT_EXPECT_NULL(test, resize_lookup_bh(ctx,
-+			  ext4_group_first_block_no(sb, 35)));
-+	KUNIT_EXPECT_NULL(test, resize_lookup_bh(ctx,
-+			  ext4_group_first_block_no(sb, 49) + 2));
-+}
-+
- static struct kunit_case ext4_resize_test_cases[] = {
- 	KUNIT_CASE(test_resize_begin_and_end_guards),
- 	KUNIT_CASE(test_list_backups_and_verify_reserved_gdb),
-@@ -1321,6 +1400,7 @@ static struct kunit_case ext4_resize_test_cases[] = {
- 	KUNIT_CASE(test_group_add_with_resize_inode_and_backup_gdb),
- 	KUNIT_CASE(test_convert_meta_bg_validation_and_conversion),
- 	KUNIT_CASE(test_resize_fs_across_resize_inode_to_meta_bg),
-+	KUNIT_CASE(test_resize_fs_flex_group_straddles_first_meta_bg),
- 	{}
- };
- 
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 8bc79819ef16..a873527fbfd7 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -127,6 +127,17 @@ static ext4_grpblk_t ext4_group_overhead_blocks(struct super_block *sb,
- 	return overhead;
- }
- 
-+/*
-+ * Return true if group descriptor block @gdb_num uses the meta_bg layout
-+ * (stored in the first group of its meta block group) rather than the
-+ * traditional layout (stored right after the superblock).
-+ */
-+static bool ext4_gdb_is_meta_bg(struct super_block *sb, unsigned long gdb_num)
-+{
-+	return ext4_has_feature_meta_bg(sb) &&
-+	       gdb_num >= le32_to_cpu(EXT4_SB(sb)->s_es->s_first_meta_bg);
-+}
-+
- #define outside(b, first, last)	((b) < (first) || (b) >= (last))
- #define inside(b, first, last)	((b) >= (first) && (b) < (last))
- 
-@@ -538,13 +549,11 @@ static int setup_new_flex_group_blocks(struct super_block *sb,
- 	ext4_group_t group, count;
- 	struct buffer_head *bh = NULL;
- 	int reserved_gdb, i, j, err = 0, err2;
--	int meta_bg;
- 
- 	BUG_ON(!flex_gd->count || !group_data ||
- 	       group_data[0].group != sbi->s_groups_count);
- 
- 	reserved_gdb = le16_to_cpu(es->s_reserved_gdt_blocks);
--	meta_bg = ext4_has_feature_meta_bg(sb);
- 
- 	/* This transaction may be extended/restarted along the way */
- 	handle = ext4_journal_start_sb(sb, EXT4_HT_RESIZE, EXT4_MAX_TRANS_DATA);
-@@ -559,10 +568,14 @@ static int setup_new_flex_group_blocks(struct super_block *sb,
- 		gdblocks = ext4_bg_num_gdb(sb, group);
- 		start = ext4_group_first_block_no(sb, group);
- 
--		if (meta_bg == 0 && !ext4_bg_has_super(sb, group))
--			goto handle_itb;
--
--		if (meta_bg == 1)
-+		/*
-+		 * Only groups covered by the traditional GDT layout carry
-+		 * backups of the traditional GDT blocks; meta_bg descriptor
-+		 * blocks are handled by add_new_gdb_meta_bg() and
-+		 * update_backups().
-+		 */
-+		if (ext4_gdb_is_meta_bg(sb, group / EXT4_DESC_PER_BLOCK(sb)) ||
-+		    !ext4_bg_has_super(sb, group))
- 			goto handle_itb;
- 
- 		block = start + ext4_bg_has_super(sb, group);
-@@ -1159,6 +1172,15 @@ static void update_backups(struct super_block *sb, sector_t blk_off, char *data,
- 	if (meta_bg == 0) {
- 		group = ext4_list_backups(sb, &three, &five, &seven);
- 		last = sbi->s_groups_count;
-+		/*
-+		 * Superblock backups live in every backup group, but with
-+		 * meta_bg only the groups below s_first_meta_bg hold copies
-+		 * of the traditional GDT blocks.
-+		 */
-+		if (data != (char *)sbi->s_es && ext4_has_feature_meta_bg(sb))
-+			last = min_t(ext4_group_t, last,
-+				     le32_to_cpu(sbi->s_es->s_first_meta_bg) *
-+				     EXT4_DESC_PER_BLOCK(sb));
- 	} else {
- 		group = ext4_get_group_number(sb, blk_off) + 1;
- 		last = (ext4_group_t)(group + EXT4_DESC_PER_BLOCK(sb) - 2);
-@@ -1207,12 +1229,15 @@ static void update_backups(struct super_block *sb, sector_t blk_off, char *data,
- 			ext4_std_error(sb, err);
- 		brelse(bh);
- 
--		if (meta_bg == 0)
-+		if (meta_bg == 0) {
- 			group = ext4_list_backups(sb, &three, &five, &seven);
--		else if (group == last)
-+			if (group >= last)
-+				break;
-+		} else if (group == last) {
- 			break;
--		else
-+		} else {
- 			group = last;
-+		}
+ 	if (es->s_error_count)
+ 		/* fsck newer than v1.41.13 is needed to clean this condition. */
+@@ -3834,8 +3835,10 @@ void print_daily_error_info(struct timer_list *t)
+ 		printk(KERN_CONT "\n");
  	}
- 	if ((err2 = ext4_journal_stop(handle)) && !err)
- 		err = err2;
-@@ -1603,15 +1628,19 @@ static int ext4_flex_group_add(struct super_block *sb,
- 		int gdb_num = group / EXT4_DESC_PER_BLOCK(sb);
- 		int gdb_num_end = ((group + flex_gd->count - 1) /
- 				   EXT4_DESC_PER_BLOCK(sb));
--		int meta_bg = ext4_has_feature_meta_bg(sb) &&
--			      gdb_num >= le32_to_cpu(es->s_first_meta_bg);
--		sector_t padding_blocks = meta_bg ? 0 : sbi->s_sbh->b_blocknr -
--					 ext4_group_first_block_no(sb, 0);
  
- 		update_backups(sb, ext4_group_first_block_no(sb, 0),
- 			       (char *)es, sizeof(struct ext4_super_block), 0);
-+		/*
-+		 * A flex group may straddle s_first_meta_bg, so the layout
-+		 * of each descriptor block has to be checked separately.
-+		 */
- 		for (; gdb_num <= gdb_num_end; gdb_num++) {
- 			struct buffer_head *gdb_bh;
-+			int meta_bg = ext4_gdb_is_meta_bg(sb, gdb_num);
-+			sector_t padding_blocks = meta_bg ? 0 :
-+				sbi->s_sbh->b_blocknr -
-+				ext4_group_first_block_no(sb, 0);
+-	if (sbi->s_err_report_sec)
+-		mod_timer(&sbi->s_err_report, jiffies + secs_to_jiffies(sbi->s_err_report_sec));
++	err_report_sec = READ_ONCE(sbi->s_err_report_sec);
++	if (err_report_sec)
++		mod_timer(&sbi->s_err_report,
++			  jiffies + secs_to_jiffies(err_report_sec));
+ }
  
- 			gdb_bh = sbi_array_rcu_deref(sbi, s_group_desc,
- 						     gdb_num);
+ /* Find next suitable group and run ext4_init_inode_table */
+diff --git a/fs/ext4/sysfs-test.c b/fs/ext4/sysfs-test.c
+index eca33ff62508..cc59ee37f62c 100644
+--- a/fs/ext4/sysfs-test.c
++++ b/fs/ext4/sysfs-test.c
+@@ -497,6 +497,60 @@ static void test_validated_rw_attrs(struct kunit *test)
+ 			(ssize_t)-EINVAL);
+ }
+ 
++static void test_err_report_sec_timer(struct kunit *test)
++{
++	struct sysfs_test_ctx *ctx = test->priv;
++	struct ext4_sb_info *sbi = &ctx->sbi;
++	struct ext4_super_block *es = &ctx->es;
++	char *buf;
++
++	buf = kunit_kzalloc(test, PAGE_SIZE, GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, buf);
++
++	/* Mount-time default; no errors recorded yet */
++	sbi->s_err_report_sec = 86400;
++	es->s_error_count = 0;
++
++	/* Changing the interval on a clean fs must not arm the timer */
++	KUNIT_EXPECT_EQ(test,
++			ext4_sysfs_attr_store_test(sbi, "err_report_sec",
++						   "3600", 4),
++			(ssize_t)4);
++	KUNIT_EXPECT_EQ(test, sbi->s_err_report_sec, 3600UL);
++	KUNIT_EXPECT_FALSE(test, timer_pending(&sbi->s_err_report));
++
++	/* With recorded errors a new interval (re)arms the timer */
++	es->s_error_count = cpu_to_le32(1);
++	KUNIT_EXPECT_EQ(test,
++			ext4_sysfs_attr_store_test(sbi, "err_report_sec",
++						   "7200", 4),
++			(ssize_t)4);
++	KUNIT_EXPECT_EQ(test, sbi->s_err_report_sec, 7200UL);
++	KUNIT_EXPECT_TRUE(test, timer_pending(&sbi->s_err_report));
++
++	/* Writing 0 disables the timer and is reflected on read */
++	KUNIT_EXPECT_EQ(test,
++			ext4_sysfs_attr_store_test(sbi, "err_report_sec",
++						   "0", 1),
++			(ssize_t)1);
++	KUNIT_EXPECT_EQ(test, sbi->s_err_report_sec, 0UL);
++	KUNIT_EXPECT_FALSE(test, timer_pending(&sbi->s_err_report));
++	KUNIT_EXPECT_GT(test,
++			ext4_sysfs_attr_show_test(sbi, "err_report_sec", buf),
++			(ssize_t)0);
++	KUNIT_EXPECT_STREQ(test, buf, "0\n");
++
++	/* Re-enabling with the old value re-arms the existing timer */
++	KUNIT_EXPECT_EQ(test,
++			ext4_sysfs_attr_store_test(sbi, "err_report_sec",
++						   "7200", 4),
++			(ssize_t)4);
++	KUNIT_EXPECT_EQ(test, sbi->s_err_report_sec, 7200UL);
++	KUNIT_EXPECT_TRUE(test, timer_pending(&sbi->s_err_report));
++	KUNIT_EXPECT_TRUE(test,
++			  sbi->s_err_report.function == sysfs_test_err_timer);
++}
++
+ static void test_computed_ro_and_error_time_attrs(struct kunit *test)
+ {
+ 	struct sysfs_test_ctx *ctx = test->priv;
+@@ -661,6 +715,7 @@ static void test_sysfs_register_notify_and_unregister(struct kunit *test)
+ static struct kunit_case ext4_sysfs_test_cases[] = {
+ 	KUNIT_CASE(test_generic_pointer_attrs),
+ 	KUNIT_CASE(test_validated_rw_attrs),
++	KUNIT_CASE(test_err_report_sec_timer),
+ 	KUNIT_CASE(test_computed_ro_and_error_time_attrs),
+ 	KUNIT_CASE(test_feature_attrs_and_trigger_error),
+ 	KUNIT_CASE(test_sysfs_register_notify_and_unregister),
+diff --git a/fs/ext4/sysfs.c b/fs/ext4/sysfs.c
+index faa76f021099..0168ea6faac7 100644
+--- a/fs/ext4/sysfs.c
++++ b/fs/ext4/sysfs.c
+@@ -134,6 +134,7 @@ static ssize_t trigger_test_error(struct ext4_sb_info *sbi,
+ static ssize_t err_report_sec_store(struct ext4_sb_info *sbi,
+ 				    const char *buf, size_t count)
+ {
++	static DEFINE_MUTEX(err_report_sec_mutex);
+ 	unsigned long t;
+ 	int ret;
+ 
+@@ -145,19 +146,23 @@ static ssize_t err_report_sec_store(struct ext4_sb_info *sbi,
+ 	if (t > (365*24*60*60))
+ 		return -EINVAL;
+ 
++	mutex_lock(&err_report_sec_mutex);
+ 	if (sbi->s_err_report_sec == t)		/*nothing to do*/
+ 		goto out;
+-	else if (!sbi->s_err_report_sec && t) {
+-		timer_setup(&sbi->s_err_report, print_daily_error_info, 0);
+-	} else if (sbi->s_err_report_sec && !t) {
+-		timer_delete_sync(&sbi->s_err_report);
+-		goto out;
+-	}
+ 
+-	sbi->s_err_report_sec = t;
+-	mod_timer(&sbi->s_err_report, jiffies + secs_to_jiffies(sbi->s_err_report_sec));
++	WRITE_ONCE(sbi->s_err_report_sec, t);
++	/*
++	 * The timer is initialized at mount time.  Only (re)arm it if errors
++	 * have been recorded; otherwise ext4_update_super() will start it
++	 * when the first error is written to the superblock.
++	 */
++	if (!t)
++		timer_delete_sync(&sbi->s_err_report);
++	else if (sbi->s_es->s_error_count)
++		mod_timer(&sbi->s_err_report, jiffies + secs_to_jiffies(t));
+ 
+ out:
++	mutex_unlock(&err_report_sec_mutex);
+ 	return count;
+ }
+ 
 -- 
 2.56.1.708.g77570a6a1d-goog
 
