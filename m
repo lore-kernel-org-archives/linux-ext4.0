@@ -1,60 +1,60 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=18.9.28.11
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795115861;
-	b=HGQwAtvp9wFoP24UFG4cPc9oe02gF5wO0db/Xxa8aHRD/+uVxbzOzg7Kaubrd6m0JPC7
-	 lWd7894CGgYNxiFkMkT1VnoL3RT6EIYqS9+gnJbbXRyCye/PuZHuZfraH8cFalSoe10sl
-	 5IPu214PXCaQyohJl4ADbuxk7MucUy2IRMy9eeIXmrJsXescAgtnHCBT08qDbT8W1BMbC
-	 nzk9RpDfGjXN8Ef0+2icNvc11rN09hS4mAxnoivcvZkolh8G8Ye6iqie/Ofmg3i0OJn/f
-	 UOtTaCuMLegoj4dhot50BekXLzVln+0RBCS+E46EtFI00Z23H5ib406mOFDKDcic8bA==
+	t=1795115856;
+	b=0RZW3cuKDx7kmbJa6e8znPeIkTpinJPdGK6ldo6himo/HZyc9fLaQTRza2K0ib0rzb9z
+	 3AKHKE/FW3dfTLffno0smry2UMslRVlhtozWyUIreWbmZDH+Uopc5lcGbI6BhH88LDahA
+	 xoMkZpQYrL5dGhU0qrmcxhUH63hMrjric5ZbriEHeAeCZZCRW9Bvi98jpalGR0+gbmXm2
+	 pDAW1ZVndiBqBIHIdy4eRvhc5gCr0SwWI6Twxq+pklmA+pz8tqtkQcSRvRO2DH3TsybZI
+	 s6X7u9U8hG8vXPZY7K5vkGArxYDL8P22JTwGOWkZ9qzajsQL/P+u3YqmWSu9CzvPZBA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795115861;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795115856;
 	h=DMARC-Filter:Received:DKIM-Signature:Received:From:To:Cc:Subject:
 	 Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
 	 Content-Transfer-Encoding;
-	bh=PYiHILN7SYqv6sI1xtSxUBgaGu0DU2ji/9lWpxyYZ/E=;
-	b=z69oQm+J9b+qBf9MOzZlqhCFy+WZPFwqgbXjTTGn8MZu17A/vXTOJ+w6mXytEcU1WEBG
-	 8/ibAAVGbUbDAYtvFRUPz3tvWNgi2w2s/pRlRt/HrnOjBVVWW6oK+Y/MQxgxNIQ5Y99Gp
-	 Ler8lWFnKe9dMxXbral/TsspNO7lHVPYbHoAPdtZj+HHYhjCB82cBv29T2DdXPaLZy7/J
-	 T2qnlQ5FGOMRkC8P4ZfXuELWTbPpQ+eKx3LS3wj0I0czXuOupOmH4uyLNe5BEXHADaFf/
-	 jZnjSkKe41npnCSjzQTYdkR4gTI6nuB4EnDt9pkXZZqcwhqGM7URM+kdlNSCUyakQ2w==
+	bh=o3XKI8i908VKkeetL/DAar4dDIvKFbOtTV96EVPtR1M=;
+	b=LUPdBDR4RfDs6cA9cFp9YX/rK3QtH9eKue6GabbaoH87BGoX1a89DYysFaJ6Urpbf/un
+	 rxpKertHGDU0WTxNv6AtbJeuHZOHlDz/qsJsB65q8fTeRxWtGycvk5DdBiNLL3h/GA7Va
+	 gT2vY0gKY2tI3Bl0qtzxB5eLA10F/8Bgv/hEZ7U+7dwjOgsKs2hzr9LAUCJEn1mvunwGR
+	 jJuIFexlw7Bit8w8KZRjcFU3HIoEnFD9DSh1bEO5QjJKZm5lbII/Uc75AS9t4/MQxnwLo
+	 Hoq81aAKBK7psd/TUEDEt5lbfgrEucyQRkIy0xnd82VotMC1/sy1rwhOi+EjKYlEvTg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=mit.edu;
 	spf=pass smtp.mailfrom=mit.edu;
-	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=FJmapUvK;
+	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=pw+HaD4I;
 	arc=none smtp.remote-ip=18.9.28.11
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 04A3F606A32C
-	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2026 19:17:40 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 04A3F606A32C
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E945F606A326
+	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2026 19:17:34 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org E945F606A326
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=FJmapUvK
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=pw+HaD4I
 Received: from trampoline.thunk.org (pool-173-48-114-214.bstnma.fios.verizon.net [173.48.114.214])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AJJHYBO029974
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AJJHVeE029821
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 19 Nov 2026 14:17:34 -0500
+	Thu, 19 Nov 2026 14:17:32 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1795115855; bh=PYiHILN7SYqv6sI1xtSxUBgaGu0DU2ji/9lWpxyYZ/E=;
+	t=1795115852; bh=o3XKI8i908VKkeetL/DAar4dDIvKFbOtTV96EVPtR1M=;
 	h=From:Subject:Date:Message-ID:MIME-Version;
-	b=FJmapUvKBn1G+CNle5Fy8rZHjnln7FlsY0T6KJaa9lGywPdMY4OXG+cG+7deNbM+a
-	 OIerOQB3rSJoRiKlfKK8jDd8VEEIiNVLJvO71I3f8GXwjZnKOdFgbQgyeKf1zFOM8H
-	 dNsBLa69AENwvEsCOZ2xyPba1c4nNSN7tiP3tc8PwJmv+bBNUHXzqLX4H0P6cl9eQd
-	 mUQfGbImQelFWmmZjif+sNqsFfIEDus1mCF/fnqjXIyZ9MqPssGufeEEu1ogIaIRus
-	 M4AIeCsFjC0aKdUHgzEuGHCoLN06k6QGWWKEUy9ZR+LuMQtH3D72K4jINBuNlAIpgj
-	 Za7PkofEGJlWw==
+	b=pw+HaD4I1RrBwrDUWv3j+falEW1C9dogO23fO1UcYT87ce1ebsputZJYcu0L0BuJ7
+	 q/Oh3PLS/FHpaamSelc1HN8vqkbIvKYbTLcKOYRYRIeNFToOpzw9WnP1qXof0nDkZ7
+	 8Md/bsIhtpKkthsN7ysSfhutsPT/bUHsYMNbKUqSLqdxAXYM+sssfiFHt/7WZQlIZ9
+	 pdK72TquQ1GIeyxkhVZs7YGm4uQbo4VmmPe0KnVxhwX7l0ot0nfbtv0G5XAaJPtONz
+	 TFXLrhIQaor9DgeA0W3Zc803yZW1etFpHD/W40pNmfP/vYWbWKtz66ccDO7cH72HAG
+	 110zsgnDqKtsg==
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id 5E1EC2E015D; Thu, 19 Nov 2026 14:17:31 -0500 (EST)
+	id 1DB232E0146; Thu, 19 Nov 2026 14:17:31 -0500 (EST)
 From: "Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, stable@kernel.org
-Subject: [PATCH -v2 24/32] ext4: propagate cache flush errors from ext4_fc_replay_inode()
-Date: Thu, 19 Nov 2026 14:17:11 -0500
-Message-ID: <20261119191719.1943298-25-tytso@mit.edu>
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Subject: [PATCH -v2 04/32] ext4: persist the htree hash seed when enabling dir_index online
+Date: Thu, 19 Nov 2026 14:16:51 -0500
+Message-ID: <20261119191719.1943298-5-tytso@mit.edu>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <20261119191719.1943298-1-tytso@mit.edu>
 References: <20261119191719.1943298-1-tytso@mit.edu>
@@ -69,130 +69,161 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-ext4_fc_replay_inode() writes the replayed on-disk inode and then
-flushes the file system device's cache, but it ignores the result of the
-flush.  If the flush fails, fast commit replay reports success even
-though the replayed inode may not have reached stable storage, and
-journal recovery completes as if the inode had been replayed.
+When EXT4_IOC_SET_TUNE_SB_PARAM enables the dir_index feature,
+ext4_validate_tune_sb_params() generates a random sbi->s_hash_seed if
+the current one is all zeroes, and picks the hash signedness in
+sbi->s_hash_unsigned.  However, ext4_sb_setparams() only copies
+s_def_hash_version to the superblocks; the hash seed and the
+EXT2_FLAGS_{UNSIGNED,SIGNED}_HASH flag are never written out.
 
-Return the error from ext4_fc_issue_flush() so that a failed flush
-aborts the replay.
+Any directory converted to an htree before the next unmount has its
+names hashed with the random in-memory seed.  After a remount the seed
+is reloaded from the (still all-zero) on-disk superblock, so lookups in
+those directories compute different hashes and fail with -ENOENT, and
+new entries are inserted into the wrong leaf blocks.
 
-The other ignored cache flush errors, in ext4_init_inode_table() and in
-ext4_fc_perform_commit(), have been fixed by
-commit baf9a298bdd7 ("ext4: check return value of blkdev_issue_flush()
-when initializing inode tables") and
-commit 49ac01dd7d43 ("ext4: check return value of blkdev_issue_flush()
-when starting a fast commit").
+In addition, if the superblock already has EXT2_FLAGS_UNSIGNED_HASH
+set (e.g. it was created by mke2fs on an unsigned-char platform with
+dir_index disabled), sbi->s_hash_unsigned is left at 0, so names
+containing bytes >= 0x80 are hashed differently than they will be
+after the next mount, which honors the flag.
 
-Extend ext4_fast_commit_test to verify that a flush failure during
-inode replay is propagated, and that a flush failure before fast commit
-blocks are written to an external journal falls back to a full commit.
-Make the lazy inode table zeroing test in ext4_ialloc_test check that
-the barrier flag is passed down to ext4_itable_zeroout().
+Write the hash seed and, if neither flag is present, the signedness
+flag matching sbi->s_hash_unsigned to the primary and backup
+superblocks, and set sbi->s_hash_unsigned from an existing
+EXT2_FLAGS_UNSIGNED_HASH flag just like ext4_fill_super() does.
 
-Fixes: 8016e29f4362 ("ext4: fast commit recovery path")
-Cc: stable@kernel.org
+The in-memory values are still set up before the superblocks are
+updated, since htree directories may be created as soon as the
+feature bit is visible in the primary superblock.
+
+Fixes: 04a91570ac67 ("ext4: implemet new ioctls to set and get superblock parameters")
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/fast_commit-test.c | 28 +++++++++++++++++++++++++++-
- fs/ext4/fast_commit.c      |  2 +-
- fs/ext4/ialloc-test.c      |  5 +++--
- 3 files changed, 31 insertions(+), 4 deletions(-)
+ fs/ext4/ioctl-test.c | 60 ++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/ioctl.c      | 23 +++++++++++++----
+ 2 files changed, 78 insertions(+), 5 deletions(-)
 
-diff --git a/fs/ext4/fast_commit-test.c b/fs/ext4/fast_commit-test.c
-index 07cb9c043cd2..55b33f0d6e0a 100644
---- a/fs/ext4/fast_commit-test.c
-+++ b/fs/ext4/fast_commit-test.c
-@@ -117,6 +117,7 @@ struct fc_test_ctx {
- 	int fail_fc_get_buf_on_call;
- 	int fc_get_buf_calls;
- 	bool fail_fc_wait_bufs;
-+	int fail_fc_flush;
- 	int submit_inode_data_err;
- 
- 	unsigned int fc_submit_bh_calls;
-@@ -794,7 +795,7 @@ static int stub_fc_issue_flush(struct block_device *bdev)
- 
- 	ctx->fc_flush_calls++;
- 	ctx->last_flushed_bdev = bdev;
--	return 0;
-+	return ctx->fail_fc_flush;
+diff --git a/fs/ext4/ioctl-test.c b/fs/ext4/ioctl-test.c
+index 4e4a2abd5189..b564178b7d77 100644
+--- a/fs/ext4/ioctl-test.c
++++ b/fs/ext4/ioctl-test.c
+@@ -748,6 +748,65 @@ static void test_tune_sb_mount_opts_guard(struct kunit *test)
+ 	KUNIT_EXPECT_STREQ(test, (char *)es->s_mount_opts, "nodelalloc");
  }
  
- static int mock_submit_inode_data_buffers(struct jbd2_inode *jinode)
-@@ -1993,6 +1994,21 @@ static void test_fc_commit_paths(struct kunit *test)
- 	memcpy(&tl, ctx->fc_buf_data[1], EXT4_FC_TAG_BASE_LEN);
- 	KUNIT_EXPECT_EQ(test, le16_to_cpu(tl.fc_tag), (u16)EXT4_FC_TAG_INODE);
- 
-+	/* External journal flush failure falls back to full commit */
-+	{
-+		unsigned int failed_before = sbi->s_fc_stats.fc_failed_commits;
++/*
++ * Verify that enabling DIR_INDEX online persists the (possibly freshly
++ * generated) hash seed and the hash signedness flag to the superblock, and
++ * that an existing signedness flag in s_flags is honored in memory.
++ */
++static void test_tune_sb_dir_index_hash_state(struct kunit *test)
++{
++	struct ioctl_test_ctx *ctx = test->priv;
++	struct super_block *sb = ctx->sb;
++	struct ext4_sb_info *sbi = &ctx->sbi;
++	struct ext4_super_block *es = ctx->es;
++	struct ext4_tune_sb_params params;
++	__le32 hash_flags;
++	uuid_t uu;
++	int i;
 +
-+		ctx->fail_fc_flush = -EIO;
-+		ctx->fc_submit_bh_calls = 0;
-+		ext4_fc_track_inode(&ctx->handle, file1);
-+		KUNIT_EXPECT_EQ(test, ext4_fc_commit(&ctx->journal, 10), 0);
-+		KUNIT_EXPECT_EQ(test, atomic_read(&sbi->s_fc_subtid), 2);
-+		KUNIT_EXPECT_EQ(test, ctx->fc_submit_bh_calls, 0U);
-+		KUNIT_EXPECT_EQ(test, sbi->s_fc_stats.fc_failed_commits,
-+				failed_before + 1);
-+		ctx->fail_fc_flush = 0;
-+	}
++	memset(sbi->s_hash_seed, 0, sizeof(sbi->s_hash_seed));
++	memset(es->s_hash_seed, 0, sizeof(es->s_hash_seed));
++	sbi->s_def_hash_version = 0;
++	es->s_flags = 0;
 +
- 	ctx->journal.j_fs_dev = &ctx->bdev;
- }
- 
-@@ -2448,6 +2464,16 @@ static void test_fc_replay_inode_and_dentries(struct kunit *test)
- 		KUNIT_EXPECT_EQ(test, le32_to_cpu(de->inode),
- 				(u32)TEST_FILE2_INO);
- 		brelse(bh);
++	memset(&params, 0, sizeof(params));
++	params.set_flags = EXT4_TUNE_FL_FEATURES;
++	params.feature_compat = le32_to_cpu(es->s_feature_compat) |
++				EXT4_FEATURE_COMPAT_DIR_INDEX;
++	params.feature_incompat = le32_to_cpu(es->s_feature_incompat);
++	params.feature_ro_compat = le32_to_cpu(es->s_feature_ro_compat);
++	KUNIT_ASSERT_EQ(test, ext4_validate_tune_sb_params_test(sb, &params),
++			0);
++	ext4_sb_setparams_test(sbi, es, &params);
 +
-+		/* 3) Flush failure during INODE replay propagates -EIO */
-+		sbi->s_fc_replay_state.fc_replay_num_tags = 5;
-+		ctx->fail_fc_flush = -EIO;
-+		KUNIT_EXPECT_EQ(test,
-+				ext4_fc_replay_test(&ctx->journal,
-+						    &ctx->fc_bhs[0],
-+						    PASS_REPLAY, 0, 10),
-+				-EIO);
-+		ctx->fail_fc_flush = 0;
- 	}
- 
- 	ext4_fc_replay_cleanup(sb);
-diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
-index 9beb423b208f..d56c45ee0d61 100644
---- a/fs/ext4/fast_commit.c
-+++ b/fs/ext4/fast_commit.c
-@@ -2041,7 +2041,7 @@ static int ext4_fc_replay_inode(struct super_block *sb,
- out:
- 	iput(inode);
- 	if (!ret)
--		ext4_fc_issue_flush(sb->s_bdev);
-+		ret = ext4_fc_issue_flush(sb->s_bdev);
- 
- 	return ret;
- }
-diff --git a/fs/ext4/ialloc-test.c b/fs/ext4/ialloc-test.c
-index c68b60c95961..fede9fd0772d 100644
---- a/fs/ext4/ialloc-test.c
-+++ b/fs/ext4/ialloc-test.c
-@@ -2670,12 +2670,13 @@ static void ialloc_test_init_inode_table(struct kunit *test)
- 			   !!(le16_to_cpu(ctx->gdps[0].bg_flags) &
- 			      EXT4_BG_INODE_ZEROED));
- 
--	/* 7. Zeroout I/O failure (-EIO) and emergency RO (-EROFS) */
-+	/* 7. Zeroout/flush I/O failure (-EIO) and emergency RO (-EROFS) */
- 	ctx->gdps[3].bg_flags = cpu_to_le16(EXT4_BG_INODE_UNINIT);
- 	ctx->fail_itable_zeroout_err = -EIO;
--	err = ext4_init_inode_table(sb, 3, 0);
-+	err = ext4_init_inode_table(sb, 3, 1);
- 	ctx->fail_itable_zeroout_err = 0;
- 	KUNIT_EXPECT_EQ(test, err, -EIO);
-+	KUNIT_EXPECT_EQ(test, ctx->last_zeroout_barrier, 1);
- 	KUNIT_EXPECT_FALSE(test,
- 			   !!(le16_to_cpu(ctx->gdps[3].bg_flags) &
- 			      EXT4_BG_INODE_ZEROED));
++	KUNIT_EXPECT_TRUE(test, ext4_has_feature_dir_index(sb));
++	KUNIT_EXPECT_EQ(test, es->s_def_hash_version, DX_HASH_HALF_MD4);
++	memcpy(&uu, es->s_hash_seed, UUID_SIZE);
++	KUNIT_EXPECT_FALSE(test, uuid_is_null(&uu));
++	for (i = 0; i < ARRAY_SIZE(es->s_hash_seed); i++)
++		KUNIT_EXPECT_EQ(test, le32_to_cpu(es->s_hash_seed[i]),
++				sbi->s_hash_seed[i]);
++	hash_flags = es->s_flags & cpu_to_le32(EXT2_FLAGS_UNSIGNED_HASH |
++					       EXT2_FLAGS_SIGNED_HASH);
++	KUNIT_EXPECT_EQ(test, le32_to_cpu(hash_flags),
++			sbi->s_hash_unsigned ? EXT2_FLAGS_UNSIGNED_HASH :
++					       EXT2_FLAGS_SIGNED_HASH);
++
++	/* An existing unsigned-hash flag must be honored in memory */
++	ext4_clear_feature_dir_index(sb);
++	es->s_flags = cpu_to_le32(EXT2_FLAGS_UNSIGNED_HASH);
++	sbi->s_hash_unsigned = 0;
++	memset(&params, 0, sizeof(params));
++	params.set_flags = EXT4_TUNE_FL_EDIT_FEATURES;
++	params.set_feature_compat_mask = EXT4_FEATURE_COMPAT_DIR_INDEX;
++	KUNIT_ASSERT_EQ(test, ext4_validate_tune_sb_params_test(sb, &params),
++			0);
++	KUNIT_EXPECT_EQ(test, sbi->s_hash_unsigned, 3U);
++	ext4_sb_setparams_test(sbi, es, &params);
++	KUNIT_EXPECT_EQ(test, le32_to_cpu(es->s_flags),
++			EXT2_FLAGS_UNSIGNED_HASH);
++}
++
+ /*
+  * Verify ext4_update_backup_sb, ext4_update_superblocks_fn, and
+  * ext4_update_overhead across primary + 4 sparse_super backup groups (1, 3,
+@@ -1272,6 +1331,7 @@ static struct kunit_case ioctl_test_cases[] = {
+ 	KUNIT_CASE(test_sb_callbacks_and_setparams),
+ 	KUNIT_CASE(test_validate_tune_sb_params),
+ 	KUNIT_CASE(test_tune_sb_mount_opts_guard),
++	KUNIT_CASE(test_tune_sb_dir_index_hash_state),
+ 	KUNIT_CASE(test_update_superblocks_and_overhead),
+ 	KUNIT_CASE(test_update_backup_sb_bad_csum),
+ 	KUNIT_CASE(test_swap_inode_data_and_seed),
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 228afe4bc26b..2d985ac5e222 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -1392,8 +1392,20 @@ static void ext4_sb_setparams(struct ext4_sb_info *sbi,
+ 		es->s_feature_ro_compat &=
+ 			~cpu_to_le32(params->clear_feature_ro_compat_mask);
+ 		if (params->set_feature_compat_mask &
+-		    EXT4_FEATURE_COMPAT_DIR_INDEX)
++		    EXT4_FEATURE_COMPAT_DIR_INDEX) {
++			int i;
++
+ 			es->s_def_hash_version = sbi->s_def_hash_version;
++			for (i = 0; i < ARRAY_SIZE(es->s_hash_seed); i++)
++				es->s_hash_seed[i] =
++					cpu_to_le32(sbi->s_hash_seed[i]);
++			if (!(es->s_flags &
++			      cpu_to_le32(EXT2_FLAGS_UNSIGNED_HASH |
++					  EXT2_FLAGS_SIGNED_HASH)))
++				es->s_flags |= sbi->s_hash_unsigned ?
++					cpu_to_le32(EXT2_FLAGS_UNSIGNED_HASH) :
++					cpu_to_le32(EXT2_FLAGS_SIGNED_HASH);
++		}
+ 		if (params->set_feature_incompat_mask &
+ 		    EXT4_FEATURE_INCOMPAT_CSUM_SEED)
+ 			es->s_checksum_seed = cpu_to_le32(sbi->s_csum_seed);
+@@ -1490,10 +1502,11 @@ static int ext4_validate_tune_sb_params(struct super_block *sb,
+ 				sbi->s_def_hash_version = params->def_hash_alg;
+ 			else if (sbi->s_def_hash_version == 0)
+ 				sbi->s_def_hash_version = DX_HASH_HALF_MD4;
+-			if (!(es->s_flags &
+-			      cpu_to_le32(EXT2_FLAGS_UNSIGNED_HASH)) &&
+-			    !(es->s_flags &
+-			      cpu_to_le32(EXT2_FLAGS_SIGNED_HASH))) {
++			if (es->s_flags &
++			    cpu_to_le32(EXT2_FLAGS_UNSIGNED_HASH)) {
++				sbi->s_hash_unsigned = 3;
++			} else if (!(es->s_flags &
++				     cpu_to_le32(EXT2_FLAGS_SIGNED_HASH))) {
+ #ifdef __CHAR_UNSIGNED__
+ 				sbi->s_hash_unsigned = 3;
+ #else
 -- 
 2.56.1.708.g77570a6a1d-goog
 
