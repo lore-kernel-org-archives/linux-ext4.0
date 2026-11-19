@@ -1,55 +1,55 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795104463;
-	b=09NLyOw9KcbNmGfVR068nGbMJ+JwLVKoV7cx3QXrPRIUQmWRr+YzG+YqFEuzAxuMNnqQ
-	 8Q2sr/sEaqAOdUzMYC/GUY4L5nqeqW3cJ0a8dBOkpdkksM4e+OGFfFvhFUdBGtrGz2DGI
-	 fQLP/DKdAD3KgD46Fg4yDunLgBjaIxjImIJmnuKmdwxDLj8VUYmtbgjfgxgXpSEUrjQe6
-	 uabfNNAVoJYKYCLCqVnqINebQbTv4tcyCAWwFCIJsXvsI6f24AWJakEafPo88xV6V3rl4
-	 7xchIxy4Vc/K3ql/2vboIwPht5s/w0w7C4QFuwM6jEL3jZFqD/KlxwjH4rraKGEzoUw==
+	t=1795104468;
+	b=Fi/LvumEuSKhcvLBXZ7BvBXv2A3h8I7AkPqD3tZEFAc0UUhi2Nu5sncaTbR6BgKrqu+I
+	 up6d7IkcuLPGIkqIfIpDJXhe+DmbO+4QEglIuEY8Bv7OsdqdQChLlowCGF0hk91GgIGps
+	 KRjK1Hbv4u5R8evLDsCRV3ymzYYn1kINzdUtvhXTZf6oY5DRqxtCLLQeqEDkxCT2nJG21
+	 vsBZJrDt1gFyf/LfDh3obOmutp0wW/oNPyhMOebm/44BmFsXExvrIJ/83kUbdJaZqCnyo
+	 lOSljlOqocCbYKQSIMQLMcKX0fZv+8Uf8i/tqa/+K5vFdHVqDzwt0Gd0NVN4APDdegw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795104463;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795104468;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=VRBc/nCi1pgNYE+BwetpSuuHYEEODOCwLpvXPeSd83Q=;
-	b=R57U3R1wayuCJonY4RRbGsIO9zNNx7otlTpcwSdUni27MW5V1V7qjcWHcMrotgGffXO6
-	 /XGNwSI7Msh99rS5klozilTKywQ9d0598+EuzBEYvsM+hjVe7eH3D5vLn9/r8ShSo2kEd
-	 pszsoi9UYAcvkjvpOBGP2sjNN+0VHh5ZLJpdYa3LZp/dX0gKdnv5GAgYYaEiALWHMiNNF
-	 /JYCgvi8VdR2MaMR/ZRI3G+mrXh6AgwN9tFws5LilglKpyTXROuJE+K3tDVfnTSEviANE
-	 wsDjFE6P+MhU9YW0+HX+WOlh+4TgqqAuept12NIRLV/bT11OHDo4kCeK1V1z2s7hyog==
+	bh=Ex3SMmmeEtWDSrag0DUdYHez5Zt6239feZSMt+HvhZ4=;
+	b=3ZSSgEjTmUucUJS/hsuTLgD73DmjgvJMcjnqaU5dUOzho4bPXmcXGy50KlaZkEZCZAhq
+	 Q8yUG4an7QwbnWL+/stO0EMM8zsfqa/Qkg5lVncyg4thFOdrGV61UJzSsTPwGzRtdBXXG
+	 mBAypvTOuzit1wPzifog8gq+IXcBs+JHenJVhhC36851TQWyhJ6MR9iEX0eWE73vcjQbM
+	 GgDe9nPa1pq2dc0PaLeFVysMR5a3nrhLTzvvWefuYeUu9GixO3tv1awQa8+A/Tm4USpH0
+	 2SOkF1bZSpa1KxjBPYGit1Z9DgAwLGuJM/DnUIzeSYlAumWto4N75w1C398A4raPaBg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=D6GTScMh;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=D9vp1umE;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EDD36606A333
-	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2026 16:07:42 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 81A30606A324
+	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2026 16:07:48 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=D6GTScMh
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 677361F000C5;
-	Thu, 19 Nov 2026 16:07:42 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=D9vp1umE
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1B80F1F000C4;
+	Thu, 19 Nov 2026 16:07:48 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795104462;
-	bh=VRBc/nCi1pgNYE+BwetpSuuHYEEODOCwLpvXPeSd83Q=;
+	s=k20260515; t=1795104468;
+	bh=Ex3SMmmeEtWDSrag0DUdYHez5Zt6239feZSMt+HvhZ4=;
 	h=From:Subject:Reply-To:To:In-Reply-To:References:Date;
-	b=D6GTScMhUlDw7wpVqHypXAKiHVRix4Dr/hItXjp75PvA25l38KaowYqh+roTReb0i
-	 d8WecLH29UUGCFowdL29pnSqhxEBnUQxCV0WlD/ymalXA9mgbdxkO5CDr1beQM/0JK
-	 imVWZm6VoJxm5VsfJNF2dHyBptBDzE6BbdY40Nn1gZjwO5g1P5o6fQrgHm3J8eW8M7
-	 gGVg75fCYm2Bz4AtxJIIlBO9mx9QJLOXducCx2rw/J5Sm9ofTEYsm1kopl2v6eiqMq
-	 EzkesL6lnsytO8uiltH5ZdhHWca881lO6x61Uucto2fDQRgjM4onpm/idg357XtV+k
-	 iLIFrUvMA2rEA==
-Message-ID: <sashiko-outbox-223473@kernel.org>
+	b=D9vp1umEbO9TszDbpyI3/0dIl7YyKFAaHbbqEZ53dLuh4hPpJLUr0TOPXAgGuepah
+	 LJHcOyqKo/m0NFoneb9EILfDF6nLvhcSX1+v8uxZUnxhlU6QGiFdwvvCKX78ezll33
+	 7N+DuHrQrbT7jm9qOYjxBsJl+Uv2aGrh59iqKujv7uxRx6qgxoc3w0iwfY1UM0Toos
+	 IB/gSBH88XPe3DWjB9lzP5wEXN1Mu0U3IQPhuPlPN0gamDkybXMf16Vhv4NmbWB3E9
+	 vrJoa3FEcgYrKeHFMUURbw9UcYNpPVqkgPpOoC1F0o13mTnymJdAvgHuhbPKTxFZMR
+	 E+PbvAVLgq5MA==
+Message-ID: <sashiko-outbox-223474@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH -v2 06/26] ext4: add KUnit tests for fs/ext4/inline.c
+Subject: Re: [PATCH -v2 15/26] ext4: add KUnit tests for fs/ext4/super.c
 Reply-To: sashiko-reviews@lists.linux.dev
 To: =?utf-8?b?VGhlb2RvcmUgVHMnbw==?= <tytso@mit.edu>, "Ext4 Developers List" <linux-ext4@vger.kernel.org>
-In-Reply-To: <20261119155658.1940864-7-tytso@mit.edu>
+In-Reply-To: <20261119155658.1940864-16-tytso@mit.edu>
 References: <20261119155658.1940864-1-tytso@mit.edu>
- <20261119155658.1940864-7-tytso@mit.edu>
+ <20261119155658.1940864-16-tytso@mit.edu>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Thu, 19 Nov 2026 16:07:42 +0000
+Date: Thu, 19 Nov 2026 16:07:47 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -59,25 +59,29 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-> Add the ext4_inline_test KUnit test suite in fs/ext4/inline-test.c to
-> comprehensively exercise inline data operations for regular files,
-> symlinks, and directories in fs/ext4/inline.c without requiring a
-> mounted block device:
+> Add a KUnit test suite (ext4_super_test) covering superblock validation,
+> geometry checks, metadata checksums, mount options, overhead/statfs
+> accounting, and persistent error recording in fs/ext4/super.c:
 >=20
-> - Inline capacity and discovery (ext4_get_max_inline_size and
->   ext4_find_inline_data_nolock) across fresh inodes, inodes with zero
->   extra_isize or 128-byte inode size, inodes with coexisting user
->   xattrs in ibody, 0-byte and non-empty system.data xattrs, and
->   corrupted xattr entries (e_name_len overflow and non-zero
->   e_value_inum).
-> - Inline file creation, expansion, overwrite, and destruction
->   (ext4_try_to_write_inline_data, ext4_write_inline_data_end, and
->   ext4_destroy_inline_data) spanning i_block (< 60 bytes) and the
->   ibody system.data xattr (>=3D 60 bytes), short writes with failed-write
-> [ ... ]
-> Export the tested functions with EXPORT_SYMBOL_FOR_EXT4_TEST and add
-> KUNIT_STATIC_STUB_REDIRECT hooks for ext4_inline_getblk,
-> ext4_da_get_block_prep, and ext4_inode_journal_mode.
+> - Feature flag compatibility in ext4_feature_set_ok() and
+>   ext4_check_feature_compatibility() across RW/RO mounts, bigalloc
+>   constraints, Hurd creator-OS restrictions, DAX, and encryption levels.
+> - Inode, block-group, cluster-size, and directory hash initialization in
+>   ext4_inode_info_init(), ext4_block_group_meta_init(),
+>   ext4_handle_clustersize(), and ext4_hash_info_init().
+> - Filesystem geometry validation in ext4_check_geometry(), descriptor
+>   location arithmetic in descriptor_loc() (linear and meta_bg),
+>   superblock and group descriptor CRC16/CRC32C verification, descriptor
+>   overlap checks in ext4_check_descriptors(), and flex_bg counter
+>   aggregation in ext4_fill_flex_info() / ext4_alloc_flex_bg_array().
+> - Maximum file size helpers ext4_max_size() / ext4_max_bitmap_size(),
+>   stripe selection in ext4_get_stripe_size(), reserved cluster defaults
+>   in ext4_set_resv_clusters(), overhead calculation in count_overhead()
+>   and ext4_calculate_overhead(), and space reporting in ext4_statfs().
+> - Mount option defaults, parsing, consistency checks, remount guards,
+>   on-disk s_mount_opts parsing, and _ext4_show_options() formatting.
+> - Error translation, first/last error persistence in save_error_info(),
+>   and superblock state flushing in ext4_update_super().
 >=20
 > Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 
@@ -85,5 +89,5 @@ Sashiko has reviewed this patch and found no issues.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261119155658.1940=
-864-1-tytso@mit.edu?part=3D6
+864-1-tytso@mit.edu?part=3D15
 
