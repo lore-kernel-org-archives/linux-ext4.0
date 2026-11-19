@@ -1,143 +1,86 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=198.137.202.133
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.208.41
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795066550;
-	b=cn0W1Vgx1WEDC/P/3JiXGdsBrWz16qRJe/BuzanUn+IrQJM7965ceDTxvWS2ytRJjkdd
-	 cJincr9Nkh+uFG6yM7ZXusrKeCBHd6EmooDZIliOjHMPCQ/rtRKYIiuSem06Qqfc+oY8L
-	 SZVR95liUwjSwPZmpazuK7GrDUifovujNvi+4u6+ulpwQMFB90M3TbX1bgnqOnh4p9Nz9
-	 vtbOqib3F4yWdxdV62Gx90rauv7I2QFEkr3+2gLIyaf2xlJNuSC/pTOL1c2zyCPWldkVc
-	 hg2bg/MzwJrh6dVbalaoTfQA125aMNMBfrtMHct9HNInJnoGub46WRU7KMx9lJW4A4w==
+	t=1795076151;
+	b=jTt/HMzISQK+BOiU6mqeGDhcrE1Bax0aw13MoJwHGzWS6SgUO+G1LXz5pLrGTT17TLMN
+	 Qh61lvTM6vwmnTvkmn7MtZbSGwiwT6wkBKYT6/jhrfSIGdQ3tVEEafzdkTeFzN9tNvIRS
+	 b3CN9fapXW2+Dtk+auSS5+x/E1KIganTwFCqyrKFH01y5m6mDw/9uexZeKxC1edDeQ4nq
+	 6jjhOfM2fXnB7f6xp1QqQTsOJ8oxyJasFX0CqEE7NjQ1P3PPuBAlqax83Q+ltw9lfrGEY
+	 RR2WgXsWvSore3cjZsvW6nZ+EEeHsvcJMQ/g8YUMxRpsyXCsQ3HTIbJwarg3LoUDYvQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795066550;
-	h=DMARC-Filter:DKIM-Signature:Received:From:To:Cc:Subject:Date:
-	 Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
+	a=rsa-sha256; c=relaxed/relaxed; t=1795076151;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:Message-ID:Date:
+	 MIME-Version:User-Agent:Content-Language:To:From:Subject:Content-Type:
 	 Content-Transfer-Encoding;
-	bh=iUfRRM/uSWL5Pu2WYkuG9ZMjaMjQfW5Ts9TmnI1Vtsg=;
-	b=KnqcR6+2WKEpOABO2y5Ha9ImyUGpDPbdoNJdIRH+3BaoCQUx4c+tpAL/AHtkTWOD061H
-	 6emTTcvdgaeEkg7Ilp7Qx52P5SflEDVnHoQ8lAb7Db+Eo0YxSIhcuD4J8u26uUkzkVnGh
-	 CcbBWw4g2G6BlOABRP+ZkbmWhkR62GWS3Y3xuJxRgTFDbelpid1CTjDR4FqF9LSBbQjXq
-	 rKBDTaNs/4q/toiRhhiWYUNKgW7yXUCfqkTQ6I7xOgid7L6neunlmVhIQepieVXDaHozT
-	 l0g3d8s+QlEWvE/bRfN+2mRALXSYVTg7o/ZBG1cxTNE4PLZnIXq+5Ht7Ys5fFmAA4zw==
+	bh=N+YjgwIoX4f73J3ZsRVql7hx9g3wjHCbxjGp0yS/4mo=;
+	b=tvwJGUE1EI0CqdnvJxy2qMknbWq5ss15RJ0fw+gvkRzDYw3XISOHRX+ksPNlNmbUsOqo
+	 S7tSxtwkGyh4EKm4oAuzvQVIixpyHsYr7I0oxsPzMB0fy+cAgKJJHny5Wn4MJC/o1Zmyy
+	 tWiTOUS2sdAi82GoZzqETZVTtP4/KNLV84jWSxOz/n9CjSGyghmrEkukDeRzQ62dbuhIu
+	 QDAKi47Mvsr/sff5b3jgzenLJKVsiKg4a5l3MHb4jDtd+8OfAGQxhL72m7ZvNbNZdhsp8
+	 wlYoH7mjjgrlX3q8rhelRQyhSJ0v3EzZq1C6UGIwtmV4+B0khv1rSWUUHtFVw13EVkw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=infradead.org;
-	spf=pass smtp.mailfrom=infradead.org;
-	dkim=pass header.d=infradead.org header.i=@infradead.org header.a=rsa-sha256 header.s=bombadil.20210309 header.b=DGrnyfoW;
-	arc=none smtp.remote-ip=198.137.202.133
-Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	dmarc=pass header.from=gmail.com;
+	spf=pass smtp.mailfrom=gmail.com;
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=GUF1mBZi;
+	arc=none smtp.remote-ip=209.85.208.41
+Received: from mail-ed1-f41.google.com (mail-ed1-f41.google.com [209.85.208.41])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B7AC5606A326;
-	Thu, 19 Nov 2026 05:35:49 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org B7AC5606A326
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=infradead.org
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 45625606A32C
+	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2026 08:15:50 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 45625606A32C
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.a=rsa-sha256 header.s=bombadil.20210309 header.b=DGrnyfoW
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
-	MIME-Version:References:In-Reply-To:Message-ID:Date:Subject:Cc:To:From:Sender
-	:Reply-To:Content-Type:Content-ID:Content-Description;
-	bh=iUfRRM/uSWL5Pu2WYkuG9ZMjaMjQfW5Ts9TmnI1Vtsg=; b=DGrnyfoWAgDY4gTArjK85mpfLP
-	YUa39SWVXYFn/eK72WXlCXA9uuRyagIyIF1woWS4EdttvevIcGfjAAhDfNPyAIOfoJJ+XfJxm4mGT
-	bVkFVA7u20Klegz+Ue9YMX8fmqu38qLzw2l6Mvo1BQyhyJJNtM+c9MxognTzcG7V8vEGldl3RnhKr
-	KabGWOjeEC+yc7jJcccxprvCsyDQXoRtyIJIBftIP+C4EOe7n7gE7b/kw0/j0BAuO6DMIZSJhfRCO
-	H9dGPqwbToDijcg/PKpXyVcYExVa/obX176QmbjEtCpmdJ0iCHZ5xvENNH0DXE2DbvWCAV55csStZ
-	hDSDSL3g==;
-Received: from [50.53.43.113] (helo=bombadil.infradead.org)
-	by bombadil.infradead.org with esmtpsa (Exim 4.100.1 #2 (Red Hat Linux))
-	id 1xTuoG-0000000Aufu-2x6D;
-	Thu, 19 Nov 2026 05:35:48 +0000
-From: Randy Dunlap <rdunlap@infradead.org>
-To: linux-kernel@vger.kernel.org
-Cc: Randy Dunlap <rdunlap@infradead.org>,
-	Jonathan Corbet <corbet@lwn.net>,
-	Shuah Khan <skhan@linuxfoundation.org>,
-	linux-doc@vger.kernel.org,
-	David Hildenbrand <david@kernel.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Jason Gunthorpe <jgg@nvidia.com>,
-	Leon Romanovsky <leonro@nvidia.com>,
-	linux-mm@kvack.org,
-	Jaroslav Kysela <perex@perex.cz>,
-	Takashi Iwai <tiwai@suse.com>,
-	linux-sound@vger.kernel.org,
-	Jens Axboe <axboe@kernel.dk>,
-	linux-block@vger.kernel.org,
-	Marcel Holtmann <marcel@holtmann.org>,
-	Luiz Augusto von Dentz <luiz.dentz@gmail.com>,
-	linux-bluetooth@vger.kernel.org,
-	Willem de Bruijn <willemdebruijn.kernel@gmail.com>,
-	Jason Wang <jasowangio@gmail.com>,
-	David Heidelberg <david@ixit.cz>,
-	oe-linux-nfc@lists.linux.dev,
-	Chas Williams <3chas3@gmail.com>,
-	"David S. Miller" <davem@davemloft.net>,
-	Eric Dumazet <edumazet@kernel.org>,
-	Jakub Kicinski <kuba@kernel.org>,
-	Paolo Abeni <pabeni@redhat.com>,
-	netdev@vger.kernel.org,
-	Helge Deller <deller@gmx.de>,
-	linux-fbdev@vger.kernel.org,
-	dri-devel@lists.freedesktop.org,
-	MPT-FusionLinux.pdl@broadcom.com,
-	"James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>,
-	"Martin K. Petersen" <mkp@kernel.org>,
-	linux-scsi@vger.kernel.org,
-	Miquel Raynal <miquel.raynal@bootlin.com>,
-	Richard Weinberger <richard@nod.at>,
-	Vignesh Raghavendra <vigneshr@ti.com>,
-	Zhihao Cheng <chengzhihao1@huawei.com>,
-	linux-mtd@lists.infradead.org,
-	Neill Kapron <nkapron@google.com>,
-	Andrey Konovalov <andreyknvl@gmail.com>,
-	Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-	linux-usb@vger.kernel.org,
-	Juergen Gross <jgross@suse.com>,
-	Stefano Stabellini <sstabellini@kernel.org>,
-	xen-devel@lists.xenproject.org,
-	Hans de Goede <hansg@kernel.org>,
-	Arnd Bergmann <arnd@arndb.de>,
-	"Michael S. Tsirkin" <mst@redhat.com>,
-	=?UTF-8?q?Eugenio=20P=C3=A9rez?= <eperezma@redhat.com>,
-	Sean Christopherson <seanjc@google.com>,
-	Paolo Bonzini <pbonzini@redhat.com>,
-	kvm@vger.kernel.org,
-	virtualization@lists.linux.dev,
-	Jan Kara <jack@suse.cz>,
-	linux-fsdevel@vger.kernel.org,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org,
-	Mike Marshall <hubcap@omnibond.com>,
-	devel@lists.orangefs.org,
-	Paulo Alcantara <pc@manguebit.org>,
-	Namjae Jeon <linkinjeon@kernel.org>,
-	linux-cifs@vger.kernel.org,
-	Jaegeuk Kim <jaegeuk@kernel.org>,
-	Chao Yu <chao@kernel.org>,
-	linux-f2fs-devel@lists.sourceforge.net,
-	Florian Fainelli <florian.fainelli@broadcom.com>,
-	Broadcom internal kernel review list <bcm-kernel-feedback-list@broadcom.com>,
-	Tzung-Bi Shih <tzungbi@kernel.org>,
-	Benson Leung <bleung@chromium.org>,
-	David Airlie <airlied@gmail.com>,
-	Simona Vetter <simona@ffwll.ch>,
-	Alex Deucher <alexander.deucher@amd.com>,
-	=?UTF-8?q?Christian=20K=C3=B6nig?= <christian.koenig@amd.com>,
-	amd-gfx@lists.freedesktop.org,
-	Jani Nikula <jani.nikula@linux.intel.com>,
-	Joonas Lahtinen <joonas.lahtinen@linux.intel.com>,
-	Rodrigo Vivi <rodrigo.vivi@intel.com>,
-	Tvrtko Ursulin <tursulin@ursulin.net>,
-	intel-gfx@lists.freedesktop.org,
-	Matthew Brost <matthew.brost@intel.com>,
-	=?UTF-8?q?Thomas=20Hellstr=C3=B6m?= <thomas.hellstrom@linux.intel.com>,
-	intel-xe@lists.freedesktop.org
-Subject: [PATCH v2 11/12] docs: ioctl-number: update platform entries
-Date: Wed, 18 Nov 2026 21:35:12 -0800
-Message-ID: <20261119053514.255348-12-rdunlap@infradead.org>
-X-Mailer: git-send-email 2.56.1
-In-Reply-To: <20261119053514.255348-1-rdunlap@infradead.org>
-References: <20261119053514.255348-1-rdunlap@infradead.org>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=GUF1mBZi
+Received: by mail-ed1-f41.google.com with SMTP id 4fb4d7f45d1cf-6b87a1a2babso1262058a12.0
+        for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2026 00:15:50 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20260707; t=1795076148; x=1795680948; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:subject:from:to
+         :content-language:user-agent:mime-version:date:message-id:from:to:cc
+         :subject:date:message-id:reply-to:content-type;
+        bh=N+YjgwIoX4f73J3ZsRVql7hx9g3wjHCbxjGp0yS/4mo=;
+        b=GUF1mBZiNF1OqK+J55vBXprtZfIP+o8Eymoc3yEKhCFSg48FFha7YYaHnvkk50VP2z
+         yYqX27avD3a4DAcNSAtlkDrCaqfasX+82rDzToft8fX292dkzrKlr/Ml03nuW0Epb+Xb
+         vN72+GZu2NFsPBXkDazh2m5juWwi7HN3pW2HNUv1ZEn/AaFSRJdt+X1WwiyjkHowFycL
+         1lomiwklO1Dadtnzqqrd8esB3gAksARhDgDeLG5I6zp+pcbL4JvMcdzKPzdUI5dYbaVp
+         Bzp1WQgNzOJ6ewYQP0Qhlx0Wdl6twRZfG0hXvj8kr3LGAhXnJnC+KiRp/VwU2S8tHz+D
+         50Qg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1795076148; x=1795680948;
+        h=content-transfer-encoding:content-type:subject:from:to
+         :content-language:user-agent:mime-version:date:message-id:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=N+YjgwIoX4f73J3ZsRVql7hx9g3wjHCbxjGp0yS/4mo=;
+        b=VZtmygvde5IZu9QrCmEQ2PNcQJAJ/m+UVr1gfcDWppp2c5jguIa5fjZxNa/+Ou4aku
+         LiVgrl4OTY0LvrtGku+EqGqHJ4ztm+Go2ABu/ivUD8LAyBMIoFE1nBVPj2odxhOtceSZ
+         1oPVp7SN5ZW8HbXLK6tI9wKU+rOVZENYL3kg7buOO7gGKxAqiciaHiTQ6/BQ+hal94IV
+         Nbhsmm5dG4D9R+0qq3vxhdjjMRgb4bHUOZjkibYdkFgbG4B+ii9D0QgRMvWFZEKQT9+m
+         GB51DIWjJ4bT3oNVfrGIOkz4rqReYX5PlC+pPe6k9m8UmzYYxmU0iFhf0CHQaQL9N2q8
+         WSuA==
+X-Gm-Message-State: APuU4Z8f9BzB506Aj5q/hyex6xoId4o2Yqwu2PrjPhYVnAXALoRBa9en
+	aT1iu97G1IAnmW7iICnXQT2+MkrE37DyzUtNljDg5LIVDZPcqTQqBsPay+QRwg==
+X-Gm-Gg: AYBFou0uBAQqNkurHKYTsqpPqjVKYF9yMDa9IxVy7PTq29GoylqNhbVCEtPavMu5Qto
+	kb9NOULTeOFFgGuHJt5CgwzxzqiQtvX9EhDsJt7w87bA9jUQby1ZfggzMVgUHzwTa9PokStc4Nj
+	RSffnjI3/rkgBH7cE0etnCSLimpyi2Sk9HplgHTDXAHjfNJg9YiioQCCPzK0JhQZWU7zIWaR7LI
+	nJi/wV0xXrS9gzQFF4YZipo3p25AyoF9dUXgbs0vlv05r9BmiWlDqDQTx9zzqlHIz7jdQLQsQo6
+	DxDNiTA/7v6uLxTn0H+UYr4VWNf9r3gjKb6ydwZ5Sb8/Rm98DwhMmwZ39BB0OWrkag3G9SpEoOm
+	AS7f47TbC/Gi5p+7w0XIIuaL+5oPqotusNqmr9xtP2Zb1bSgJId/lh7wDoIq3FvYkYi7C93iNEc
+	0ztsByPDZmNdkie5Kuz5eaIG2hkXGE4xq3uAjbMaSGbL5Q/ZbcZi6gQ2hLAdtAz2F5Pcb/LsSQu
+	GIzM5IRODUs59sdiokt2Zqm6x3P6qej+gIvisoSc+E1w4Vx7YAm9XRT4mZ4wmwNLH0sXssxDhir
+	AOpVaRMTBipI8qs1kyWT12m7Z7+7WHmWYTjIErijD6bBTh7P4DKvpG5kZZvoou0C/BNcNyqkuw=
+	=
+X-Received: by 2002:aa7:c68f:0:b0:6ba:1355:1b3c with SMTP id 4fb4d7f45d1cf-6ba1fac0f05mr271267a12.16.1795076148377;
+        Thu, 19 Nov 2026 00:15:48 -0800 (PST)
+Received: from [192.168.11.2] ([195.66.73.202])
+        by smtp.gmail.com with ESMTPSA id 4fb4d7f45d1cf-6b888ef94a5sm2066084a12.4.2026.11.19.00.15.47
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Thu, 19 Nov 2026 00:15:47 -0800 (PST)
+Message-ID: <81b3f525-0d62-4a46-a0f3-77d54b11d847@gmail.com>
+Date: Thu, 19 Nov 2026 09:15:46 +0100
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -147,46 +90,122 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
+User-Agent: Mozilla Thunderbird
+Content-Language: pl, en-US
+To: linux-ext4@vger.kernel.org, stable@vger.kernel.org
+From: "Safe-Lock.NET Dawid Partyka" <internet.jejkowice@gmail.com>
+Subject: [REGRESSION] 6.1.192: NULL deref in ext4_mb_load_buddy_gfp() after,
+ dropping page cache (__filemap_get_folio() returns NULL, callers check
+ IS_ERR())
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 8bit
 
-Update the list of platform/ files where ioctls are defined and update
-the ranges of function numbers that are used.
+Hi,
 
-Signed-off-by: Randy Dunlap <rdunlap@infradead.org>
----
-v2: no change
+After updating from 6.1.190 to 6.1.192 I get a reproducible NULL pointer
+dereference in ext4_mb_load_buddy_gfp() whenever the buddy/bitmap pages of
+an ext4 group are not in the page cache.
 
-[Since having multiple maintainers trying to merge these would
-cause some conflicts, it would be more manageable for Jon to
-take all of these through the docs-next tree.]
+Reproducer (100% on 6.1.192, 100% OK on 6.1.190):
 
-Cc: Jonathan Corbet <corbet@lwn.net>
-Cc: Shuah Khan <skhan@linuxfoundation.org>
-Cc: linux-doc@vger.kernel.org
-Cc: Florian Fainelli <florian.fainelli@broadcom.com>
-Cc: Broadcom internal kernel review list <bcm-kernel-feedback-list@broadcom.com>
-Cc: Tzung-Bi Shih <tzungbi@kernel.org>
-Cc: Benson Leung <bleung@chromium.org>
+     sync; echo 1 > /proc/sys/vm/drop_caches
 
- Documentation/userspace-api/ioctl/ioctl-number.rst |    3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+The machine oopses immediately (panic_on_oops=1, so it reboots). It also
+happened without any manual action: a nightly cron job (rsync doing
+unlink()/rename() on an ext4 volume) hit the same oops at 04:45.
+I have not yet tested 6.1.191.
 
---- linux-next-20261116.orig/Documentation/userspace-api/ioctl/ioctl-number.rst
-+++ linux-next-20261116/Documentation/userspace-api/ioctl/ioctl-number.rst
-@@ -434,6 +434,7 @@ Code  Seq#    Include File
- 0xBA  00-0F  uapi/linux/liveupdate.h                                   Pasha Tatashin
-                                                                        <mailto:pasha.tatashin@soleen.com>
- 0xC0  00-0F  linux/usb/iowarrior.h
-+0xC4  00-1F  platform/raspberrypi/vchiq-interface/vchiq_ioctl.h
- 0xCA  00-0F  uapi/misc/cxl.h                                           Dead since 6.15
- 0xCA  10-2F  uapi/misc/ocxl.h
- 0xCA  80-BF  uapi/scsi/cxlflash_ioctl.h                                Dead since 6.15
-@@ -446,7 +447,7 @@ Code  Seq#    Include File
- 0xDD  00-3F                                                            ZFCP device driver see drivers/s390/scsi/
-                                                                        <mailto:aherrman@de.ibm.com>
- 0xE5  00-3F  linux/fuse.h
--0xEC  00-01  linux/platform_data/cros_ec_chardev.h                     ChromeOS EC driver
-+0xEC  00-02  linux/platform_data/cros_ec_chardev.h                     ChromeOS EC driver
- 0xEE  00-09  uapi/linux/pfrut.h                                        Platform Firmware Runtime Update and Telemetry
- 0xEF  00-0F  uapi/linux/ntfs.h                                         NTFS
- 0xF3  00-3F  drivers/usb/misc/sisusbvga/sisusb.h                       sisfb
+Setup: Dell PowerEdge R820, x86_64, ext4 on megaraid_sas, CONFIG_PREEMPT.
+Kernel is tainted (O) by out-of-tree modules (vboxdrv, xt_IPMARK), but
+neither appears in the trace.
+
+First oops (from the cron run, rsync doing unlink):
+
+   BUG: kernel NULL pointer dereference, address: 0000000000000000
+   Oops: 0000 [#1] PREEMPT SMP
+   CPU: 15 PID: 73107 Comm: rsync Tainted: G O 6.1.192 #1
+   Hardware name: Dell Inc. PowerEdge R820/066N7P, BIOS 2.7.0 01/07/2020
+   RIP: 0010:ext4_mb_load_buddy_gfp+0xbc/0x390 [ext4]
+   Code: 89 44 24 08 f7 3c 24 48 63 d8 89 54 24 0c ba 01 00 00 00 48 89 de
+   e8 b3 f3 70 e0 49 89 c7 48 3d 00 f0 ff ff 0f 87 3a 01 00 00 <48> 8b 00
+   a8 04 0f 84 24 01 00 00 49 8b 07 a8 01 0f 85 19 01 00 00
+   RAX: 0000000000000000 RBX: 00000000000003e4 ...
+   CR2: 0000000000000000
+   Call Trace:
+    ext4_free_blocks+0x3a7/0xb30 [ext4]
+    ext4_ext_remove_space+0x80f/0x1570 [ext4]
+    ext4_ext_truncate+0xb4/0xc0 [ext4]
+    ext4_truncate+0x310/0x480 [ext4]
+    ext4_evict_inode+0x308/0x720 [ext4]
+    evict+0x103/0x2b0
+    do_unlinkat+0x143/0x2f0
+    __x64_sys_unlink+0x3e/0x60
+    do_syscall_64+0x35/0x90
+
+A second rsync hit the same function via the allocation path
+(ext4_mb_regular_allocator <- ext4_mb_new_blocks <- ext4_ext_map_blocks <-
+ext4_writepages <- ext4_rename), different group (0x3fa vs 0x3e4), same RIP.
+The subsequent oopses were fallout (BSD accounting write from do_exit() into
+the already-broken ext4).
+
+Analysis:
+
+The diff 6.1.190 -> 6.1.192 of fs/ext4/mballoc.c converts bd_bitmap_page /
+bd_buddy_page to folios, with code like:
+
+     folio = __filemap_get_folio(inode->i_mapping, pnum, FGP_ACCESSED, 0);
+     if (IS_ERR(folio) || !folio_test_uptodate(folio) ||
+         folio_test_locked(folio)) {
+
+The decoded oops matches this: "cmp $0xfffff000,%rax; ja" is IS_ERR(),
+followed by "mov (%rax),%rax; test $4,%al" which is folio->flags /
+folio_test_uptodate() with RAX = 0.
+
+As far as I can tell, in 6.1.y __filemap_get_folio() still returns NULL on
+failure/miss; the conversion to ERR_PTR() came in a later release (I believe
+6.3). If so, the backport relies on semantics that do not exist in 6.1:
+   - fast path (FGP_ACCESSED, no FGP_CREAT): NULL on cache miss ->
+     IS_ERR(NULL) is false -> folio_test_uptodate(NULL) -> oops;
+   - slow path (FGP_CREAT) on allocation failure: NULL -> PTR_ERR(NULL) 
+is 0,
+     so ret = 0 and the function continues with a NULL folio;
+   - ext4_mb_get_buddy_page_lock(): IS_ERR(NULL) false -> folio->mapping
+     dereferenced.
+
+I verified the 6.1.192 source of __filemap_get_folio() returns NULL:
+<yes/no - please check with: grep -n -A70 '^struct folio 
+\*__filemap_get_folio' mm/filemap.c>
+
+Possible fix (UNTESTED unless noted below): either handle NULL explicitly at
+all six __filemap_get_folio() call sites in mballoc.c, or add a small
+wrapper that maps NULL to ERR_PTR(-ENOMEM) so the rest of the backported
+code works as written:
+
+     static struct folio *ext4_mb_get_folio(struct address_space *mapping,
+                     pgoff_t index, int fgp, gfp_t gfp)
+     {
+             struct folio *folio = __filemap_get_folio(mapping, index, 
+fgp, gfp);
+
+             return folio ? folio : ERR_PTR(-ENOMEM);
+     }
+
+(fgp is plain int in 6.1; fgf_t does not exist there.) For the fast-path
+lookup, -ENOMEM simply falls through to the FGP_CREAT slow path.
+<Tested with this wrapper: yes/no, result: ...>
+
+Please let me know what other information would help (full .config,
+tests on 6.1.191, etc.).
+
+Thanks,
+Safe-Lock.NET Dawid Partyka
+
+-- 
+Safe-Lock.NET - Dawid Partyka
+ul. Zebrzydowicka 137
+44-217 Rybnik
+NIP: PL6422786434, REGON: 276286525
+
+tel     +48 694 590 047
+serwis: +48 784 947 278
+
