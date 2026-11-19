@@ -1,52 +1,52 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=198.137.202.133
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795066530;
-	b=5jOD5lm+7mDID7ZIDR4jDI7l2APG6JG4xLHXk5eEAGaaqW7QPfznDKoBRvClHxx41hRu
-	 iCXO0IDlnSCsWSiVlyBrnf0iW1m/cV4dK4i/yPpbBT1WyIV13/6/+BMbYYRXHM4J8uxkE
-	 boQrtpB4cqBGoHAemkYBaK3mmLoJkWCHMoIzn31bnYfwvbdjGB4pL0ILxVmEPIoHadVOz
-	 C+iFhXxWJZOLzL287++FG5M1TykdMySlLPYnB1G96Ytk1BNnMn98IrxsvB8Bc2EIzqpLl
-	 Q0DC+a+SUZ6+z8cW3RIxDdZo3Az+VucRbGF1GwLqimcAkTQ/fBVUFS8fW8ZQisqh90A==
+	t=1795066538;
+	b=tiOQuNQZEKvmTePvoq7eQ1ND+oODhnYwt2hcgafU/Gs8+BVhiKCqwt5BLTbpVCkNgKDy
+	 EicVlk1B9+uFB4jFxDhg7jaAZmsohCngdMOdQFy8qowXiB8QDCtty09DGB7U49RAAeSn7
+	 9dvP44y4RN9ePRGlmrn9D5o5EvMx+wuOk1g4L2lUC2W82b0xr4PX7C3Vxb6k7feS/+AHM
+	 FE/h1oQzVol+yzfj+ZzEapNjuLGXCgQPu8GvLmMSochOVofibbk+8mvbKsJsAYV49grNK
+	 MPtD0qfpwkvgnLPqgDZT3JhWLiD6b9hT38o2xzYccCYin8L0CM7edqqL3HeAPhZwTDQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795066530;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795066538;
 	h=DMARC-Filter:DKIM-Signature:Received:From:To:Cc:Subject:Date:
 	 Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
 	 Content-Transfer-Encoding;
-	bh=+gOx2QgB+hpP7MCoJC2GHmTIyqlHXmH+VrhxZ+vlPAo=;
-	b=XbIJzsuoBlMeNEKMhcU+accqNDSDqiUyBCxnHQSiKuP5RopKa9kvTQgBrxMGnkRs0AEk
-	 1Tl8zgkfrHn4DjLz3xD5LR3ns3tlEcDHBOWShSn+fm8BXYzgBzAFd7Q0DY6cdtJJDANl+
-	 CP4sGioyYHjThXvY5z6oSQh8rpZus3EFeUBO+cO6PrcXn0w0FyE3TaL+LPAt2pEQzTuZs
-	 fHpCuVn7YSG5fbRP99qib10Y8NoTBnJAN9g9tyvkDE4kjVXskJk6YaZSNmyK/Q6ngR1m2
-	 fvq8kEXC8yK5SebPCKOmRCvbTyEsGFjomrGmLYBqnLaUF+whv1JmbXvPr+/BOw2o0xA==
+	bh=bp3l8rwDPkSKznuZqcxjKl6885TgLTXi4yzkCNzGJRw=;
+	b=pfGIQQWUbB4QlLqlrPPfXytmpuv/YQWdSIpZ07hJfNGNLBKEfPnfcPO5Wq5O/BZVxu2Q
+	 xbhJI8N1CuWQo9+tiFiGEZp3Fzgz8SrF5a1e/3KQAW6sKaWA1aShe67dz9ceIqAHkemeF
+	 yUI1W5xjP3/sy6NtzIt6iEFpER02/3XwqQhkqSF53zOOKDmBZ4gV/JT9HC9kEIkZ4us/W
+	 EM7SJBq9Lx0dBriE3QIPReF9KipMdGLHF7q3X4RTee2QDKA2ZPe33vXsE3ABIKbAcVMtb
+	 WxJGCL8AMqqP2m+59bRv2GIskLHxez9ikVfNR8tj5JYyNkNiPPnW5DdkuM0IXD2069w==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=infradead.org;
 	spf=pass smtp.mailfrom=infradead.org;
-	dkim=pass header.d=infradead.org header.i=@infradead.org header.a=rsa-sha256 header.s=bombadil.20210309 header.b=21KMvBVS;
+	dkim=pass header.d=infradead.org header.i=@infradead.org header.a=rsa-sha256 header.s=bombadil.20210309 header.b=a7dJOzVX;
 	arc=none smtp.remote-ip=198.137.202.133
 Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 327D760A2610;
-	Thu, 19 Nov 2026 05:35:30 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 327D760A2610
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9A37160A2610;
+	Thu, 19 Nov 2026 05:35:37 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 9A37160A2610
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.a=rsa-sha256 header.s=bombadil.20210309 header.b=21KMvBVS
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.a=rsa-sha256 header.s=bombadil.20210309 header.b=a7dJOzVX
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
 	d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
 	MIME-Version:References:In-Reply-To:Message-ID:Date:Subject:Cc:To:From:Sender
 	:Reply-To:Content-Type:Content-ID:Content-Description;
-	bh=+gOx2QgB+hpP7MCoJC2GHmTIyqlHXmH+VrhxZ+vlPAo=; b=21KMvBVS9aAPeZb830CX75Ewxo
-	Fjr6DfdpCfqdjhEX5skJdo7foilZqmV2B9PmG77H8NC5afT6ZjTxPHrXeGCKFebe0SAR4iRzIR5ep
-	o5kM6r3SbXA5dL5yRVpL6k6KB0QegmzeFYVbEJ+ZILDYyZhVuaO4fOzdY6V+FRAUFBLcch3KwXwhl
-	kUderx2xCE6O79W2uSLoOeV6OR7n86HJVEzR6RoX6RhgX89jZXUYDB061+3z0kRitcz8ftruckr9C
-	VuJahUVOUstXhGaBInVbk0vEx4f4otphkMuv1jd4qOmf60SzgqsUuKNvK9wKViqHMaMiODIi4fbzG
-	v8m772sA==;
+	bh=bp3l8rwDPkSKznuZqcxjKl6885TgLTXi4yzkCNzGJRw=; b=a7dJOzVXczfXW7dP1pQdgOXabl
+	T0lzpIGAB3rM4BqjplgBseKhONkiLo8FqjUjC/QeLtOEv1Fip7Bbg9rFvcPURlwylnMWRY0CpS/gv
+	JU5wUuCHK07Kd2uJzstOabVXyZt4lVxplH4grO2i0Fov9cE3snJQwplhvj1bAgYxpZKn2uuMCEksG
+	AEqoJVO3SCDTJYqtI6pdlYiu87NTCrn27queuBQpVaWEEtDQ4/KBC2+LoOVscqpeK5jjkQNZ/gjnG
+	dEOzIUzdnAi7f6M0OtHuWf8AhTPay2QWRe5zwdUlHnod8LdvXypaW4Mj5RRhyQEFTu5DHgX1YAaIh
+	vpjrd9Bw==;
 Received: from [50.53.43.113] (helo=bombadil.infradead.org)
 	by bombadil.infradead.org with esmtpsa (Exim 4.100.1 #2 (Red Hat Linux))
-	id 1xTunx-0000000Aufu-1gcz;
-	Thu, 19 Nov 2026 05:35:29 +0000
+	id 1xTuo2-0000000Aufu-2Ea3;
+	Thu, 19 Nov 2026 05:35:36 +0000
 From: Randy Dunlap <rdunlap@infradead.org>
 To: linux-kernel@vger.kernel.org
 Cc: Randy Dunlap <rdunlap@infradead.org>,
@@ -132,9 +132,9 @@ Cc: Randy Dunlap <rdunlap@infradead.org>,
 	Matthew Brost <matthew.brost@intel.com>,
 	=?UTF-8?q?Thomas=20Hellstr=C3=B6m?= <thomas.hellstrom@linux.intel.com>,
 	intel-xe@lists.freedesktop.org
-Subject: [PATCH v2 04/12] docs: ioctl-number: update networking entries
-Date: Wed, 18 Nov 2026 21:35:05 -0800
-Message-ID: <20261119053514.255348-5-rdunlap@infradead.org>
+Subject: [PATCH v2 06/12] docs: ioctl-number: update SCSI entries
+Date: Wed, 18 Nov 2026 21:35:07 -0800
+Message-ID: <20261119053514.255348-7-rdunlap@infradead.org>
 X-Mailer: git-send-email 2.56.1
 In-Reply-To: <20261119053514.255348-1-rdunlap@infradead.org>
 References: <20261119053514.255348-1-rdunlap@infradead.org>
@@ -149,14 +149,12 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Update the list of files where networking ioctls are defined and update
-the ranges of function numbers that are used.
+Update the list of files where SCSI ioctls are defined and update the
+ranges of function numbers that are used.
 
 Signed-off-by: Randy Dunlap <rdunlap@infradead.org>
 ---
-v2: address sashiko comments (duplicat bnep.h entry; missing its
-    "conflict" marker);
-    drop moderated mailing lists
+v2: no change
 
 [Since having multiple maintainers trying to merge these would
 cause some conflicts, it would be more manageable for Jon to
@@ -165,101 +163,30 @@ take all of these through the docs-next tree.]
 Cc: Jonathan Corbet <corbet@lwn.net>
 Cc: Shuah Khan <skhan@linuxfoundation.org>
 Cc: linux-doc@vger.kernel.org
-Cc: Marcel Holtmann <marcel@holtmann.org>
-Cc: Luiz Augusto von Dentz <luiz.dentz@gmail.com>
-Cc: linux-bluetooth@vger.kernel.org
-Cc: Willem de Bruijn <willemdebruijn.kernel@gmail.com>
-Cc: Jason Wang <jasowangio@gmail.com>
-Cc: David Heidelberg <david@ixit.cz>
-Cc: oe-linux-nfc@lists.linux.dev
-Cc: Chas Williams <3chas3@gmail.com>
-Cc: "David S. Miller" <davem@davemloft.net>
-Cc: Eric Dumazet <edumazet@kernel.org>
-Cc: Jakub Kicinski <kuba@kernel.org>
-Cc: Paolo Abeni <pabeni@redhat.com>
-Cc: netdev@vger.kernel.org
+Cc: MPT-FusionLinux.pdl@broadcom.com
+Cc: "James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>
+Cc: "Martin K. Petersen" <mkp@kernel.org>
+Cc: linux-scsi@vger.kernel.org
 
- Documentation/userspace-api/ioctl/ioctl-number.rst |   22 +++++++----
- 1 file changed, 14 insertions(+), 8 deletions(-)
+ Documentation/userspace-api/ioctl/ioctl-number.rst |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
 --- linux-next-20261116.orig/Documentation/userspace-api/ioctl/ioctl-number.rst
 +++ linux-next-20261116/Documentation/userspace-api/ioctl/ioctl-number.rst
-@@ -130,8 +130,9 @@ Code  Seq#    Include File
- 'A'   10-53  sound/core/pcm_compat.c                                   conflict!
- 'B'   00-1F  linux/cciss_ioctl.h                                       conflict!
- 'B'   00-0F  include/linux/pmu.h                                       conflict!
--'B'   C0-FF  advanced bbus                                             <mailto:maassen@uni-freiburg.de>
-+'B'   C0-FF  advanced bbus                                             conflict! <mailto:maassen@uni-freiburg.de>
- 'B'   00-0F  xen/xenbus_dev.h                                          conflict!
-+'B'   C8-D4  net/bluetooth/bnep/bnep.h                                 conflict! <mailto:linux-bluetooth@vger.kernel.org>
- 'C'   all    linux/soundcard.h                                         conflict!
- 'C'   00-68  sound/compress_offload.h                                  conflict!
- 'C'   01-2F  linux/capi.h                                              conflict!
-@@ -172,10 +173,9 @@ Code  Seq#    Include File
- 'H'   FC     sound/pci/asihpi/hpios.h                                  conflict!
- 'H'   00-0F  uapi/misc/habanalabs.h                                    conflict!
- 'H'   A0     uapi/linux/usb/cdc-wdm.h
--'H'   C0-F0  net/bluetooth/hci.h                                       conflict!
-+'H'   C0-F0  net/bluetooth/hci_sock.h                                  conflict!
- 'H'   C0-DF  net/bluetooth/hidp/hidp.h                                 conflict!
- 'H'   C0-DF  net/bluetooth/cmtp/cmtp.h                                 conflict!
--'H'   C0-DF  net/bluetooth/bnep/bnep.h                                 conflict!
- 'H'   F1     linux/hid-roccat.h                                        <mailto:erazor_de@users.sourceforge.net>
- 'H'   F8-FE  sound/firewire.h                                          conflict!
- 'I'   all    linux/isdn.h                                              conflict!
-@@ -219,11 +219,12 @@ Code  Seq#    Include File
- 'T'   all    linux/soundcard.h                                         conflict!
- 'T'   00-AF  sound/asound.h                                            conflict!
- 'T'   all    arch/x86/include/asm/ioctls.h                             conflict!
--'T'   C0-DF  linux/if_tun.h                                            conflict!
-+'T'   C0-E3  linux/if_tun.h                                            conflict!
- 'U'   all    sound/asound.h                                            conflict!
- 'U'   00-CF  linux/uinput.h                                            conflict!
- 'U'   00-EF  linux/usbdevice_fs.h
- 'U'   C0-CF  drivers/bluetooth/hci_uart.h
-+'U'   00     net/nfc/nci_core.h                                        conflict!
- 'V'   all    linux/vt.h                                                conflict!
- 'V'   all    linux/videodev2.h                                         conflict!
- 'V'   C0     linux/ivtvfb.h                                            conflict!
-@@ -242,8 +243,8 @@ Code  Seq#    Include File
- 'Z'   14-15  drivers/message/fusion/mptctl.h
- '['   00-3F  linux/usb/tmc.h                                           USB Test and Measurement Devices
-                                                                        <mailto:gregkh@linuxfoundation.org>
--'a'   all    linux/atm*.h, linux/sonet.h                               ATM on linux
--                                                                       <http://lrcwww.epfl.ch/>
-+'a'   all    linux/atm*.h, linux/sonet.h, linux/atmbr2684.h            ATM on linux
-+             linux/atmdev.h, net/atm/ioctl.c                           <http://lrcwww.epfl.ch/>
- 'b'   00-FF                                                            conflict! bit3 vme host bridge
-                                                                        <mailto:natalia@nikhefk.nikhef.nl>
- 'b'   00-0F  linux/dma-buf.h                                           conflict!
-@@ -264,6 +265,7 @@ Code  Seq#    Include File
- 'f'   00-0F  fs/ocfs2/ocfs2_fs.h                                       conflict!
- 'f'   13-27  linux/fscrypt.h
- 'f'   81-8F  linux/fsverity.h
-+'f'   7b-7c  arch/{alpha,mips,sh,xtensa}/include/uapi/asm/sockios.h
- 'g'   00-0F  linux/usb/gadgetfs.h
- 'g'   20-2F  linux/usb/g_printer.h
- 'g'   01-0F  mm/gup_test.h                                             conflict!
-@@ -308,8 +310,11 @@ Code  Seq#    Include File
- 'q'   80-FF  linux/telephony.h                                         Internet PhoneJACK, Internet LineJACK
-              linux/ixjuser.h                                           <http://web.archive.org/web/%2A/http://www.quicknet.net>
- 'r'   00-1F  linux/msdos_fs.h and fs/fat/dir.c
--'s'   all    linux/cdk.h
-+'s'   all    linux/cdk.h                                               conflict!
-+'s'   07-09  arch/{alpha,mips,sh,xtensa}/include/uapi/asm/sockios.h    conflict!
-+'s'   64-65  arch/sh/include/uapi/asm/sockios.h                        conflict!
- 't'   00-7F  linux/ppp-ioctl.h
-+'t'   46-4D  drivers/net/ppp/ppp_generic.c
- 't'   80-8F  linux/isdn_ppp.h
- 't'   90-91  linux/toshiba.h                                           toshiba and toshiba_acpi SMM
- 'u'   00-1F  linux/smb_fs.h                                            gone
-@@ -334,7 +339,8 @@ Code  Seq#    Include File
- '|'   80-9F  samples/                                                  Any sample and example drivers
- 0x80  00-1F  linux/fb.h
- 0x81  00-1F  linux/vduse.h
--0x89  00-06  arch/x86/include/asm/sockios.h
-+0x89  00-07  asm-generic/sockios.h
-+0x89  06-07  linux/sockios.h
- 0x89  0B-DF  linux/sockios.h
- 0x89  E0-EF  linux/sockios.h                                           SIOCPROTOPRIVATE range
- 0x89  F0-FF  linux/sockios.h                                           SIOCDEVPRIVATE range
+@@ -187,7 +187,7 @@ Code  Seq#    Include File
+ 'I'   40-4F  linux/mISDNif.h                                           conflict!
+ 'K'   all    linux/kd.h
+ 'L'   00-1F  linux/loop.h                                              conflict!
+-'L'   10-1F  drivers/scsi/mpt3sas/mpt3sas_ctl.h                        conflict!
++'L'   10-21  drivers/scsi/mpt3sas/mpt3sas_ctl.h                        conflict!
+ 'L'   E0-FF  linux/ppdd.h                                              encrypted disk device driver
+                                                                        <http://linux01.gwdg.de/~alatham/ppdd.html>
+ 'L'   35-38  arch/m68k/include/asm/fbio.h
+@@ -259,6 +259,7 @@ Code  Seq#    Include File
+ 'c'   00-7F  linux/comstats.h                                          conflict!
+ 'c'   00-7F  linux/coda.h                                              conflict!
+ 'c'   00-1F  linux/chio.h                                              conflict!
++'c'   08     drivers/scsi/ch.c                                         conflict!
+ 'c'   80-9F  arch/s390/include/asm/chsc.h                              conflict!
+ 'c'   A0-AF  arch/x86/include/asm/msr.h conflict!
+ 'd'   00-FF  linux/char/drm/drm.h                                      conflict!
