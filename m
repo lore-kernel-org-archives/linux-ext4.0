@@ -1,67 +1,67 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=18.9.28.11
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
 	t=1795099695;
-	b=X5RYFUHQtCFsYKgKOhqQAN43QJb+D/3aNQm152vCn6dDedyXMXLjbjHBaKzuV/wwdWIm
-	 uXVKUM/gOyde+FaP7kl9EiiIi2QbFgYMlhKDckbvXeZnMNqnXyn+1iKRyQZCQJejGW3Ua
-	 AyNn30t/oqHlolsG4KIgBgxCqCyNrmfTvM/oAYF2N3IQX0ahJXUY2sjUEheS7ZwcjeuaG
-	 arqSaUcRZOKwo5emkwDeSewOqwZniGWynhnDpQ7OvTi93h6sOmoDM1d5Wdjqj+1a7CUAD
-	 vP/rueiprvGTQKYccLi5Phq0kOVB9SF3b7z/EZWotq4NcCVKbubcDm/y6f07rP1SZ0g==
+	b=igkFcgquD2QP1ks0UDOrOuGkJPKQ0kmpoWmT93gZcyB+OjAEJH/k2y43UDqWk+YIgcgc
+	 NvsAZLqd/UECAbXttaYsL5Kxmy78082p90sJAfLoSzzNk40ZGW+D4KuO8Nh/j/6cG+Ja7
+	 DH5XpMVafLbtER/Dyo8isiMNYmnSEIYJdOSBWefHgOt0FWo5eQZedMYdWHmYbPFiXVPYU
+	 pCHwtHKn2RVNlUU7v9y/o0lQtrylYBzaWq0GNKG2n4LV0YUHJNlpQuQs/dddWmQnPpd/x
+	 8hKIs1maxj9PhVBYxN/qSmge486LfazLdQfpfo//hHhvLyURRvGJxD4KF2lMxMuommQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
 	a=rsa-sha256; c=relaxed/relaxed; t=1795099695;
 	h=DMARC-Filter:Received:DKIM-Signature:Received:From:To:Cc:Subject:
 	 Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
 	 Content-Type:Content-Transfer-Encoding;
-	bh=oGiLuaAXbVTmodE93Bi2QufGuOl4dv0CyFDodMAbA9w=;
-	b=rL5tVM3EpiVqcPB90qNIIku9s8cVnAlUZF/5qCWSpxmr0WYUPtTLa44Y1Vgl1jKEdkWf
-	 wgJfmV/2p9u2cX3YHBzG/MMVBkcm6bxL6wdgCXvoT/4wGG0K4kNivPHvGwCOTjognRCHc
-	 prX/qfWumFM3P1V/nUnxhnpfybLrPf8mOxbYix5AdVR1w46JsyYYa+YYHxZm3Gp94XLt0
-	 3MomZAkIjWOqQEdUTFMf0GFwqjkY45LFE0NeaLOiOs7UodFegXwcj2MG/DFzrLNOAA07F
-	 t+DO4gfn9/0cU7EcA5TjKfWQz1rTaFThb4zpeu0sT2rs4DjVWZphO/AUpyUFhqEjFZA==
+	bh=FZ6TvTj2l2k7OQkE238MtaeNlSEmFIdYntk0TxQZ5a8=;
+	b=APxT88xzdvNKeDA/RzOGguBvGR7ICRYomI1hf2E/H+I1ZYNM5xMDMCv2L4cDoyMH0YQM
+	 +q9mFE5+4VyOjEQA3su+7L8wvKc3xdXvTVYKbgABkGnlkBudKblcgi6EJk4alvTbPf1d1
+	 h0vtd6VBhjwe5uOcn4rShpXcln7ogvgBVML3GDLRM2qigR6CENBOZYmojHtCu7XbJA4WE
+	 S13e2zyz8o0YX4CPgLfGYJ2qzbDyTs31jcYqNqXPiM9tZ6dZm6szFCnAc+gBfJ68zLwjX
+	 jk7VwoeeiVZkXzFDplFfBjW/Fsl2A9yom99ICGBuPx5bHIWzpJHrKYhfQY2Qrr1w4Nw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=mit.edu;
 	spf=pass smtp.mailfrom=mit.edu;
-	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=UjFPYLNT;
+	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=cr2iEDjy;
 	arc=none smtp.remote-ip=18.9.28.11
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C8522606C318
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C84BA606C317
 	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2026 14:48:14 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org C8522606C318
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org C84BA606C317
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=UjFPYLNT
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=cr2iEDjy
 Received: from trampoline.thunk.org (pool-173-48-114-214.bstnma.fios.verizon.net [173.48.114.214])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AJElfVs018190
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AJElcB7017979
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 19 Nov 2026 09:47:42 -0500
+	Thu, 19 Nov 2026 09:47:39 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1795099663; bh=oGiLuaAXbVTmodE93Bi2QufGuOl4dv0CyFDodMAbA9w=;
+	t=1795099661; bh=FZ6TvTj2l2k7OQkE238MtaeNlSEmFIdYntk0TxQZ5a8=;
 	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=UjFPYLNTqyQjF+lhbBhX3bboSMCUiNOGuQ99Un1t3u0v1Wd8ScP07gWsYO+mEqsyG
-	 XchaesdM44aIl//wuk4dYML1KXg/RjjOesbbxsfFj49sbosYtnca879n16ukuy+gEk
-	 Fnd+RsKoZ9e4wYZNjPIiu8GjzQWPk/pr3utlRPZxYNu6el+xLEQMx9cqDRrnBXw723
-	 tUCEStikTQu8xHI3i8bK7N6cL+VU2VkIBgaY+PvErbJ5RZQjgu5VUWQzcDqFmd9fhP
-	 Yxl3+FiXRKewEr7+cusxN//yPk59MzytUfuPhpFctFZONAG/hp0Is/OLDh8FDHbYPY
-	 uzWn4eqWr/anQ==
+	b=cr2iEDjylkvib2YyFvJByFT+p2xHROA328ySzQKeDa0hKULR2u3JnSeopsgrZtMdp
+	 px6PEfEjvGNCCqWXTbzlDfKJemiNP3SZ3vGmeXvg3TjPGRjJd5kFkvHpoutQguy/pY
+	 GrGFUJQzugknf9Wa8zSnC1lPudH2E/0qXiCAXNzMNVlZuSP1oXL2nQsjb4c65XtzDv
+	 gLVwAGRHfjglkWpzq3i+sCaUyvsBTb9ZjltAR3fluBYxHksHDlBxWU/gakvr5WWwOB
+	 DwrRYy3SmXFOMg1kIMDayY6eiWCrKLSwe4KKSDomv7s9GhOfG5J+P9HFTBnUcifxzN
+	 xPWMLF2Ad2Z1g==
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id 5BB692E0194; Thu, 19 Nov 2026 09:47:33 -0500 (EST)
+	id EEC4B2E0158; Thu, 19 Nov 2026 09:47:32 -0500 (EST)
 From: "Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Baokun Li <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>,
-        "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
-        Zhang Yi <yi.zhang@huawei.com>, Ojaswin Mujoo <ojaswin@linux.ibm.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] ext4: return -EINVAL on hole in ext4_convert_unwritten_extents_atomic()
-Date: Thu, 19 Nov 2026 09:47:17 -0500
-Message-ID: <179509948715.1938961.18167763696793669225.b4-ty@b4>
+        Hungyu Lin <dennylin0707@gmail.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, adilger.kernel@dilger.ca,
+        libaokun@linux.alibaba.com, jack@suse.cz, ojaswin@linux.ibm.com,
+        ritesh.list@gmail.com, yi.zhang@huawei.com, djwong@kernel.org,
+        linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Subject: Re: [PATCH] ext4: preserve force-fsck requests across unmount
+Date: Thu, 19 Nov 2026 09:46:49 -0500
+Message-ID: <179509948720.1938961.7467339538966692480.b4-ty@b4>
 X-Mailer: git-send-email 2.53.0
-In-Reply-To: <20261023-ext4-atomic-endio-fix-b4-v1-1-f91feb0b9613@linux.ibm.com>
-References: <20261023-ext4-atomic-endio-fix-b4-v1-1-f91feb0b9613@linux.ibm.com>
+In-Reply-To: <20261027035857.72265-1-dennylin0707@gmail.com>
+References: <20261027035857.72265-1-dennylin0707@gmail.com>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -75,20 +75,22 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Fri, 23 Oct 2026 15:53:45 +0530, Ojaswin Mujoo wrote:
-> We should ideally never encounter a hole during the endio conversion as
-> that indicates something is wrong with our extent handling. Still if we do
-> find a hole at atomic write endio, ext4_map_blocks() returns 0 which would
-> be returned back to callers by ext4_convert_unwritten_extents_atomic().
-> This can be wrongly interpreted as a success. Fix this by bailing out with
-> -EINVAL instead.
+On Tue, 27 Oct 2026 03:58:57 +0000, Hungyu Lin wrote:
+> EXT4_TUNE_FL_FORCE_FSCK sets EXT4_ERROR_FS in the on-disk superblock
+> but leaves s_mount_state unchanged. On a normal read-write unmount,
+> ext4_put_super() restores s_state from s_mount_state, clearing the
+> requested flag.
+> 
+> As a result, a successful EXT4_IOC_SET_TUNE_SB_PARAM call can be lost
+> before e2fsck runs: after unmount it treats the filesystem as clean
+> and skips the requested check.
 > 
 > [...]
 
 Applied, thanks!
 
-[1/1] ext4: return -EINVAL on hole in ext4_convert_unwritten_extents_atomic()
-      commit: 23e76be92cd7cdb25d53d522a01285e595c30cbe
+[1/1] ext4: preserve force-fsck requests across unmount
+      commit: fe66a3e2a6627bef578137722f430bd633dee3e5
 
 Best regards,
 -- 
