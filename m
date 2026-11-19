@@ -1,56 +1,56 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795104767;
-	b=mkmbiBg3iZz5EAXpCSmP4eugVC1e/O9Zyzu0t6OMfEScNk4tC/1UOIUAc7BIQxypukO/
-	 1EaztgF/QTFiqGS0Qb39tyRG0szkcFXOW5Bc9sx3X+Yfjc5LQmYkELxB9aqjv9ze0DfmY
-	 1D7YYhXXO61LvLWKVm656B1nszkP2P+rtU7zmnddUf4VMP4/qoWAbktszoHqUCAnkcBRW
-	 61u+H37kbUa209UBmIg3kvtCQA2V3ivPL1WnHpGEFFgkfZic+IscgLO6Ff4m3L7OVU6kJ
-	 /pwsQco8wOmUJbOsScpeB91QdzHNB4QBMTOYatT84Ae1/haQr17BzrS9fx5tLztSj3A==
+	t=1795104773;
+	b=sRGpym5PqaTtorwncZEUMm2yaU9ef69QSwiC5ZKQwdn3EB6r8/i6YNReWKqYgrXdlGhF
+	 bATU//dMBH85Hm1BAltVVfHBhVyV/MFxbjPjOI+NTcoOuMKtZntu/6pseot6B/xfBOHdF
+	 7E6KZ/RBVnQGGgaVQf1ORdPMcQZGgCs5xVcj2DcD+TzIAB9P7FekGHHQ5lJVPEwZXke52
+	 hdLCAkPHBvGGOAXHF8RK0dkhdcNQHySBbZ0P16jXy047NhG+K5bTjTzWPdKv3FwBooMcH
+	 hff/FxrtHgNFNM22VWdx6Z3WzSgrG3ZfTG7D+wegQfYFZ7u9vAl+v6Lekip+iAzzXoA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795104767;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795104773;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=atCFJvYtCSPXezQayUoecBxZxiOObavk5t985duU3ro=;
-	b=vHDr9W23CwiExNMrO3cR2XXE9Dnzko8c1Jql1BhhBkmgi0tjhypYerwaqhRUihSib5AV
-	 CxGDCN54Mx7HimoQLkCPcSa0UuGnXWReuGZHAYKdquBHCZ8fiyQOHCE7tilkbeL+2Z8ou
-	 J2nHQ7rmdQyEC8nzo/FSH0P8i0GiBY48PY/8aZqXNslPydVKUSz+Z6ECxEtGltoLScZuv
-	 rotzXKvKcFO75mk9WKX8SyZWQ6DZIHAl3W/b0OGG6tlzuT+81hyt+/K7wrG6Q6HSxWoo2
-	 Fcch8xEy690hp5OInBsurxzP3DhJtIYbODv1mvR3ITSzYvrcP8VHsIg6XHh7kKCZJWg==
+	bh=006xT27H4oaSyjdDOejJ0GZmY1E/bMVUAuHw84mhO/o=;
+	b=4qbpss6uKBge1xvtM4M56lEZqOk4txztvaa+DclY+dM/r7dDd6QaH7BC2DH/AOHtGzjI
+	 MDbcrkgjKlrkiHikvO6BV166bcNSlEVQLUmwTcm7+HPNtVbQ8aB6eHjdb5Pp/t0xtDfnB
+	 qkCUhVG7m245ZUJ768bGiwomCRNXDB+QZoct6DXUs5dPoY0izsQyk6VjPo5x5fFPMgCg+
+	 ENjVAEAypWWaMLcJ87Davvp0CZMtxGcfvysryaJw0bJy3Xrq7FGYbwAMEvQoWoy5z0eZg
+	 JOvXyYa2hevivr6Si8XkNWArRMdVzgn+d7J5rXplfeZUXG4jkwoLArRqBx5HVJusL1g==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=IomNEI0b;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=aK8hwutB;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 50E36606A334
-	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2026 16:12:47 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E6008606A331
+	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2026 16:12:52 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=IomNEI0b
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 10FBD1F000C6;
-	Thu, 19 Nov 2026 16:12:47 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=aK8hwutB
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A690B1F000C7;
+	Thu, 19 Nov 2026 16:12:52 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795104767;
-	bh=atCFJvYtCSPXezQayUoecBxZxiOObavk5t985duU3ro=;
+	s=k20260515; t=1795104772;
+	bh=006xT27H4oaSyjdDOejJ0GZmY1E/bMVUAuHw84mhO/o=;
 	h=From:Subject:Reply-To:To:In-Reply-To:References:Date;
-	b=IomNEI0bGFww+hPp3l2AiAROaevRHMKlKVG8Qby/5RDff+6JN+j9JvTlrAgbO4j1i
-	 prbdXZ/34Jkdirsa4hwV2fDw+YcL5zxDu+VzG7CXnh54ylHEhJZH1G5AmztbL3G4/F
-	 D6slGhZHG4y2ehHCntgYMZ/hf/ZN8KKnD3pHE6MU8T8YodldNhwoDqr7xip4nJRc1f
-	 ZDSvjMqq2wUqndlmtAwq6LBcT9Jjpi7g7fE2R6FXH+ZYlWRVBjJQB2t/sPz7r0aVnk
-	 DAPkzz6zta/Dvlm6kGH2VzKYDwkNBKvZfErAulA/RoF5Sb3r3ViCq/rHN5jZ1L1sNp
-	 t+h5Mg8lxXdYA==
-Message-ID: <sashiko-outbox-223489@kernel.org>
+	b=aK8hwutBUFpQ9Hp91d3aF+rjPItXXXbhU+uQCmk5oINLwOSJihLb3iHYcmr8D97Sj
+	 CtBOtQ0s93VkA2GQZr1iCK1BoQ3WTcEOthS3ESndHb/juTXqnS9U1yxqUbuGJowS79
+	 OC7BkWzQ8nBIZUqQUPs72vo0cthhRPV8NnrxaU2TTWqbb90n7X+hDKRl3zUiEnI2dR
+	 lyt/+bHlnVO+uyzUiBIF9tWhCuuYQTMdLaBPYXo2ZgYiin1lpAOzFFShPptHbK9h0u
+	 7FqEBhCWFa5/vqvGPoABqFB2Q0rH8Bdw6SP1cw+pw3hnujDFekSLFIhfFb6N6fFfyh
+	 OHg6+hf5866OQ==
+Message-ID: <sashiko-outbox-223490@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH -v2 14/26] ext4: enable full feature coverage in
- fs/ext4/.kunitconfig
+Subject: Re: [PATCH -v2 12/26] ext4: add KUnit tests for
+ fs/ext4/block_validity.c
 Reply-To: sashiko-reviews@lists.linux.dev
 To: =?utf-8?b?VGhlb2RvcmUgVHMnbw==?= <tytso@mit.edu>, "Ext4 Developers List" <linux-ext4@vger.kernel.org>
-In-Reply-To: <20261119155658.1940864-15-tytso@mit.edu>
+In-Reply-To: <20261119155658.1940864-13-tytso@mit.edu>
 References: <20261119155658.1940864-1-tytso@mit.edu>
- <20261119155658.1940864-15-tytso@mit.edu>
+ <20261119155658.1940864-13-tytso@mit.edu>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Thu, 19 Nov 2026 16:12:46 +0000
+Date: Thu, 19 Nov 2026 16:12:52 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -60,29 +60,25 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-> Enable CONFIG_EXT4_FS_POSIX_ACL, CONFIG_EXT4_FS_SECURITY,
-> CONFIG_FS_VERITY, CONFIG_FS_ENCRYPTION, CONFIG_QUOTA, CONFIG_QFMT_V2,
-> and CONFIG_UNICODE in fs/ext4/.kunitconfig so conditional ext4 source
-> files and feature-gated code paths (POSIX ACLs, security xattrs,
-> fs-verity, fscrypt, quota accounting, and UTF-8 casefolding) are
-> compiled and exercised during KUnit runs.
+> Add the ext4_block_validity_test KUnit test suite in
+> fs/ext4/block_validity-test.c (16 test cases, 40 subtests total) to
+> comprehensively exercise system-zone rbtree construction, RCU release,
+> block range validation, reserved journal inode protection, and indirect
+> block reference checking in fs/ext4/block_validity.c using an in-memory
+> VFS superblock and mock block device without requiring a mounted disk:
 >=20
-> Fix mock superblock and test setup bugs in existing KUnit suites exposed
-> by enabling these Kconfig options:
+> - Bounds and 64-bit overflow checks (ext4_sb_block_valid and
+>   ext4_inode_block_valid) across 1KiB (s_first_data_block =3D 1) and 4KiB
+>   (s_first_data_block =3D 0) geometries, exact end-of-filesystem single
+>   and multi-block spans, 64-bit u64 addition wrap-around, >32-bit block
+>   counts under EXT4_FEATURE_INCOMPAT_64BIT, and high-32-bit masking when
+>   64bit is cleared.
+> - System-zone lifecycle management (ext4_setup_system_zone and
+>   ext4_release_system_zone), covering pre-setup NULL behavior, RCU
+> [ ... ]
 >=20
-> - Provide .get_dquots callbacks in mock super_operations under
->   CONFIG_QUOTA in block_validity-test.c, extents-test.c,
->   fast_commit-test.c, inline-test.c, inode-test.c, mballoc-test.c,
->   namei-test.c, and xattr-test.c so dquot_drop() does not dereference a
->   NULL callback during ext4_clear_inode().
-> - Populate sb->s_cop =3D &ext4_cryptops under CONFIG_FS_ENCRYPTION in
->   balloc-test.c, extents-test.c, fast_commit-test.c, inline-test.c,
->   inode-test.c, mballoc-test.c, and xattr-test.c so
->   fscrypt_put_encryption_info() can resolve inode_info_offs safely on
->   eviction.
-> - Fix test_namei_casefold_lookup_and_strict() under CONFIG_UNICODE in
->   namei-test.c to propagate EXT4_INODE_CASEFOLD to S_CASEFOLD on the VFS
->   directory inode via ext4_set_inode_flags().
+> Export the five runtime entry points in fs/ext4/block_validity.c with
+> EXPORT_SYMBOL_FOR_EXT4_TEST for the ext4-test KUnit module.
 >=20
 > Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 
@@ -90,5 +86,5 @@ Sashiko has reviewed this patch and found no issues.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261119155658.1940=
-864-1-tytso@mit.edu?part=3D14
+864-1-tytso@mit.edu?part=3D12
 
