@@ -1,104 +1,55 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.130
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795119091;
-	b=ZespSNrTOI8Qe5FKISWsVI2h5t3ySym/onbdTqb9tW9hfG4iOSiOssDvvwWbC6WHgsdK
-	 mIKhS0q1gAgDb1btlaj+y7Ya6TBXJLC0E/q83ScbLsmpYd1YnNIdS3lMdKDRR7oH4VXuE
-	 99Ntg0H1+bQhRBYGLIEDpxnd84q+7MVtW3md6KM5QcwHGefgLuOyzh+DJQtyQAyr30PxD
-	 eYT3xhDf/Hk3g/coIMjGguoQrK6LSssYL3KTRxnSvhhi71BPU14bTHCA/wVOYYHth3pXZ
-	 23ZFcAF5/RjuXOAQKt9PijJuzvhJKVFLBAQeHabjyvjAyc9rMVstUXbp+jY9LvUjzRw==
+	t=1795121312;
+	b=cnH8DXX/ZsR1xrDVAkOeNksLuK7BSz4K/8/EJ54MyG0RuxrhPWKtulq6pze0Af8aekkh
+	 vjbrQXivcetFpkHZIpCOynUD62/X0aevbA3TX3sNaqKezOqURCX5hkTmDp3578n+Ecfds
+	 qqJswwBJ03IijnM4jkfgOVcGoz3weQQLMbMLIGVKOCS34GN+tHSVU7/hEXmIB7JFBmaMq
+	 CTXBkwGPYsRf6yG9tKKWmFg97utJ4ooGdbzGCDOSAr72ShkoyTiD+ccgbOcyxcQlf0AdS
+	 efxJN/cvTSbEDnOvpJEQn8YfpVwYTs/oq4juWizCBsQu68WgnvQ2Xxn/tsPpEdkaaKg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795119091;
-	h=DMARC-Filter:Received:DKIM-Signature:DKIM-Signature:DKIM-Signature:
-	 DKIM-Signature:Received:Received:From:Date:Subject:MIME-Version:
-	 Content-Type:Content-Transfer-Encoding:Message-Id:References:
-	 In-Reply-To:To:Cc:X-Mailer:X-Spam-Flag:X-Spam-Level:X-Spamd-Result:
-	 X-Spam-Score;
-	bh=Uo8Olo98zjikgX57G69RkSYYgroY5lrc04l+gH4JzoI=;
-	b=0PojVmwh6CZJYw9B1X5I/fTUnPC91q3Wq8fD2AaFI9vLmwSw6C4Bl2xARHENQXsrf6Wj
-	 KCHr2qTepXdRLVoAuOQY70qDAsVaCzqZ+P2gmYvbSw4w7UBYO59qcEPq81uNMnF17+tDI
-	 nCD4m+TV/Pe9MHh7jQykAYDZZFBkWzk3WZk71rWHLbGa60rOeyCDjZL8K4nsvckdqOn1H
-	 H6jAZmCPDOt3ArCQE5ZUbVWW2zAJmwsIpWReZiOiYANdn5aHu5iGR1gEmQP+Wke36sjCW
-	 t4rJdZG6jMIMezwmTYjENEvk4WK3HyYD20DQFzHEMeaHECTgwKsAMsyLzYIm08Turxg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795121312;
+	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
+	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
+	bh=3PGVJVSc8QkEj1hdnStWiMpyEZMIVB/RSu3VQkMSD4Q=;
+	b=Ajaai7QKegnNBftjudihJZNJzbHihUEIwGdQP18COs3jNV5mQkradseRq4R2ok/9iQHG
+	 xwV+t31In4zgrnTgyp8XrvOCw+CXb1GWz6tiG83mXR1T+AP805z93nFP/tD2fWhyP0fx7
+	 EX74oDH0xZ3hNF7RPUTCMk09p/qWX6E4pu6qKdbb5DUjq3zicwtCp/w7cKu9/OA3VubH9
+	 gJYfVW2K9ie6g8w42G062p6lcGd2OdoitaolKrlFZvuXmx7aXNNtVGztIxn/srGGe2sit
+	 1Rbl+gaTq7pKdASJErwGmgFcayUjnMT7S1ZNd9JMJPc80lzk3VqJaWYQC2uO20u6t6g==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=suse.de;
-	spf=pass smtp.mailfrom=suse.de;
-	dkim=pass header.d=suse.de header.i=@suse.de header.a=rsa-sha256 header.s=susede2_rsa header.b=eUas+9Ii;
-	dkim=pass header.d=suse.de header.i=@suse.de header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=9uOMWgZ7;
-	dkim=pass header.d=suse.de header.i=@suse.de header.a=rsa-sha256 header.s=susede2_rsa header.b=eUas+9Ii;
-	dkim=neutral header.d=suse.de header.i=@suse.de header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=9uOMWgZ7;
-	arc=none smtp.remote-ip=195.135.223.130
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="Ue9J5/vX";
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C510E60A2615;
-	Thu, 19 Nov 2026 20:11:30 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org C510E60A2615
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.de
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 86E6C606CC7B;
+	Thu, 19 Nov 2026 20:48:32 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.a=rsa-sha256 header.s=susede2_rsa header.b=eUas+9Ii;
-	dkim=pass header.d=suse.de header.i=@suse.de header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=9uOMWgZ7;
-	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.a=rsa-sha256 header.s=susede2_rsa header.b=eUas+9Ii;
-	dkim=neutral header.d=suse.de header.i=@suse.de header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=9uOMWgZ7
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 157D521DE6;
-	Thu, 19 Nov 2026 20:11:29 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-	t=1795119089; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=Uo8Olo98zjikgX57G69RkSYYgroY5lrc04l+gH4JzoI=;
-	b=eUas+9Ii0hUYbJmdigy5WcIR6MFLbDG4Q9+MkKg469E/fJUfE5s9LcwEWCZ3ugZSzJbQ5E
-	G227ThVtEgjDER5qFmK1F/+icKCjUX8+0fRswIRqHMGNAHJfdWh4NdyBomb3k1h29ogcpA
-	wLvJ+2nCJSl6+n/ZHpjZrYGuTlwOUM4=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-	s=susede2_ed25519; t=1795119089;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=Uo8Olo98zjikgX57G69RkSYYgroY5lrc04l+gH4JzoI=;
-	b=9uOMWgZ7LG+LRni/R/J6QJ0QU42oZZHseqFgpO9phvi749VDZI6fswGtgIFGlShqu3eqYu
-	vCHCaUFOxZdKZxAg==
-Authentication-Results: smtp-out1.suse.de;
-	none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-	t=1795119089; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=Uo8Olo98zjikgX57G69RkSYYgroY5lrc04l+gH4JzoI=;
-	b=eUas+9Ii0hUYbJmdigy5WcIR6MFLbDG4Q9+MkKg469E/fJUfE5s9LcwEWCZ3ugZSzJbQ5E
-	G227ThVtEgjDER5qFmK1F/+icKCjUX8+0fRswIRqHMGNAHJfdWh4NdyBomb3k1h29ogcpA
-	wLvJ+2nCJSl6+n/ZHpjZrYGuTlwOUM4=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-	s=susede2_ed25519; t=1795119089;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=Uo8Olo98zjikgX57G69RkSYYgroY5lrc04l+gH4JzoI=;
-	b=9uOMWgZ7LG+LRni/R/J6QJ0QU42oZZHseqFgpO9phvi749VDZI6fswGtgIFGlShqu3eqYu
-	vCHCaUFOxZdKZxAg==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 0B280134F6;
-	Thu, 19 Nov 2026 20:11:26 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id OqV1JuRX/2pPYQAAD6G6ig:T6
-	(envelope-from <pfalcato@suse.de>); Thu, 19 Nov 2026 20:11:26 +0000
-From: Pedro Falcato <pfalcato@suse.de>
-Date: Thu, 19 Nov 2026 20:10:48 +0000
-Subject: [PATCH RFC 5/5] mm/filemap: refuse releasing maybe_dma_pinned
- folios
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Ue9J5/vX
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5862C1F000CF;
+	Thu, 19 Nov 2026 20:48:29 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1795121312;
+	bh=3PGVJVSc8QkEj1hdnStWiMpyEZMIVB/RSu3VQkMSD4Q=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=Ue9J5/vXQQKgXeGGR/gDKOdLIvkPt/OHBv/xbkrYdBe65rGDof+xnYjDqlFvqyqQV
+	 WTbiGm1jwXFq2goSCG+63YU564jbcVpEBNEmScsT4QFSJLA/xI1v8/xsoWqAW2f1Ul
+	 SSVRPr2dUv57zfJ2/9acK9mOwLLa5IYT21C8vqN0sSoybGDiMczqGgpVA1x2ScNPvR
+	 SwWELDPV/KKxRb1t95LVaGxquYOYMrfFU97lDXPBU8ZIkB06H6EscpbeR2xjQHhO+G
+	 EVtsDIFt5g8DJJmL063y3QX3nR44hpO1z/oLunHmPHWXkAYut8GVWPBGAVsr8yFtPi
+	 pVmjC2n2lsCcA==
+Date: Thu, 19 Nov 2026 21:48:27 +0100
+From: Christian Brauner <brauner@kernel.org>
+To: Andrey Albershteyn <aalbersh@kernel.org>
+Cc: ebiggers@kernel.org, hch@lst.de, fsverity@lists.linux.dev, 
+	dsterba@suse.com, linux-xfs@vger.kernel.org, linux-btrfs@vger.kernel.org, 
+	linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
+	viro@zeniv.linux.org.uk, jaegeuk@kernel.org, chao@kernel.org, tytso@mit.edu
+Subject: Re: [PATCH v2 2/5] fsverity: add I_VERITY_BUILDING inode state flag
+Message-ID: <20261119-gefunden-beteiligen-epidemie-5a23ff160ef4@brauner>
+References: <20261105115532.613467-1-aalbersh@kernel.org>
+ <20261105115532.613467-3-aalbersh@kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -108,93 +59,130 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261119-gup-dirty-what-v1-5-236d69f25c24@suse.de>
-References: <20261119-gup-dirty-what-v1-0-236d69f25c24@suse.de>
-In-Reply-To: <20261119-gup-dirty-what-v1-0-236d69f25c24@suse.de>
-To: David Hildenbrand <david@kernel.org>, 
- Andrew Morton <akpm@linux-foundation.org>, Zi Yan <ziy@nvidia.com>, 
- "Matthew Wilcox (Oracle)" <willy@infradead.org>, Jan Kara <jack@suse.cz>, 
- Lorenzo Stoakes <ljs@kernel.org>, John Hubbard <jhubbard@nvidia.com>, 
- Peter Xu <peterx@redhat.com>, Johannes Weiner <hannes@cmpxchg.org>
-Cc: linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org, 
- "Liam R. Howlett" <liam@infradead.org>, Vlastimil Babka <vbabka@kernel.org>, 
- Mike Rapoport <rppt@kernel.org>, Suren Baghdasaryan <surenb@google.com>, 
- Michal Hocko <mhocko@suse.com>, Baolin Wang <baolin.wang@linux.alibaba.com>, 
- Nico Pache <nico.pache@linux.dev>, Ryan Roberts <ryan.roberts@arm.com>, 
- Dev Jain <dev.jain@arm.com>, Barry Song <baohua@kernel.org>, 
- Lance Yang <lance.yang@linux.dev>, Usama Arif <usama.arif@linux.dev>, 
- Kiryl Shutsemau <kas@kernel.org>, linux-mm@kvack.org, 
- linux-kernel@vger.kernel.org, Kairui Song <kasong@tencent.com>, 
- Qi Zheng <qi.zheng@linux.dev>, Shakeel Butt <shakeel.butt@linux.dev>, 
- Axel Rasmussen <axelrasmussen@google.com>, Yuanchu Xie <yuanchu@google.com>, 
- Wei Xu <weixugc@google.com>, Baoquan He <baoquan.he@linux.dev>, 
- Michal Hocko <mhocko@kernel.org>, linux-fsdevel@vger.kernel.org, 
- Pedro Falcato <pfalcato@suse.de>, stable@vger.kernel.org
-X-Mailer: b4 0.15.2
-X-Spam-Flag: NO
-X-Spam-Level: 
-X-Spamd-Result: default: False [-17.30 / 50.00];
-	SUSE_INTERNAL_BYPASS(-9.00)[];
-	REPLY(-4.00)[];
-	BAYES_HAM(-3.00)[100.00%];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	RCPT_COUNT_TWELVE(0.00)[37];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	ARC_NA(0.00)[];
-	TO_DN_SOME(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	RCVD_TLS_ALL(0.00)[];
-	R_RATELIMIT(0.00)[to_ip_from(RL8d8xedm6iu8o66torxsk6bwd)];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	MID_RHS_MATCH_FROM(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	DKIM_SIGNED(0.00)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
-	RCVD_COUNT_TWO(0.00)[2];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.de:email,imap1.dmz-prg2.suse.org:helo]
-X-Spam-Score: -17.30
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+In-Reply-To: <20261105115532.613467-3-aalbersh@kernel.org>
 
-Some callers, like folio_unmap_invalidate(), call filemap_release_folio()
-without any care for folio refcounts. This is on purpose. As
-folio_unmap_invalidate() states, invalidate_inode_pages2() needs stronger
-guarantees, and "can't afford to leave folios behind because
-shrink_folio_list() has a temp ref on them". Ok.
+On Thu, Nov 05, 2026 at 12:55:27PM +0100, Andrey Albershteyn wrote:
+> Every filesystem that supports fs-verity keeps a private runtime inode
+> flag meaning Merkle tree is currently being built *_VERITY_IN_PROGRESS.
+> They all serve the same two purposes: reject a concurrent enable with
+> -EBUSY and let the write paths recognize the special writes done while
+> the tree is under construction.
+> 
+> Hoist this flag into the VFS as a new inode state flag,
+> I_VERITY_BUILDING, and manage its lifetime in the generic fs-verity
+> enable path. The flag is set after ->begin_enable_verity() succeeds and
+> cleared after ->end_enable_verity() returns (both on the success and the
+> rollback paths). Add the concurrent-enable guard.
+> 
+> A new helper, fsverity_is_building(), is provided for filesystems to
+> query the flag. No filesystem uses it yet; the per-fs flags are
+> converted in following patches.
+> 
+> Signed-off-by: Andrey Albershteyn <aalbersh@kernel.org>
+> ---
+>  fs/verity/enable.c       | 22 +++++++++++++++++++---
+>  include/linux/fs.h       |  6 ++++++
+>  include/linux/fsverity.h | 21 +++++++++++++++++++++
+>  3 files changed, 46 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/verity/enable.c b/fs/verity/enable.c
+> index fe8493280b77..65d3571c62b5 100644
+> --- a/fs/verity/enable.c
+> +++ b/fs/verity/enable.c
+> @@ -229,13 +229,23 @@ static int enable_verity(struct file *filp,
+>  
+>  	/*
+>  	 * Start enabling verity on this file, serialized by the inode lock.
+> -	 * Fail if verity is already enabled or is already being enabled.
+> +	 * Fail if verity is already enabled or is already being enabled. Set
+> +	 * I_VERITY_BUILDING inode runtime flag which will be cleared when
+> +	 * enablement succeeded or rolled back.
+>  	 */
+>  	inode_lock(inode);
+> -	if (IS_VERITY(inode))
+> +	if (IS_VERITY(inode)) {
+>  		err = -EEXIST;
+> -	else
+> +	} else if (inode_state_read_once(inode) & I_VERITY_BUILDING) {
+> +		err = -EBUSY;
+> +	} else {
+>  		err = vops->begin_enable_verity(filp);
+> +		if (!err) {
+> +			spin_lock(&inode->i_lock);
+> +			inode_state_set(inode, I_VERITY_BUILDING);
+> +			spin_unlock(&inode->i_lock);
+> +		}
+> +	}
+>  	inode_unlock(inode);
+>  	if (err)
+>  		goto out;
+> @@ -291,6 +301,9 @@ static int enable_verity(struct file *filp,
+>  	 */
+>  	inode_lock(inode);
+>  	err = vops->end_enable_verity(filp, desc, desc_size, params.tree_size);
+> +	spin_lock(&inode->i_lock);
+> +	inode_state_clear(inode, I_VERITY_BUILDING);
+> +	spin_unlock(&inode->i_lock);
+>  	inode_unlock(inode);
+>  	if (err) {
+>  		fsverity_err(inode, "%ps() failed with err %d",
+> @@ -317,6 +330,9 @@ static int enable_verity(struct file *filp,
+>  rollback:
+>  	inode_lock(inode);
+>  	(void)vops->end_enable_verity(filp, NULL, 0, params.tree_size);
+> +	spin_lock(&inode->i_lock);
+> +	inode_state_clear(inode, I_VERITY_BUILDING);
+> +	spin_unlock(&inode->i_lock);
+>  	inode_unlock(inode);
+>  	goto out;
+>  }
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index 99caef43ff3c..7c90ce09f797 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -707,6 +707,11 @@ is_uncached_acl(struct posix_acl *acl)
+>   * I_LRU_ISOLATING	Inode is pinned being isolated from LRU without holding
+>   *			i_count.
+>   *
+> + * I_VERITY_BUILDING	fs-verity is being enabled on the inode: the Merkle
+> + *			tree is under construction.  The file is effectively
+> + *			read-only to userspace; the only writes happening are
+> + *			for the fs-verity metadata.
+> + *
+>   * Q: What is the difference between I_WILL_FREE and I_FREEING?
+>   *
+>   * __I_{SYNC,NEW,LRU_ISOLATING} are used to derive unique addresses to wait
+> @@ -741,6 +746,7 @@ enum inode_state_flags_enum {
+>  	I_SYNC_QUEUED		= (1U << 17),
+>  	I_PINNING_NETFS_WB	= (1U << 18),
+>  	I_METADATA_WRITEBACK	= (1U << 19),
+> +	I_VERITY_BUILDING	= (1U << 20),
+>  };
+>  
+>  #define I_DIRTY_INODE (I_DIRTY_SYNC | I_DIRTY_DATASYNC)
+> diff --git a/include/linux/fsverity.h b/include/linux/fsverity.h
+> index 61fe96ccdff6..c72edec57e30 100644
+> --- a/include/linux/fsverity.h
+> +++ b/include/linux/fsverity.h
+> @@ -164,6 +164,22 @@ static inline bool fsverity_active(const struct inode *inode)
+>  	return false;
+>  }
+>  
+> +/**
+> + * fsverity_is_building() - is fs-verity being enabled on the inode
+> + * @inode: inode to check
+> + *
+> + * This checks whether the inode's Merkle tree is currently being built.
+> + * While this is the case the file is read-only to userspace and the only writes
+> + * allowed are for the fs-verity metadata. This becomes false when fsverity
+> + * metadata is fully created and written to disk or building failed.
+> + *
+> + * Return: true if fs-verity is being enabled on the inode
+> + */
+> +static inline bool fsverity_is_building(const struct inode *inode)
+> +{
+> +	return inode_state_read_once((struct inode *)inode) & I_VERITY_BUILDING;
 
-Use folio_maybe_dma_pinned() universally, in filemap_release_folio(). This
-has a much lower false positive rate, and should be ok enough for most
-serious cases.
-
-While here, properly assert that no folio passed to release_folio is
-mapped.
-
-Cc: stable@vger.kernel.org
-Fixes: d824ec2a1546 ("mm: do not reclaim private data from pinned page")
-Signed-off-by: Pedro Falcato <pfalcato@suse.de>
----
- mm/filemap.c | 3 +++
- 1 file changed, 3 insertions(+)
-
-diff --git a/mm/filemap.c b/mm/filemap.c
-index f9e34144c53c..4fa75663b7f3 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -4571,8 +4571,11 @@ bool filemap_release_folio(struct folio *folio, gfp_t gfp)
- 	struct address_space * const mapping = folio->mapping;
- 
- 	BUG_ON(!folio_test_locked(folio));
-+	VM_WARN_ON_FOLIO(folio_mapped(folio), folio);
- 	if (!folio_needs_release(folio))
- 		return true;
-+	if (folio_maybe_dma_pinned(folio))
-+		return false;
- 	if (folio_test_writeback(folio))
- 		return false;
- 
-
--- 
-2.56.1
-
+Isn't the fix to make inode_state_read_once() take a const struct inode *?
