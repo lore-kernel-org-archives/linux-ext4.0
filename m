@@ -1,60 +1,60 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=18.9.28.11
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795115856;
-	b=zX1Als4uiKdXuQ2HmIxrdjl8zANmLd9aEw6Ld0tFfl+DINOU1/q75zjJitnOEFNCU1up
-	 UnWGSmYgIiYmkn2vVtzfeOlLwe6xWmV6YNcPmwEgtBTt6T0tQw/CAodd2NcR8lZzGd6id
-	 hF7Pgk0vq036O1dTG70qEi99fbm1kZc//lUAwvCnOyCT3mqWXtSsME63Vq34vFYizQAon
-	 EPQkaFWE2wUtHwqPLuW9zMKtBrGqMzecxijAX+AHyCQOD3UAIu56Lvy6Z6UuZjcB1HlCA
-	 hObDGYfK85NrhZOef0EzhRlXU+AsTntxmVmK1Dz6eQY5enp38YOo4je4d8VLM7Aom4g==
+	t=1795115862;
+	b=x7y9zDPqHJPO+fqZP7zTkBePAoqW2AI+It23AF3ehoE74a4P70VEdiqwXXj4UHxHg7Qd
+	 wFPml9gbznIIJ/3axufww+LArSJbL4rVc5NAOZ4Gag6IQBRg3HcDcixr3ktKnCy8Th3/z
+	 2tYVVsW5YYhHRoSsQyBBB8nq2Aic9W4mdJVtLOQ93Rx1RgjERuPMXzGhywu3kJ71ExAg/
+	 Cxd+Z+KnWiMi6oMU3+O2M02+PwXIgS0ta1py39qSO+4sx2NM7DnLk+8Q9icYqEh+qyvrp
+	 i4YlM11dhsMBXEUQyaXnqHOQ6+JmMBg7cbceAw1kD3I4xzhnRJH+AIkOiBQ0OeOaU1g==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795115856;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795115862;
 	h=DMARC-Filter:Received:DKIM-Signature:Received:From:To:Cc:Subject:
 	 Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
 	 Content-Transfer-Encoding;
-	bh=jUlW+f9+z/blNJC9YONrfV7fewSTS2RZOd/1NhhCW3I=;
-	b=gBf5UPIT0U7g8coj2osXJwVq0QDqYU11hQtbfVHELuS7QY3pwOx5vbsHJz4zXpYXpuM7
-	 zTX8mnOU44i/5y55HeRdsNyLkglrSlDeb0tM3p2tEcUAwHnp2PyhajlMKCJIpJSraHe0O
-	 XcUEA4nqHEgCHFfmQfKJO/GJ82qmPQ/mtiQg6xrcZ8O4XhhhiNHZfn8x4fG7ZAUNkuUrh
-	 qxfRA5v2wJ5LrlUHS9SBjHrH1CMok+1WX2wwn6Mrp9tmqEr2D5duITLugZ8pg8TEn02mP
-	 d2vEbhFce+sMUPx1Qgf2f4/eNzw6fxJpDklX2hE/DfUAwKO3YP+1TGf7/l2+Z+TEVNg==
+	bh=VLHJkjf3gXdfdDaV1LbPrqnRNtEvuZ/x9Aa658U2p+o=;
+	b=ztD+8xaUQ3I8Pw8+4N877jlfBxPtoSJ2wXjOvqEUafZtIZthTdCm3hwqXKZqj7pCl9Kp
+	 pCEOSx+9yu+jtT+aD1G4x+FqrQZjKPFtMBPv32XY2xW1HFdt7vTqfZ9zyy6WGnANVu7r1
+	 znD4dF011qmdSQxgrehHPfY+x2axx6amdKVFje6RsEhsv0rA4WXikpstgdmAx59p4284N
+	 yD3oiTVWrmV2kSghICmkAq4Yd4BxYpViEjRa7xAKzxkvQuPyvRRfmkelPxPFF0wR8wypK
+	 gHsN65WCDomIdV+4LU8zfGenmvWU9VbxstfyCyYNQ5c7IgKe163mmy/Nsz8NIBng3Ow==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=mit.edu;
 	spf=pass smtp.mailfrom=mit.edu;
-	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=cu1WkYYd;
+	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=R6jPRfS2;
 	arc=none smtp.remote-ip=18.9.28.11
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 34124606A33B
-	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2026 19:17:36 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 34124606A33B
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 78E42606A32A
+	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2026 19:17:41 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 78E42606A32A
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=cu1WkYYd
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=R6jPRfS2
 Received: from trampoline.thunk.org (pool-173-48-114-214.bstnma.fios.verizon.net [173.48.114.214])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AJJHWro029866
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AJJHYQe029987
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 19 Nov 2026 14:17:33 -0500
+	Thu, 19 Nov 2026 14:17:34 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1795115853; bh=jUlW+f9+z/blNJC9YONrfV7fewSTS2RZOd/1NhhCW3I=;
+	t=1795115855; bh=VLHJkjf3gXdfdDaV1LbPrqnRNtEvuZ/x9Aa658U2p+o=;
 	h=From:Subject:Date:Message-ID:MIME-Version;
-	b=cu1WkYYdQ32+Zw9tBHuyydycpWEthLArcoxBgOxnPSzHlcTL/wviqkCLWgsp9CXxw
-	 ew1Zeer6MLs+U3PvGi16U6O6hAaIVfuTZCtaeFOUuVF50RuZixI18acQWEo4SdIj0s
-	 hMbQ/U5QgcoVeWzha+Z2M4lioDsAeFdkUibuhpeo1n+XCd8l6p+hMQ47JjuIXG31Ct
-	 4NwpMjt0OOBMHQ4ejsBJxiA/UdLc9ttJsRccau/sa+KaMNVlKega9It/rL1LePHEF1
-	 KcqMawZMABQ0qO743YJOQz/82NmuG4NkyVBmH1zVTp8DylcTZoxGeNG6KFDKak+47o
-	 /lINuCMNgKxNw==
+	b=R6jPRfS2opwd0eMIR3DvTxDt5KWu8L8d5vCN/BGz2fzNc1JKE2em1Tjx/awcosOe9
+	 GMRSu4bjczdnzBh55Qf3zV0eVxW3WiDMr8s2fqNpWGpXvxoBWZOiPaVi5ICZP0lZkh
+	 vKGk4FN5FRmZ3ZQ649P02KCmjgTnz2rqzpfZ05YXAfZvHf34OflndpEy5rX+1CXAs5
+	 pRMzlLRfvxaYhuUb1Ph0UTNxFxVxz1WDmrThGzVgVtxhyiLKzGGxaupcWkcl9sRzT7
+	 pzsKgHHmx1//qFA94lT9I8rPAO/IwbYWZeg1T++GFDkSbzJllOrxIS0pg1lP2jA2ba
+	 rpqpOLE9v5RVw==
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id 29F0C2E014A; Thu, 19 Nov 2026 14:17:31 -0500 (EST)
+	id 64E882E015F; Thu, 19 Nov 2026 14:17:31 -0500 (EST)
 From: "Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Subject: [PATCH -v2 08/32] ext4: fix inverted err_report_sec check in ext4_update_super()
-Date: Thu, 19 Nov 2026 14:16:55 -0500
-Message-ID: <20261119191719.1943298-9-tytso@mit.edu>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, stable@kernel.org
+Subject: [PATCH -v2 26/32] ext4: flush s_ea_inode_work before clearing EXT4_FC_REPLAY
+Date: Thu, 19 Nov 2026 14:17:13 -0500
+Message-ID: <20261119191719.1943298-27-tytso@mit.edu>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <20261119191719.1943298-1-tytso@mit.edu>
 References: <20261119191719.1943298-1-tytso@mit.edu>
@@ -69,79 +69,175 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-When the first error is copied into the on-disk superblock,
-ext4_update_super() is supposed to start the periodic error reporting
-timer if it is not already running and err_report_sec is non-zero, as
-the comment above the code says.  However, the check was inverted:
+During fast commit journal replay at mount time, ext4_xattr_delete_inode()
+or other xattr helpers can drop the last reference to an EA inode via
+ext4_put_ea_inode(), deferring the final iput() to the s_ea_inode_work
+delayed workqueue.
 
-	if (!es->s_error_count && !sbi->s_err_report_sec)
+Previously, ext4_fc_replay_cleanup() cleared EXT4_FC_REPLAY from
+sbi->s_mount_state and freed replay tracking structures before flushing
+s_ea_inode_work.  If the delayed worker ran afterwards (or before
+mballoc initialization completed in __ext4_fill_super()),
+ext4_evict_inode() -> ext4_free_inode() would no longer see
+EXT4_FC_REPLAY and could attempt journal/mballoc operations on a not-yet-
+initialized filesystem.
 
-With the default err_report_sec of 86400 the timer is therefore never
-started when a clean file system records its first error, so the
-"error count since last fsck" messages are not printed until the file
-system is remounted.  Conversely, if the administrator disabled the
-report by writing 0 to /sys/fs/ext4/<dev>/err_report_sec, the first
-error arms the timer to fire immediately.
+Call flush_delayed_work(&sbi->s_ea_inode_work) at the start of
+ext4_fc_replay_cleanup() so all deferred EA inode iputs drain while
+EXT4_FC_REPLAY is still set.
 
-Drop the stray negation.  Also read s_err_report_sec only once, with
-READ_ONCE(), since it can be changed concurrently via sysfs, so that
-the value tested is the value used to arm the timer.
+Extend test_fc_replay_regions_and_scan() in ext4_fast_commit_test to
+verify that a deferred EA inode queued via ext4_put_ea_inode() is
+evicted with EXT4_FC_REPLAY still set before ext4_fc_replay_cleanup()
+returns.
 
-Fixes: d518215c2719 ("ext4: add sysfs attribute err_report_sec to control s_err_report timer")
+Fixes: 4f48af3dc755 ("ext4: introduce ext4_put_ea_inode() for safe deferred iput")
+Cc: stable@kernel.org
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/super-test.c | 12 ++++++++++++
- fs/ext4/super.c      |  6 ++++--
- 2 files changed, 16 insertions(+), 2 deletions(-)
+ fs/ext4/fast_commit-test.c | 73 +++++++++++++++++++++++++++++++++++++-
+ fs/ext4/fast_commit.c      |  6 ++++
+ 2 files changed, 78 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext4/super-test.c b/fs/ext4/super-test.c
-index 606798ef0258..5f34a56fc219 100644
---- a/fs/ext4/super-test.c
-+++ b/fs/ext4/super-test.c
-@@ -1308,6 +1308,18 @@ static void test_error_recording_and_update_super(struct kunit *test)
- 	KUNIT_EXPECT_EQ(test, le32_to_cpu(es->s_checksum),
- 			le32_to_cpu(ext4_superblock_csum(es)));
+diff --git a/fs/ext4/fast_commit-test.c b/fs/ext4/fast_commit-test.c
+index 55b33f0d6e0a..74a101140f3e 100644
+--- a/fs/ext4/fast_commit-test.c
++++ b/fs/ext4/fast_commit-test.c
+@@ -27,6 +27,7 @@
+ #include "extents_status.h"
+ #include "fast_commit.h"
+ #include "namei.h"
++#include "xattr.h"
  
-+	/* First recorded error arms the periodic error report timer */
-+	KUNIT_EXPECT_TRUE(test, timer_pending(&sbi->s_err_report));
+ #define TEST_BLK_SIZE		1024
+ #define TEST_BLK_BITS		10
+@@ -134,8 +135,14 @@ struct fc_test_ctx {
+ 	bool use_custom_es_lookup;
+ 	struct extent_status custom_es;
+ 	int custom_es_ret;
 +
-+	/* err_report_sec == 0 disables the timer even for a first error */
-+	timer_delete_sync(&sbi->s_err_report);
-+	es->s_error_count = 0;
-+	sbi->s_err_report_sec = 0;
-+	ext4_save_error_info_test(sb, EIO, 31, 4096, "third_fn", 333);
-+	ext4_update_super_test(sb);
-+	KUNIT_EXPECT_EQ(test, le32_to_cpu(es->s_error_count), 1U);
-+	KUNIT_EXPECT_FALSE(test, timer_pending(&sbi->s_err_report));
-+
- 	/* Read-only superblock update must not touch s_wtime */
- 	es->s_wtime = cpu_to_le32(123456U);
- 	saved_wtime = es->s_wtime;
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 880f664d6c04..6a3079c29988 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -6370,6 +6370,7 @@ static void ext4_update_super(struct super_block *sb)
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	struct ext4_super_block *es = sbi->s_es;
- 	struct buffer_head *sbh = sbi->s_sbh;
-+	unsigned long err_report_sec;
++	/* Deferred EA inode eviction tracking during replay cleanup */
++	bool ea_evicted;
++	bool ea_evict_saw_fc_replay;
+ };
  
- 	lock_buffer(sbh);
- 	/*
-@@ -6428,9 +6429,10 @@ static void ext4_update_super(struct super_block *sb)
- 		 * Start the daily error reporting function if it hasn't been
- 		 * started already and sbi->s_err_report_sec is not zero
- 		 */
--		if (!es->s_error_count && !sbi->s_err_report_sec)
-+		err_report_sec = READ_ONCE(sbi->s_err_report_sec);
-+		if (!es->s_error_count && err_report_sec)
- 			mod_timer(&sbi->s_err_report,
--					  jiffies + secs_to_jiffies(sbi->s_err_report_sec));
-+				  jiffies + secs_to_jiffies(err_report_sec));
- 		le32_add_cpu(&es->s_error_count, sbi->s_add_error_count);
- 		sbi->s_add_error_count = 0;
++static struct fc_test_ctx *fc_active_ctx;
++
+ #ifdef CONFIG_QUOTA
+ static struct dquot __rcu **fc_test_get_dquots(struct inode *inode)
+ {
+@@ -152,7 +159,41 @@ static const struct dquot_operations fc_test_qops = {
+ };
+ #endif
+ 
++static struct inode *fc_test_alloc_inode(struct super_block *sb)
++{
++	struct ext4_inode_info *ei = kzalloc_obj(*ei, GFP_KERNEL);
++
++	if (!ei)
++		return NULL;
++	inode_init_once(&ei->vfs_inode);
++	return &ei->vfs_inode;
++}
++
++static void fc_test_free_inode(struct inode *inode)
++{
++	kfree(EXT4_I(inode));
++}
++
++static void fc_test_evict_inode(struct inode *inode)
++{
++	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
++
++	if (EXT4_I(inode)->i_flags & EXT4_EA_INODE_FL) {
++		struct fc_test_ctx *ctx = READ_ONCE(fc_active_ctx);
++
++		if (ctx) {
++			WRITE_ONCE(ctx->ea_evicted, true);
++			WRITE_ONCE(ctx->ea_evict_saw_fc_replay,
++				   !!(sbi->s_mount_state & EXT4_FC_REPLAY));
++		}
++	}
++	clear_inode(inode);
++}
++
+ static const struct super_operations fc_test_sops = {
++	.alloc_inode	= fc_test_alloc_inode,
++	.free_inode	= fc_test_free_inode,
++	.evict_inode	= fc_test_evict_inode,
+ #ifdef CONFIG_QUOTA
+ 	.get_dquots	= fc_test_get_dquots,
+ #endif
+@@ -859,6 +900,8 @@ static void fc_cleanup_all(void *priv)
+ 		ext4_es_destroy_stats(ctx->sbi);
  	}
+ 	deactivate_super(ctx->sb);
++	rcu_barrier();
++	WRITE_ONCE(fc_active_ctx, NULL);
+ }
+ 
+ static int fast_commit_test_init(struct kunit *test)
+@@ -884,6 +927,8 @@ static int fast_commit_test_init(struct kunit *test)
+ 
+ 	ctx->sb = sb;
+ 	ctx->sbi = sbi;
++	WRITE_ONCE(fc_active_ctx, ctx);
++	ext4_init_ea_inode_work(sbi);
+ 	test->priv = ctx;
+ 
+ 	/* Superblock and ext4_sb_info setup */
+@@ -2211,7 +2256,33 @@ static void test_fc_replay_regions_and_scan(struct kunit *test)
+ 					    PASS_SCAN, 1, 10),
+ 			JBD2_FC_REPLAY_STOP);
+ 	KUNIT_EXPECT_EQ(test, state->fc_replay_num_tags, 2);
+-	ext4_fc_replay_cleanup(sb);
++
++	/*
++	 * 6) ext4_fc_replay_cleanup() must drain deferred EA inode iputs
++	 *    while EXT4_FC_REPLAY is still set before clearing replay state.
++	 */
++	{
++		struct inode *ea_inode = new_inode(sb);
++
++		KUNIT_ASSERT_NOT_ERR_OR_NULL(test, ea_inode);
++		ea_inode->i_ino = 500;
++		ea_inode->i_mode = S_IFREG | 0600;
++		clear_nlink(ea_inode);
++		EXT4_I(ea_inode)->i_flags = EXT4_EA_INODE_FL;
++		WRITE_ONCE(ctx->ea_evicted, false);
++		WRITE_ONCE(ctx->ea_evict_saw_fc_replay, false);
++		sbi->s_mount_state |= EXT4_FC_REPLAY;
++
++		ext4_put_ea_inode(ea_inode);
++		ext4_fc_replay_cleanup(sb);
++
++		KUNIT_EXPECT_TRUE(test, READ_ONCE(ctx->ea_evicted));
++		KUNIT_EXPECT_TRUE(test,
++				  READ_ONCE(ctx->ea_evict_saw_fc_replay));
++		KUNIT_EXPECT_FALSE(test,
++				   !!(sbi->s_mount_state & EXT4_FC_REPLAY));
++		KUNIT_EXPECT_TRUE(test, llist_empty(&sbi->s_ea_inode_to_free));
++	}
+ 	memset(state, 0, sizeof(*state));
+ }
+ 
+diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
+index d56c45ee0d61..67264b935127 100644
+--- a/fs/ext4/fast_commit.c
++++ b/fs/ext4/fast_commit.c
+@@ -2426,6 +2426,12 @@ void ext4_fc_replay_cleanup(struct super_block *sb)
+ {
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 
++	/*
++	 * Drain any deferred EA inode iputs queued during fast commit replay
++	 * before clearing EXT4_FC_REPLAY and freeing replay state so that
++	 * ext4_evict_inode() -> ext4_free_inode() still sees EXT4_FC_REPLAY.
++	 */
++	flush_delayed_work(&sbi->s_ea_inode_work);
+ 	sbi->s_mount_state &= ~EXT4_FC_REPLAY;
+ 	kfree(sbi->s_fc_replay_state.fc_regions);
+ 	sbi->s_fc_replay_state.fc_regions = NULL;
 -- 
 2.56.1.708.g77570a6a1d-goog
 
