@@ -1,60 +1,60 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=18.9.28.11
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
 	t=1795103829;
-	b=aMMCUEygMLtjRrfI1iuRdZwe+LlPwDXmSrlF+XqeGAKw4KsZOJGtRHgI1ALQQkaLPpXe
-	 Utl8L2QAImR1oarQsNVxoyYV6tzc6GByOv7hG1LPg8EOe8hzDRxcHnwkTtHpQcRH9vjY7
-	 qwzwBDTfkDOuurpujPtat8QMfqDpAsvf1LaZZe0d7UxmR+GG5iW7bkdq3G1YVb1JydVUM
-	 ksXseEjeQ769gYB4nWho83iLjoKn7l70NqyXZKzl7HYx1NFEjWhmu68DjnDrbdyJjd1Px
-	 x1mHP8xKYlRg+p2A3uJQyv5J6ThyKkCssF/LtATL37dX8IdF5yk+AZGdb/3+JiwyCMA==
+	b=ypEvSpu34LljN6iarIwsRxC/562uMcOROGmEBdO8nDV7jkHleuknQXFYfvDP8AptMvp6
+	 4krlekHt3q6/uLAOTqjNly8zmjGCQc4gJp/rCZRwWIGRTf6xVUXUhDIL+e0sMOcaM2IGg
+	 dPevcDEWnZGG9zXJ5hCWMV/DC0cwDr1fQ9wQj3BMqQzzKzEaZWLP0qCx2RXAnOkLZglXt
+	 4whYvwAanm0AqlujF0zWiuQX9muBzQa1n7ZRinPT7uwuHXlcuDdBKRreRA/6f/pb0w5z3
+	 nqrScLGi2ECLxM4w/CgG4f4LYWde4hJjqr3cuCskUkg79XTZw8VXGvtMQVMvgu3iKGg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
 	a=rsa-sha256; c=relaxed/relaxed; t=1795103829;
 	h=DMARC-Filter:Received:DKIM-Signature:Received:From:To:Cc:Subject:
 	 Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
 	 Content-Transfer-Encoding;
-	bh=5fbWtJw1gQBy2V6Rvy4lky/v89ZnfBM4QbryxGbuwd4=;
-	b=0Q7e37hwJAHd1tB0OteOtuGd/buWuDC22uADa7TWALCbRef8Z7BNoZqiIwAqxUl+C/3y
-	 enH4nQNdzurh078aOEmCh0XdvZfO0IlKpVShNx79E8gdIwFdxROAyjv6whLCf0f2BtHox
-	 Iy5G8IDi1mMLIqZliGkXk/KimHY6jz+CuniuZwiUT1iacPplGvyfliVT2j3wVOolCU/Ty
-	 PPFFSjBkUPYo00deLxeVukGBDj7LVT9u76A5syck7qU0+fLaSnKTinFOEK+23D1bLcoSH
-	 2SpvpNnL5/GjxesFSIjgkGl8yTebq5WP60KqPmcM6GJXBcrSUP/pK7ZNFhL+eUB7Zuw==
+	bh=Qa+yazgrPKHozdg+Mn4XBiUnzBCj58bEi6b9aGYvToU=;
+	b=ulj+vOJOpooKDXecPgkdDLJ6GeLKiTWd+q07RLh8Jxiq+Rw7T/WTyBJ9JatyCP3/2Czm
+	 Q3C3jWF0jKDSJesRJC8onM63mXVlp8gAS1wJ2ZQTQ37hS8imzfZt0Rmt1BIvHOCshr3pq
+	 Is+LTIFJ3ai6fcXSrOBP8gbKcn04dLg0xUC4dZc7P8oeev6oL4G7H6F3d9xrkOOLS/66L
+	 R6vJYLZdequ2LP5gBWzWa5pp2ElyBUE/oiNwo5SVsrcEwJbm5N78gPDy+M7xIFUjuSTQ1
+	 KrUYcVi6i6DUuHBiG8T7AdkJWhJEeqWclD0F3L/a5Vit/3/bc+aPzosUbmZPfmDihzg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=mit.edu;
 	spf=pass smtp.mailfrom=mit.edu;
-	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=T0697Rs2;
+	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=MasKMuhC;
 	arc=none smtp.remote-ip=18.9.28.11
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ECF2760A2602
-	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2026 15:57:05 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org ECF2760A2602
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8DB46606A33F
+	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2026 15:57:07 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 8DB46606A33F
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=T0697Rs2
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=MasKMuhC
 Received: from trampoline.thunk.org (pool-173-48-114-214.bstnma.fios.verizon.net [173.48.114.214])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AJFv1Xi001563
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AJFv3Gu001613
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 19 Nov 2026 10:57:02 -0500
+	Thu, 19 Nov 2026 10:57:04 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1795103823; bh=5fbWtJw1gQBy2V6Rvy4lky/v89ZnfBM4QbryxGbuwd4=;
+	t=1795103824; bh=Qa+yazgrPKHozdg+Mn4XBiUnzBCj58bEi6b9aGYvToU=;
 	h=From:Subject:Date:Message-ID:MIME-Version;
-	b=T0697Rs2Xk7O8+6wWRaIyZ9thQZNmjQG0ku5s3V+3xRHjw6Xb4rOpd2Ytriz6q9ni
-	 8e4YM03IfqRIgshMq1McN95SEalTKSD4dbFLm8lWCAlYZzwMbIzK/bX9ocfJHrapI6
-	 UguODtRQd67HR8hglAhisnVllDFYljZeOzDEutv+oBlD4vJ4BcrzrhngKFt8Oz+EJJ
-	 44hx3Bjc7ha67h0wZW8e1p0ucFD1B4M7geF99mUMkafdaLm0HIzUcb7zErvNKJNVo8
-	 IO2paTVaTLqAXLk4ShUxvWKZ2MjofSCQf+Qn3kz0YikRLRPSvX4BxYnap7lxJhRJBS
-	 hbYzGk6PrtA8g==
+	b=MasKMuhCucJNC5KyEzDhgZVr2GSOXQntIIRi7i6BPwy10o0j7501IyEYyCd6l4FQF
+	 wEH8mK5zCWrHSDQMpTUx3UD131FOokhbTdPuSYW0e13YYmh1J+E5fDDfO8QGXGiPNW
+	 devO3/0bGUh2CAKdE8axqFD75TW77+03JaFaQQ2WXZYI3lho5o6Ugc206KIxNsilS9
+	 vbZIKSIaJvO/P0v6ayLkoIWagloBk2wP0DltsJKeAoNqacXs9bqmaRJsnRCc4M0vfx
+	 QzC9YJ/UmsFvgklGBN7RH24E9QiR0I32moPAxjFyYaLEoQ4aTnaCldLKB27lBSSLxC
+	 zUK2Xz+nmLmAw==
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id 6CF602E0151; Thu, 19 Nov 2026 10:57:00 -0500 (EST)
+	id 7ED452E0156; Thu, 19 Nov 2026 10:57:00 -0500 (EST)
 From: "Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Cc: "Theodore Ts'o" <tytso@mit.edu>
-Subject: [PATCH -v2 12/26] ext4: add KUnit tests for fs/ext4/block_validity.c
-Date: Thu, 19 Nov 2026 10:56:44 -0500
-Message-ID: <20261119155658.1940864-13-tytso@mit.edu>
+Subject: [PATCH -v2 17/26] ext4: add KUnit tests for fs/ext4/ioctl.c
+Date: Thu, 19 Nov 2026 10:56:49 -0500
+Message-ID: <20261119155658.1940864-18-tytso@mit.edu>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <20261119155658.1940864-1-tytso@mit.edu>
 References: <20261119155658.1940864-1-tytso@mit.edu>
@@ -69,277 +69,179 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Add the ext4_block_validity_test KUnit test suite in
-fs/ext4/block_validity-test.c (16 test cases, 40 subtests total) to
-comprehensively exercise system-zone rbtree construction, RCU release,
-block range validation, reserved journal inode protection, and indirect
-block reference checking in fs/ext4/block_validity.c using an in-memory
-VFS superblock and mock block device without requiring a mounted disk:
+Add a KUnit test suite (ext4_ioctl_test) covering superblock online
+tuning, backup superblock propagation, inode data swapping, fileattr
+validation, forced shutdown, and ioctl dispatch in fs/ext4/ioctl.c:
 
-- Bounds and 64-bit overflow checks (ext4_sb_block_valid and
-  ext4_inode_block_valid) across 1KiB (s_first_data_block = 1) and 4KiB
-  (s_first_data_block = 0) geometries, exact end-of-filesystem single
-  and multi-block spans, 64-bit u64 addition wrap-around, >32-bit block
-  counts under EXT4_FEATURE_INCOMPAT_64BIT, and high-32-bit masking when
-  64bit is cleared.
-- System-zone lifecycle management (ext4_setup_system_zone and
-  ext4_release_system_zone), covering pre-setup NULL behavior, RCU
-  publication and teardown, and idempotent double-release handling.
-- Multi-group sparse_super and flex_bg layouts (including groups with
-  zero base metadata blocks and relocated bitmaps/inode tables) as well
-  as DEBUG mount-option tree printing (debug_print_tree).
-- System-zone rbtree merging (add_system_zone and can_merge) across
-  left-neighbor merges, right-neighbor merges, 3-way bridge merges, and
-  64-bit (>2^32) group descriptor metadata zones, plus parameterized
-  interval-overlap geometries (adjacent, single-block, boundary
-  straddling, interior, exact, and enclosing spans).
-- Corrupt overlapping group metadata detection (-EFSCORRUPTED) across
-  block bitmap, inode bitmap, inode table, and cross-group collisions,
-  verifying partial rbtree cleanup without publishing s_system_blks.
-- Reserved journal inode protection (ext4_protect_reserved_inode),
-  verifying non-block-aligned i_size rounding, multi-extent and sparse
-  hole mapping, journal-inode ownership vs. regular/NULL inode
-  rejection, can_merge() isolation between adjacent ino=0 and journal
-  zones, disabled-feature/zero-inum/empty-inode skips, and -EINVAL,
-  ext4_iget, ext4_map_blocks, and metadata-overlap (-EFSCORRUPTED +
-  EXT4_ERROR_FS) failure paths.
-- Block reference array validation (ext4_check_blockref,
-  ext4_ind_check_inode, and ext4_check_indirect_blockref) across empty
-  and sparse arrays, metadata and out-of-bounds corruption reporting,
-  active journal inode (s_journal->j_inode) bypass, and integration with
-  ext4_map_blocks() block validity checks.
-
-Export the five runtime entry points in fs/ext4/block_validity.c with
-EXPORT_SYMBOL_FOR_EXT4_TEST for the ext4-test KUnit module.
+- Superblock modification callbacks (ext4_sb_setlabel, ext4_sb_setuuid,
+  and ext4_sb_setparams across error behavior, mount counts, 64-bit
+  reserved blocks, 32-bit split reserved uid/gid, hash/RAID/encoding
+  fields, mount_opts, DIR_INDEX / CSUM_SEED feature edits, and
+  FORCE_FSCK).
+- Parameter validation and normalization in ext4_validate_tune_sb_params
+  (-E2BIG mount_opts, -EOPNOTSUPP flags/feature clears, reserved_blocks
+  and hash algorithm bounds, DIR_INDEX hash seed initialization, and
+  CASEFOLD encoding defaults).
+- Primary and sparse_super backup superblock updates via
+  ext4_update_backup_sb, ext4_update_superblocks_fn (including
+  EXT4_FLAGS_RESIZING contention and unjournaled >2 backup updates), and
+  ext4_update_overhead skip/force semantics.
+- Inode swap rollback invariants in swap_inode_data (swapped vs
+  preserved flags, extent status cache clearing, double-swap round-trip)
+  and metadata_csum seed recalculation in ext4_reset_inode_seed.
+- Immutable enforcement, DAX mutual-exclusion rules (including inline
+  directories and verity-in-progress), and end-to-end ext4_fileattr_get
+  / ext4_fileattr_set flag masking and VFS flag synchronization.
+- Forced shutdown state transitions (ext4_force_shutdown) and
+  ext4_ioctl / ext4_compat_ioctl dispatch checks.
 
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/Makefile              |    3 +-
- fs/ext4/block_validity-test.c | 1520 +++++++++++++++++++++++++++++++++
- fs/ext4/block_validity.c      |    6 +
- 3 files changed, 1528 insertions(+), 1 deletion(-)
- create mode 100644 fs/ext4/block_validity-test.c
+ fs/ext4/Makefile     |    2 +-
+ fs/ext4/ext4.h       |   33 ++
+ fs/ext4/ioctl-test.c | 1198 ++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/ioctl.c      |  249 ++++++---
+ 4 files changed, 1411 insertions(+), 71 deletions(-)
+ create mode 100644 fs/ext4/ioctl-test.c
 
 diff --git a/fs/ext4/Makefile b/fs/ext4/Makefile
-index 9bad2bff0de9..5c6afff5f12a 100644
+index ff489dff825d..c18530508863 100644
 --- a/fs/ext4/Makefile
 +++ b/fs/ext4/Makefile
-@@ -19,7 +19,8 @@ ext4-test-objs				+= inode-test.o mballoc-test.o \
- 					   extents_status-test.o xattr-test.o \
- 					   namei-test.o inline-test.o \
+@@ -21,7 +21,7 @@ ext4-test-objs				+= inode-test.o mballoc-test.o \
  					   fast_commit-test.o ialloc-test.o \
--					   balloc-test.o orphan-test.o
-+					   balloc-test.o orphan-test.o \
-+					   block_validity-test.o
+ 					   balloc-test.o orphan-test.o \
+ 					   block_validity-test.o super-test.o \
+-					   sysfs-test.o
++					   sysfs-test.o ioctl-test.o
  obj-$(CONFIG_EXT4_KUNIT_TESTS)		+= ext4-test.o
  ext4-$(CONFIG_FS_VERITY)		+= verity.o
  ext4-$(CONFIG_FS_ENCRYPTION)		+= crypto.o
-diff --git a/fs/ext4/block_validity-test.c b/fs/ext4/block_validity-test.c
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index a704783e4356..afde7567c661 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -3370,6 +3370,39 @@ int ext4_fileattr_get(struct dentry *dentry, struct file_kattr *fa);
+ extern void ext4_reset_inode_seed(struct inode *inode);
+ int ext4_update_overhead(struct super_block *sb, bool force);
+ int ext4_force_shutdown(struct super_block *sb, u32 flags);
++int ext4_ioctl_sync_bh(struct buffer_head *bh);
++#if IS_ENABLED(CONFIG_EXT4_KUNIT_TESTS)
++struct ext4_tune_sb_params;
++void ext4_sb_setlabel_test(struct ext4_sb_info *sbi,
++			   struct ext4_super_block *es, const void *arg);
++void ext4_sb_setuuid_test(struct ext4_sb_info *sbi,
++			  struct ext4_super_block *es, const void *arg);
++void ext4_sb_setparams_test(struct ext4_sb_info *sbi,
++			    struct ext4_super_block *es, const void *arg);
++int ext4_validate_tune_sb_params_test(struct super_block *sb,
++				      struct ext4_tune_sb_params *params);
++int ext4_update_primary_sb_test(struct super_block *sb, handle_t *handle,
++				void (*func)(struct ext4_sb_info *,
++					     struct ext4_super_block *,
++					     const void *),
++				const void *arg);
++int ext4_update_backup_sb_test(struct super_block *sb, handle_t *handle,
++			       ext4_group_t grp,
++			       void (*func)(struct ext4_sb_info *,
++					    struct ext4_super_block *,
++					    const void *),
++			       const void *arg);
++int ext4_update_superblocks_fn_test(struct super_block *sb,
++				    void (*func)(struct ext4_sb_info *,
++						 struct ext4_super_block *,
++						 const void *),
++				    const void *arg);
++void ext4_swap_inode_data_test(struct inode *inode1, struct inode *inode2);
++int ext4_ioctl_check_immutable_test(struct inode *inode, __u32 new_projid,
++				    unsigned int flags);
++bool ext4_dax_compatible_test(struct inode *inode, unsigned int oldflags,
++			      unsigned int flags);
++#endif
+ 
+ /* migrate.c */
+ extern int ext4_ext_migrate(struct inode *);
+diff --git a/fs/ext4/ioctl-test.c b/fs/ext4/ioctl-test.c
 new file mode 100644
-index 000000000000..f7667099ac6c
+index 000000000000..8cdb4f7dd639
 --- /dev/null
-+++ b/fs/ext4/block_validity-test.c
-@@ -0,0 +1,1520 @@
++++ b/fs/ext4/ioctl-test.c
+@@ -0,0 +1,1198 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
-+ * KUnit tests for fs/ext4/block_validity.c
++ * KUnit tests for fs/ext4/ioctl.c
 + */
 +
 +#include <kunit/static_stub.h>
 +#include <kunit/test.h>
 +#include <linux/blkdev.h>
 +#include <linux/buffer_head.h>
++#include <linux/compat.h>
 +#include <linux/dcache.h>
++#include <linux/fileattr.h>
 +#include <linux/fs.h>
 +#include <linux/fs_context.h>
++#include <linux/fscrypt.h>
++#include <linux/fsverity.h>
 +#include <linux/iversion.h>
-+#include <linux/jbd2.h>
 +#include <linux/kernel.h>
-+#include <linux/limits.h>
++#include <linux/mm.h>
 +#include <linux/module.h>
++#include <linux/mount.h>
 +#include <linux/part_stat.h>
 +#include <linux/percpu.h>
++#include <linux/percpu_counter.h>
++#include <linux/quotaops.h>
 +#include <linux/rcupdate.h>
-+#include <linux/shrinker.h>
 +#include <linux/slab.h>
-+#include <linux/stat.h>
++#include <linux/string.h>
 +#include <linux/timer.h>
++#include <linux/uuid.h>
 +#include <linux/workqueue.h>
 +
 +#include "ext4.h"
-+#include "ext4_extents.h"
 +#include "ext4_jbd2.h"
 +#include "xattr.h"
 +
-+/*
-+ * Default mock filesystem geometry:
-+ *  - 4 block groups, 1024-byte blocks, s_first_data_block = 1
-+ *  - 1024 blocks per group -> total blocks = 4097 (valid blocks 0..4096)
-+ *  - sparse_super enabled, s_gdb_count = 1, s_reserved_gdt_blocks = 2:
-+ *      group 0 (blocks    1..1024): 4 base meta blocks (1..4)
-+ *      group 1 (blocks 1025..2048): 4 base meta blocks (1025..1028)
-+ *      group 2 (blocks 2049..3072): 0 base meta blocks (sparse_super)
-+ *      group 3 (blocks 3073..4096): 4 base meta blocks (3073..3076)
-+ *  - 32 inodes per group (128 total), 256-byte inodes -> 8 inode table
-+ *    blocks per group
-+ */
-+#define BV_TEST_NGROUPS			4U
-+#define BV_TEST_BLK_SIZE		1024U
-+#define BV_TEST_BLK_BITS		10U
-+#define BV_TEST_BLOCKS_PER_GRP		1024U
-+#define BV_TEST_FIRST_DATA_BLK		1U
-+#define BV_TEST_TOTAL_BLKS		(BV_TEST_FIRST_DATA_BLK + \
-+					 BV_TEST_NGROUPS * \
-+					 BV_TEST_BLOCKS_PER_GRP)
-+#define BV_TEST_INODE_SIZE		256U
-+#define BV_TEST_EXTRA_ISIZE		32U
-+#define BV_TEST_INODES_PER_BLK		(BV_TEST_BLK_SIZE / BV_TEST_INODE_SIZE)
-+#define BV_TEST_INODES_PER_GRP		32U
-+#define BV_TEST_ITB_PER_GRP		(BV_TEST_INODES_PER_GRP / \
-+					 BV_TEST_INODES_PER_BLK)
-+#define BV_TEST_TOTAL_INODES		(BV_TEST_NGROUPS * \
-+					 BV_TEST_INODES_PER_GRP)
-+#define BV_TEST_FIRST_INO		11U
-+#define BV_TEST_GDB_COUNT		1U
-+#define BV_TEST_RSV_GDT_BLKS		2U
-+#define BV_TEST_GDESC_BLK		2ULL
-+#define BV_TEST_MAX_SLOTS		8U
++#define IOCTL_TEST_NGROUPS		8U
++#define IOCTL_TEST_BLK_SIZE		1024U
++#define IOCTL_TEST_BLK_BITS		10U
++#define IOCTL_TEST_BLOCKS_PER_GRP	1024U
++#define IOCTL_TEST_FIRST_DATA_BLK	1U
++#define IOCTL_TEST_TOTAL_BLKS		(IOCTL_TEST_FIRST_DATA_BLK + \
++					 IOCTL_TEST_NGROUPS * \
++					 IOCTL_TEST_BLOCKS_PER_GRP)
++#define IOCTL_TEST_INODE_SIZE		256U
++#define IOCTL_TEST_EXTRA_ISIZE		32U
++#define IOCTL_TEST_INODES_PER_GRP	32U
++#define IOCTL_TEST_TOTAL_INODES		(IOCTL_TEST_NGROUPS * \
++					 IOCTL_TEST_INODES_PER_GRP)
++#define IOCTL_TEST_FIRST_INO		11U
 +
-+struct bv_test_inode_slot {
-+	bool in_use;
-+	unsigned long ino;
-+	struct inode *inode;
-+};
-+
-+struct bv_test_ctx {
++struct ioctl_test_ctx {
 +	struct super_block *sb;
 +	struct ext4_sb_info sbi;
-+	struct ext4_super_block es;
++	struct ext4_super_block *es;
 +	struct blockgroup_lock bgl;
 +	struct gendisk bdev_disk;
 +	struct block_device bdev;
 +	struct request_queue bdev_queue;
 +	struct inode bd_inode;
++	struct folio *bh_folio;
 +	struct buffer_head sb_bh;
-+	struct buffer_head gdesc_bh;
-+	char gdesc_buf[BV_TEST_BLK_SIZE] __aligned(8);
-+	char ind_buf[BV_TEST_BLK_SIZE] __aligned(8);
-+
-+	struct ext4_group_desc gdps[BV_TEST_NGROUPS];
-+	journal_t mock_journal;
-+
-+	struct bv_test_inode_slot slots[BV_TEST_MAX_SLOTS];
-+
-+	/* Fault injection and call tracking */
-+	int fail_iget_err;
-+	unsigned int iget_calls;
-+	ext4_iget_flags last_iget_flags;
-+
-+	int fail_map_err;
-+	unsigned int fail_map_on_call;
-+	unsigned int map_calls;
++	u8 primary_sb_buf[IOCTL_TEST_BLK_SIZE];
++	struct buffer_head backup_bhs[IOCTL_TEST_NGROUPS];
++	u8 backup_sb_bufs[IOCTL_TEST_NGROUPS][IOCTL_TEST_BLK_SIZE];
++	struct buffer_head iloc_bh;
++	u8 iloc_buf[IOCTL_TEST_BLK_SIZE];
++	int sync_bh_calls;
++	int sync_bh_err;
++	bool es_shrinker_inited;
 +};
 +
-+static inline ext4_fsblk_t bv_group_first_blk(ext4_group_t g)
-+{
-+	return BV_TEST_FIRST_DATA_BLK +
-+	       (ext4_fsblk_t)g * BV_TEST_BLOCKS_PER_GRP;
-+}
++static struct kunit *active_ioctl_test;
 +
-+/*
-+ * Number of base metadata blocks in group @g under the default 4-group
-+ * sparse_super configuration (groups 0, 1, 3 have super + 1 gdb + 2 rsv_gdt;
-+ * group 2 has 0).
-+ */
-+static inline unsigned int bv_default_base_meta(ext4_group_t g)
-+{
-+	if (g == 2)
-+		return 0;
-+	return 1U + BV_TEST_GDB_COUNT + BV_TEST_RSV_GDT_BLKS;
-+}
-+
-+static inline ext4_fsblk_t bv_default_bbitmap_blk(ext4_group_t g)
-+{
-+	return bv_group_first_blk(g) + bv_default_base_meta(g);
-+}
-+
-+static inline ext4_fsblk_t bv_default_ibitmap_blk(ext4_group_t g)
-+{
-+	return bv_default_bbitmap_blk(g) + 1ULL;
-+}
-+
-+static inline ext4_fsblk_t bv_default_itable_blk(ext4_group_t g)
-+{
-+	return bv_default_ibitmap_blk(g) + 1ULL;
-+}
-+
-+static inline ext4_fsblk_t bv_default_first_free_blk(ext4_group_t g)
-+{
-+	return bv_default_itable_blk(g) + BV_TEST_ITB_PER_GRP;
-+}
-+
-+static void bv_test_sb_upd_work(struct work_struct *work)
-+{
-+}
-+
-+static void bv_test_err_timer(struct timer_list *t)
-+{
-+}
-+
-+static unsigned long bv_dummy_shrinker_count(struct shrinker *shrink,
-+					     struct shrink_control *sc)
-+{
-+	return 0;
-+}
-+
-+static unsigned long bv_dummy_shrinker_scan(struct shrinker *shrink,
-+					    struct shrink_control *sc)
-+{
-+	return SHRINK_STOP;
-+}
-+
-+static void bv_test_init_ei_fields(struct ext4_inode_info *ei)
-+{
-+	inode_set_iversion(&ei->vfs_inode, 1);
-+	ei->i_flags = 0;
-+	ext4_clear_state_flags(ei);
-+	spin_lock_init(&ei->i_raw_lock);
-+	ei->i_prealloc_node = RB_ROOT;
-+	atomic_set(&ei->i_prealloc_active, 0);
-+	rwlock_init(&ei->i_prealloc_lock);
-+	ext4_es_init_tree(&ei->i_es_tree);
-+	rwlock_init(&ei->i_es_lock);
-+	INIT_LIST_HEAD(&ei->i_es_list);
-+	ei->i_es_all_nr = 0;
-+	ei->i_es_shk_nr = 0;
-+	ei->i_es_shrink_lblk = 0;
-+	ei->i_es_seq = 0;
-+	ei->i_reserved_data_blocks = 0;
-+	spin_lock_init(&ei->i_block_reservation_lock);
-+	ext4_init_pending_tree(&ei->i_pending_tree);
-+#ifdef CONFIG_QUOTA
-+	ei->i_reserved_quota = 0;
-+	memset(&ei->i_dquot, 0, sizeof(ei->i_dquot));
-+#endif
-+#ifdef CONFIG_FS_ENCRYPTION
-+	ei->i_crypt_info = NULL;
-+#endif
-+	ei->jinode = NULL;
-+	init_rwsem(&ei->xattr_sem);
-+	INIT_LIST_HEAD(&ei->i_rsv_conversion_list);
-+	spin_lock_init(&ei->i_completed_io_lock);
-+	ei->i_sync_tid = 0;
-+	ei->i_datasync_tid = 0;
-+	INIT_LIST_HEAD(&ei->i_orphan);
-+	ext4_fc_init_inode(&ei->vfs_inode);
-+	spin_lock_init(&ei->i_fc_lock);
-+	ei->i_metadata_bhs = NULL;
-+	ei->i_projid = make_kprojid(&init_user_ns, EXT4_DEF_PROJID);
-+	ei->i_extra_isize = BV_TEST_EXTRA_ISIZE;
-+	ei->i_last_alloc_group = ~0U;
-+}
-+
-+static struct inode *bv_test_alloc_inode(struct super_block *sb)
++static struct inode *ioctl_test_alloc_inode(struct super_block *sb)
 +{
 +	struct ext4_inode_info *ei;
 +
@@ -349,247 +251,208 @@ index 000000000000..f7667099ac6c
 +
 +	init_rwsem(&ei->i_data_sem);
 +	inode_init_once(&ei->vfs_inode);
-+	bv_test_init_ei_fields(ei);
++	inode_set_iversion(&ei->vfs_inode, 1);
++	ei->i_prealloc_node = RB_ROOT;
++	rwlock_init(&ei->i_prealloc_lock);
++	ext4_es_init_tree(&ei->i_es_tree);
++	rwlock_init(&ei->i_es_lock);
++	INIT_LIST_HEAD(&ei->i_es_list);
++	spin_lock_init(&ei->i_raw_lock);
++	spin_lock_init(&ei->i_block_reservation_lock);
++	ext4_init_pending_tree(&ei->i_pending_tree);
++	init_rwsem(&ei->xattr_sem);
++	INIT_LIST_HEAD(&ei->i_rsv_conversion_list);
++	spin_lock_init(&ei->i_completed_io_lock);
++	INIT_LIST_HEAD(&ei->i_orphan);
++	ext4_fc_init_inode(&ei->vfs_inode);
++	spin_lock_init(&ei->i_fc_lock);
++	ei->i_projid = make_kprojid(&init_user_ns, EXT4_DEF_PROJID);
++	ei->i_extra_isize = IOCTL_TEST_EXTRA_ISIZE;
++	ei->i_last_alloc_group = ~0U;
++
 +	return &ei->vfs_inode;
 +}
 +
-+static void bv_test_evict_inode(struct inode *inode)
-+{
-+	truncate_inode_pages_final(&inode->i_data);
-+	ext4_clear_inode(inode);
-+}
-+
-+static void bv_test_destroy_inode(struct inode *inode)
-+{
-+	kfree(ext4_i_metadata_bhs(inode));
-+	EXT4_I(inode)->i_metadata_bhs = NULL;
-+}
-+
-+static void bv_test_free_inode_mem(struct inode *inode)
++static void ioctl_test_free_inode(struct inode *inode)
 +{
 +	kfree(EXT4_I(inode));
 +}
 +
-+static const struct super_operations bv_test_sops = {
-+	.alloc_inode	= bv_test_alloc_inode,
-+	.evict_inode	= bv_test_evict_inode,
-+	.destroy_inode	= bv_test_destroy_inode,
-+	.free_inode	= bv_test_free_inode_mem,
-+	.drop_inode	= inode_just_drop,
++static void ioctl_test_evict_inode(struct inode *inode)
++{
++	truncate_inode_pages_final(&inode->i_data);
++	ext4_es_remove_extent(inode, 0, EXT_MAX_BLOCKS);
++	clear_inode(inode);
++}
++
++#ifdef CONFIG_QUOTA
++static struct dquot __rcu **ioctl_test_get_dquots(struct inode *inode)
++{
++	return EXT4_I(inode)->i_dquot;
++}
++#endif
++
++static const struct super_operations ioctl_test_sops = {
++	.alloc_inode	= ioctl_test_alloc_inode,
++	.free_inode	= ioctl_test_free_inode,
++	.evict_inode	= ioctl_test_evict_inode,
++#ifdef CONFIG_QUOTA
++	.get_dquots	= ioctl_test_get_dquots,
++#endif
 +};
 +
-+static int bv_test_init_fs_context(struct fs_context *fc)
++static void ioctl_test_sb_upd_work(struct work_struct *work)
++{
++}
++
++static void ioctl_test_err_timer(struct timer_list *t)
++{
++}
++
++static int ioctl_test_init_fs_context(struct fs_context *fc)
 +{
 +	return 0;
 +}
 +
-+static struct file_system_type bv_test_fs_type = {
-+	.name		 = "ext4_bv_kunit",
-+	.init_fs_context = bv_test_init_fs_context,
++static struct file_system_type ioctl_test_fs_type = {
++	.name		 = "ext4_ioctl_kunit",
++	.init_fs_context = ioctl_test_init_fs_context,
 +	.kill_sb	 = kill_anon_super,
 +};
 +
-+/* --- Helpers & Static Stubs --- */
-+
-+static void bv_release_system_zone_locked(struct super_block *sb)
++static struct buffer_head *ioctl_sb_bread_stub(struct super_block *sb,
++					       sector_t block,
++					       blk_opf_t op_flags)
 +{
-+	down_write(&sb->s_umount);
-+	ext4_release_system_zone(sb);
-+	up_write(&sb->s_umount);
-+}
++	struct kunit *test = active_ioctl_test;
++	struct ioctl_test_ctx *ctx;
++	ext4_group_t g;
 +
-+static struct bv_test_inode_slot *
-+bv_find_slot(struct bv_test_ctx *ctx, unsigned long ino)
-+{
-+	unsigned int i;
-+
-+	for (i = 0; i < BV_TEST_MAX_SLOTS; i++) {
-+		if (ctx->slots[i].in_use && ctx->slots[i].ino == ino)
-+			return &ctx->slots[i];
-+	}
-+	return NULL;
-+}
-+
-+static struct inode *bv_create_inode(struct kunit *test,
-+				     struct bv_test_ctx *ctx,
-+				     unsigned long ino, umode_t mode,
-+				     bool use_extents)
-+{
-+	struct bv_test_inode_slot *slot = NULL;
-+	struct ext4_extent_header *eh;
-+	struct inode *inode;
-+	unsigned int i;
-+
-+	for (i = 0; i < BV_TEST_MAX_SLOTS; i++) {
-+		if (!ctx->slots[i].in_use) {
-+			slot = &ctx->slots[i];
-+			break;
-+		}
-+	}
-+	KUNIT_ASSERT_NOT_NULL(test, slot);
-+
-+	inode = new_inode(ctx->sb);
-+	KUNIT_ASSERT_NOT_NULL(test, inode);
-+
-+	slot->in_use = true;
-+	slot->ino = ino;
-+	slot->inode = inode;
-+
-+	inode->i_ino = ino;
-+	inode->i_mode = mode;
-+	inode->i_blkbits = ctx->sb->s_blocksize_bits;
-+	inode->i_flags |= S_NOQUOTA;
-+	set_nlink(inode, 1);
-+	EXT4_I(inode)->i_block_group = (ino - 1) / BV_TEST_INODES_PER_GRP;
-+	memset(EXT4_I(inode)->i_data, 0, sizeof(EXT4_I(inode)->i_data));
-+
-+	if (use_extents) {
-+		ext4_set_inode_flag(inode, EXT4_INODE_EXTENTS);
-+		eh = ext_inode_hdr(inode);
-+		eh->eh_magic = EXT4_EXT_MAGIC;
-+		eh->eh_entries = 0;
-+		eh->eh_max = cpu_to_le16((sizeof(EXT4_I(inode)->i_data) -
-+					  sizeof(*eh)) /
-+					 sizeof(struct ext4_extent));
-+		eh->eh_depth = 0;
-+	}
-+
-+	return inode;
-+}
-+
-+static void bv_append_extent(struct kunit *test, struct inode *inode,
-+			     ext4_lblk_t lblk, ext4_fsblk_t pblk,
-+			     unsigned short len)
-+{
-+	struct ext4_extent_header *eh = ext_inode_hdr(inode);
-+	u16 entries = le16_to_cpu(eh->eh_entries);
-+	struct ext4_extent *ex;
-+
-+	KUNIT_ASSERT_LT(test, entries, le16_to_cpu(eh->eh_max));
-+	ex = EXT_FIRST_EXTENT(eh) + entries;
-+	ex->ee_block = cpu_to_le32(lblk);
-+	ex->ee_len = cpu_to_le16(len);
-+	ext4_ext_store_pblock(ex, pblk);
-+	eh->eh_entries = cpu_to_le16(entries + 1);
-+}
-+
-+static void bv_set_group_meta(struct super_block *sb,
-+			      struct ext4_group_desc *gdp,
-+			      ext4_fsblk_t bbitmap, ext4_fsblk_t ibitmap,
-+			      ext4_fsblk_t itable)
-+{
-+	ext4_block_bitmap_set(sb, gdp, bbitmap);
-+	ext4_inode_bitmap_set(sb, gdp, ibitmap);
-+	ext4_inode_table_set(sb, gdp, itable);
-+}
-+
-+static void bv_clear_fs_error(struct bv_test_ctx *ctx)
-+{
-+	ctx->sbi.s_mount_state &= ~EXT4_ERROR_FS;
-+	ctx->es.s_last_error_block = 0;
-+	ctx->es.s_last_error_ino = 0;
-+	ctx->es.s_last_error_errcode = 0;
-+}
-+
-+static struct ext4_group_desc *
-+bv_get_group_desc_stub(struct super_block *sb, ext4_group_t block_group,
-+		       struct buffer_head **bh)
-+{
-+	struct kunit *test = kunit_get_current_test();
-+	struct bv_test_ctx *ctx = test ? test->priv : NULL;
-+
-+	if (!ctx || block_group >= BV_TEST_NGROUPS)
-+		return NULL;
-+	if (bh)
-+		*bh = &ctx->gdesc_bh;
-+	return &ctx->gdps[block_group];
-+}
-+
-+static struct inode *bv_iget_stub(struct super_block *sb, unsigned long ino,
-+				  ext4_iget_flags flags, const char *function,
-+				  unsigned int line)
-+{
-+	struct kunit *test = kunit_get_current_test();
-+	struct bv_test_ctx *ctx = test ? test->priv : NULL;
-+	struct bv_test_inode_slot *slot;
-+
-+	if (!ctx)
++	if (!test)
++		return ERR_PTR(-EIO);
++	ctx = test->priv;
++	if (!ctx || sb != ctx->sb)
 +		return ERR_PTR(-EIO);
 +
-+	ctx->iget_calls++;
-+	ctx->last_iget_flags = flags;
-+	if (ctx->fail_iget_err)
-+		return ERR_PTR(ctx->fail_iget_err);
++	for (g = 0; g < IOCTL_TEST_NGROUPS; g++) {
++		ext4_fsblk_t grp_blk = ext4_group_first_block_no(sb, g);
 +
-+	slot = bv_find_slot(ctx, ino);
-+	if (!slot || !slot->inode)
-+		return ERR_PTR(-ENOENT);
++		if ((ext4_fsblk_t)block == grp_blk) {
++			struct buffer_head *bh = &ctx->backup_bhs[g];
 +
-+	ihold(slot->inode);
-+	return slot->inode;
++			get_bh(bh);
++			return bh;
++		}
++	}
++
++	return ERR_PTR(-ENOENT);
 +}
 +
-+static int bv_map_blocks_fault_stub(handle_t *handle, struct inode *inode,
-+				    struct ext4_map_blocks *map, int flags)
++static int ioctl_sync_bh_stub(struct buffer_head *bh)
 +{
-+	struct kunit *test = kunit_get_current_test();
-+	struct bv_test_ctx *ctx = test ? test->priv : NULL;
++	struct kunit *test = active_ioctl_test;
++	struct ioctl_test_ctx *ctx;
 +
++	if (!test)
++		return 0;
++	ctx = test->priv;
++	if (!ctx)
++		return 0;
++
++	ctx->sync_bh_calls++;
++	return ctx->sync_bh_err;
++}
++
++static int ioctl_get_inode_loc_stub(struct inode *inode, struct ext4_iloc *iloc)
++{
++	struct kunit *test = active_ioctl_test;
++	struct ioctl_test_ctx *ctx;
++
++	if (!test)
++		return -EIO;
++	ctx = test->priv;
 +	if (!ctx)
 +		return -EIO;
 +
-+	ctx->map_calls++;
-+	if (ctx->fail_map_err &&
-+	    (!ctx->fail_map_on_call ||
-+	     ctx->map_calls == ctx->fail_map_on_call))
-+		return ctx->fail_map_err;
-+
-+	map->m_pblk = bv_default_first_free_blk(0) + map->m_lblk;
-+	map->m_len = 1;
-+	map->m_flags = EXT4_MAP_MAPPED;
-+	return 1;
++	get_bh(&ctx->iloc_bh);
++	iloc->bh = &ctx->iloc_bh;
++	iloc->offset = 0;
++	iloc->block_group = 0;
++	return 0;
 +}
 +
-+/* --- Fixture Setup & Teardown --- */
-+
-+static void bv_test_cleanup(struct bv_test_ctx *ctx)
++static int ioctl_mark_iloc_dirty_stub(handle_t *handle, struct inode *inode,
++				      struct ext4_iloc *iloc)
 +{
-+	unsigned int i;
++	brelse(iloc->bh);
++	iloc->bh = NULL;
++	return 0;
++}
 +
-+	ctx->sbi.s_journal = NULL;
-+	bv_release_system_zone_locked(ctx->sb);
++static void ioctl_init_mock_bh(struct buffer_head *bh,
++			       struct block_device *bdev, struct folio *folio,
++			       u8 *data, size_t size, sector_t blocknr)
++{
++	memset(bh, 0, sizeof(*bh));
++	bh->b_bdev = bdev;
++	bh->b_folio = folio;
++	bh->b_data = (char *)data;
++	bh->b_size = size;
++	bh->b_blocknr = blocknr;
++	atomic_set(&bh->b_count, 2);
++	set_buffer_uptodate(bh);
++}
 +
-+	for (i = 0; i < BV_TEST_MAX_SLOTS; i++) {
-+		struct inode *inode = ctx->slots[i].inode;
++static void ioctl_sync_backups_from_primary(struct ioctl_test_ctx *ctx)
++{
++	struct super_block *sb = ctx->sb;
++	ext4_group_t g;
 +
-+		if (!inode)
-+			continue;
-+		spin_lock(&inode->i_lock);
-+		inode_state_clear(inode, I_DIRTY_TIME | I_NEW);
-+		spin_unlock(&inode->i_lock);
-+		set_nlink(inode, 1);
-+		iput(inode);
-+		ctx->slots[i].inode = NULL;
-+		ctx->slots[i].in_use = false;
++	ext4_superblock_csum_set(sb);
++	for (g = 0; g < IOCTL_TEST_NGROUPS; g++) {
++		struct ext4_super_block *bes;
++
++		bes = (struct ext4_super_block *)ctx->backup_sb_bufs[g];
++		memcpy(bes, ctx->es, sizeof(*bes));
++		bes->s_block_group_nr = cpu_to_le16(g);
++		if (ext4_has_feature_metadata_csum(sb))
++			bes->s_checksum = ext4_superblock_csum(bes);
 +	}
++}
 +
-+	deactivate_super(ctx->sb);
-+	ext4_es_unregister_shrinker(&ctx->sbi);
-+	ext4_es_destroy_stats(&ctx->sbi);
-+	rcu_barrier();
++static void ioctl_test_cleanup(struct ioctl_test_ctx *ctx)
++{
++	active_ioctl_test = NULL;
 +
 +	cancel_work_sync(&ctx->sbi.s_sb_upd_work);
 +	timer_delete_sync(&ctx->sbi.s_err_report);
++
++	if (ctx->sb) {
++		deactivate_super(ctx->sb);
++		rcu_barrier();
++	}
++
++	if (ctx->es_shrinker_inited) {
++		ext4_es_unregister_shrinker(&ctx->sbi);
++		ext4_es_destroy_stats(&ctx->sbi);
++	}
++
++	percpu_counter_destroy(&ctx->sbi.s_freeclusters_counter);
++	percpu_counter_destroy(&ctx->sbi.s_dirtyclusters_counter);
++	percpu_counter_destroy(&ctx->sbi.s_freeinodes_counter);
++
++	if (ctx->bh_folio)
++		folio_put(ctx->bh_folio);
 +	free_percpu(ctx->bdev.bd_stats);
 +	kfree(ctx);
 +}
 +
-+KUNIT_DEFINE_ACTION_WRAPPER(bv_test_cleanup_action, bv_test_cleanup,
-+			    struct bv_test_ctx *);
++KUNIT_DEFINE_ACTION_WRAPPER(ioctl_test_cleanup_action, ioctl_test_cleanup,
++			    struct ioctl_test_ctx *);
 +
-+static int bv_test_init(struct kunit *test)
++static int ioctl_test_init(struct kunit *test)
 +{
-+	struct bv_test_ctx *ctx;
++	struct ioctl_test_ctx *ctx;
 +	struct fs_context *fc;
 +	struct super_block *sb;
 +	struct ext4_sb_info *sbi;
@@ -607,9 +470,17 @@ index 000000000000..f7667099ac6c
 +		KUNIT_FAIL_AND_ABORT(test, "failed to alloc bd_stats");
 +	}
 +
-+	fc = fs_context_for_mount(&bv_test_fs_type, 0);
++	ctx->bh_folio = folio_alloc(GFP_KERNEL, 0);
++	if (!ctx->bh_folio) {
++		free_percpu(ctx->bdev.bd_stats);
++		kfree(ctx);
++		KUNIT_FAIL_AND_ABORT(test, "failed to alloc bh_folio");
++	}
++
++	fc = fs_context_for_mount(&ioctl_test_fs_type, 0);
 +	if (IS_ERR(fc)) {
 +		err = PTR_ERR(fc);
++		folio_put(ctx->bh_folio);
 +		free_percpu(ctx->bdev.bd_stats);
 +		kfree(ctx);
 +		KUNIT_ASSERT_EQ(test, err, 0);
@@ -618,6 +489,7 @@ index 000000000000..f7667099ac6c
 +	put_fs_context(fc);
 +	if (IS_ERR(sb)) {
 +		err = PTR_ERR(sb);
++		folio_put(ctx->bh_folio);
 +		free_percpu(ctx->bdev.bd_stats);
 +		kfree(ctx);
 +		KUNIT_ASSERT_EQ(test, err, 0);
@@ -625,23 +497,70 @@ index 000000000000..f7667099ac6c
 +	ctx->sb = sb;
 +	sbi = &ctx->sbi;
 +
++	INIT_WORK(&sbi->s_sb_upd_work, ioctl_test_sb_upd_work);
++	timer_setup(&sbi->s_err_report, ioctl_test_err_timer, 0);
++
++	err = percpu_counter_init(&sbi->s_freeclusters_counter, 0, GFP_KERNEL);
++	if (err) {
++		up_write(&sb->s_umount);
++		ioctl_test_cleanup(ctx);
++		KUNIT_ASSERT_EQ(test, err, 0);
++	}
++	err = percpu_counter_init(&sbi->s_dirtyclusters_counter, 0, GFP_KERNEL);
++	if (err) {
++		up_write(&sb->s_umount);
++		ioctl_test_cleanup(ctx);
++		KUNIT_ASSERT_EQ(test, err, 0);
++	}
++	err = percpu_counter_init(&sbi->s_freeinodes_counter, 0, GFP_KERNEL);
++	if (err) {
++		up_write(&sb->s_umount);
++		ioctl_test_cleanup(ctx);
++		KUNIT_ASSERT_EQ(test, err, 0);
++	}
++
++	spin_lock_init(&sbi->s_error_lock);
++	spin_lock_init(&sbi->s_md_lock);
++	spin_lock_init(&sbi->s_bdev_wb_lock);
++	spin_lock_init(&sbi->s_es_lock);
++	INIT_LIST_HEAD(&sbi->s_es_list);
++	mutex_init(&sbi->s_fc_lock);
++	INIT_LIST_HEAD(&sbi->s_fc_q[FC_Q_MAIN]);
++	INIT_LIST_HEAD(&sbi->s_fc_q[FC_Q_STAGING]);
++	INIT_LIST_HEAD(&sbi->s_fc_dentry_q[FC_Q_MAIN]);
++	INIT_LIST_HEAD(&sbi->s_fc_dentry_q[FC_Q_STAGING]);
++	ratelimit_state_init(&sbi->s_err_ratelimit_state,
++			     DEFAULT_RATELIMIT_INTERVAL, 0);
++	ratelimit_state_init(&sbi->s_warning_ratelimit_state,
++			     DEFAULT_RATELIMIT_INTERVAL, 0);
++	ratelimit_state_init(&sbi->s_msg_ratelimit_state,
++			     DEFAULT_RATELIMIT_INTERVAL, 0);
++
 +	sbi->s_sb = sb;
 +	sb->s_fs_info = sbi;
-+	sb->s_op = &bv_test_sops;
++	sb->s_op = &ioctl_test_sops;
 +#ifdef CONFIG_FS_ENCRYPTION
 +	sb->s_cop = &ext4_cryptops;
 +#endif
 +	sb->s_flags |= SB_ACTIVE;
-+	sb->s_blocksize = BV_TEST_BLK_SIZE;
-+	sb->s_blocksize_bits = BV_TEST_BLK_BITS;
++	sb->s_blocksize = IOCTL_TEST_BLK_SIZE;
++	sb->s_blocksize_bits = IOCTL_TEST_BLK_BITS;
 +	sb->s_maxbytes = MAX_LFS_FILESIZE;
 +	sb->s_time_gran = 1;
 +	sb->s_xattr = ext4_xattr_handlers;
-+	strscpy(sb->s_id, "ext4_bv_kunit", sizeof(sb->s_id));
++	strscpy(sb->s_id, "ext4_ioctl_kunit", sizeof(sb->s_id));
++
++	err = ext4_es_register_shrinker(sbi);
++	if (err) {
++		up_write(&sb->s_umount);
++		ioctl_test_cleanup(ctx);
++		KUNIT_ASSERT_EQ(test, err, 0);
++	}
++	ctx->es_shrinker_inited = true;
 +
 +	inode_init_once(&ctx->bd_inode);
 +	ctx->bd_inode.i_sb = sb;
-+	ctx->bd_inode.i_blkbits = BV_TEST_BLK_BITS;
++	ctx->bd_inode.i_blkbits = IOCTL_TEST_BLK_BITS;
 +	ctx->bd_inode.i_mapping = &ctx->bd_inode.i_data;
 +	ctx->bd_inode.i_data.host = &ctx->bd_inode;
 +	ctx->bdev_queue.limits.logical_block_size = 512;
@@ -657,1059 +576,1189 @@ index 000000000000..f7667099ac6c
 +	bgl_lock_init(&ctx->bgl);
 +	sbi->s_blockgroup_lock = &ctx->bgl;
 +
-+	sbi->s_es = &ctx->es;
-+	ctx->es.s_magic = cpu_to_le16(EXT4_SUPER_MAGIC);
-+	ctx->es.s_first_data_block = cpu_to_le32(BV_TEST_FIRST_DATA_BLK);
-+	ctx->es.s_rev_level = cpu_to_le32(EXT4_DYNAMIC_REV);
-+	ctx->es.s_creator_os = cpu_to_le32(EXT4_OS_LINUX);
-+	ctx->es.s_inodes_count = cpu_to_le32(BV_TEST_TOTAL_INODES);
-+	ctx->es.s_inodes_per_group = cpu_to_le32(BV_TEST_INODES_PER_GRP);
-+	ctx->es.s_blocks_per_group = cpu_to_le32(BV_TEST_BLOCKS_PER_GRP);
-+	ctx->es.s_clusters_per_group = cpu_to_le32(BV_TEST_BLOCKS_PER_GRP);
-+	ctx->es.s_first_ino = cpu_to_le32(BV_TEST_FIRST_INO);
-+	ctx->es.s_inode_size = cpu_to_le16(BV_TEST_INODE_SIZE);
-+	ctx->es.s_min_extra_isize = cpu_to_le16(BV_TEST_EXTRA_ISIZE);
-+	ctx->es.s_want_extra_isize = cpu_to_le16(BV_TEST_EXTRA_ISIZE);
-+	ctx->es.s_reserved_gdt_blocks = cpu_to_le16(BV_TEST_RSV_GDT_BLKS);
-+	ctx->es.s_checksum_type = EXT4_CRC32C_CHKSUM;
-+	ext4_blocks_count_set(&ctx->es, BV_TEST_TOTAL_BLKS);
++	ctx->es = (struct ext4_super_block *)ctx->primary_sb_buf;
++	ctx->es->s_magic = cpu_to_le16(EXT4_SUPER_MAGIC);
++	ctx->es->s_rev_level = cpu_to_le32(EXT4_DYNAMIC_REV);
++	ctx->es->s_first_ino = cpu_to_le32(IOCTL_TEST_FIRST_INO);
++	ctx->es->s_inode_size = cpu_to_le16(IOCTL_TEST_INODE_SIZE);
++	ctx->es->s_want_extra_isize = cpu_to_le16(IOCTL_TEST_EXTRA_ISIZE);
++	ctx->es->s_min_extra_isize = cpu_to_le16(IOCTL_TEST_EXTRA_ISIZE);
++	ctx->es->s_first_data_block = cpu_to_le32(IOCTL_TEST_FIRST_DATA_BLK);
++	ctx->es->s_blocks_per_group = cpu_to_le32(IOCTL_TEST_BLOCKS_PER_GRP);
++	ctx->es->s_clusters_per_group = cpu_to_le32(IOCTL_TEST_BLOCKS_PER_GRP);
++	ctx->es->s_inodes_per_group = cpu_to_le32(IOCTL_TEST_INODES_PER_GRP);
++	ctx->es->s_inodes_count = cpu_to_le32(IOCTL_TEST_TOTAL_INODES);
++	ext4_blocks_count_set(ctx->es, IOCTL_TEST_TOTAL_BLKS);
++	ctx->es->s_checksum_type = EXT4_CRC32C_CHKSUM;
++	ctx->es->s_feature_incompat = cpu_to_le32(EXT4_FEATURE_INCOMPAT_EXTENTS |
++						  EXT4_FEATURE_INCOMPAT_64BIT);
++	ctx->es->s_feature_ro_compat =
++		cpu_to_le32(EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER |
++			    EXT4_FEATURE_RO_COMPAT_METADATA_CSUM |
++			    EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE);
++	generate_random_uuid(ctx->es->s_uuid);
 +
-+	ext4_set_feature_sparse_super(sb);
-+	ext4_set_feature_extents(sb);
-+	ext4_set_feature_extra_isize(sb);
-+	ext4_set_feature_metadata_csum(sb);
-+	ext4_set_feature_64bit(sb);
++	ioctl_init_mock_bh(&ctx->sb_bh, &ctx->bdev, ctx->bh_folio,
++			   ctx->primary_sb_buf, IOCTL_TEST_BLK_SIZE,
++			   IOCTL_TEST_FIRST_DATA_BLK);
++	for (g = 0; g < IOCTL_TEST_NGROUPS; g++) {
++		ext4_fsblk_t blk = IOCTL_TEST_FIRST_DATA_BLK +
++				   (ext4_fsblk_t)g * IOCTL_TEST_BLOCKS_PER_GRP;
 +
-+	ctx->sb_bh.b_data = (char *)&ctx->es;
-+	ctx->sb_bh.b_size = sizeof(ctx->es);
-+	ctx->sb_bh.b_bdev = &ctx->bdev;
-+	atomic_set(&ctx->sb_bh.b_count, 1);
-+	set_buffer_uptodate(&ctx->sb_bh);
++		ioctl_init_mock_bh(&ctx->backup_bhs[g], &ctx->bdev,
++				   ctx->bh_folio, ctx->backup_sb_bufs[g],
++				   IOCTL_TEST_BLK_SIZE, blk);
++	}
++	ioctl_init_mock_bh(&ctx->iloc_bh, &ctx->bdev, ctx->bh_folio,
++			   ctx->iloc_buf, IOCTL_TEST_BLK_SIZE, 20);
++
++	sbi->s_es = ctx->es;
 +	sbi->s_sbh = &ctx->sb_bh;
-+
-+	ctx->gdesc_bh.b_data = ctx->gdesc_buf;
-+	ctx->gdesc_bh.b_size = BV_TEST_BLK_SIZE;
-+	ctx->gdesc_bh.b_blocknr = BV_TEST_GDESC_BLK;
-+	ctx->gdesc_bh.b_bdev = &ctx->bdev;
-+	atomic_set(&ctx->gdesc_bh.b_count, 1);
-+	set_buffer_uptodate(&ctx->gdesc_bh);
-+
-+	sbi->s_inode_size = BV_TEST_INODE_SIZE;
-+	sbi->s_inodes_per_block = BV_TEST_INODES_PER_BLK;
-+	sbi->s_inodes_per_group = BV_TEST_INODES_PER_GRP;
-+	sbi->s_itb_per_group = BV_TEST_ITB_PER_GRP;
-+	sbi->s_first_ino = BV_TEST_FIRST_INO;
-+	sbi->s_want_extra_isize = BV_TEST_EXTRA_ISIZE;
-+	sbi->s_blocks_per_group = BV_TEST_BLOCKS_PER_GRP;
-+	sbi->s_clusters_per_group = BV_TEST_BLOCKS_PER_GRP;
++	sbi->s_blocks_per_group = IOCTL_TEST_BLOCKS_PER_GRP;
++	sbi->s_clusters_per_group = IOCTL_TEST_BLOCKS_PER_GRP;
 +	sbi->s_cluster_ratio = 1;
 +	sbi->s_cluster_bits = 0;
-+	sbi->s_groups_count = BV_TEST_NGROUPS;
-+	sbi->s_gdb_count = BV_TEST_GDB_COUNT;
++	sbi->s_inodes_per_group = IOCTL_TEST_INODES_PER_GRP;
++	sbi->s_groups_count = IOCTL_TEST_NGROUPS;
++	sbi->s_inode_size = IOCTL_TEST_INODE_SIZE;
++	sbi->s_first_ino = IOCTL_TEST_FIRST_INO;
++	sbi->s_want_extra_isize = IOCTL_TEST_EXTRA_ISIZE;
 +	sbi->s_desc_size = EXT4_MIN_DESC_SIZE_64BIT;
-+	sbi->s_desc_per_block = BV_TEST_BLK_SIZE / EXT4_MIN_DESC_SIZE_64BIT;
-+	sbi->s_desc_per_block_bits = ilog2(sbi->s_desc_per_block);
-+	sbi->s_bitmap_maxbytes = 0x1ff7ffff000ULL;
++	sbi->s_csum_seed = ext4_chksum(~0, ctx->es->s_uuid,
++				       sizeof(ctx->es->s_uuid));
 +
-+	mutex_init(&sbi->s_orphan_lock);
-+	INIT_LIST_HEAD(&sbi->s_orphan);
-+	set_opt(sb, ERRORS_CONT);
-+	spin_lock_init(&sbi->s_bdev_wb_lock);
-+	spin_lock_init(&sbi->s_error_lock);
-+	spin_lock_init(&sbi->s_md_lock);
-+	INIT_WORK(&sbi->s_sb_upd_work, bv_test_sb_upd_work);
-+	timer_setup(&sbi->s_err_report, bv_test_err_timer, 0);
-+	mutex_init(&sbi->s_fc_lock);
-+	INIT_LIST_HEAD(&sbi->s_fc_q[FC_Q_MAIN]);
-+	INIT_LIST_HEAD(&sbi->s_fc_q[FC_Q_STAGING]);
-+	INIT_LIST_HEAD(&sbi->s_fc_dentry_q[FC_Q_MAIN]);
-+	INIT_LIST_HEAD(&sbi->s_fc_dentry_q[FC_Q_STAGING]);
-+
-+	ratelimit_state_init(&sbi->s_err_ratelimit_state,
-+			     DEFAULT_RATELIMIT_INTERVAL, 0);
-+	ratelimit_state_init(&sbi->s_warning_ratelimit_state,
-+			     DEFAULT_RATELIMIT_INTERVAL, 0);
-+	ratelimit_state_init(&sbi->s_msg_ratelimit_state,
-+			     DEFAULT_RATELIMIT_INTERVAL, 0);
-+
-+	for (g = 0; g < BV_TEST_NGROUPS; g++) {
-+		bv_set_group_meta(sb, &ctx->gdps[g],
-+				  bv_default_bbitmap_blk(g),
-+				  bv_default_ibitmap_blk(g),
-+				  bv_default_itable_blk(g));
-+	}
-+
-+	err = ext4_es_register_shrinker(sbi);
-+	if (err) {
-+		deactivate_locked_super(sb);
-+		rcu_barrier();
-+		free_percpu(ctx->bdev.bd_stats);
-+		kfree(ctx);
-+		KUNIT_ASSERT_EQ(test, err, 0);
-+	}
-+	WRITE_ONCE(sbi->s_es_shrinker->count_objects, bv_dummy_shrinker_count);
-+	WRITE_ONCE(sbi->s_es_shrinker->scan_objects, bv_dummy_shrinker_scan);
++	ioctl_sync_backups_from_primary(ctx);
 +
 +	root_inode = new_inode(sb);
 +	if (!root_inode) {
-+		deactivate_locked_super(sb);
-+		ext4_es_unregister_shrinker(sbi);
-+		ext4_es_destroy_stats(sbi);
-+		rcu_barrier();
-+		free_percpu(ctx->bdev.bd_stats);
-+		kfree(ctx);
++		up_write(&sb->s_umount);
++		ioctl_test_cleanup(ctx);
 +		KUNIT_FAIL_AND_ABORT(test, "failed to alloc root_inode");
 +	}
 +	root_inode->i_ino = EXT4_ROOT_INO;
 +	root_inode->i_mode = S_IFDIR | 0755;
++	root_inode->i_flags |= S_NOQUOTA;
 +	root_inode->i_op = &simple_dir_inode_operations;
 +	set_nlink(root_inode, 2);
 +	sb->s_root = d_make_root(root_inode);
 +	if (!sb->s_root) {
-+		deactivate_locked_super(sb);
-+		ext4_es_unregister_shrinker(sbi);
-+		ext4_es_destroy_stats(sbi);
-+		rcu_barrier();
-+		free_percpu(ctx->bdev.bd_stats);
-+		kfree(ctx);
-+		KUNIT_FAIL_AND_ABORT(test, "failed to create s_root");
++		up_write(&sb->s_umount);
++		ioctl_test_cleanup(ctx);
++		KUNIT_FAIL_AND_ABORT(test, "failed to alloc s_root");
 +	}
 +
 +	up_write(&sb->s_umount);
 +
-+	kunit_activate_static_stub(test, ext4_get_group_desc,
-+				   bv_get_group_desc_stub);
-+	kunit_activate_static_stub(test, __ext4_iget, bv_iget_stub);
-+
-+	err = kunit_add_action_or_reset(test, bv_test_cleanup_action, ctx);
++	err = kunit_add_action_or_reset(test, ioctl_test_cleanup_action, ctx);
 +	KUNIT_ASSERT_EQ(test, err, 0);
++
++	active_ioctl_test = test;
++
++	kunit_activate_static_stub(test, ext4_sb_bread, ioctl_sb_bread_stub);
++	kunit_activate_static_stub(test, ext4_ioctl_sync_bh,
++				   ioctl_sync_bh_stub);
++	kunit_activate_static_stub(test, ext4_get_inode_loc,
++				   ioctl_get_inode_loc_stub);
++	kunit_activate_static_stub(test, ext4_mark_iloc_dirty,
++				   ioctl_mark_iloc_dirty_stub);
++
 +	return 0;
 +}
 +
-+/* --- Parameterized Test 1: Bounds & 64-bit Overflow Checks --- */
-+
-+struct bv_bounds_case {
-+	const char *desc;
-+	u32 first_data_blk;
-+	ext4_fsblk_t total_blks;
-+	bool enable_64bit;
-+	ext4_fsblk_t start_blk;
-+	unsigned int count;
-+	int expected;
-+};
-+
-+static const struct bv_bounds_case bv_bounds_cases[] = {
-+	{
-+		.desc = "1k_block_0_below_first_data",
-+		.first_data_blk = 1,
-+		.total_blks = 4097,
-+		.enable_64bit = true,
-+		.start_blk = 0,
-+		.count = 1,
-+		.expected = 0,
-+	},
-+	{
-+		.desc = "1k_block_1_equals_first_data",
-+		.first_data_blk = 1,
-+		.total_blks = 4097,
-+		.enable_64bit = true,
-+		.start_blk = 1,
-+		.count = 1,
-+		.expected = 0,
-+	},
-+	{
-+		.desc = "1k_block_2_just_above_first_data",
-+		.first_data_blk = 1,
-+		.total_blks = 4097,
-+		.enable_64bit = true,
-+		.start_blk = 2,
-+		.count = 1,
-+		.expected = 1,
-+	},
-+	{
-+		.desc = "4k_block_0_equals_first_data",
-+		.first_data_blk = 0,
-+		.total_blks = 4096,
-+		.enable_64bit = true,
-+		.start_blk = 0,
-+		.count = 1,
-+		.expected = 0,
-+	},
-+	{
-+		.desc = "4k_block_1_just_above_first_data",
-+		.first_data_blk = 0,
-+		.total_blks = 4096,
-+		.enable_64bit = true,
-+		.start_blk = 1,
-+		.count = 1,
-+		.expected = 1,
-+	},
-+	{
-+		.desc = "exact_last_single_block",
-+		.first_data_blk = 1,
-+		.total_blks = 4097,
-+		.enable_64bit = true,
-+		.start_blk = 4096,
-+		.count = 1,
-+		.expected = 1,
-+	},
-+	{
-+		.desc = "multiblock_ending_at_last_block",
-+		.first_data_blk = 1,
-+		.total_blks = 4097,
-+		.enable_64bit = true,
-+		.start_blk = 4093,
-+		.count = 4,
-+		.expected = 1,
-+	},
-+	{
-+		.desc = "multiblock_exceeding_end_by_one",
-+		.first_data_blk = 1,
-+		.total_blks = 4097,
-+		.enable_64bit = true,
-+		.start_blk = 4093,
-+		.count = 5,
-+		.expected = 0,
-+	},
-+	{
-+		.desc = "start_at_blocks_count",
-+		.first_data_blk = 1,
-+		.total_blks = 4097,
-+		.enable_64bit = true,
-+		.start_blk = 4097,
-+		.count = 1,
-+		.expected = 0,
-+	},
-+	{
-+		.desc = "u64_wrap_around_into_in_bounds_value",
-+		.first_data_blk = 1,
-+		.total_blks = 4097,
-+		.enable_64bit = true,
-+		.start_blk = U64_MAX - 3ULL,
-+		.count = 10,
-+		.expected = 0,
-+	},
-+	{
-+		.desc = "u64_max_single_block_overflow",
-+		.first_data_blk = 1,
-+		.total_blks = 4097,
-+		.enable_64bit = true,
-+		.start_blk = U64_MAX,
-+		.count = 1,
-+		.expected = 0,
-+	},
-+	{
-+		.desc = "64bit_high_block_at_exact_end",
-+		.first_data_blk = 0,
-+		.total_blks = (1ULL << 33) + 64ULL,
-+		.enable_64bit = true,
-+		.start_blk = (1ULL << 33) + 60ULL,
-+		.count = 4,
-+		.expected = 1,
-+	},
-+	{
-+		.desc = "32bit_fs_ignores_high_blocks_count",
-+		.first_data_blk = 0,
-+		.total_blks = (1ULL << 33) + 4096ULL,
-+		.enable_64bit = false,
-+		.start_blk = (1ULL << 33) + 10ULL,
-+		.count = 1,
-+		.expected = 0,
-+	},
-+};
-+
-+KUNIT_ARRAY_PARAM_DESC(bv_bounds, bv_bounds_cases, desc);
-+
-+static void test_sb_block_valid_bounds(struct kunit *test)
++/*
++ * Verify ext4_sb_setlabel, ext4_sb_setuuid, and ext4_sb_setparams across all
++ * superblock tuneable fields, split 64-bit / 32-bit fields, feature masks,
++ * and FORCE_FSCK state marking.
++ */
++static void test_sb_callbacks_and_setparams(struct kunit *test)
 +{
-+	const struct bv_bounds_case *tc = test->param_value;
-+	struct bv_test_ctx *ctx = test->priv;
-+	struct inode *inode;
++	struct ioctl_test_ctx *ctx = test->priv;
++	struct ext4_sb_info *sbi = &ctx->sbi;
++	struct ext4_super_block *es = ctx->es;
++	struct ext4_tune_sb_params params;
++	char label[EXT4_LABEL_MAX] = "ext4_kunit_lbl";
++	u8 uuid[UUID_SIZE];
++	int i;
 +
-+	ctx->es.s_first_data_block = cpu_to_le32(tc->first_data_blk);
-+	ext4_blocks_count_set(&ctx->es, tc->total_blks);
-+	if (tc->enable_64bit)
-+		ext4_set_feature_64bit(ctx->sb);
-+	else
-+		ext4_clear_feature_64bit(ctx->sb);
++	ext4_sb_setlabel_test(sbi, es, label);
++	KUNIT_EXPECT_MEMEQ(test, es->s_volume_name, label, EXT4_LABEL_MAX);
 +
-+	inode = bv_create_inode(test, ctx, 12, S_IFREG | 0644, true);
++	for (i = 0; i < UUID_SIZE; i++)
++		uuid[i] = 0xa0 + i;
++	ext4_sb_setuuid_test(sbi, es, uuid);
++	KUNIT_EXPECT_MEMEQ(test, es->s_uuid, uuid, UUID_SIZE);
 +
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_sb_block_valid(ctx->sb, NULL, tc->start_blk,
-+					    tc->count),
-+			tc->expected);
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_inode_block_valid(inode, tc->start_blk, tc->count),
-+			tc->expected);
++	memset(&params, 0, sizeof(params));
++	sbi->s_def_hash_version = DX_HASH_TEA;
++	sbi->s_csum_seed = 0xdeadbeefU;
++	params.set_flags = EXT4_TUNE_FL_ERRORS_BEHAVIOR |
++			   EXT4_TUNE_FL_MNT_COUNT |
++			   EXT4_TUNE_FL_MAX_MNT_COUNT |
++			   EXT4_TUNE_FL_CHECKINTRVAL |
++			   EXT4_TUNE_FL_LAST_CHECK_TIME |
++			   EXT4_TUNE_FL_RESERVED_BLOCKS |
++			   EXT4_TUNE_FL_RESERVED_UID |
++			   EXT4_TUNE_FL_RESERVED_GID |
++			   EXT4_TUNE_FL_DEFAULT_MNT_OPTS |
++			   EXT4_TUNE_FL_DEF_HASH_ALG |
++			   EXT4_TUNE_FL_RAID_STRIDE |
++			   EXT4_TUNE_FL_RAID_STRIPE_WIDTH |
++			   EXT4_TUNE_FL_ENCODING |
++			   EXT4_TUNE_FL_ENCODING_FLAGS |
++			   EXT4_TUNE_FL_MOUNT_OPTS |
++			   EXT4_TUNE_FL_EDIT_FEATURES |
++			   EXT4_TUNE_FL_FORCE_FSCK;
++	params.errors_behavior = EXT4_ERRORS_RO;
++	params.mnt_count = 7;
++	params.max_mnt_count = 42;
++	params.checkinterval = 86400;
++	params.last_check_time = 1700000000ULL;
++	params.reserved_blocks = 0x100000055ULL;
++	params.reserved_uid = 0x12345678U;
++	params.reserved_gid = 0x87654321U;
++	params.default_mnt_opts = EXT4_DEFM_ACL | EXT4_DEFM_XATTR_USER;
++	params.def_hash_alg = DX_HASH_HALF_MD4;
++	params.raid_stride = 16;
++	params.raid_stripe_width = 128;
++	params.encoding = EXT4_ENC_UTF8_12_1;
++	params.encoding_flags = SB_ENC_STRICT_MODE_FL;
++	strscpy(params.mount_opts, "nodelalloc,noatime",
++		sizeof(params.mount_opts));
++	params.set_feature_compat_mask = EXT4_FEATURE_COMPAT_DIR_INDEX;
++	params.set_feature_incompat_mask = EXT4_FEATURE_INCOMPAT_CSUM_SEED;
++	params.set_feature_ro_compat_mask = EXT4_FEATURE_RO_COMPAT_PROJECT;
++
++	ext4_sb_setparams_test(sbi, es, &params);
++
++	KUNIT_EXPECT_EQ(test, le16_to_cpu(es->s_errors), EXT4_ERRORS_RO);
++	KUNIT_EXPECT_EQ(test, le16_to_cpu(es->s_mnt_count), 7);
++	KUNIT_EXPECT_EQ(test, le16_to_cpu(es->s_max_mnt_count), 42);
++	KUNIT_EXPECT_EQ(test, le32_to_cpu(es->s_checkinterval), 86400U);
++	KUNIT_EXPECT_EQ(test, le32_to_cpu(es->s_lastcheck), 1700000000U);
++	KUNIT_EXPECT_EQ(test, ext4_r_blocks_count(es), 0x100000055ULL);
++	KUNIT_EXPECT_EQ(test, ext4_get_resuid(es), 0x12345678U);
++	KUNIT_EXPECT_EQ(test, ext4_get_resgid(es), 0x87654321U);
++	KUNIT_EXPECT_EQ(test, le32_to_cpu(es->s_default_mount_opts),
++			(u32)(EXT4_DEFM_ACL | EXT4_DEFM_XATTR_USER));
++	/* EDIT_FEATURES + DIR_INDEX overrides s_def_hash_version from sbi */
++	KUNIT_EXPECT_EQ(test, es->s_def_hash_version, DX_HASH_TEA);
++	KUNIT_EXPECT_EQ(test, le16_to_cpu(es->s_raid_stride), 16);
++	KUNIT_EXPECT_EQ(test, le32_to_cpu(es->s_raid_stripe_width), 128U);
++	KUNIT_EXPECT_EQ(test, le16_to_cpu(es->s_encoding), EXT4_ENC_UTF8_12_1);
++	KUNIT_EXPECT_EQ(test, le16_to_cpu(es->s_encoding_flags),
++			SB_ENC_STRICT_MODE_FL);
++	KUNIT_EXPECT_STREQ(test, (char *)es->s_mount_opts,
++			   "nodelalloc,noatime");
++	KUNIT_EXPECT_NE(test,
++			le32_to_cpu(es->s_feature_compat) &
++			EXT4_FEATURE_COMPAT_DIR_INDEX, 0U);
++	KUNIT_EXPECT_NE(test,
++			le32_to_cpu(es->s_feature_incompat) &
++			EXT4_FEATURE_INCOMPAT_CSUM_SEED, 0U);
++	KUNIT_EXPECT_EQ(test, le32_to_cpu(es->s_checksum_seed), 0xdeadbeefU);
++	KUNIT_EXPECT_NE(test,
++			le32_to_cpu(es->s_feature_ro_compat) &
++			EXT4_FEATURE_RO_COMPAT_PROJECT, 0U);
++	KUNIT_EXPECT_NE(test, le16_to_cpu(es->s_state) & EXT4_ERROR_FS, 0);
 +}
-+
-+/* --- Test 2: Setup and Release Lifecycle (noblock_validity / RCU) --- */
-+
-+static void test_release_system_zone_lifecycle(struct kunit *test)
-+{
-+	struct bv_test_ctx *ctx = test->priv;
-+	ext4_fsblk_t meta_blk = bv_default_bbitmap_blk(0);
-+	ext4_fsblk_t data_blk = bv_default_first_free_blk(0);
-+
-+	/*
-+	 * Before ext4_setup_system_zone(), s_system_blks is NULL: releasing is
-+	 * a safe no-op and metadata block numbers pass validity as long as
-+	 * they are within (s_first_data_block, blocks_count].
-+	 */
-+	KUNIT_EXPECT_NULL(test, rcu_access_pointer(ctx->sbi.s_system_blks));
-+	bv_release_system_zone_locked(ctx->sb);
-+	KUNIT_EXPECT_EQ(test, ext4_sb_block_valid(ctx->sb, NULL, meta_blk, 1),
-+			1);
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_sb_block_valid(ctx->sb, NULL,
-+					    BV_TEST_FIRST_DATA_BLK, 1),
-+			0);
-+
-+	KUNIT_ASSERT_EQ(test, ext4_setup_system_zone(ctx->sb), 0);
-+	KUNIT_EXPECT_NOT_NULL(test,
-+			      rcu_access_pointer(ctx->sbi.s_system_blks));
-+	KUNIT_EXPECT_EQ(test, ext4_sb_block_valid(ctx->sb, NULL, meta_blk, 1),
-+			0);
-+	KUNIT_EXPECT_EQ(test, ext4_sb_block_valid(ctx->sb, NULL, data_blk, 1),
-+			1);
-+
-+	/*
-+	 * Releasing clears s_system_blks immediately and frees the rbtree via
-+	 * RCU; repeating release when already NULL remains a safe no-op.
-+	 */
-+	bv_release_system_zone_locked(ctx->sb);
-+	rcu_barrier();
-+	KUNIT_EXPECT_NULL(test, rcu_access_pointer(ctx->sbi.s_system_blks));
-+	KUNIT_EXPECT_EQ(test, ext4_sb_block_valid(ctx->sb, NULL, meta_blk, 1),
-+			1);
-+
-+	bv_release_system_zone_locked(ctx->sb);
-+}
-+
-+/* --- Test 3: Multi-group sparse_super, flex_bg, and DEBUG Tree Print --- */
-+
-+static void test_setup_multigroup_sparse_super_and_flex_bg(struct kunit *test)
-+{
-+	struct bv_test_ctx *ctx = test->priv;
-+	ext4_fsblk_t g2_bbitmap = 20ULL;
-+	ext4_fsblk_t g2_ibitmap = 22ULL;
-+	ext4_fsblk_t g2_itable = 30ULL;
-+
-+	/*
-+	 * Relocate group 2's bitmaps and inode table into group 0 (flex_bg
-+	 * layout). Since group 2 also has 0 base metadata blocks under
-+	 * sparse_super, every block in group 2 (2049..3072) becomes valid for
-+	 * data, while group 0 gains three separated system zones.
-+	 */
-+	bv_set_group_meta(ctx->sb, &ctx->gdps[2], g2_bbitmap, g2_ibitmap,
-+			  g2_itable);
-+	set_opt(ctx->sb, DEBUG);
-+
-+	KUNIT_ASSERT_EQ(test, ext4_setup_system_zone(ctx->sb), 0);
-+
-+	/* Group 0 contiguous metadata [1..14] rejected; gap [15..19] valid */
-+	KUNIT_EXPECT_EQ(test, ext4_sb_block_valid(ctx->sb, NULL, 2, 1), 0);
-+	KUNIT_EXPECT_EQ(test, ext4_sb_block_valid(ctx->sb, NULL, 14, 1), 0);
-+	KUNIT_EXPECT_EQ(test, ext4_sb_block_valid(ctx->sb, NULL, 15, 5), 1);
-+
-+	/* Relocated group 2 metadata inside group 0 and surrounding gaps */
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_sb_block_valid(ctx->sb, NULL, g2_bbitmap, 1), 0);
-+	KUNIT_EXPECT_EQ(test, ext4_sb_block_valid(ctx->sb, NULL, 21, 1), 1);
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_sb_block_valid(ctx->sb, NULL, g2_ibitmap, 1), 0);
-+	KUNIT_EXPECT_EQ(test, ext4_sb_block_valid(ctx->sb, NULL, 23, 7), 1);
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_sb_block_valid(ctx->sb, NULL, g2_itable, 1), 0);
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_sb_block_valid(ctx->sb, NULL,
-+					    g2_itable + BV_TEST_ITB_PER_GRP - 1,
-+					    1),
-+			0);
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_sb_block_valid(ctx->sb, NULL,
-+					    g2_itable + BV_TEST_ITB_PER_GRP,
-+					    10),
-+			1);
-+
-+	/* Group 1 [1025..1038] protected, 1024 and 1039 valid */
-+	KUNIT_EXPECT_EQ(test, ext4_sb_block_valid(ctx->sb, NULL, 1024, 1), 1);
-+	KUNIT_EXPECT_EQ(test, ext4_sb_block_valid(ctx->sb, NULL, 1025, 1), 0);
-+	KUNIT_EXPECT_EQ(test, ext4_sb_block_valid(ctx->sb, NULL, 1038, 1), 0);
-+	KUNIT_EXPECT_EQ(test, ext4_sb_block_valid(ctx->sb, NULL, 1039, 1), 1);
-+
-+	/* Group 2 [2049..3072] has zero metadata blocks at all */
-+	KUNIT_EXPECT_EQ(test, ext4_num_base_meta_blocks(ctx->sb, 2), 0U);
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_sb_block_valid(ctx->sb, NULL,
-+					    bv_group_first_blk(2),
-+					    BV_TEST_BLOCKS_PER_GRP),
-+			1);
-+
-+	/* Group 3 (backup superblock 3^1): [3073..3086] protected, 3087+ ok */
-+	KUNIT_EXPECT_EQ(test, ext4_sb_block_valid(ctx->sb, NULL, 3073, 1), 0);
-+	KUNIT_EXPECT_EQ(test, ext4_sb_block_valid(ctx->sb, NULL, 3086, 1), 0);
-+	KUNIT_EXPECT_EQ(test, ext4_sb_block_valid(ctx->sb, NULL, 3087, 10), 1);
-+}
-+
-+/* --- Test 4: Left, Right, and 3-Way Bridge Merging (+ 64-bit Zones) --- */
-+
-+static void test_rbtree_left_right_and_bridge_merges(struct kunit *test)
-+{
-+	struct bv_test_ctx *ctx = test->priv;
-+	ext4_fsblk_t hi_base = (1ULL << 33) + 100ULL;
-+
-+	ext4_blocks_count_set(&ctx->es, hi_base + 512ULL);
-+
-+	/*
-+	 * Group 0: base_meta = [1..4], bbitmap = 5 (merges left -> [1..5]),
-+	 * ibitmap = 14 (standalone [14..14]), itable = [6..13] (bridges
-+	 * [1..5] on the left AND [14..14] on the right into [1..14]).
-+	 */
-+	bv_set_group_meta(ctx->sb, &ctx->gdps[0], 5ULL, 14ULL, 6ULL);
-+
-+	/*
-+	 * Group 2 (0 base meta): bbitmap = 2100, ibitmap = 2099 (inserted left
-+	 * of 2100 and merges right into [2099..2100]), itable = [2110..2117].
-+	 */
-+	bv_set_group_meta(ctx->sb, &ctx->gdps[2], 2100ULL, 2099ULL, 2110ULL);
-+
-+	/*
-+	 * Group 3: relocate bbitmap/ibitmap/itable above 2^32 to exercise
-+	 * 64-bit group descriptor blocks and 3-way merge above 4G blocks:
-+	 * bbitmap = hi_base, ibitmap = hi_base + 9, itable = hi_base + 1..8
-+	 * -> merged 10-block 64-bit zone [hi_base .. hi_base + 9].
-+	 */
-+	bv_set_group_meta(ctx->sb, &ctx->gdps[3], hi_base, hi_base + 9ULL,
-+			  hi_base + 1ULL);
-+
-+	KUNIT_ASSERT_EQ(test, ext4_setup_system_zone(ctx->sb), 0);
-+
-+	/* Group 0 bridged zone [1..14] */
-+	KUNIT_EXPECT_EQ(test, ext4_sb_block_valid(ctx->sb, NULL, 5, 1), 0);
-+	KUNIT_EXPECT_EQ(test, ext4_sb_block_valid(ctx->sb, NULL, 6, 1), 0);
-+	KUNIT_EXPECT_EQ(test, ext4_sb_block_valid(ctx->sb, NULL, 13, 1), 0);
-+	KUNIT_EXPECT_EQ(test, ext4_sb_block_valid(ctx->sb, NULL, 14, 1), 0);
-+	KUNIT_EXPECT_EQ(test, ext4_sb_block_valid(ctx->sb, NULL, 15, 1), 1);
-+
-+	/* Group 2 right-merged zone [2099..2100] and separate [2110..2117] */
-+	KUNIT_EXPECT_EQ(test, ext4_sb_block_valid(ctx->sb, NULL, 2098, 1), 1);
-+	KUNIT_EXPECT_EQ(test, ext4_sb_block_valid(ctx->sb, NULL, 2099, 1), 0);
-+	KUNIT_EXPECT_EQ(test, ext4_sb_block_valid(ctx->sb, NULL, 2100, 1), 0);
-+	KUNIT_EXPECT_EQ(test, ext4_sb_block_valid(ctx->sb, NULL, 2101, 9), 1);
-+	KUNIT_EXPECT_EQ(test, ext4_sb_block_valid(ctx->sb, NULL, 2110, 8), 0);
-+	KUNIT_EXPECT_EQ(test, ext4_sb_block_valid(ctx->sb, NULL, 2118, 1), 1);
-+
-+	/* Group 3 64-bit bridged zone [hi_base .. hi_base + 9] */
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_sb_block_valid(ctx->sb, NULL, hi_base - 1ULL, 1),
-+			1);
-+	KUNIT_EXPECT_EQ(test, ext4_sb_block_valid(ctx->sb, NULL, hi_base, 1),
-+			0);
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_sb_block_valid(ctx->sb, NULL, hi_base + 5ULL, 1),
-+			0);
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_sb_block_valid(ctx->sb, NULL, hi_base + 9ULL, 1),
-+			0);
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_sb_block_valid(ctx->sb, NULL, hi_base + 10ULL, 4),
-+			1);
-+}
-+
-+/* --- Parameterized Test 5: Interval Overlap Geometries --- */
 +
 +/*
-+ * Tests against an isolated 8-block system zone [50, 58) (blocks 50..57)
-+ * surrounded by valid data blocks on both sides.
++ * Verify ext4_validate_tune_sb_params rejects malformed mount_opts, invalid
++ * flags, out-of-range parameters, unsupported feature edits, and standalone
++ * encoding updates, while normalizing DIR_INDEX and CASEFOLD enablement.
 + */
-+struct bv_overlap_case {
-+	const char *desc;
-+	ext4_fsblk_t start_blk;
-+	unsigned int count;
-+	int expected;
-+};
-+
-+static const struct bv_overlap_case bv_overlap_cases[] = {
-+	{
-+		.desc = "strictly_before_adjacent",
-+		.start_blk = 46,
-+		.count = 4,
-+		.expected = 1,
-+	},
-+	{
-+		.desc = "strictly_after_adjacent",
-+		.start_blk = 58,
-+		.count = 4,
-+		.expected = 1,
-+	},
-+	{
-+		.desc = "single_first_block_of_zone",
-+		.start_blk = 50,
-+		.count = 1,
-+		.expected = 0,
-+	},
-+	{
-+		.desc = "single_interior_block_of_zone",
-+		.start_blk = 54,
-+		.count = 1,
-+		.expected = 0,
-+	},
-+	{
-+		.desc = "single_last_block_of_zone",
-+		.start_blk = 57,
-+		.count = 1,
-+		.expected = 0,
-+	},
-+	{
-+		.desc = "straddle_left_boundary_by_one",
-+		.start_blk = 47,
-+		.count = 4,
-+		.expected = 0,
-+	},
-+	{
-+		.desc = "straddle_right_boundary_by_one",
-+		.start_blk = 57,
-+		.count = 4,
-+		.expected = 0,
-+	},
-+	{
-+		.desc = "strictly_inside_zone",
-+		.start_blk = 52,
-+		.count = 3,
-+		.expected = 0,
-+	},
-+	{
-+		.desc = "exact_zone_span",
-+		.start_blk = 50,
-+		.count = 8,
-+		.expected = 0,
-+	},
-+	{
-+		.desc = "strictly_enclosing_entire_zone",
-+		.start_blk = 45,
-+		.count = 20,
-+		.expected = 0,
-+	},
-+};
-+
-+KUNIT_ARRAY_PARAM_DESC(bv_overlap, bv_overlap_cases, desc);
-+
-+static void test_sb_block_valid_interval_overlaps(struct kunit *test)
++static void test_validate_tune_sb_params(struct kunit *test)
 +{
-+	const struct bv_overlap_case *tc = test->param_value;
-+	struct bv_test_ctx *ctx = test->priv;
++	struct ioctl_test_ctx *ctx = test->priv;
++	struct super_block *sb = ctx->sb;
++	struct ext4_sb_info *sbi = &ctx->sbi;
++	struct ext4_super_block *es = ctx->es;
++	struct ext4_tune_sb_params params;
++	uuid_t uu;
++
++	/* Unterminated mount_opts -> -E2BIG */
++	memset(&params, 0, sizeof(params));
++	memset(params.mount_opts, 'a', sizeof(params.mount_opts));
++	KUNIT_EXPECT_EQ(test, ext4_validate_tune_sb_params_test(sb, &params),
++			-E2BIG);
++
++	/* Unknown set_flags bit -> -EOPNOTSUPP */
++	memset(&params, 0, sizeof(params));
++	params.set_flags = 0x80000000U;
++	KUNIT_EXPECT_EQ(test, ext4_validate_tune_sb_params_test(sb, &params),
++			-EOPNOTSUPP);
++
++	/* Invalid errors_behavior -> -EINVAL */
++	memset(&params, 0, sizeof(params));
++	params.set_flags = EXT4_TUNE_FL_ERRORS_BEHAVIOR;
++	params.errors_behavior = EXT4_ERRORS_PANIC + 1;
++	KUNIT_EXPECT_EQ(test, ext4_validate_tune_sb_params_test(sb, &params),
++			-EINVAL);
++
++	/* Reserved blocks > blocks_count / 2 -> -EINVAL, <= half -> 0 */
++	memset(&params, 0, sizeof(params));
++	params.set_flags = EXT4_TUNE_FL_RESERVED_BLOCKS;
++	params.reserved_blocks = ext4_blocks_count(es) / 2 + 1;
++	KUNIT_EXPECT_EQ(test, ext4_validate_tune_sb_params_test(sb, &params),
++			-EINVAL);
++	params.reserved_blocks = ext4_blocks_count(es) / 2;
++	KUNIT_EXPECT_EQ(test, ext4_validate_tune_sb_params_test(sb, &params),
++			0);
++
++	/* Hash algorithm validation: SIPHASH and > DX_HASH_LAST rejected */
++	memset(&params, 0, sizeof(params));
++	params.set_flags = EXT4_TUNE_FL_DEF_HASH_ALG;
++	params.def_hash_alg = DX_HASH_SIPHASH;
++	KUNIT_EXPECT_EQ(test, ext4_validate_tune_sb_params_test(sb, &params),
++			-EINVAL);
++	params.def_hash_alg = DX_HASH_LAST + 1;
++	KUNIT_EXPECT_EQ(test, ext4_validate_tune_sb_params_test(sb, &params),
++			-EINVAL);
++	params.def_hash_alg = DX_HASH_HALF_MD4;
++	KUNIT_EXPECT_EQ(test, ext4_validate_tune_sb_params_test(sb, &params),
++			0);
++
++	/* Mutual exclusion of FEATURES and EDIT_FEATURES */
++	memset(&params, 0, sizeof(params));
++	params.set_flags = EXT4_TUNE_FL_FEATURES | EXT4_TUNE_FL_EDIT_FEATURES;
++	KUNIT_EXPECT_EQ(test, ext4_validate_tune_sb_params_test(sb, &params),
++			-EINVAL);
++
++	/* Clearing an existing feature via FEATURES -> -EOPNOTSUPP */
++	memset(&params, 0, sizeof(params));
++	params.set_flags = EXT4_TUNE_FL_FEATURES;
++	params.feature_compat = le32_to_cpu(es->s_feature_compat);
++	params.feature_incompat = 0;
++	params.feature_ro_compat = le32_to_cpu(es->s_feature_ro_compat);
++	KUNIT_EXPECT_EQ(test, ext4_validate_tune_sb_params_test(sb, &params),
++			-EOPNOTSUPP);
++
++	/* Enabling DIR_INDEX via FEATURES initializes hash seed & default alg */
++	memset(sbi->s_hash_seed, 0, sizeof(sbi->s_hash_seed));
++	sbi->s_def_hash_version = 0;
++	memset(&params, 0, sizeof(params));
++	params.set_flags = EXT4_TUNE_FL_FEATURES;
++	params.feature_compat = le32_to_cpu(es->s_feature_compat) |
++				EXT4_FEATURE_COMPAT_DIR_INDEX;
++	params.feature_incompat = le32_to_cpu(es->s_feature_incompat);
++	params.feature_ro_compat = le32_to_cpu(es->s_feature_ro_compat) |
++				   EXT4_FEATURE_RO_COMPAT_DIR_NLINK;
++	KUNIT_EXPECT_EQ(test, ext4_validate_tune_sb_params_test(sb, &params),
++			0);
++	KUNIT_EXPECT_NE(test, params.set_flags & EXT4_TUNE_FL_EDIT_FEATURES,
++			0U);
++	KUNIT_EXPECT_EQ(test, params.set_feature_compat_mask,
++			(u32)EXT4_FEATURE_COMPAT_DIR_INDEX);
++	KUNIT_EXPECT_EQ(test, params.set_feature_ro_compat_mask,
++			(u32)EXT4_FEATURE_RO_COMPAT_DIR_NLINK);
++	memcpy(&uu, sbi->s_hash_seed, UUID_SIZE);
++	KUNIT_EXPECT_FALSE(test, uuid_is_null(&uu));
++	KUNIT_EXPECT_EQ(test, sbi->s_def_hash_version, DX_HASH_HALF_MD4);
++
++	/* Encoding without CASEFOLD -> -EINVAL; with CASEFOLD -> UTF8_12_1 */
++	memset(&params, 0, sizeof(params));
++	params.set_flags = EXT4_TUNE_FL_ENCODING;
++	params.encoding = EXT4_ENC_UTF8_12_1;
++	KUNIT_EXPECT_EQ(test, ext4_validate_tune_sb_params_test(sb, &params),
++			-EINVAL);
++
++	memset(&params, 0, sizeof(params));
++	params.set_flags = EXT4_TUNE_FL_EDIT_FEATURES;
++	params.set_feature_incompat_mask = EXT4_FEATURE_INCOMPAT_CASEFOLD;
++	KUNIT_EXPECT_EQ(test, ext4_validate_tune_sb_params_test(sb, &params),
++			0);
++	KUNIT_EXPECT_EQ(test, params.encoding, EXT4_ENC_UTF8_12_1);
++	KUNIT_EXPECT_EQ(test, params.encoding_flags, 0);
++}
++
++/*
++ * Verify ext4_update_backup_sb, ext4_update_superblocks_fn, and
++ * ext4_update_overhead across primary + 4 sparse_super backup groups (1, 3,
++ * 5, 7), covering both journaled (first 2 backups) and unjournaled (remaining
++ * backups) update paths, EXT4_FLAGS_RESIZING contention, and overhead skip
++ * conditions.
++ */
++static void test_update_superblocks_and_overhead(struct kunit *test)
++{
++	struct ioctl_test_ctx *ctx = test->priv;
++	struct super_block *sb = ctx->sb;
++	struct ext4_sb_info *sbi = &ctx->sbi;
++	static const ext4_group_t backup_grps[] = { 1, 3, 5, 7 };
++	char new_label[EXT4_LABEL_MAX] = "updated_label";
++	int i;
++
++	/* Group 2 has no backup superblock under sparse_super */
++	KUNIT_EXPECT_EQ(test,
++			ext4_update_backup_sb_test(sb, NULL, 2,
++						   ext4_sb_setlabel_test,
++						   new_label),
++			0);
++
++	/* Contention guard when EXT4_FLAGS_RESIZING is already set */
++	set_bit(EXT4_FLAGS_RESIZING, &sbi->s_ext4_flags);
++	KUNIT_EXPECT_EQ(test,
++			ext4_update_superblocks_fn_test(sb,
++							ext4_sb_setlabel_test,
++							new_label),
++			-EBUSY);
++	clear_bit(EXT4_FLAGS_RESIZING, &sbi->s_ext4_flags);
++
++	/* Full superblock update across primary (grp 0) + 4 backups */
++	ctx->sync_bh_calls = 0;
++	KUNIT_EXPECT_EQ(test,
++			ext4_update_superblocks_fn_test(sb,
++							ext4_sb_setlabel_test,
++							new_label),
++			0);
++	KUNIT_EXPECT_FALSE(test,
++			   test_bit(EXT4_FLAGS_RESIZING, &sbi->s_ext4_flags));
++	/* 1 primary + 4 backup superblocks synced */
++	KUNIT_EXPECT_EQ(test, ctx->sync_bh_calls, 5);
++	KUNIT_EXPECT_MEMEQ(test, ctx->es->s_volume_name, new_label,
++			   EXT4_LABEL_MAX);
++	KUNIT_EXPECT_EQ(test, le32_to_cpu(ctx->es->s_checksum),
++			le32_to_cpu(ext4_superblock_csum(ctx->es)));
++
++	for (i = 0; i < ARRAY_SIZE(backup_grps); i++) {
++		ext4_group_t g = backup_grps[i];
++		struct ext4_super_block *bes;
++
++		bes = (struct ext4_super_block *)ctx->backup_sb_bufs[g];
++		KUNIT_EXPECT_MEMEQ(test, bes->s_volume_name, new_label,
++				   EXT4_LABEL_MAX);
++		KUNIT_EXPECT_EQ(test, le32_to_cpu(bes->s_checksum),
++				le32_to_cpu(ext4_superblock_csum(bes)));
++	}
++
++	/* ext4_update_overhead skip & force behavior */
++	ctx->sync_bh_calls = 0;
++	sbi->s_overhead = 0;
++	KUNIT_EXPECT_EQ(test, ext4_update_overhead(sb, false), 0);
++	KUNIT_EXPECT_EQ(test, ctx->sync_bh_calls, 0);
++
++	sbi->s_overhead = 77;
++	sb->s_flags |= SB_RDONLY;
++	KUNIT_EXPECT_EQ(test, ext4_update_overhead(sb, true), 0);
++	KUNIT_EXPECT_EQ(test, ctx->sync_bh_calls, 0);
++	sb->s_flags &= ~SB_RDONLY;
++
++	set_bit(EXT4_FLAGS_SHUTDOWN, &sbi->s_ext4_flags);
++	KUNIT_EXPECT_EQ(test, ext4_update_overhead(sb, true), 0);
++	KUNIT_EXPECT_EQ(test, ctx->sync_bh_calls, 0);
++	clear_bit(EXT4_FLAGS_SHUTDOWN, &sbi->s_ext4_flags);
++
++	KUNIT_EXPECT_EQ(test, ext4_update_overhead(sb, false), 0);
++	KUNIT_EXPECT_EQ(test, ctx->sync_bh_calls, 5);
++	KUNIT_EXPECT_EQ(test, le32_to_cpu(ctx->es->s_overhead_clusters), 77U);
++
++	/* Matching s_overhead skips when !force, updates when force == true */
++	ctx->sync_bh_calls = 0;
++	KUNIT_EXPECT_EQ(test, ext4_update_overhead(sb, false), 0);
++	KUNIT_EXPECT_EQ(test, ctx->sync_bh_calls, 0);
++	KUNIT_EXPECT_EQ(test, ext4_update_overhead(sb, true), 0);
++	KUNIT_EXPECT_EQ(test, ctx->sync_bh_calls, 5);
++}
++
++/*
++ * Verify swap_inode_data swaps i_data, i_disksize, i_size, i_version,
++ * atime/mtime, and EXT4_FL_SHOULD_SWAP flags while preserving non-swapped
++ * flags, clears both extent-status caches, and restores exact state when
++ * invoked a second time. Also verify ext4_reset_inode_seed.
++ */
++static void test_swap_inode_data_and_seed(struct kunit *test)
++{
++	struct ioctl_test_ctx *ctx = test->priv;
++	struct super_block *sb = ctx->sb;
++	struct inode *inode1, *inode2;
++	struct ext4_inode_info *ei1, *ei2;
++	struct timespec64 at1 = { .tv_sec = 1000, .tv_nsec = 111 };
++	struct timespec64 at2 = { .tv_sec = 2000, .tv_nsec = 222 };
++	struct timespec64 mt1 = { .tv_sec = 3000, .tv_nsec = 333 };
++	struct timespec64 mt2 = { .tv_sec = 4000, .tv_nsec = 444 };
++	__le32 orig_data1[EXT4_N_BLOCKS];
++	__le32 orig_data2[EXT4_N_BLOCKS];
++	u32 seed1, seed2;
++	int i;
++
++	inode1 = new_inode(sb);
++	KUNIT_ASSERT_NOT_NULL(test, inode1);
++	inode2 = new_inode(sb);
++	if (!inode2) {
++		iput(inode1);
++		KUNIT_FAIL_AND_ABORT(test, "failed to alloc inode2");
++	}
++	ei1 = EXT4_I(inode1);
++	ei2 = EXT4_I(inode2);
++
++	for (i = 0; i < EXT4_N_BLOCKS; i++) {
++		ei1->i_data[i] = cpu_to_le32(0x100 + i);
++		ei2->i_data[i] = cpu_to_le32(0x200 + i);
++	}
++	memcpy(orig_data1, ei1->i_data, sizeof(orig_data1));
++	memcpy(orig_data2, ei2->i_data, sizeof(orig_data2));
++
++	ei1->i_flags = EXT4_EXTENTS_FL | EXT4_HUGE_FILE_FL | EXT4_IMMUTABLE_FL;
++	ei2->i_flags = EXT4_NOATIME_FL;
++	ei1->i_disksize = 0x11000;
++	ei2->i_disksize = 0x22000;
++	i_size_write(inode1, 0x10500);
++	i_size_write(inode2, 0x20500);
++	inode_set_iversion_raw(inode1, 10);
++	inode_set_iversion_raw(inode2, 20);
++	inode_set_atime_to_ts(inode1, at1);
++	inode_set_atime_to_ts(inode2, at2);
++	inode_set_mtime_to_ts(inode1, mt1);
++	inode_set_mtime_to_ts(inode2, mt2);
++
++	ext4_es_insert_extent(inode1, 0, 4, 50, EXTENT_STATUS_WRITTEN, false);
++	ext4_es_insert_extent(inode2, 8, 2, 60, EXTENT_STATUS_WRITTEN, false);
++	KUNIT_EXPECT_EQ(test, ei1->i_es_all_nr, 1U);
++	KUNIT_EXPECT_EQ(test, ei2->i_es_all_nr, 1U);
++
++	ext4_swap_inode_data_test(inode1, inode2);
++
++	KUNIT_EXPECT_MEMEQ(test, ei1->i_data, orig_data2, sizeof(orig_data2));
++	KUNIT_EXPECT_MEMEQ(test, ei2->i_data, orig_data1, sizeof(orig_data1));
++	KUNIT_EXPECT_EQ(test, ei1->i_flags, (u32)EXT4_IMMUTABLE_FL);
++	KUNIT_EXPECT_EQ(test, ei2->i_flags,
++			(u32)(EXT4_NOATIME_FL | EXT4_EXTENTS_FL |
++			      EXT4_HUGE_FILE_FL));
++	KUNIT_EXPECT_EQ(test, ei1->i_disksize, (loff_t)0x22000);
++	KUNIT_EXPECT_EQ(test, ei2->i_disksize, (loff_t)0x11000);
++	KUNIT_EXPECT_EQ(test, i_size_read(inode1), (loff_t)0x20500);
++	KUNIT_EXPECT_EQ(test, i_size_read(inode2), (loff_t)0x10500);
++	KUNIT_EXPECT_EQ(test, inode_peek_iversion_raw(inode1), 20ULL);
++	KUNIT_EXPECT_EQ(test, inode_peek_iversion_raw(inode2), 10ULL);
++	KUNIT_EXPECT_EQ(test, inode_get_atime_sec(inode1), 2000LL);
++	KUNIT_EXPECT_EQ(test, inode_get_mtime_sec(inode1), 4000LL);
++	KUNIT_EXPECT_EQ(test, ei1->i_es_all_nr, 0U);
++	KUNIT_EXPECT_EQ(test, ei2->i_es_all_nr, 0U);
++
++	/* Second swap restores exact pre-swap attributes */
++	ext4_swap_inode_data_test(inode1, inode2);
++	KUNIT_EXPECT_MEMEQ(test, ei1->i_data, orig_data1, sizeof(orig_data1));
++	KUNIT_EXPECT_MEMEQ(test, ei2->i_data, orig_data2, sizeof(orig_data2));
++	KUNIT_EXPECT_EQ(test, ei1->i_flags,
++			(u32)(EXT4_EXTENTS_FL | EXT4_HUGE_FILE_FL |
++			      EXT4_IMMUTABLE_FL));
++	KUNIT_EXPECT_EQ(test, ei2->i_flags, (u32)EXT4_NOATIME_FL);
++	KUNIT_EXPECT_EQ(test, ei1->i_disksize, (loff_t)0x11000);
++	KUNIT_EXPECT_EQ(test, i_size_read(inode1), (loff_t)0x10500);
++
++	/* ext4_reset_inode_seed with and without metadata_csum */
++	inode1->i_ino = 42;
++	inode1->i_generation = 7;
++	ei1->i_csum_seed = 0;
++	ext4_reset_inode_seed(inode1);
++	seed1 = ei1->i_csum_seed;
++	KUNIT_EXPECT_NE(test, seed1, 0U);
++
++	inode1->i_generation = 8;
++	ext4_reset_inode_seed(inode1);
++	seed2 = ei1->i_csum_seed;
++	KUNIT_EXPECT_NE(test, seed2, seed1);
++
++	ext4_clear_feature_metadata_csum(sb);
++	ei1->i_csum_seed = 0x12345678U;
++	ext4_reset_inode_seed(inode1);
++	KUNIT_EXPECT_EQ(test, ei1->i_csum_seed, 0x12345678U);
++
++	iput(inode1);
++	iput(inode2);
++}
++
++/*
++ * Verify ext4_ioctl_check_immutable, dax_compatible, ext4_fileattr_get, and
++ * ext4_fileattr_set flag masking, mode checks, quota-file protection, and
++ * end-to-end VFS inode flag synchronization.
++ */
++static void test_immutable_dax_and_fileattr(struct kunit *test)
++{
++	struct ioctl_test_ctx *ctx = test->priv;
++	struct super_block *sb = ctx->sb;
++	struct inode *reg_inode, *dir_inode;
++	struct dentry *reg_dentry, *dir_dentry;
++	struct ext4_inode_info *rei, *dei;
++	struct file_kattr fa;
++
++	reg_inode = new_inode(sb);
++	KUNIT_ASSERT_NOT_NULL(test, reg_inode);
++	dir_inode = new_inode(sb);
++	if (!dir_inode) {
++		iput(reg_inode);
++		KUNIT_FAIL_AND_ABORT(test, "failed to alloc dir_inode");
++	}
++	reg_inode->i_ino = 100;
++	reg_inode->i_mode = S_IFREG | 0644;
++	dir_inode->i_ino = 101;
++	dir_inode->i_mode = S_IFDIR | 0755;
++	rei = EXT4_I(reg_inode);
++	dei = EXT4_I(dir_inode);
++
++	reg_dentry = d_alloc_anon(sb);
++	if (!reg_dentry) {
++		iput(dir_inode);
++		iput(reg_inode);
++		KUNIT_FAIL_AND_ABORT(test, "failed to alloc reg_dentry");
++	}
++	d_instantiate(reg_dentry, reg_inode);
++	dir_dentry = d_alloc_anon(sb);
++	if (!dir_dentry) {
++		dput(reg_dentry);
++		iput(dir_inode);
++		KUNIT_FAIL_AND_ABORT(test, "failed to alloc dir_dentry");
++	}
++	d_instantiate(dir_dentry, dir_inode);
++
++	/* ext4_ioctl_check_immutable */
++	ext4_set_feature_project(sb);
++	rei->i_projid = make_kprojid(&init_user_ns, 10);
++	rei->i_flags = EXT4_IMMUTABLE_FL | EXT4_NOATIME_FL;
++	KUNIT_EXPECT_EQ(test,
++			ext4_ioctl_check_immutable_test(reg_inode, 10,
++					EXT4_IMMUTABLE_FL | EXT4_NOATIME_FL),
++			0);
++	/* Clearing IMMUTABLE_FL is allowed here (CAP_LINUX_IMMUTABLE checked in VFS) */
++	KUNIT_EXPECT_EQ(test,
++			ext4_ioctl_check_immutable_test(reg_inode, 10,
++							EXT4_NOATIME_FL),
++			0);
++	/* Changing other flags or projid while keeping IMMUTABLE_FL -> -EPERM */
++	KUNIT_EXPECT_EQ(test,
++			ext4_ioctl_check_immutable_test(reg_inode, 10,
++							EXT4_IMMUTABLE_FL),
++			-EPERM);
++	KUNIT_EXPECT_EQ(test,
++			ext4_ioctl_check_immutable_test(reg_inode, 11,
++					EXT4_IMMUTABLE_FL | EXT4_NOATIME_FL),
++			-EPERM);
++
++	/* dax_compatible */
++	KUNIT_EXPECT_FALSE(test,
++			   ext4_dax_compatible_test(reg_inode, EXT4_VERITY_FL,
++						    EXT4_DAX_FL));
++	KUNIT_EXPECT_FALSE(test,
++			   ext4_dax_compatible_test(reg_inode,
++						    EXT4_INLINE_DATA_FL,
++						    EXT4_DAX_FL));
++	KUNIT_EXPECT_FALSE(test,
++			   ext4_dax_compatible_test(reg_inode, EXT4_DAX_FL,
++						    EXT4_JOURNAL_DATA_FL));
++	/* Inline directory MAY toggle DAX_FL */
++	KUNIT_EXPECT_TRUE(test,
++			  ext4_dax_compatible_test(dir_inode,
++						   EXT4_INLINE_DATA_FL,
++						   EXT4_INLINE_DATA_FL |
++						   EXT4_DAX_FL));
++	/* VERITY_IN_PROGRESS blocks enabling DAX_FL */
++	ext4_set_inode_state(reg_inode, EXT4_STATE_VERITY_IN_PROGRESS);
++	KUNIT_EXPECT_FALSE(test,
++			   ext4_dax_compatible_test(reg_inode, 0, EXT4_DAX_FL));
++	ext4_clear_inode_state(reg_inode, EXT4_STATE_VERITY_IN_PROGRESS);
++
++	/* ext4_fileattr_get: strips PROJINHERIT on reg file, keeps on dir */
++	rei->i_flags = EXT4_NOATIME_FL | EXT4_PROJINHERIT_FL | EXT4_RESERVED_FL;
++	dei->i_flags = EXT4_NOATIME_FL | EXT4_PROJINHERIT_FL;
++	dei->i_projid = make_kprojid(&init_user_ns, 25);
++
++	memset(&fa, 0, sizeof(fa));
++	KUNIT_EXPECT_EQ(test, ext4_fileattr_get(reg_dentry, &fa), 0);
++	KUNIT_EXPECT_EQ(test, fa.flags, (u32)EXT4_NOATIME_FL);
++	KUNIT_EXPECT_EQ(test, fa.fsx_projid, 10U);
++
++	memset(&fa, 0, sizeof(fa));
++	KUNIT_EXPECT_EQ(test, ext4_fileattr_get(dir_dentry, &fa), 0);
++	KUNIT_EXPECT_EQ(test, fa.flags,
++			(u32)(EXT4_NOATIME_FL | EXT4_PROJINHERIT_FL));
++	KUNIT_EXPECT_EQ(test, fa.fsx_projid, 25U);
++
++	/* ext4_fileattr_set error paths and success path */
++	ext4_clear_feature_project(sb);
++	rei->i_projid = make_kprojid(&init_user_ns, EXT4_DEF_PROJID);
++	rei->i_flags = 0;
++
++	/* Flag outside EXT4_FL_USER_VISIBLE -> -EOPNOTSUPP */
++	memset(&fa, 0, sizeof(fa));
++	fileattr_fill_flags(&fa, EXT4_RESERVED_FL);
++	KUNIT_EXPECT_EQ(test,
++			ext4_fileattr_set(&nop_mnt_idmap, reg_dentry, &fa),
++			-EOPNOTSUPP);
++
++	/* Directory-only flag on regular file -> -EOPNOTSUPP */
++	memset(&fa, 0, sizeof(fa));
++	fileattr_fill_flags(&fa, EXT4_PROJINHERIT_FL);
++	KUNIT_EXPECT_EQ(test,
++			ext4_fileattr_set(&nop_mnt_idmap, reg_dentry, &fa),
++			-EOPNOTSUPP);
++
++	/* Quota file cannot be modified -> -EPERM */
++	reg_inode->i_flags |= S_NOQUOTA;
++	memset(&fa, 0, sizeof(fa));
++	fileattr_fill_flags(&fa, EXT4_NOATIME_FL);
++	KUNIT_EXPECT_EQ(test,
++			ext4_fileattr_set(&nop_mnt_idmap, reg_dentry, &fa),
++			-EPERM);
++	reg_inode->i_flags &= ~S_NOQUOTA;
++
++	/* CASEFOLD_FL without casefold feature -> -EOPNOTSUPP */
++	memset(&fa, 0, sizeof(fa));
++	fileattr_fill_flags(&fa, EXT4_CASEFOLD_FL);
++	KUNIT_EXPECT_EQ(test,
++			ext4_fileattr_set(&nop_mnt_idmap, dir_dentry, &fa),
++			-EOPNOTSUPP);
++
++	/* End-to-end setflags on regular file updates ei->i_flags & VFS flags */
++	memset(&fa, 0, sizeof(fa));
++	fileattr_fill_flags(&fa, EXT4_NOATIME_FL | EXT4_SYNC_FL |
++				 EXT4_NODUMP_FL);
++	KUNIT_EXPECT_EQ(test,
++			ext4_fileattr_set(&nop_mnt_idmap, reg_dentry, &fa),
++			0);
++	KUNIT_EXPECT_EQ(test,
++			rei->i_flags & (EXT4_NOATIME_FL | EXT4_SYNC_FL |
++					EXT4_NODUMP_FL),
++			(u32)(EXT4_NOATIME_FL | EXT4_SYNC_FL | EXT4_NODUMP_FL));
++	KUNIT_EXPECT_NE(test, reg_inode->i_flags & S_NOATIME, 0U);
++	KUNIT_EXPECT_NE(test, reg_inode->i_flags & S_SYNC, 0U);
++
++	dput(reg_dentry);
++	dput(dir_dentry);
++}
++
++/*
++ * Verify ext4_force_shutdown state transitions and ext4_ioctl /
++ * ext4_compat_ioctl command dispatch for unknown commands, feature-gated
++ * commands, mode checks, FITRIM preconditions, and EXT4_IOC_CLEAR_ES_CACHE.
++ */
++static void test_force_shutdown_and_ioctl_dispatch(struct kunit *test)
++{
++	struct ioctl_test_ctx *ctx = test->priv;
++	struct super_block *sb = ctx->sb;
 +	struct inode *inode;
-+
-+	/* Place group 2's 8-block inode table at [50..57] */
-+	bv_set_group_meta(ctx->sb, &ctx->gdps[2], 2049ULL, 2050ULL, 50ULL);
-+	KUNIT_ASSERT_EQ(test, ext4_setup_system_zone(ctx->sb), 0);
-+
-+	inode = bv_create_inode(test, ctx, 13, S_IFREG | 0644, true);
-+
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_sb_block_valid(ctx->sb, NULL, tc->start_blk,
-+					    tc->count),
-+			tc->expected);
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_inode_block_valid(inode, tc->start_blk, tc->count),
-+			tc->expected);
-+}
-+
-+/* --- Parameterized Test 6: Corrupt Overlapping Group Metadata --- */
-+
-+struct bv_corrupt_meta_case {
-+	const char *desc;
-+	ext4_group_t grp;
-+	ext4_fsblk_t bbitmap;
-+	ext4_fsblk_t ibitmap;
-+	ext4_fsblk_t itable;
-+};
-+
-+static const struct bv_corrupt_meta_case bv_corrupt_meta_cases[] = {
-+	{
-+		.desc = "bbitmap_overlaps_group0_base_meta",
-+		.grp = 0,
-+		.bbitmap = 2,
-+		.ibitmap = 6,
-+		.itable = 7,
-+	},
-+	{
-+		.desc = "ibitmap_collides_with_bbitmap",
-+		.grp = 0,
-+		.bbitmap = 20,
-+		.ibitmap = 20,
-+		.itable = 30,
-+	},
-+	{
-+		.desc = "itable_collides_with_ibitmap",
-+		.grp = 0,
-+		.bbitmap = 20,
-+		.ibitmap = 25,
-+		.itable = 25,
-+	},
-+	{
-+		.desc = "group2_bbitmap_collides_with_group0_itable",
-+		.grp = 2,
-+		.bbitmap = 10,
-+		.ibitmap = 2050,
-+		.itable = 2051,
-+	},
-+};
-+
-+KUNIT_ARRAY_PARAM_DESC(bv_corrupt_meta, bv_corrupt_meta_cases, desc);
-+
-+static void test_setup_corrupt_group_metadata_overlaps(struct kunit *test)
-+{
-+	const struct bv_corrupt_meta_case *tc = test->param_value;
-+	struct bv_test_ctx *ctx = test->priv;
-+
-+	bv_set_group_meta(ctx->sb, &ctx->gdps[tc->grp], tc->bbitmap,
-+			  tc->ibitmap, tc->itable);
-+
-+	KUNIT_EXPECT_EQ(test, ext4_setup_system_zone(ctx->sb), -EFSCORRUPTED);
-+	KUNIT_EXPECT_NULL(test, rcu_access_pointer(ctx->sbi.s_system_blks));
-+}
-+
-+/* --- Test 7: Journal Reserved Inode Ownership & can_merge Isolation --- */
-+
-+static void test_journal_inode_protection_and_ino_isolation(struct kunit *test)
-+{
-+	struct bv_test_ctx *ctx = test->priv;
-+	struct inode *j_inode;
-+	struct inode *reg_inode;
-+
-+	/*
-+	 * Place group 2's block bitmap at block 20 (ino = 0) while group 0's
-+	 * metadata occupies [1..14] (ino = 0).
-+	 */
-+	bv_set_group_meta(ctx->sb, &ctx->gdps[2], 20ULL, 2050ULL, 2051ULL);
-+
-+	ext4_set_feature_journal(ctx->sb);
-+	ctx->es.s_journal_inum = cpu_to_le32(EXT4_JOURNAL_INO);
-+
-+	j_inode = bv_create_inode(test, ctx, EXT4_JOURNAL_INO,
-+				  S_IFREG | 0600, true);
-+	reg_inode = bv_create_inode(test, ctx, 14, S_IFREG | 0644, true);
-+
-+	/*
-+	 * Non-block-aligned i_size (7 blocks + 1 byte -> rounds up to 8 logical
-+	 * blocks 0..7) with 4 real extents, an interior sparse hole at lblk 2,
-+	 * and a trailing sparse hole at lblk 7:
-+	 *  - lblk [0..1] -> pblk [15..16] (right-adjacent to [1..14] ino=0)
-+	 *  - lblk 2      -> sparse hole (n == 0)
-+	 *  - lblk [3..4] -> pblk [18..19] (left-adjacent to [20..20] ino=0)
-+	 *  - lblk 5      -> pblk [201..201] (ino=8)
-+	 *  - lblk 6      -> pblk [200..200] (merges right with 201 -> [200..201])
-+	 *  - lblk 7      -> sparse hole (n == 0)
-+	 */
-+	i_size_write(j_inode, 7 * BV_TEST_BLK_SIZE + 1);
-+	bv_append_extent(test, j_inode, 0, 15ULL, 2);
-+	bv_append_extent(test, j_inode, 3, 18ULL, 2);
-+	bv_append_extent(test, j_inode, 5, 201ULL, 1);
-+	bv_append_extent(test, j_inode, 6, 200ULL, 1);
-+
-+	KUNIT_ASSERT_EQ(test, ext4_setup_system_zone(ctx->sb), 0);
-+	KUNIT_EXPECT_EQ(test, ctx->iget_calls, 1U);
-+	KUNIT_EXPECT_TRUE(test,
-+			  (bool)(ctx->last_iget_flags & EXT4_IGET_SPECIAL));
-+	KUNIT_EXPECT_EQ(test, atomic_read(&j_inode->i_count), 1);
-+
-+	/* Journal blocks are rejected for NULL and regular inodes */
-+	KUNIT_EXPECT_EQ(test, ext4_sb_block_valid(ctx->sb, NULL, 15, 2), 0);
-+	KUNIT_EXPECT_EQ(test, ext4_inode_block_valid(reg_inode, 15, 2), 0);
-+	KUNIT_EXPECT_EQ(test, ext4_inode_block_valid(reg_inode, 18, 2), 0);
-+	KUNIT_EXPECT_EQ(test, ext4_inode_block_valid(reg_inode, 200, 2), 0);
-+
-+	/* Journal inode is permitted on all of its own extents */
-+	KUNIT_EXPECT_EQ(test, ext4_inode_block_valid(j_inode, 15, 2), 1);
-+	KUNIT_EXPECT_EQ(test, ext4_inode_block_valid(j_inode, 18, 2), 1);
-+	KUNIT_EXPECT_EQ(test, ext4_inode_block_valid(j_inode, 200, 2), 1);
-+
-+	/*
-+	 * Verify can_merge() kept ino=0 and ino=8 zones separate on both the
-+	 * left ([1..14] vs [15..16]) and right ([18..19] vs [20..20]): the
-+	 * journal inode must still be rejected on adjacent group metadata.
-+	 */
-+	KUNIT_EXPECT_EQ(test, ext4_inode_block_valid(j_inode, 14, 1), 0);
-+	KUNIT_EXPECT_EQ(test, ext4_inode_block_valid(j_inode, 20, 1), 0);
-+
-+	/* Unmapped physical gap block 17 remains valid for regular files */
-+	KUNIT_EXPECT_EQ(test, ext4_sb_block_valid(ctx->sb, NULL, 17, 1), 1);
-+	KUNIT_EXPECT_EQ(test, ext4_inode_block_valid(reg_inode, 17, 1), 1);
-+}
-+
-+/* --- Test 8: Disabled Journal Feature, Zero inum, and Empty Journal --- */
-+
-+static void test_journal_disabled_or_empty_skips_zones(struct kunit *test)
-+{
-+	struct bv_test_ctx *ctx = test->priv;
-+	struct inode *j_inode;
-+
-+	j_inode = bv_create_inode(test, ctx, EXT4_JOURNAL_INO,
-+				  S_IFREG | 0600, true);
-+	i_size_write(j_inode, 2 * BV_TEST_BLK_SIZE);
-+	bv_append_extent(test, j_inode, 0, 100ULL, 2);
-+
-+	/* Case 1: s_journal_inum set, but HAS_JOURNAL feature cleared */
-+	ext4_clear_feature_journal(ctx->sb);
-+	ctx->es.s_journal_inum = cpu_to_le32(EXT4_JOURNAL_INO);
-+	KUNIT_ASSERT_EQ(test, ext4_setup_system_zone(ctx->sb), 0);
-+	KUNIT_EXPECT_EQ(test, ctx->iget_calls, 0U);
-+	KUNIT_EXPECT_EQ(test, ext4_sb_block_valid(ctx->sb, NULL, 100, 2), 1);
-+	bv_release_system_zone_locked(ctx->sb);
-+
-+	/* Case 2: HAS_JOURNAL set, but s_journal_inum == 0 */
-+	ext4_set_feature_journal(ctx->sb);
-+	ctx->es.s_journal_inum = 0;
-+	KUNIT_ASSERT_EQ(test, ext4_setup_system_zone(ctx->sb), 0);
-+	KUNIT_EXPECT_EQ(test, ctx->iget_calls, 0U);
-+	bv_release_system_zone_locked(ctx->sb);
-+
-+	/* Case 3: HAS_JOURNAL + valid s_journal_inum, but i_size == 0 */
-+	ctx->es.s_journal_inum = cpu_to_le32(EXT4_JOURNAL_INO);
-+	i_size_write(j_inode, 0);
-+	KUNIT_ASSERT_EQ(test, ext4_setup_system_zone(ctx->sb), 0);
-+	KUNIT_EXPECT_EQ(test, ctx->iget_calls, 1U);
-+	KUNIT_EXPECT_EQ(test, atomic_read(&j_inode->i_count), 1);
-+	KUNIT_EXPECT_EQ(test, ext4_sb_block_valid(ctx->sb, NULL, 100, 2), 1);
-+}
-+
-+/* --- Test 9: Journal Reserved Inode Error Paths --- */
-+
-+static void test_journal_inode_invalid_inum(struct kunit *test)
-+{
-+	struct bv_test_ctx *ctx = test->priv;
-+
-+	ext4_set_feature_journal(ctx->sb);
-+
-+	/* Below EXT4_ROOT_INO (e.g. EXT4_BAD_INO = 1) */
-+	ctx->es.s_journal_inum = cpu_to_le32(EXT4_BAD_INO);
-+	KUNIT_EXPECT_EQ(test, ext4_setup_system_zone(ctx->sb), -EINVAL);
-+	KUNIT_EXPECT_EQ(test, ctx->iget_calls, 0U);
-+	KUNIT_EXPECT_NULL(test, rcu_access_pointer(ctx->sbi.s_system_blks));
-+
-+	/* Above s_inodes_count */
-+	ctx->es.s_journal_inum = cpu_to_le32(BV_TEST_TOTAL_INODES + 1);
-+	KUNIT_EXPECT_EQ(test, ext4_setup_system_zone(ctx->sb), -EINVAL);
-+	KUNIT_EXPECT_EQ(test, ctx->iget_calls, 0U);
-+	KUNIT_EXPECT_NULL(test, rcu_access_pointer(ctx->sbi.s_system_blks));
-+}
-+
-+static void test_journal_inode_iget_error(struct kunit *test)
-+{
-+	struct bv_test_ctx *ctx = test->priv;
-+
-+	ext4_set_feature_journal(ctx->sb);
-+	ctx->es.s_journal_inum = cpu_to_le32(EXT4_JOURNAL_INO);
-+	ctx->fail_iget_err = -EIO;
-+
-+	KUNIT_EXPECT_EQ(test, ext4_setup_system_zone(ctx->sb), -EIO);
-+	KUNIT_EXPECT_EQ(test, ctx->iget_calls, 1U);
-+	KUNIT_EXPECT_NULL(test, rcu_access_pointer(ctx->sbi.s_system_blks));
-+}
-+
-+static void test_journal_inode_map_blocks_error(struct kunit *test)
-+{
-+	struct bv_test_ctx *ctx = test->priv;
-+	struct inode *j_inode;
-+
-+	ext4_set_feature_journal(ctx->sb);
-+	ctx->es.s_journal_inum = cpu_to_le32(EXT4_JOURNAL_INO);
-+	j_inode = bv_create_inode(test, ctx, EXT4_JOURNAL_INO,
-+				  S_IFREG | 0600, true);
-+	i_size_write(j_inode, 3 * BV_TEST_BLK_SIZE);
-+
-+	/* Fail on 2nd ext4_map_blocks call after 1st extent was inserted */
-+	ctx->fail_map_err = -EIO;
-+	ctx->fail_map_on_call = 2;
-+	kunit_activate_static_stub(test, ext4_map_blocks,
-+				   bv_map_blocks_fault_stub);
-+
-+	KUNIT_EXPECT_EQ(test, ext4_setup_system_zone(ctx->sb), -EIO);
-+	KUNIT_EXPECT_EQ(test, ctx->map_calls, 2U);
-+	KUNIT_EXPECT_EQ(test, atomic_read(&j_inode->i_count), 1);
-+	KUNIT_EXPECT_FALSE(test,
-+			   (bool)(ctx->sbi.s_mount_state & EXT4_ERROR_FS));
-+	KUNIT_EXPECT_NULL(test, rcu_access_pointer(ctx->sbi.s_system_blks));
-+}
-+
-+static void test_journal_inode_overlap_sets_fs_error(struct kunit *test)
-+{
-+	struct bv_test_ctx *ctx = test->priv;
-+	struct inode *j_inode;
-+
-+	ext4_set_feature_journal(ctx->sb);
-+	ctx->es.s_journal_inum = cpu_to_le32(EXT4_JOURNAL_INO);
-+	j_inode = bv_create_inode(test, ctx, EXT4_JOURNAL_INO,
-+				  S_IFREG | 0600, true);
-+	i_size_write(j_inode, 2 * BV_TEST_BLK_SIZE);
-+
-+	/* Extent at block 10 collides with group 0's inode table [7..14] */
-+	bv_append_extent(test, j_inode, 0, 10ULL, 2);
-+
-+	KUNIT_EXPECT_EQ(test, ext4_setup_system_zone(ctx->sb), -EFSCORRUPTED);
-+	KUNIT_EXPECT_TRUE(test,
-+			  (bool)(ctx->sbi.s_mount_state & EXT4_ERROR_FS));
-+	KUNIT_EXPECT_EQ(test, le32_to_cpu(ctx->es.s_last_error_ino),
-+			(u32)EXT4_JOURNAL_INO);
-+	KUNIT_EXPECT_EQ(test, ctx->es.s_last_error_errcode,
-+			EXT4_ERR_EFSCORRUPTED);
-+	KUNIT_EXPECT_NULL(test, rcu_access_pointer(ctx->sbi.s_system_blks));
-+}
-+
-+/* --- Test 10: ext4_check_blockref and Indirect Macros --- */
-+
-+static void test_check_blockref_valid_and_sparse(struct kunit *test)
-+{
-+	struct bv_test_ctx *ctx = test->priv;
-+	struct inode *inode;
-+	__le32 zero_refs[4] = { 0, 0, 0, 0 };
-+	__le32 mixed_refs[5] = {
-+		0,
-+		cpu_to_le32(15),
-+		0,
-+		cpu_to_le32(1039),
-+		cpu_to_le32(4096),
-+	};
-+	__le32 bad_first = cpu_to_le32(7);
-+
-+	KUNIT_ASSERT_EQ(test, ext4_setup_system_zone(ctx->sb), 0);
-+	inode = bv_create_inode(test, ctx, 15, S_IFREG | 0644, false);
-+
-+	/* max == 0 does not inspect entries */
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_check_blockref(__func__, __LINE__, inode,
-+					    &bad_first, 0),
-+			0);
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_check_blockref(__func__, __LINE__, inode,
-+					    zero_refs, ARRAY_SIZE(zero_refs)),
-+			0);
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_check_blockref(__func__, __LINE__, inode,
-+					    mixed_refs, ARRAY_SIZE(mixed_refs)),
-+			0);
-+	KUNIT_EXPECT_FALSE(test,
-+			   (bool)(ctx->sbi.s_mount_state & EXT4_ERROR_FS));
-+}
-+
-+static void
-+test_check_blockref_corrupt_entries_and_journal_bypass(struct kunit *test)
-+{
-+	struct bv_test_ctx *ctx = test->priv;
-+	struct inode *reg_inode;
-+	struct inode *j_inode;
-+	__le32 meta_refs[4] = {
-+		cpu_to_le32(15),
-+		0,
-+		cpu_to_le32(7),
-+		cpu_to_le32(9),
-+	};
-+	__le32 oob_refs[2] = {
-+		cpu_to_le32(16),
-+		cpu_to_le32(BV_TEST_TOTAL_BLKS),
++	struct dentry *dentry;
++	struct vfsmount mnt = {
++		.mnt_root	= sb->s_root,
++		.mnt_sb		= sb,
++		.mnt_idmap	= &nop_mnt_idmap,
 +	};
 +
-+	KUNIT_ASSERT_EQ(test, ext4_setup_system_zone(ctx->sb), 0);
-+	reg_inode = bv_create_inode(test, ctx, 16, S_IFREG | 0644, false);
-+	j_inode = bv_create_inode(test, ctx, EXT4_JOURNAL_INO,
-+				  S_IFREG | 0600, false);
++	inode = new_inode(sb);
++	KUNIT_ASSERT_NOT_NULL(test, inode);
++	inode->i_ino = 200;
++	inode->i_mode = S_IFREG | 0644;
++	dentry = d_alloc_anon(sb);
++	if (!dentry) {
++		iput(inode);
++		KUNIT_FAIL_AND_ABORT(test, "failed to alloc dentry");
++	}
++	d_instantiate(dentry, inode);
 +
-+	/* Stops at the first metadata block (7) and records error details */
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_check_blockref(__func__, __LINE__, reg_inode,
-+					    meta_refs, ARRAY_SIZE(meta_refs)),
-+			-EFSCORRUPTED);
-+	KUNIT_EXPECT_TRUE(test,
-+			  (bool)(ctx->sbi.s_mount_state & EXT4_ERROR_FS));
-+	KUNIT_EXPECT_EQ(test, le64_to_cpu(ctx->es.s_last_error_block), 7ULL);
-+	KUNIT_EXPECT_EQ(test, le32_to_cpu(ctx->es.s_last_error_ino), 16U);
++	{
++		struct file filp = {
++			.f_inode	= inode,
++			.f_path		= {
++				.mnt	= &mnt,
++				.dentry	= dentry,
++			},
++			.f_mode		= FMODE_READ | FMODE_WRITE,
++		};
 +
-+	/* Out-of-bounds block reference also triggers -EFSCORRUPTED */
-+	bv_clear_fs_error(ctx);
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_check_blockref(__func__, __LINE__, reg_inode,
-+					    oob_refs, ARRAY_SIZE(oob_refs)),
-+			-EFSCORRUPTED);
-+	KUNIT_EXPECT_TRUE(test,
-+			  (bool)(ctx->sbi.s_mount_state & EXT4_ERROR_FS));
-+	KUNIT_EXPECT_EQ(test, le64_to_cpu(ctx->es.s_last_error_block),
-+			(u64)BV_TEST_TOTAL_BLKS);
++		/* Unknown command dispatch */
++		KUNIT_EXPECT_EQ(test, ext4_ioctl(&filp, 0xffffffffU, 0),
++				-ENOTTY);
++#ifdef CONFIG_COMPAT
++		KUNIT_EXPECT_EQ(test, ext4_compat_ioctl(&filp, 0xffffffffU, 0),
++				-ENOIOCTLCMD);
++#endif
 +
-+	/* Active journal inode (s_journal->j_inode) bypasses blockref checks */
-+	bv_clear_fs_error(ctx);
-+	ctx->mock_journal.j_inode = j_inode;
-+	ctx->sbi.s_journal = &ctx->mock_journal;
++		/* Encryption and verity ioctls return -EOPNOTSUPP when off */
++		KUNIT_EXPECT_EQ(test,
++				ext4_ioctl(&filp, FS_IOC_SET_ENCRYPTION_POLICY,
++					   0),
++				-EOPNOTSUPP);
++		KUNIT_EXPECT_EQ(test,
++				ext4_ioctl(&filp, FS_IOC_GET_ENCRYPTION_POLICY,
++					   0),
++				-EOPNOTSUPP);
++		KUNIT_EXPECT_EQ(test,
++				ext4_ioctl(&filp, FS_IOC_ENABLE_VERITY, 0),
++				-EOPNOTSUPP);
++		KUNIT_EXPECT_EQ(test,
++				ext4_ioctl(&filp, FS_IOC_MEASURE_VERITY, 0),
++				-EOPNOTSUPP);
++#ifdef CONFIG_COMPAT
++		KUNIT_EXPECT_EQ(test,
++				ext4_compat_ioctl(&filp, FS_IOC_ENABLE_VERITY,
++						  0),
++				-EOPNOTSUPP);
++#endif
++
++		/* SETVERSION rejected with -ENOTTY when metadata_csum is on */
++		KUNIT_EXPECT_EQ(test, ext4_ioctl(&filp, EXT4_IOC_SETVERSION, 0),
++				-ENOTTY);
++
++		/* FITRIM: no discard -> -EOPNOTSUPP; NOLOAD+journal -> -EROFS */
++		ctx->bdev_queue.limits.max_discard_sectors = 0;
++		KUNIT_EXPECT_EQ(test, ext4_ioctl(&filp, FITRIM, 0),
++				-EOPNOTSUPP);
++
++		ctx->bdev_queue.limits.max_discard_sectors = 1024;
++		set_opt(sb, NOLOAD);
++		ext4_set_feature_journal(sb);
++		KUNIT_EXPECT_EQ(test, ext4_ioctl(&filp, FITRIM, 0), -EROFS);
++		clear_opt(sb, NOLOAD);
++		ext4_clear_feature_journal(sb);
++
++		/* MOVE_EXT and SWAP_BOOT require FMODE_WRITE -> -EBADF on RO */
++		filp.f_mode = FMODE_READ;
++		KUNIT_EXPECT_EQ(test, ext4_ioctl(&filp, EXT4_IOC_MOVE_EXT, 0),
++				-EBADF);
++		KUNIT_EXPECT_EQ(test, ext4_ioctl(&filp, EXT4_IOC_SWAP_BOOT, 0),
++				-EBADF);
++		filp.f_mode = FMODE_READ | FMODE_WRITE;
++
++		/* EXT4_IOC_CLEAR_ES_CACHE empties inode extent status tree */
++		ext4_es_insert_extent(inode, 0, 8, 120, EXTENT_STATUS_WRITTEN,
++				      false);
++		KUNIT_EXPECT_EQ(test, EXT4_I(inode)->i_es_all_nr, 1U);
++		KUNIT_EXPECT_EQ(test,
++				ext4_ioctl(&filp, EXT4_IOC_CLEAR_ES_CACHE, 0),
++				0);
++		KUNIT_EXPECT_EQ(test, EXT4_I(inode)->i_es_all_nr, 0U);
++	}
++
++	/* ext4_force_shutdown validation, NOLOGFLUSH state, and idempotency */
 +	KUNIT_EXPECT_EQ(test,
-+			ext4_check_blockref(__func__, __LINE__, j_inode,
-+					    meta_refs, ARRAY_SIZE(meta_refs)),
++			ext4_force_shutdown(sb, EXT4_GOING_FLAGS_NOLOGFLUSH + 1),
++			-EINVAL);
++	set_opt(sb, DISCARD);
++	KUNIT_EXPECT_EQ(test,
++			ext4_force_shutdown(sb, EXT4_GOING_FLAGS_NOLOGFLUSH),
 +			0);
-+	KUNIT_EXPECT_FALSE(test,
-+			   (bool)(ctx->sbi.s_mount_state & EXT4_ERROR_FS));
++	KUNIT_EXPECT_TRUE(test, ext4_forced_shutdown(sb));
++	KUNIT_EXPECT_EQ(test, test_opt(sb, DISCARD), 0U);
++	/* Repeat shutdown call is a no-op returning 0 */
++	KUNIT_EXPECT_EQ(test,
++			ext4_force_shutdown(sb, EXT4_GOING_FLAGS_DEFAULT),
++			0);
++
++	dput(dentry);
 +}
 +
-+static void test_ind_check_inode_and_indirect_blockref(struct kunit *test)
-+{
-+	struct bv_test_ctx *ctx = test->priv;
-+	unsigned int max_addrs = EXT4_ADDR_PER_BLOCK(ctx->sb);
-+	struct buffer_head ind_bh;
-+	struct inode *inode;
-+	__le32 *addrs;
-+
-+	KUNIT_ASSERT_EQ(test, ext4_setup_system_zone(ctx->sb), 0);
-+	inode = bv_create_inode(test, ctx, 17, S_IFREG | 0644, false);
-+
-+	/* ext4_ind_check_inode() checks direct slots i_data[0..11] */
-+	EXT4_I(inode)->i_data[0] = cpu_to_le32(15);
-+	EXT4_I(inode)->i_data[EXT4_NDIR_BLOCKS - 1] = cpu_to_le32(20);
-+	KUNIT_EXPECT_EQ(test, ext4_ind_check_inode(inode), 0);
-+
-+	EXT4_I(inode)->i_data[EXT4_NDIR_BLOCKS - 1] = cpu_to_le32(6);
-+	KUNIT_EXPECT_EQ(test, ext4_ind_check_inode(inode), -EFSCORRUPTED);
-+	KUNIT_EXPECT_EQ(test, le64_to_cpu(ctx->es.s_last_error_block), 6ULL);
-+
-+	/*
-+	 * ext4_check_indirect_blockref() checks all EXT4_ADDR_PER_BLOCK(sb)
-+	 * entries (256 for 1KiB blocks), including the final slot.
-+	 */
-+	bv_clear_fs_error(ctx);
-+	memset(&ind_bh, 0, sizeof(ind_bh));
-+	memset(ctx->ind_buf, 0, sizeof(ctx->ind_buf));
-+	ind_bh.b_data = ctx->ind_buf;
-+	ind_bh.b_size = BV_TEST_BLK_SIZE;
-+	addrs = (__le32 *)ind_bh.b_data;
-+
-+	addrs[0] = cpu_to_le32(15);
-+	addrs[max_addrs / 2] = cpu_to_le32(1039);
-+	addrs[max_addrs - 1] = cpu_to_le32(4096);
-+	KUNIT_EXPECT_EQ(test, ext4_check_indirect_blockref(inode, &ind_bh), 0);
-+	KUNIT_EXPECT_FALSE(test,
-+			   (bool)(ctx->sbi.s_mount_state & EXT4_ERROR_FS));
-+
-+	addrs[max_addrs - 1] = cpu_to_le32(1029);
-+	KUNIT_EXPECT_EQ(test, ext4_check_indirect_blockref(inode, &ind_bh),
-+			-EFSCORRUPTED);
-+	KUNIT_EXPECT_EQ(test, le64_to_cpu(ctx->es.s_last_error_block), 1029ULL);
-+}
-+
-+/* --- Test 11: Integration with ext4_map_blocks() Validity Check --- */
-+
-+static void test_map_blocks_rejects_extent_in_system_zone(struct kunit *test)
-+{
-+	struct bv_test_ctx *ctx = test->priv;
-+	struct ext4_map_blocks map;
-+	struct inode *bad_inode;
-+	struct inode *ok_inode;
-+
-+	KUNIT_ASSERT_EQ(test, ext4_setup_system_zone(ctx->sb), 0);
-+
-+	ok_inode = bv_create_inode(test, ctx, 18, S_IFREG | 0644, true);
-+	bv_append_extent(test, ok_inode, 0, 25ULL, 3);
-+	memset(&map, 0, sizeof(map));
-+	map.m_lblk = 0;
-+	map.m_len = 3;
-+	KUNIT_EXPECT_EQ(test, ext4_map_blocks(NULL, ok_inode, &map, 0), 3);
-+	KUNIT_EXPECT_FALSE(test,
-+			   (bool)(ctx->sbi.s_mount_state & EXT4_ERROR_FS));
-+
-+	/* Corrupt extent mapped onto group 0's inode table [7..14] */
-+	bad_inode = bv_create_inode(test, ctx, 19, S_IFREG | 0644, true);
-+	bv_append_extent(test, bad_inode, 0, 8ULL, 2);
-+	memset(&map, 0, sizeof(map));
-+	map.m_lblk = 0;
-+	map.m_len = 2;
-+	KUNIT_EXPECT_EQ(test, ext4_map_blocks(NULL, bad_inode, &map, 0),
-+			-EFSCORRUPTED);
-+	KUNIT_EXPECT_TRUE(test,
-+			  (bool)(ctx->sbi.s_mount_state & EXT4_ERROR_FS));
-+	KUNIT_EXPECT_EQ(test, le64_to_cpu(ctx->es.s_last_error_block), 8ULL);
-+	KUNIT_EXPECT_EQ(test, le32_to_cpu(ctx->es.s_last_error_ino), 19U);
-+}
-+
-+static struct kunit_case ext4_block_validity_test_cases[] = {
-+	KUNIT_CASE_PARAM(test_sb_block_valid_bounds, bv_bounds_gen_params),
-+	KUNIT_CASE(test_release_system_zone_lifecycle),
-+	KUNIT_CASE(test_setup_multigroup_sparse_super_and_flex_bg),
-+	KUNIT_CASE(test_rbtree_left_right_and_bridge_merges),
-+	KUNIT_CASE_PARAM(test_sb_block_valid_interval_overlaps,
-+			 bv_overlap_gen_params),
-+	KUNIT_CASE_PARAM(test_setup_corrupt_group_metadata_overlaps,
-+			 bv_corrupt_meta_gen_params),
-+	KUNIT_CASE(test_journal_inode_protection_and_ino_isolation),
-+	KUNIT_CASE(test_journal_disabled_or_empty_skips_zones),
-+	KUNIT_CASE(test_journal_inode_invalid_inum),
-+	KUNIT_CASE(test_journal_inode_iget_error),
-+	KUNIT_CASE(test_journal_inode_map_blocks_error),
-+	KUNIT_CASE(test_journal_inode_overlap_sets_fs_error),
-+	KUNIT_CASE(test_check_blockref_valid_and_sparse),
-+	KUNIT_CASE(test_check_blockref_corrupt_entries_and_journal_bypass),
-+	KUNIT_CASE(test_ind_check_inode_and_indirect_blockref),
-+	KUNIT_CASE(test_map_blocks_rejects_extent_in_system_zone),
++static struct kunit_case ioctl_test_cases[] = {
++	KUNIT_CASE(test_sb_callbacks_and_setparams),
++	KUNIT_CASE(test_validate_tune_sb_params),
++	KUNIT_CASE(test_update_superblocks_and_overhead),
++	KUNIT_CASE(test_swap_inode_data_and_seed),
++	KUNIT_CASE(test_immutable_dax_and_fileattr),
++	KUNIT_CASE(test_force_shutdown_and_ioctl_dispatch),
 +	{}
 +};
 +
-+static struct kunit_suite ext4_block_validity_test_suite = {
-+	.name = "ext4_block_validity_test",
-+	.init = bv_test_init,
-+	.test_cases = ext4_block_validity_test_cases,
++static struct kunit_suite ioctl_test_suite = {
++	.name = "ext4_ioctl_test",
++	.init = ioctl_test_init,
++	.test_cases = ioctl_test_cases,
 +};
 +
-+kunit_test_suites(&ext4_block_validity_test_suite);
++kunit_test_suites(&ioctl_test_suite);
 +
-+MODULE_DESCRIPTION("KUnit tests for ext4 block validity (system zone) tracking");
++MODULE_DESCRIPTION("KUnit tests for ext4 ioctl operations");
 +MODULE_LICENSE("GPL");
-diff --git a/fs/ext4/block_validity.c b/fs/ext4/block_validity.c
-index 3a31e3d718c9..53b042f36a69 100644
---- a/fs/ext4/block_validity.c
-+++ b/fs/ext4/block_validity.c
-@@ -17,6 +17,7 @@
- #include <linux/swap.h>
- #include <linux/pagemap.h>
- #include <linux/blkdev.h>
-+#include <linux/export.h>
- #include <linux/slab.h>
- #include "ext4.h"
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 368005d318d9..83630cd40712 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -27,6 +27,7 @@
+ #include "fsmap.h"
+ #include <trace/events/ext4.h>
+ #include <linux/fserror.h>
++#include <kunit/static_stub.h>
  
-@@ -269,6 +270,7 @@ int ext4_setup_system_zone(struct super_block *sb)
- 	kfree(system_blks);
- 	return ret;
+ typedef void ext4_update_sb_callback(struct ext4_sb_info *sbi,
+ 				     struct ext4_super_block *es,
+@@ -55,6 +56,13 @@ static void ext4_sb_setuuid(struct ext4_sb_info *sbi,
+ 	memcpy(es->s_uuid, (__u8 *)arg, UUID_SIZE);
  }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_setup_system_zone);
  
- /*
-  * Called when the filesystem is unmounted or when remounting it with
-@@ -291,6 +293,7 @@ void ext4_release_system_zone(struct super_block *sb)
- 	if (system_blks)
- 		call_rcu(&system_blks->rcu, ext4_destroy_system_zone);
- }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_release_system_zone);
- 
- int ext4_sb_block_valid(struct super_block *sb, struct inode *inode,
- 				ext4_fsblk_t start_blk, unsigned int count)
-@@ -334,6 +337,7 @@ int ext4_sb_block_valid(struct super_block *sb, struct inode *inode,
- 	rcu_read_unlock();
- 	return ret;
- }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_sb_block_valid);
- 
- /*
-  * Returns 1 if the passed-in block region (start_blk,
-@@ -345,6 +349,7 @@ int ext4_inode_block_valid(struct inode *inode, ext4_fsblk_t start_blk,
- {
- 	return ext4_sb_block_valid(inode->i_sb, inode, start_blk, count);
- }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_inode_block_valid);
- 
- int ext4_check_blockref(const char *function, unsigned int line,
- 			struct inode *inode, __le32 *p, unsigned int max)
-@@ -367,4 +372,5 @@ int ext4_check_blockref(const char *function, unsigned int line,
++int ext4_ioctl_sync_bh(struct buffer_head *bh)
++{
++	KUNIT_STATIC_STUB_REDIRECT(ext4_ioctl_sync_bh, bh);
++	return sync_dirty_buffer(bh);
++}
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_ioctl_sync_bh);
++
+ static
+ int ext4_update_primary_sb(struct super_block *sb, handle_t *handle,
+ 			   ext4_update_sb_callback func,
+@@ -89,7 +97,7 @@ int ext4_update_primary_sb(struct super_block *sb, handle_t *handle,
+ 	err = ext4_handle_dirty_metadata(handle, NULL, bh);
+ 	if (err)
+ 		goto out_err;
+-	err = sync_dirty_buffer(bh);
++	err = ext4_ioctl_sync_bh(bh);
+ out_err:
+ 	ext4_std_error(sb, err);
+ 	return err;
+@@ -167,7 +175,7 @@ static int ext4_update_backup_sb(struct super_block *sb,
+ 		BUFFER_TRACE(bh, "marking dirty");
+ 		mark_buffer_dirty(bh);
  	}
+-	err = sync_dirty_buffer(bh);
++	err = ext4_ioctl_sync_bh(bh);
+ 
+ out_bh:
+ 	brelse(bh);
+@@ -361,6 +369,7 @@ void ext4_reset_inode_seed(struct inode *inode)
+ 	csum = ext4_chksum(sbi->s_csum_seed, (__u8 *)&inum, sizeof(inum));
+ 	ei->i_csum_seed = ext4_chksum(csum, (__u8 *)&gen, sizeof(gen));
+ }
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_reset_inode_seed);
+ 
+ /*
+  * Swap the information from the given @inode and the inode
+@@ -854,6 +863,7 @@ int ext4_force_shutdown(struct super_block *sb, u32 flags)
+ 	fserror_report_shutdown(sb, GFP_KERNEL);
  	return 0;
  }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_check_blockref);
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_force_shutdown);
  
+ static int ext4_ioctl_shutdown(struct super_block *sb, unsigned long arg)
+ {
+@@ -1007,6 +1017,7 @@ int ext4_fileattr_get(struct dentry *dentry, struct file_kattr *fa)
+ 
+ 	return 0;
+ }
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_fileattr_get);
+ 
+ int ext4_fileattr_set(const struct mnt_idmap *idmap,
+ 		      struct dentry *dentry, struct file_kattr *fa)
+@@ -1037,6 +1048,7 @@ int ext4_fileattr_set(const struct mnt_idmap *idmap,
+ out:
+ 	return err;
+ }
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_fileattr_set);
+ 
+ /* So that the fiemap access checks can't overflow on 32 bit machines. */
+ #define FIEMAP_MAX_EXTENTS	(UINT_MAX / sizeof(struct fiemap_extent))
+@@ -1390,77 +1402,68 @@ static void ext4_sb_setparams(struct ext4_sb_info *sbi,
+ 	}
+ }
+ 
+-static int ext4_ioctl_set_tune_sb(struct file *filp,
+-				  struct ext4_tune_sb_params __user *in)
++static int ext4_validate_tune_sb_params(struct super_block *sb,
++					struct ext4_tune_sb_params *params)
+ {
+-	struct ext4_tune_sb_params params;
+-	struct super_block *sb = file_inode(filp)->i_sb;
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	struct ext4_super_block *es = sbi->s_es;
+ 	int enabling_casefold = 0;
+-	int ret;
+-
+-	if (!capable(CAP_SYS_ADMIN))
+-		return -EPERM;
+-
+-	if (copy_from_user(&params, in, sizeof(params)))
+-		return -EFAULT;
+ 
+-	if (strnlen(params.mount_opts, sizeof(params.mount_opts)) ==
+-	    sizeof(params.mount_opts))
++	if (strnlen(params->mount_opts, sizeof(params->mount_opts)) ==
++	    sizeof(params->mount_opts))
+ 		return -E2BIG;
+ 
+-	if ((params.set_flags & ~TUNE_OPS_SUPPORTED) != 0)
++	if ((params->set_flags & ~TUNE_OPS_SUPPORTED) != 0)
+ 		return -EOPNOTSUPP;
+ 
+-	if ((params.set_flags & EXT4_TUNE_FL_ERRORS_BEHAVIOR) &&
+-	    (params.errors_behavior > EXT4_ERRORS_PANIC))
++	if ((params->set_flags & EXT4_TUNE_FL_ERRORS_BEHAVIOR) &&
++	    (params->errors_behavior > EXT4_ERRORS_PANIC))
+ 		return -EINVAL;
+ 
+-	if ((params.set_flags & EXT4_TUNE_FL_RESERVED_BLOCKS) &&
+-	    (params.reserved_blocks > ext4_blocks_count(sbi->s_es) / 2))
++	if ((params->set_flags & EXT4_TUNE_FL_RESERVED_BLOCKS) &&
++	    (params->reserved_blocks > ext4_blocks_count(sbi->s_es) / 2))
+ 		return -EINVAL;
+-	if ((params.set_flags & EXT4_TUNE_FL_DEF_HASH_ALG) &&
+-	    ((params.def_hash_alg > DX_HASH_LAST) ||
+-	     (params.def_hash_alg == DX_HASH_SIPHASH)))
++	if ((params->set_flags & EXT4_TUNE_FL_DEF_HASH_ALG) &&
++	    ((params->def_hash_alg > DX_HASH_LAST) ||
++	     (params->def_hash_alg == DX_HASH_SIPHASH)))
+ 		return -EINVAL;
+-	if ((params.set_flags & EXT4_TUNE_FL_FEATURES) &&
+-	    (params.set_flags & EXT4_TUNE_FL_EDIT_FEATURES))
++	if ((params->set_flags & EXT4_TUNE_FL_FEATURES) &&
++	    (params->set_flags & EXT4_TUNE_FL_EDIT_FEATURES))
+ 		return -EINVAL;
+ 
+-	if (params.set_flags & EXT4_TUNE_FL_FEATURES) {
+-		params.set_feature_compat_mask =
+-			params.feature_compat &
++	if (params->set_flags & EXT4_TUNE_FL_FEATURES) {
++		params->set_feature_compat_mask =
++			params->feature_compat &
+ 			~le32_to_cpu(es->s_feature_compat);
+-		params.set_feature_incompat_mask =
+-			params.feature_incompat &
++		params->set_feature_incompat_mask =
++			params->feature_incompat &
+ 			~le32_to_cpu(es->s_feature_incompat);
+-		params.set_feature_ro_compat_mask =
+-			params.feature_ro_compat &
++		params->set_feature_ro_compat_mask =
++			params->feature_ro_compat &
+ 			~le32_to_cpu(es->s_feature_ro_compat);
+-		params.clear_feature_compat_mask =
+-			~params.feature_compat &
++		params->clear_feature_compat_mask =
++			~params->feature_compat &
+ 			le32_to_cpu(es->s_feature_compat);
+-		params.clear_feature_incompat_mask =
+-			~params.feature_incompat &
++		params->clear_feature_incompat_mask =
++			~params->feature_incompat &
+ 			le32_to_cpu(es->s_feature_incompat);
+-		params.clear_feature_ro_compat_mask =
+-			~params.feature_ro_compat &
++		params->clear_feature_ro_compat_mask =
++			~params->feature_ro_compat &
+ 			le32_to_cpu(es->s_feature_ro_compat);
+-		params.set_flags |= EXT4_TUNE_FL_EDIT_FEATURES;
++		params->set_flags |= EXT4_TUNE_FL_EDIT_FEATURES;
+ 	}
+-	if (params.set_flags & EXT4_TUNE_FL_EDIT_FEATURES) {
+-		if ((params.set_feature_compat_mask &
++	if (params->set_flags & EXT4_TUNE_FL_EDIT_FEATURES) {
++		if ((params->set_feature_compat_mask &
+ 		     ~EXT4_TUNE_SET_COMPAT_SUPP) ||
+-		    (params.set_feature_incompat_mask &
++		    (params->set_feature_incompat_mask &
+ 		     ~EXT4_TUNE_SET_INCOMPAT_SUPP) ||
+-		    (params.set_feature_ro_compat_mask &
++		    (params->set_feature_ro_compat_mask &
+ 		     ~EXT4_TUNE_SET_RO_COMPAT_SUPP) ||
+-		    (params.clear_feature_compat_mask &
++		    (params->clear_feature_compat_mask &
+ 		     ~EXT4_TUNE_CLEAR_COMPAT_SUPP) ||
+-		    (params.clear_feature_incompat_mask &
++		    (params->clear_feature_incompat_mask &
+ 		     ~EXT4_TUNE_CLEAR_INCOMPAT_SUPP) ||
+-		    (params.clear_feature_ro_compat_mask &
++		    (params->clear_feature_ro_compat_mask &
+ 		     ~EXT4_TUNE_CLEAR_RO_COMPAT_SUPP))
+ 			return -EOPNOTSUPP;
+ 
+@@ -1468,34 +1471,35 @@ static int ext4_ioctl_set_tune_sb(struct file *filp,
+ 		 * Filter out the features that are already set from
+ 		 * the set_mask.
+ 		 */
+-		params.set_feature_compat_mask &=
++		params->set_feature_compat_mask &=
+ 			~le32_to_cpu(es->s_feature_compat);
+-		params.set_feature_incompat_mask &=
++		params->set_feature_incompat_mask &=
+ 			~le32_to_cpu(es->s_feature_incompat);
+-		params.set_feature_ro_compat_mask &=
++		params->set_feature_ro_compat_mask &=
+ 			~le32_to_cpu(es->s_feature_ro_compat);
+-		if ((params.set_feature_incompat_mask &
+-		     EXT4_FEATURE_INCOMPAT_CASEFOLD)) {
++		if (params->set_feature_incompat_mask &
++		    EXT4_FEATURE_INCOMPAT_CASEFOLD) {
+ 			enabling_casefold = 1;
+-			if (!(params.set_flags & EXT4_TUNE_FL_ENCODING)) {
+-				params.encoding = EXT4_ENC_UTF8_12_1;
+-				params.set_flags |= EXT4_TUNE_FL_ENCODING;
++			if (!(params->set_flags & EXT4_TUNE_FL_ENCODING)) {
++				params->encoding = EXT4_ENC_UTF8_12_1;
++				params->set_flags |= EXT4_TUNE_FL_ENCODING;
+ 			}
+-			if (!(params.set_flags & EXT4_TUNE_FL_ENCODING_FLAGS)) {
+-				params.encoding_flags = 0;
+-				params.set_flags |= EXT4_TUNE_FL_ENCODING_FLAGS;
++			if (!(params->set_flags &
++			      EXT4_TUNE_FL_ENCODING_FLAGS)) {
++				params->encoding_flags = 0;
++				params->set_flags |=
++					EXT4_TUNE_FL_ENCODING_FLAGS;
+ 			}
+ 		}
+-		if ((params.set_feature_compat_mask &
+-		     EXT4_FEATURE_COMPAT_DIR_INDEX)) {
+-			uuid_t	uu;
++		if (params->set_feature_compat_mask &
++		    EXT4_FEATURE_COMPAT_DIR_INDEX) {
++			uuid_t uu;
+ 
+ 			memcpy(&uu, sbi->s_hash_seed, UUID_SIZE);
+ 			if (uuid_is_null(&uu))
+-				generate_random_uuid((char *)
+-						     &sbi->s_hash_seed);
+-			if (params.set_flags & EXT4_TUNE_FL_DEF_HASH_ALG)
+-				sbi->s_def_hash_version = params.def_hash_alg;
++				generate_random_uuid((char *)&sbi->s_hash_seed);
++			if (params->set_flags & EXT4_TUNE_FL_DEF_HASH_ALG)
++				sbi->s_def_hash_version = params->def_hash_alg;
+ 			else if (sbi->s_def_hash_version == 0)
+ 				sbi->s_def_hash_version = DX_HASH_HALF_MD4;
+ 			if (!(es->s_flags &
+@@ -1510,21 +1514,42 @@ static int ext4_ioctl_set_tune_sb(struct file *filp,
+ 			}
+ 		}
+ 	}
+-	if (params.set_flags & EXT4_TUNE_FL_ENCODING) {
++	if (params->set_flags & EXT4_TUNE_FL_ENCODING) {
+ 		if (!enabling_casefold)
+ 			return -EINVAL;
+-		if (params.encoding == 0)
+-			params.encoding = EXT4_ENC_UTF8_12_1;
+-		else if (params.encoding != EXT4_ENC_UTF8_12_1)
++		if (params->encoding == 0)
++			params->encoding = EXT4_ENC_UTF8_12_1;
++		else if (params->encoding != EXT4_ENC_UTF8_12_1)
+ 			return -EINVAL;
+ 	}
+-	if (params.set_flags & EXT4_TUNE_FL_ENCODING_FLAGS) {
++	if (params->set_flags & EXT4_TUNE_FL_ENCODING_FLAGS) {
+ 		if (!enabling_casefold)
+ 			return -EINVAL;
+-		if (params.encoding_flags & ~SB_ENC_SUPP_MASK)
++		if (params->encoding_flags & ~SB_ENC_SUPP_MASK)
+ 			return -EINVAL;
+ 	}
+ 
++	return 0;
++}
++
++static int ext4_ioctl_set_tune_sb(struct file *filp,
++				  struct ext4_tune_sb_params __user *in)
++{
++	struct ext4_tune_sb_params params;
++	struct super_block *sb = file_inode(filp)->i_sb;
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	int ret;
++
++	if (!capable(CAP_SYS_ADMIN))
++		return -EPERM;
++
++	if (copy_from_user(&params, in, sizeof(params)))
++		return -EFAULT;
++
++	ret = ext4_validate_tune_sb_params(sb, &params);
++	if (ret)
++		return ret;
++
+ 	ret = mnt_want_write_file(filp);
+ 	if (ret)
+ 		return ret;
+@@ -1933,6 +1958,7 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+ {
+ 	return __ext4_ioctl(filp, cmd, arg);
+ }
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_ioctl);
+ 
+ #ifdef CONFIG_COMPAT
+ long ext4_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+@@ -2009,6 +2035,7 @@ long ext4_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+ 	}
+ 	return ext4_ioctl(file, cmd, (unsigned long) compat_ptr(arg));
+ }
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_compat_ioctl);
+ #endif
+ 
+ static void set_overhead(struct ext4_sb_info *sbi,
+@@ -2029,3 +2056,85 @@ int ext4_update_overhead(struct super_block *sb, bool force)
+ 		return 0;
+ 	return ext4_update_superblocks_fn(sb, set_overhead, &sbi->s_overhead);
+ }
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_update_overhead);
++
++#if IS_ENABLED(CONFIG_EXT4_KUNIT_TESTS)
++void ext4_sb_setlabel_test(struct ext4_sb_info *sbi,
++			   struct ext4_super_block *es, const void *arg)
++{
++	ext4_sb_setlabel(sbi, es, arg);
++}
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_sb_setlabel_test);
++
++void ext4_sb_setuuid_test(struct ext4_sb_info *sbi,
++			  struct ext4_super_block *es, const void *arg)
++{
++	ext4_sb_setuuid(sbi, es, arg);
++}
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_sb_setuuid_test);
++
++void ext4_sb_setparams_test(struct ext4_sb_info *sbi,
++			    struct ext4_super_block *es, const void *arg)
++{
++	ext4_sb_setparams(sbi, es, arg);
++}
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_sb_setparams_test);
++
++int ext4_validate_tune_sb_params_test(struct super_block *sb,
++				      struct ext4_tune_sb_params *params)
++{
++	return ext4_validate_tune_sb_params(sb, params);
++}
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_validate_tune_sb_params_test);
++
++int ext4_update_primary_sb_test(struct super_block *sb, handle_t *handle,
++				void (*func)(struct ext4_sb_info *,
++					     struct ext4_super_block *,
++					     const void *),
++				const void *arg)
++{
++	return ext4_update_primary_sb(sb, handle, func, arg);
++}
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_update_primary_sb_test);
++
++int ext4_update_backup_sb_test(struct super_block *sb, handle_t *handle,
++			       ext4_group_t grp,
++			       void (*func)(struct ext4_sb_info *,
++					    struct ext4_super_block *,
++					    const void *),
++			       const void *arg)
++{
++	return ext4_update_backup_sb(sb, handle, grp, func, arg);
++}
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_update_backup_sb_test);
++
++int ext4_update_superblocks_fn_test(struct super_block *sb,
++				    void (*func)(struct ext4_sb_info *,
++						 struct ext4_super_block *,
++						 const void *),
++				    const void *arg)
++{
++	return ext4_update_superblocks_fn(sb, func, arg);
++}
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_update_superblocks_fn_test);
++
++void ext4_swap_inode_data_test(struct inode *inode1, struct inode *inode2)
++{
++	swap_inode_data(inode1, inode2);
++}
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_swap_inode_data_test);
++
++int ext4_ioctl_check_immutable_test(struct inode *inode, __u32 new_projid,
++				    unsigned int flags)
++{
++	return ext4_ioctl_check_immutable(inode, new_projid, flags);
++}
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_ioctl_check_immutable_test);
++
++bool ext4_dax_compatible_test(struct inode *inode, unsigned int oldflags,
++			      unsigned int flags)
++{
++	return dax_compatible(inode, oldflags, flags);
++}
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_dax_compatible_test);
++#endif
 -- 
 2.56.1.708.g77570a6a1d-goog
 
