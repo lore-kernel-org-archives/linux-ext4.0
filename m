@@ -1,69 +1,72 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=18.9.28.11
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
 	t=1795099700;
-	b=A9Myz1NoPDHeYT7oh4LmPbEB/nRG00WxkTMqw/fJPO5mm9gB1UhufRYYT+DjTw8vktWx
-	 eigx5LAEK+08b68L8KV5ZDjlBw0gTGwHgKrEjvjNlajrHIb52CdUd5bF5FaRyYnxBM+3o
-	 v6WOD1uew93Ea2uiLwckvHGkaLR7ksuJEes+0wYAv2q/kfF6Y0GW8pj7+4FL+uaJLjmd5
-	 jBPeunektWK/EOQu1xlw4E6ih5/7rTIa3zSPqlEJnEEKLaQM70nl5XdfOdXmMt5INeFnI
-	 2wtcZVC2EpR0Oj/ae3v4x0EvJbKtzLvyEMZhCluusimFZ9t3YycrMtVgkCNXNbUoFkw==
+	b=NOSWrAEnHLvQ7aVdAsYitah38tDUlOU81rAfj6lhA/jFbgaJUoO1uyooFgLrZm19oRQh
+	 2A4WkQtS2go/iT4huv9yWHR7XCZeR7+egwk8/H0qh7g6oZNY0YWGtI9NQ865neAux4a3t
+	 g0UBcittttZy4r6q+sUTvacowPtI5O7z91YmGmQYXhUbAb5lFJMI9rGYGHlhug2/eeXvF
+	 /yGZYY8/rXifuqGHJKNf6e5Is5bQTZnH/mWsPo64PST0onxV8yVvfd7GW4/IPEtoU+oOx
+	 S/6dTuCvdOjZ5qEz6TAXIEzec6UBDBmTgqxuWDe/4fIRlxu5j2PsbF0nYQ8/0jO+Vfg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
 	a=rsa-sha256; c=relaxed/relaxed; t=1795099700;
 	h=DMARC-Filter:Received:DKIM-Signature:Received:From:To:Cc:Subject:
 	 Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
 	 Content-Type:Content-Transfer-Encoding;
-	bh=74sN9QGG0JCpJW3Ur2HPs7MYvyHfbWdZsr2EkdJA/hk=;
-	b=VZs4bvtu6577PIzJRYWFVpLUuTn+WFD0TY2+kvrvolZK34UnbSOaLz3dIiyixr5KPYgr
-	 GZMu2TwUsKpTvy248NUJELT6K0fKEX3OywYMiynAbgMt9yEAXFwLAiElX1zlv5T89pydN
-	 eGzFJHI19aWq1CL6yD7P7CHLfYeM1oq1IJ8aijU+6dq2w2zrjh/d6YE2sKdXiytZQnLMx
-	 24vxaH9RUqkd4rRztn3BkCBAcKq0E9eXIVMp5HJtRjW+XpNID89sQbUnUOotLID91C39R
-	 HIVW3p/mI5qWU6M0eRtC+k97omm0aX9XD/eA6nAeJaHikV0mNHRA0jZ3GlCeLB6/GmA==
+	bh=h7r1E7scEOZyuEDqeKSZiyFQf8svUCXCQ1Iye9mf1m4=;
+	b=oowRpbmm0+pUcIyUOQCnsFaK/ESMFd9wVuV6uJBTWawX9dIzC7KsgHXXeRXJ55p/E3N8
+	 iTx+1BnwWRVzDpQlz0GqNIgchy5ds2LnTFTyUOPOkWN+XE6nzsgwclZ+PgvkBuZGqV6jO
+	 QJPB5ua4Z7QqHboaC96GfDPEqOtzGFVyL6JDavz+uLz2McOR5bJFoRfHJxgn+J/Z+/THl
+	 QFFKNwGmv53VaQmxT5lPZUrzLBxfE192h0/byQ/nWolcdpX0KOLkJEU7SOnC1INR/8A3E
+	 vpSOqEWiaFPEq99I6C0OhJZk3iBGxp7tXa0LGkZIYPuWFG7eRsiEXVBJTDrDhtRR0eQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=mit.edu;
 	spf=pass smtp.mailfrom=mit.edu;
-	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=BHvZJbaf;
+	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=i1eVo3r4;
 	arc=none smtp.remote-ip=18.9.28.11
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E418A606E12F
-	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2026 14:48:19 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org E418A606E12F
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 18CDD606E132
+	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2026 14:48:20 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 18CDD606E132
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=BHvZJbaf
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=i1eVo3r4
 Received: from trampoline.thunk.org (pool-173-48-114-214.bstnma.fios.verizon.net [173.48.114.214])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AJElhYC018283
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AJElas0017906
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 19 Nov 2026 09:47:44 -0500
+	Thu, 19 Nov 2026 09:47:37 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1795099665; bh=74sN9QGG0JCpJW3Ur2HPs7MYvyHfbWdZsr2EkdJA/hk=;
+	t=1795099661; bh=h7r1E7scEOZyuEDqeKSZiyFQf8svUCXCQ1Iye9mf1m4=;
 	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=BHvZJbafox41nyon3WW+pMptrbgFWTxL5UzD1JQCNntpfkEPKHardJmlRGJWgiomG
-	 9UbzSz8QtwESe18HQtbuhvoCNSLm6KoIghNnTCzlPxwECqhOPWDRc45pDUpWHXVY8Y
-	 GbWnCV86JdE0iUf1BXriPcRXKtsK1SBqs95kRBYQlt/vUGn0qobcKd2j3noYLNELEm
-	 nTAQNmpL3HPIwc8gZe5Z6VZEtBnI2NFIFJYb2LVWiGsZN1aOaCLKlHYYLhziziT38l
-	 gUg1JM4RCIjLu6VZ6LH6b68FffXADjhW61If51r+6gYV4VHpzdW6DCt0vUFi6oQkuA
-	 TjEMIco3q1qxg==
+	b=i1eVo3r4Xfak0Ogxi/JAK9R1CwdmU8IQja/93C+wUyNTLJnPESWSbGbMwZdj7gKt6
+	 mmxHWMTVzb6NR4SbrtDifcjm/oru2leHpp5yOLKAUrUJcRVzRYp3Stu8x/2nv+Sg2a
+	 5gM5W7m7oC8AiXaNOiCCkAz5/aTM05+l0dYB77+hdfCDvhqO4UT3j5wlc+1mEvXu8L
+	 5NlTgsfCEfao4kUg0OkoXnvoDO340/AG+q4GDXRSkBygZbDLX6T5rHIMx9WqFD7qLn
+	 0eRyzl6DWsM2J7J456B3CmUPTgELG0fvHJTCxDS42DFb9q24QmrbfYiPPnOHiSgK6V
+	 zmmfP0ffQR+1w==
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id 7E8952E019E; Thu, 19 Nov 2026 09:47:33 -0500 (EST)
+	id DD8362E0153; Thu, 19 Nov 2026 09:47:32 -0500 (EST)
 From: "Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        Zhao Gongyi <zhaogongyi@bytedance.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>,
-        Baokun Li <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>,
+        Daejun Park <daejun7.park@samsung.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Baokun Li <libaokun@linux.alibaba.com>,
         Ojaswin Mujoo <ojaswin@linux.ibm.com>,
         "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
-        Zhang Yi <yi.zhang@huawei.com>, linux-kernel@vger.kernel.org,
+        Zhang Yi <yi.zhang@huawei.com>, Zhang Yi <yi.zhang@huaweicloud.com>,
+        Harshad Shirwadkar <harshadshirwadkar@gmail.com>,
+        Li Chen <me@linux.beauty>, linux-kernel@vger.kernel.org,
         stable@vger.kernel.org
-Subject: Re: [PATCH] ext4: fix OOB memmove in ext4_xattr_set_entry
-Date: Thu, 19 Nov 2026 09:47:27 -0500
-Message-ID: <179509948684.1938961.11594093534091787371.b4-ty@b4>
+Subject: Re: [PATCH] ext4: skip holes when shrinking the extent tree in fast commit replay
+Date: Thu, 19 Nov 2026 09:46:44 -0500
+Message-ID: <179509948696.1938961.4627256967174030888.b4-ty@b4>
 X-Mailer: git-send-email 2.53.0
-In-Reply-To: <20260918101249.43643-1-zhaogongyi@bytedance.com>
-References: <20260918101249.43643-1-zhaogongyi@bytedance.com>
+In-Reply-To: <20261007-ext4-fc-replay-shrink-v1-1-0e45fc03030d@samsung.com>
+References: <20261007-ext4-fc-replay-shrink-v1-1-0e45fc03030d@samsung.com>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -77,24 +80,21 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Fri, 18 Sep 2026 18:12:49 +0800, Zhao Gongyi wrote:
-> A corrupted filesystem can leave an inode marked as having inline data
-> while the system.data xattr is missing. ext4_destroy_inline_data_nolock()
-> then asks ext4_xattr_set_entry() to remove an entry even though
-> ext4_xattr_ibody_find() left the search state at the insertion position.
-> 
-> In the syzkaller reproducer, the old xattr value offset is smaller than
-> min_offs. ext4_xattr_set_entry() then computes val - first_val for
-> memmove(), the length wraps to a huge size_t, and memmove() can run out of
-> the xattr buffer. This results in an out-of-bounds memmove and a kernel
-> page fault.
+On Wed, 07 Oct 2026 09:41:31 +0900, Daejun Park wrote:
+> ext4_ext_replay_shrink_inode() walks the extents of an inode from block
+> 0 up to the given end and tries to merge each one with its neighbours.
+> When the walk is in a hole that follows an extent, ext4_find_extent()
+> returns that extent, and the walk moves on by a single block. Replay
+> calls it up to i_size after every ADD_RANGE and DEL_RANGE tag, so the
+> time recovery takes is proportional to the number of tags times the
+> number of hole blocks below i_size.
 > 
 > [...]
 
 Applied, thanks!
 
-[1/1] ext4: fix OOB memmove in ext4_xattr_set_entry
-      commit: 1608d1abdc62d09f9eae9df925d471598bdf6913
+[1/1] ext4: skip holes when shrinking the extent tree in fast commit replay
+      commit: 3b74728368f72f7ba3c73f964798e203ba1b56eb
 
 Best regards,
 -- 
