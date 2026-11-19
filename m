@@ -1,60 +1,60 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=18.9.28.11
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795103830;
-	b=Xg13WITd4KyZK6S+FRRyVwITb1aTrUKBcqEQXv/HAtNEDcUlPu0aJHcmtJr15GkjfcAC
-	 odxgMnvTjLkEjlDpQSHEck6yPgmf4AWVYVVlirZbcM1swqV3/UA/Y7yenNTaOhOP6JHHF
-	 b1GB56pMtQ7wWdVz7b5v1rtZgBRTA7rbRgR99dPgyPAJNYS+QNDLBUpgo59U6Mu6z+byS
-	 K/ynLUHvMETRyDYK7MBm7dp9whW/Vytm17G9R6wJi78YBDlR8ebdo10RqF5vsg9OKlH/R
-	 SGXZvn3xOXZsrZ25OlDgVwrsw3U7pOB+oYKo7jTYTsTyEk5UNFivTUmt/1Z4r+BG19g==
+	t=1795103831;
+	b=BC4CFDZE0ShSW055kOP425rMlaB0LxIYAJ6qPhjdfwjXyRFBP9uHUNqTFCSp7ICNpzQW
+	 XNzv+pTI0qHf5LluvpN432ajSKWymp6zobKjcvUHoYUjlAqEa6Lc0OpKeugXpdxEPoRTV
+	 0WgtZToHNGYj8VqRzV78WLL25UQDfjJj6Obrtlhfy2uVy5kwjVQaFZcCH7bpVmbx1XnD7
+	 33LcbrMF4/9V6qqgc2UM86YxcKW2sVrbq3P6iXCdJPA5M/B+61BshK+nwrP1xbvKsdAZB
+	 iljSIVQ76inbtHpWVatxtw0fNZJKU0971tf2R1IUc1eKyc5beP3UK3eZCTJNw5Qbh9g==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795103830;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795103831;
 	h=DMARC-Filter:Received:DKIM-Signature:Received:From:To:Cc:Subject:
 	 Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
 	 Content-Transfer-Encoding;
-	bh=1zf3VWnry9PPCnzSwOn0Pck9MOGX/0EVVaLkkbbqgoU=;
-	b=iLHcpoUm6Staac4OnoG/81ws9pqBwA5zRcZUbrj7DZiQWjmxeKgl8AxBMXXBifmG7KJb
-	 AXkjTs9lTiGuG5GXKJdRGu3OJi+IXMssQrbPOXNe8wS5UjmfHGSpU7XGF6fFU0gqbxtfo
-	 Rv3LNUJqXHsqeR647GMYY2PudY4W0AliR+7Qd8Fcf+BLcDdaM9iEVErg3ORRH3r7HtEiY
-	 s9hdlfHL+VoOiaNH9dbBDESCrelLfYPrldlgrO27uqj9AdCkGbvKLX6h6x6m/qL9a9ykc
-	 wB0ocAkHSITjYqg+b0yb4mZ3yPaz4JajmcGvcETZQdzFDTcKpauadhaJQk2jnF1l+Bg==
+	bh=RveK3lHimp/TMc/vp+DmPZFUYQGs5xvbaIc6ZlI3sSs=;
+	b=1iGwANJNaOh8U+lrc6UMRUecYE4hM0kpPag4T0hy1ZcJDE+gluWTMwfWBXKIam7sYsAj
+	 J4sekHmv1qaMgp2Zvql94eKm6MpKjqt4YcgZH2/qTPNY+0ajfeYUDwX5djWZnErxUmDRE
+	 ieFpzBKehFUH2cxeG6d/MklpjAnddnRSMgbqsbvo6t0TAB/uuxD8YcBzs6bUY9X2IRXti
+	 2N2F98u8SJYgdlC2HwJb/FQzume/oHaiDP71FRNWIrI8HqfX6BvRknI7H0iOYkeB7J4Nn
+	 dAi8si2QW40MVSdQKkKfF5kma5Pfdp3IQKc80uj0cTfJaEhO3g/Ie74JZL6xELKNmPQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=mit.edu;
 	spf=pass smtp.mailfrom=mit.edu;
-	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=bUPjyDPW;
+	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=npFn+06Z;
 	arc=none smtp.remote-ip=18.9.28.11
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 37515606A335
-	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2026 15:57:07 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 37515606A335
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 63C0A606A339
+	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2026 15:57:06 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 63C0A606A339
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=bUPjyDPW
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=npFn+06Z
 Received: from trampoline.thunk.org (pool-173-48-114-214.bstnma.fios.verizon.net [173.48.114.214])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AJFv3dS001653
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AJFv3Cm001664
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
 	Thu, 19 Nov 2026 10:57:04 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1795103824; bh=1zf3VWnry9PPCnzSwOn0Pck9MOGX/0EVVaLkkbbqgoU=;
+	t=1795103824; bh=RveK3lHimp/TMc/vp+DmPZFUYQGs5xvbaIc6ZlI3sSs=;
 	h=From:Subject:Date:Message-ID:MIME-Version;
-	b=bUPjyDPWlSh+bQ1GwgqL6CB68Hah15v2z6uEFta7cvANxntWRyvoh8TB/yNGbfAIt
-	 +OlPwLuDl4xBk9ripHdpK0aA34jPLHrBNd9NUa1wZHi7868f8phNJPC99RZtkO1b9C
-	 XZGVTdgUzDB5HulD/zBe+9+LWkrCL+P48XavcGYkyWKyKjVnzcf5KeQKeCqoKLPacz
-	 2Zz7R6geqP8hjlIoaGWpvGBA3JWqs9FGnLBF4AZHsnkwL3TjW3hM7RcE/gyQe2tyOj
-	 5bereCnBeUTk1vqK5MKP77hsr+yLJk6y1NAD2IeiGURu7RAUPEbTxfEDE//YaPxVlS
-	 OeDR19V5gfInQ==
+	b=npFn+06Z8xF1Rmx21vira2NwZ1y1A6PSw58Nvv6eNbj8sDAJ/YSFxa5k2QmGNVaU6
+	 1EZ6qWBZIoPBp3BLtT1ysuKsKfSsN9x3EtY8EDti/782NIZIhsOB70r2Iz6xZ8Mo5w
+	 ypPMsAcbEChljoGWtqH2C57kCSWNT8Ukqzd8Pq3/9wgtGSxCn6ix3xxXh213g/gyay
+	 IBMzvzI2PZaGWgI4PaeyEUG6OLGbaVAmS8+wldFFIHiPrs0zi1nJ4WUxbt44+3Secb
+	 tulyRuDT8KZP0bHwvdPJ1hJm6Wb1VuCPiDHvmZLiavl5YMH0t6qmOrt2bo/Z5e/BmP
+	 9O0bF3ZuGrqvQ==
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id 8D2322E015A; Thu, 19 Nov 2026 10:57:00 -0500 (EST)
+	id 942AA2E015C; Thu, 19 Nov 2026 10:57:00 -0500 (EST)
 From: "Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Cc: "Theodore Ts'o" <tytso@mit.edu>
-Subject: [PATCH -v2 21/26] ext4: expand KUnit tests in fs/ext4/extents-test.c for file range operations
-Date: Thu, 19 Nov 2026 10:56:53 -0500
-Message-ID: <20261119155658.1940864-22-tytso@mit.edu>
+Subject: [PATCH -v2 23/26] ext4: add KUnit tests for fs/ext4/move_extent.c
+Date: Thu, 19 Nov 2026 10:56:55 -0500
+Message-ID: <20261119155658.1940864-24-tytso@mit.edu>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <20261119155658.1940864-1-tytso@mit.edu>
 References: <20261119155658.1940864-1-tytso@mit.edu>
@@ -69,710 +69,1137 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Expand ext4_extents_test to cover high-level file-range operations and
-reporting entry points in fs/ext4/extents.c:
+Add a KUnit test suite (ext4_move_extent_test) covering online extent
+swapping and validation helpers in fs/ext4/move_extent.c:
 
-- ext4_fallocate() mode validation (unsupported flags, encrypted
-  collapse/insert rejection, FALLOC_FL_WRITE_ZEROES device limit check,
-  non-extent inode rejection), preallocation with and without
-  FALLOC_FL_KEEP_SIZE, and hole punching via FALLOC_FL_PUNCH_HOLE
-- ext4_zero_range() via FALLOC_FL_ZERO_RANGE (written-to-unwritten split
-  and EOF extension) and FALLOC_FL_WRITE_ZEROES (block zeroouts,
-  unwritten-to-written conversion, and orphan tracking across EOF)
-- ext4_collapse_range() alignment/EOF validation, block freeing,
-  left-shift of trailing extents, and adjacent extent coalescing
-- ext4_insert_range() alignment/EOF/maxbytes validation, mid-extent
-  splitting, right-shift of trailing extents, and i_size growth
-- ext4_convert_unwritten_extents(),
-  ext4_convert_unwritten_extents_atomic(), and
-  ext4_convert_unwritten_io_end_vec() IO completion conversions
-- ext4_fiemap() and ext4_get_es_cache() range checks, FIEMAP_FLAG_CACHE
-  precaching, external xattr reporting, and status extent reporting
+- Ordered i_data_sem lock acquisition/release in
+  ext4_double_down_write_data_sem() and ext4_double_up_write_data_sem()
+- File, feature, and mode checks in mext_check_validity() (same inode,
+  cross-sb, non-regular, bigalloc, DAX, data journaling, encrypted,
+  non-extent, SUID/SGID, immutable/append, swapfile, quota, zero size)
+- Sub-page alignment, EXT_MAX_BLOCKS bounds, and EOF clamping in
+  mext_check_adjust_range()
+- End-to-end ext4_move_extents() across origin/donor holes, unwritten
+  extent moves, written MEXT_COPY_DATA with extent splitting and page
+  cache preservation, unwritten-origin zeroing, and -EBUSY release
 
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/extents-test.c | 528 ++++++++++++++++++++++++++++++++++++++++-
- fs/ext4/extents.c      |   6 +
- 2 files changed, 532 insertions(+), 2 deletions(-)
+ fs/ext4/Makefile           |    3 +-
+ fs/ext4/ext4.h             |    8 +
+ fs/ext4/move_extent-test.c | 1023 ++++++++++++++++++++++++++++++++++++
+ fs/ext4/move_extent.c      |   21 +-
+ 4 files changed, 1052 insertions(+), 3 deletions(-)
+ create mode 100644 fs/ext4/move_extent-test.c
 
-diff --git a/fs/ext4/extents-test.c b/fs/ext4/extents-test.c
-index bc5488293103..6458345ea958 100644
---- a/fs/ext4/extents-test.c
-+++ b/fs/ext4/extents-test.c
-@@ -15,8 +15,11 @@
- #include <kunit/static_stub.h>
- #include <linux/blkdev.h>
- #include <linux/buffer_head.h>
-+#include <linux/falloc.h>
-+#include <linux/fiemap.h>
- #include <linux/fs_context.h>
- #include <linux/gfp_types.h>
+diff --git a/fs/ext4/Makefile b/fs/ext4/Makefile
+index e1964407be24..5cf735df7656 100644
+--- a/fs/ext4/Makefile
++++ b/fs/ext4/Makefile
+@@ -23,7 +23,8 @@ ext4-test-objs				+= inode-test.o mballoc-test.o \
+ 					   block_validity-test.o super-test.o \
+ 					   sysfs-test.o ioctl-test.o \
+ 					   resize-test.o migrate-test.o \
+-					   indirect-test.o fsmap-test.o
++					   indirect-test.o fsmap-test.o \
++					   move_extent-test.o
+ obj-$(CONFIG_EXT4_KUNIT_TESTS)		+= ext4-test.o
+ ext4-$(CONFIG_FS_VERITY)		+= verity.o
+ ext4-$(CONFIG_FS_ENCRYPTION)		+= crypto.o
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 03689d55e751..29277a79c65b 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -4250,6 +4250,14 @@ extern void ext4_double_up_write_data_sem(struct inode *orig_inode,
+ extern int ext4_move_extents(struct file *o_filp, struct file *d_filp,
+ 			     __u64 start_orig, __u64 start_donor,
+ 			     __u64 len, __u64 *moved_len);
++#if IS_ENABLED(CONFIG_EXT4_KUNIT_TESTS)
++extern int ext4_mext_check_validity_test(struct inode *orig_inode,
++					 struct inode *donor_inode);
++extern int ext4_mext_check_adjust_range_test(struct inode *orig_inode,
++					     struct inode *donor_inode,
++					     __u64 orig_start,
++					     __u64 donor_start, __u64 *len);
++#endif
+ 
+ /* page-io.c */
+ /*
+diff --git a/fs/ext4/move_extent-test.c b/fs/ext4/move_extent-test.c
+new file mode 100644
+index 000000000000..a3e002f14109
+--- /dev/null
++++ b/fs/ext4/move_extent-test.c
+@@ -0,0 +1,1023 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * KUnit tests for fs/ext4/move_extent.c
++ */
++
++#include <kunit/static_stub.h>
++#include <kunit/test.h>
++#include <linux/blkdev.h>
++#include <linux/buffer_head.h>
++#include <linux/dcache.h>
++#include <linux/fs.h>
++#include <linux/fs_context.h>
++#include <linux/fscrypt.h>
 +#include <linux/iversion.h>
- #include <linux/stddef.h>
- 
- #include "ext4.h"
-@@ -71,6 +74,13 @@ static struct kunit_ctx {
- 	int last_free_flags;
- 	unsigned long total_freed_blocks;
- 
-+	unsigned int zeroout_calls;
-+	ext4_lblk_t last_zeroout_lblk;
-+	ext4_lblk_t last_zeroout_len;
-+	unsigned int orphan_add_calls;
-+	unsigned int orphan_del_calls;
-+	struct dentry k_dentry;
++#include <linux/mm.h>
++#include <linux/module.h>
++#include <linux/pagemap.h>
++#include <linux/part_stat.h>
++#include <linux/percpu.h>
++#include <linux/percpu_counter.h>
++#include <linux/quotaops.h>
++#include <linux/rcupdate.h>
++#include <linux/slab.h>
++#include <linux/string.h>
++#include <linux/timer.h>
++#include <linux/workqueue.h>
 +
- 	bool fail_getblk;
- } k_ctx;
- 
-@@ -200,21 +210,31 @@ static void ext_init_mock_inode(struct ext4_inode_info *ei,
- 	inode->i_sb = sb;
- 	inode->i_ino = ino;
- 	inode->i_mode = S_IFREG | 0644;
-+	set_nlink(inode, 1);
- 	inode->i_blkbits = sb->s_blocksize_bits;
--	inode->i_flags |= S_NOQUOTA;
-+	inode->i_flags |= S_NOQUOTA | S_NOSEC;
- 	inode->i_mapping = &inode->i_data;
-+	inode_set_iversion(inode, 1);
- 
- 	spin_lock_init(&inode->i_lock);
- 	i_size_ordered_init(inode);
- 	init_rwsem(&inode->i_rwsem);
-+	address_space_init_once(&inode->i_data);
- 	init_rwsem(&inode->i_data.invalidate_lock);
-+	inode->i_data.host = inode;
- 	inode_state_set_raw(inode, I_DIRTY_SYNC | I_DIRTY_DATASYNC);
- 
- 	ext4_es_init_tree(&ei->i_es_tree);
- 	ext4_init_pending_tree(&ei->i_pending_tree);
- 	rwlock_init(&ei->i_es_lock);
- 	INIT_LIST_HEAD(&ei->i_es_list);
-+	INIT_LIST_HEAD(&ei->i_orphan);
-+	INIT_LIST_HEAD(&ei->i_fc_list);
-+	INIT_LIST_HEAD(&ei->i_fc_dilist);
-+	spin_lock_init(&ei->i_fc_lock);
- 	init_rwsem(&ei->i_data_sem);
-+	init_rwsem(&ei->xattr_sem);
++#include "ext4.h"
++#include "ext4_extents.h"
++#include "ext4_jbd2.h"
++
++#define MEXT_TEST_BLK_SIZE		4096U
++#define MEXT_TEST_BLK_BITS		12U
++#define MEXT_TEST_BLOCKS_PER_GRP	32768U
++#define MEXT_TEST_NGROUPS		8U
++#define MEXT_TEST_FIRST_DATA_BLK	1U
++#define MEXT_TEST_TOTAL_BLKS		(MEXT_TEST_FIRST_DATA_BLK + \
++					 MEXT_TEST_NGROUPS * \
++					 MEXT_TEST_BLOCKS_PER_GRP)
++#define MEXT_MAX_META_BLKS		16U
++#define MEXT_META_BASE_PBLK		1000U
++
++struct mext_meta_blk {
++	ext4_fsblk_t pblk;
++	struct buffer_head bh;
++	u8 data[MEXT_TEST_BLK_SIZE];
++	bool in_use;
++};
++
++struct mext_test_ctx {
++	struct super_block *sb;
++	struct ext4_sb_info sbi;
++	struct ext4_super_block *es;
++	struct blockgroup_lock bgl;
++	struct gendisk bdev_disk;
++	struct block_device bdev;
++	struct request_queue bdev_queue;
++	struct address_space bdev_mapping;
++	struct buffer_head sbh;
++	u8 sbh_data[MEXT_TEST_BLK_SIZE];
++	struct mext_meta_blk *meta_blks;
++	ext4_fsblk_t next_meta_pblk;
++	struct inode *orig_inode;
++	struct inode *donor_inode;
++	struct dentry orig_dentry;
++	struct dentry donor_dentry;
++	struct file orig_file;
++	struct file donor_file;
++	bool es_shrinker_inited;
++	bool counters_inited;
++};
++
++static struct kunit *active_mext_test;
++
++static void mext_noop_work(struct work_struct *work)
++{
++}
++
++static void mext_noop_timer(struct timer_list *t)
++{
++}
++
++static unsigned long mext_dummy_shrinker_count(struct shrinker *shrink,
++					       struct shrink_control *sc)
++{
++	return 0;
++}
++
++static unsigned long mext_dummy_shrinker_scan(struct shrinker *shrink,
++					      struct shrink_control *sc)
++{
++	return SHRINK_STOP;
++}
++
++static struct inode *mext_test_alloc_inode(struct super_block *sb)
++{
++	struct ext4_inode_info *ei;
++
++	ei = kzalloc_obj(*ei);
++	if (!ei)
++		return NULL;
++
++	init_rwsem(&ei->i_data_sem);
++	inode_init_once(&ei->vfs_inode);
++	inode_set_iversion(&ei->vfs_inode, 1);
++	ei->i_prealloc_node = RB_ROOT;
++	rwlock_init(&ei->i_prealloc_lock);
++	ext4_es_init_tree(&ei->i_es_tree);
++	rwlock_init(&ei->i_es_lock);
++	INIT_LIST_HEAD(&ei->i_es_list);
 +	spin_lock_init(&ei->i_raw_lock);
- 	spin_lock_init(&ei->i_block_reservation_lock);
- 	rwlock_init(&ei->i_prealloc_lock);
- 	ei->i_prealloc_node = RB_ROOT;
-@@ -271,6 +291,7 @@ static void extents_kunit_exit(struct kunit *test)
- 
- 	kfree(k_ctx.meta_blocks);
- 	kfree(sbi->s_es);
-+	kfree(bdev->bd_queue);
- 	kfree(bdev->bd_mapping);
- 	kfree(bdev);
- 	kfree(sbi);
-@@ -496,16 +517,22 @@ static int extents_kunit_init(struct kunit *test)
- 		err = -ENOMEM;
- 		goto out_bdev;
- 	}
-+	sb->s_bdev->bd_queue = kzalloc_obj(struct request_queue);
-+	if (!sb->s_bdev->bd_queue) {
-+		err = -ENOMEM;
-+		goto out_bdev_mapping;
++	spin_lock_init(&ei->i_block_reservation_lock);
++	ext4_init_pending_tree(&ei->i_pending_tree);
++	init_rwsem(&ei->xattr_sem);
++	INIT_LIST_HEAD(&ei->i_rsv_conversion_list);
++	spin_lock_init(&ei->i_completed_io_lock);
++	INIT_LIST_HEAD(&ei->i_orphan);
++	ext4_fc_init_inode(&ei->vfs_inode);
++	spin_lock_init(&ei->i_fc_lock);
++	ei->i_projid = make_kprojid(&init_user_ns, EXT4_DEF_PROJID);
++	ei->i_extra_isize = sizeof(struct ext4_inode) - EXT4_GOOD_OLD_INODE_SIZE;
++	ei->i_last_alloc_group = ~0U;
++
++	return &ei->vfs_inode;
++}
++
++static void mext_test_free_inode(struct inode *inode)
++{
++	kfree(EXT4_I(inode));
++}
++
++static void mext_test_evict_inode(struct inode *inode)
++{
++	truncate_inode_pages_final(&inode->i_data);
++	ext4_es_remove_extent(inode, 0, EXT_MAX_BLOCKS);
++	clear_inode(inode);
++}
++
++#ifdef CONFIG_QUOTA
++static struct dquot __rcu **mext_get_dquots(struct inode *inode)
++{
++	return EXT4_I(inode)->i_dquot;
++}
++
++static qsize_t *mext_get_reserved_space(struct inode *inode)
++{
++	return &EXT4_I(inode)->i_reserved_quota;
++}
++
++static const struct dquot_operations mext_dummy_qops = {
++	.get_reserved_space	= mext_get_reserved_space,
++};
++#endif
++
++static const struct super_operations mext_test_sops = {
++	.alloc_inode	= mext_test_alloc_inode,
++	.free_inode	= mext_test_free_inode,
++	.evict_inode	= mext_test_evict_inode,
++#ifdef CONFIG_QUOTA
++	.get_dquots	= mext_get_dquots,
++#endif
++};
++
++static int mext_init_fs_context(struct fs_context *fc)
++{
++	return 0;
++}
++
++static int mext_set_super(struct super_block *sb, struct fs_context *fc)
++{
++	return set_anon_super_fc(sb, fc);
++}
++
++static struct file_system_type mext_test_fs_type = {
++	.name			= "ext4_move_extent_test",
++	.init_fs_context	= mext_init_fs_context,
++	.kill_sb		= kill_anon_super,
++};
++
++static int mext_ext_dirty_stub(const char *where, unsigned int line,
++			       handle_t *handle, struct inode *inode,
++			       struct ext4_ext_path *path)
++{
++	if (path && path->p_bh) {
++		ext4_extent_block_csum_set_test(inode,
++						ext_block_hdr(path->p_bh));
++		set_buffer_verified(path->p_bh);
 +	}
- 
- 	sbi->s_es = kzalloc_obj(struct ext4_super_block);
- 	if (!sbi->s_es) {
- 		err = -ENOMEM;
--		goto out_bdev_mapping;
-+		goto out_bdev_queue;
- 	}
- 	sbi->s_es->s_first_data_block = cpu_to_le32(1);
- 	sbi->s_es->s_rev_level = cpu_to_le32(EXT4_DYNAMIC_REV);
- 	ext4_blocks_count_set(sbi->s_es, EXT_TOTAL_BLOCKS);
- 	set_opt(sb, ERRORS_CONT);
-+	sbi->s_bitmap_maxbytes = 1ULL << 40;
- 	sbi->s_blocks_per_group = 32768;
- 	sbi->s_clusters_per_group = 32768;
- 	sbi->s_cluster_ratio = 1;
-@@ -513,12 +540,20 @@ static int extents_kunit_init(struct kunit *test)
- 	sbi->s_desc_per_block = 64;
- 	sbi->s_groups_count = 32;
- 	sbi->s_extent_max_zeroout_kb = 32;
-+	mutex_init(&sbi->s_orphan_lock);
-+	INIT_LIST_HEAD(&sbi->s_orphan);
- 	spin_lock_init(&sbi->s_bdev_wb_lock);
- 	spin_lock_init(&sbi->s_error_lock);
- 	spin_lock_init(&sbi->s_md_lock);
-+	ratelimit_state_init(&sbi->s_err_ratelimit_state,
-+			     DEFAULT_RATELIMIT_INTERVAL,
-+			     DEFAULT_RATELIMIT_BURST);
- 	ratelimit_state_init(&sbi->s_warning_ratelimit_state,
- 			     DEFAULT_RATELIMIT_INTERVAL,
- 			     DEFAULT_RATELIMIT_BURST);
-+	ratelimit_state_init(&sbi->s_msg_ratelimit_state,
-+			     DEFAULT_RATELIMIT_INTERVAL,
-+			     DEFAULT_RATELIMIT_BURST);
- 
- 	err = percpu_counter_init(&sbi->s_freeclusters_counter, 100000,
- 				  GFP_KERNEL);
-@@ -628,6 +663,8 @@ static int extents_kunit_init(struct kunit *test)
- 	percpu_counter_destroy(&sbi->s_freeclusters_counter);
- out_es:
- 	kfree(sbi->s_es);
-+out_bdev_queue:
-+	kfree(sb->s_bdev->bd_queue);
- out_bdev_mapping:
- 	kfree(sb->s_bdev->bd_mapping);
- out_bdev:
-@@ -2458,6 +2495,487 @@ static void test_ext_fast_commit_replay(struct kunit *test)
- 			10ULL << (inode->i_sb->s_blocksize_bits - 9));
- }
- 
-+static int ext_range_ext_zeroout_stub(handle_t *handle, struct inode *inode,
-+				      struct ext4_extent *ex)
-+{
-+	k_ctx.zeroout_calls++;
-+	k_ctx.last_zeroout_lblk = le32_to_cpu(ex->ee_block);
-+	k_ctx.last_zeroout_len = ext4_ext_get_actual_len(ex);
 +	return 0;
 +}
 +
-+static int ext_range_issue_zeroout_stub(handle_t *handle, struct inode *inode,
-+					ext4_lblk_t lblk, ext4_fsblk_t pblk,
-+					ext4_lblk_t len)
++static int mext_handle_dirty_metadata_stub(const char *where,
++					   unsigned int line,
++					   handle_t *handle,
++					   struct inode *inode,
++					   struct buffer_head *bh)
 +{
-+	k_ctx.zeroout_calls++;
-+	k_ctx.last_zeroout_lblk = lblk;
-+	k_ctx.last_zeroout_len = len;
++	if (bh)
++		set_buffer_uptodate(bh);
 +	return 0;
 +}
 +
-+static int ext_orphan_add_stub(handle_t *handle, struct inode *inode)
++static int mext_mark_inode_dirty_stub(handle_t *handle, struct inode *inode,
++				      const char *func, unsigned int line)
 +{
-+	k_ctx.orphan_add_calls++;
 +	return 0;
 +}
 +
-+static int ext_orphan_del_stub(handle_t *handle, struct inode *inode)
++static struct buffer_head *mext_ext_getblk_stub(struct inode *inode,
++						ext4_fsblk_t pblk,
++						gfp_t gfp_flags)
 +{
-+	k_ctx.orphan_del_calls++;
-+	return 0;
-+}
++	struct kunit *test = active_mext_test;
++	struct mext_test_ctx *ctx;
++	struct mext_meta_blk *slot = NULL;
++	unsigned int i;
 +
-+static void ext_setup_range_test(struct kunit *test, struct inode *inode,
-+				 struct file *file)
-+{
-+	kunit_activate_static_stub(test, ext4_ext_zeroout,
-+				   ext_range_ext_zeroout_stub);
-+	kunit_activate_static_stub(test, ext4_issue_zeroout,
-+				   ext_range_issue_zeroout_stub);
-+	kunit_activate_static_stub(test, ext4_orphan_add, ext_orphan_add_stub);
-+	kunit_activate_static_stub(test, ext4_orphan_del, ext_orphan_del_stub);
++	if (!test)
++		return NULL;
++	ctx = test->priv;
++	if (!ctx || !ctx->meta_blks)
++		return NULL;
 +
-+	ext_reset_tree(inode);
-+	inode->i_size = 0;
-+	EXT4_I(inode)->i_disksize = 0;
-+	inode->i_blocks = 0;
-+
-+	k_ctx.next_alloc_pblk = EXT_ALLOC_BASE_PBLK;
-+	k_ctx.alloc_calls = 0;
-+	k_ctx.free_calls = 0;
-+	k_ctx.total_freed_blocks = 0;
-+	k_ctx.zeroout_calls = 0;
-+	k_ctx.orphan_add_calls = 0;
-+	k_ctx.orphan_del_calls = 0;
-+
-+	if (file) {
-+		struct file tmp = {
-+			.f_path		= { .dentry = &k_ctx.k_dentry },
-+			.f_inode	= inode,
-+			.f_mapping	= inode->i_mapping,
-+			.f_mode		= FMODE_READ | FMODE_WRITE |
-+					  FMODE_NOCMTIME,
-+		};
-+
-+		memset(&k_ctx.k_dentry, 0, sizeof(k_ctx.k_dentry));
-+		k_ctx.k_dentry.d_inode = inode;
-+		memcpy(file, &tmp, sizeof(tmp));
-+	}
-+}
-+
-+static void ext_expect_extent_at(struct kunit *test, struct inode *inode,
-+				 ext4_lblk_t lblk, unsigned short exp_len,
-+				 ext4_fsblk_t exp_pblk, bool exp_unwritten)
-+{
-+	struct ext4_ext_path *path;
-+	struct ext4_extent ex;
-+	bool found = false;
-+	int err = 0;
-+
-+	down_read(&EXT4_I(inode)->i_data_sem);
-+	path = ext4_find_extent(inode, lblk, NULL, EXT4_EX_NOCACHE);
-+	if (IS_ERR(path)) {
-+		err = PTR_ERR(path);
-+	} else {
-+		if (path[path->p_depth].p_ext) {
-+			ex = *path[path->p_depth].p_ext;
-+			found = true;
++	for (i = 0; i < MEXT_MAX_META_BLKS; i++) {
++		if (ctx->meta_blks[i].in_use &&
++		    ctx->meta_blks[i].pblk == pblk) {
++			slot = &ctx->meta_blks[i];
++			break;
 +		}
-+		ext4_free_ext_path(path);
 +	}
-+	up_read(&EXT4_I(inode)->i_data_sem);
 +
-+	KUNIT_ASSERT_EQ(test, err, 0);
-+	KUNIT_ASSERT_TRUE(test, found);
++	if (!slot) {
++		for (i = 0; i < MEXT_MAX_META_BLKS; i++) {
++			if (!ctx->meta_blks[i].in_use) {
++				slot = &ctx->meta_blks[i];
++				break;
++			}
++		}
++		if (!slot)
++			return NULL;
 +
-+	KUNIT_EXPECT_EQ(test, le32_to_cpu(ex.ee_block), lblk);
-+	KUNIT_EXPECT_EQ(test, ext4_ext_get_actual_len(&ex), exp_len);
-+	KUNIT_EXPECT_EQ(test, ext4_ext_pblock(&ex), exp_pblk);
-+	KUNIT_EXPECT_EQ(test, !!ext4_ext_is_unwritten(&ex), exp_unwritten);
++		memset(slot, 0, sizeof(*slot));
++		slot->in_use = true;
++		slot->pblk = pblk;
++		slot->bh.b_data = slot->data;
++		slot->bh.b_size = inode->i_sb->s_blocksize;
++		slot->bh.b_blocknr = pblk;
++		slot->bh.b_bdev = inode->i_sb->s_bdev;
++		atomic_set(&slot->bh.b_count, 1);
++		set_buffer_uptodate(&slot->bh);
++		set_buffer_mapped(&slot->bh);
++	}
++
++	get_bh(&slot->bh);
++	return &slot->bh;
 +}
 +
-+/*
-+ * Verify ext4_fallocate() mode validation (unsupported flags, encrypted
-+ * collapse/insert rejection, WRITE_ZEROES without bdev support, non-extent
-+ * preallocation rejection), preallocation with and without FALLOC_FL_KEEP_SIZE,
-+ * and hole punching via FALLOC_FL_PUNCH_HOLE.
-+ */
-+static void test_fallocate_modes_and_prealloc(struct kunit *test)
++static ext4_fsblk_t mext_mb_new_blocks_stub(handle_t *handle,
++					    struct ext4_allocation_request *ar,
++					    int *errp)
 +{
-+	struct inode *inode = &k_ctx.k_ei->vfs_inode;
-+	struct file file;
-+	long ret;
++	struct kunit *test = active_mext_test;
++	struct mext_test_ctx *ctx;
++	ext4_fsblk_t pblk;
 +
-+	ext_setup_range_test(test, inode, &file);
-+
-+	/* Unsupported mode flag -> -EOPNOTSUPP */
-+	ret = ext4_fallocate(&file, 0x40000000, 0, 4096);
-+	KUNIT_EXPECT_EQ(test, ret, -EOPNOTSUPP);
-+
-+	/* FALLOC_FL_WRITE_ZEROES without unmap sectors -> -EOPNOTSUPP */
-+	ret = ext4_fallocate(&file, FALLOC_FL_WRITE_ZEROES, 0, 4096);
-+	KUNIT_EXPECT_EQ(test, ret, -EOPNOTSUPP);
-+
-+	/* Encrypted inode rejects COLLAPSE_RANGE and INSERT_RANGE */
-+	inode->i_flags |= S_ENCRYPTED;
-+	ret = ext4_fallocate(&file, FALLOC_FL_COLLAPSE_RANGE, 0, 4096);
-+	KUNIT_EXPECT_EQ(test, ret, -EOPNOTSUPP);
-+	ret = ext4_fallocate(&file, FALLOC_FL_INSERT_RANGE, 0, 4096);
-+	KUNIT_EXPECT_EQ(test, ret, -EOPNOTSUPP);
-+	inode->i_flags &= ~S_ENCRYPTED;
-+
-+	/* Non-extent (indirect) inode rejects fallocate preallocation */
-+	ext4_clear_inode_flag(inode, EXT4_INODE_EXTENTS);
-+	ret = ext4_fallocate(&file, 0, 0, 4096);
-+	KUNIT_EXPECT_EQ(test, ret, -EOPNOTSUPP);
-+	ext4_set_inode_flag(inode, EXT4_INODE_EXTENTS);
-+
-+	/* Preallocate [0, 4 blocks) with FALLOC_FL_KEEP_SIZE: i_size stays 0 */
-+	ret = ext4_fallocate(&file, FALLOC_FL_KEEP_SIZE, 0, 4 * 4096);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, inode->i_size, 0LL);
-+	KUNIT_EXPECT_EQ(test, EXT4_I(inode)->i_disksize, 0LL);
-+	ext_expect_extent_at(test, inode, 0, 4, EXT_ALLOC_BASE_PBLK, true);
-+
-+	/* Extend allocation across [2, 6 blocks) without KEEP_SIZE */
-+	ret = ext4_fallocate(&file, 0, 2 * 4096, 4 * 4096);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, inode->i_size, 6LL * 4096);
-+	KUNIT_EXPECT_EQ(test, EXT4_I(inode)->i_disksize, 6LL * 4096);
-+	ext_expect_extent_at(test, inode, 0, 6, EXT_ALLOC_BASE_PBLK, true);
-+
-+	/* Punch middle [2, 4) with FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE */
-+	ret = ext4_fallocate(&file, FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE,
-+			     2 * 4096, 2 * 4096);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, inode->i_size, 6LL * 4096);
-+	KUNIT_EXPECT_EQ(test, k_ctx.total_freed_blocks, 2UL);
-+	KUNIT_EXPECT_EQ(test, le16_to_cpu(ext_inode_hdr(inode)->eh_entries), 2);
-+	ext_expect_extent_at(test, inode, 0, 2, EXT_ALLOC_BASE_PBLK, true);
-+	ext_expect_extent_at(test, inode, 4, 2, EXT_ALLOC_BASE_PBLK + 4, true);
++	if (!test) {
++		*errp = -EIO;
++		return 0;
++	}
++	ctx = test->priv;
++	pblk = ctx->next_meta_pblk;
++	ctx->next_meta_pblk += ar->len;
++	*errp = 0;
++	return pblk;
 +}
 +
-+/*
-+ * Verify ext4_zero_range() via both FALLOC_FL_ZERO_RANGE (splitting written
-+ * extents to unwritten and allocating unwritten blocks past EOF) and
-+ * FALLOC_FL_WRITE_ZEROES (issuing block zeroouts, converting to written, and
-+ * tracking orphan state when extending i_disksize).
-+ */
-+static void test_zero_range_and_write_zeroes(struct kunit *test)
++static void mext_free_blocks_stub(handle_t *handle, struct inode *inode,
++				  struct buffer_head *bh, ext4_fsblk_t block,
++				  unsigned long count, int flags)
 +{
-+	struct inode *inode = &k_ctx.k_ei->vfs_inode;
-+	struct super_block *sb = inode->i_sb;
-+	struct file file;
-+	long ret;
-+
-+	/* Part A: FALLOC_FL_ZERO_RANGE across written tail + past EOF */
-+	ext_setup_range_test(test, inode, &file);
-+	KUNIT_ASSERT_EQ(test, ext_insert_one(inode, 0, 6, 200, false, 0), 0);
-+	inode->i_size = 6LL * 4096;
-+	EXT4_I(inode)->i_disksize = 6LL * 4096;
-+
-+	ret = ext4_fallocate(&file, FALLOC_FL_ZERO_RANGE, 2 * 4096, 6 * 4096);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, inode->i_size, 8LL * 4096);
-+	KUNIT_EXPECT_EQ(test, EXT4_I(inode)->i_disksize, 8LL * 4096);
-+	KUNIT_EXPECT_EQ(test, le16_to_cpu(ext_inode_hdr(inode)->eh_entries), 3);
-+	ext_expect_extent_at(test, inode, 0, 2, 200, false);
-+	ext_expect_extent_at(test, inode, 2, 4, 202, true);
-+	ext_expect_extent_at(test, inode, 6, 2, EXT_ALLOC_BASE_PBLK, true);
-+
-+	/* Part B: FALLOC_FL_WRITE_ZEROES over unwritten + hole past EOF */
-+	ext_setup_range_test(test, inode, &file);
-+	sb->s_bdev->bd_queue->limits.max_wzeroes_unmap_sectors = 1024;
-+
-+	KUNIT_ASSERT_EQ(test, ext_insert_one(inode, 0, 2, 300, true, 0), 0);
-+	inode->i_size = 2LL * 4096;
-+	EXT4_I(inode)->i_disksize = 2LL * 4096;
-+
-+	ret = ext4_fallocate(&file, FALLOC_FL_WRITE_ZEROES, 0, 4 * 4096);
-+	sb->s_bdev->bd_queue->limits.max_wzeroes_unmap_sectors = 0;
-+
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_GE(test, k_ctx.zeroout_calls, 2U);
-+	KUNIT_EXPECT_GE(test, k_ctx.orphan_add_calls, 1U);
-+	KUNIT_EXPECT_EQ(test, k_ctx.orphan_del_calls, 1U);
-+	KUNIT_EXPECT_EQ(test, inode->i_size, 4LL * 4096);
-+	KUNIT_EXPECT_EQ(test, EXT4_I(inode)->i_disksize, 4LL * 4096);
-+	ext_expect_extent_at(test, inode, 0, 2, 300, false);
-+	ext_expect_extent_at(test, inode, 2, 2, EXT_ALLOC_BASE_PBLK, false);
 +}
 +
-+/*
-+ * Verify ext4_collapse_range() validation checks, block removal, left-shift of
-+ * subsequent extents, adjacent extent coalescing after collapse, and i_size
-+ * reduction.
-+ */
-+static void test_collapse_range(struct kunit *test)
++static int mext_journal_data_mode_stub(struct inode *inode)
 +{
-+	struct inode *inode = &k_ctx.k_ei->vfs_inode;
-+	struct file file;
-+	long ret;
++	return EXT4_INODE_JOURNAL_DATA_MODE;
++}
 +
-+	ext_setup_range_test(test, inode, &file);
-+	inode->i_size = 10LL * 4096;
-+	EXT4_I(inode)->i_disksize = 10LL * 4096;
++static void mext_init_mock_file(struct file *filp, struct dentry *dentry,
++				struct inode *inode)
++{
++	struct file tmp = {
++		.f_path		= { .dentry = dentry },
++		.f_inode	= inode,
++		.f_mapping	= inode->i_mapping,
++		.f_mode		= FMODE_READ | FMODE_WRITE | FMODE_NOCMTIME,
++	};
 +
-+	/* Block-unaligned offset or length -> -EINVAL */
-+	ret = ext4_fallocate(&file, FALLOC_FL_COLLAPSE_RANGE, 512, 4096);
-+	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
-+	ret = ext4_fallocate(&file, FALLOC_FL_COLLAPSE_RANGE, 4096, 512);
-+	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
++	memset(dentry, 0, sizeof(*dentry));
++	dentry->d_inode = inode;
++	memcpy(filp, &tmp, sizeof(*filp));
++}
 +
-+	/* Non-extent inode -> -EOPNOTSUPP */
-+	ext4_clear_inode_flag(inode, EXT4_INODE_EXTENTS);
-+	ret = ext4_fallocate(&file, FALLOC_FL_COLLAPSE_RANGE, 0, 4096);
-+	KUNIT_EXPECT_EQ(test, ret, -EOPNOTSUPP);
-+	ext4_set_inode_flag(inode, EXT4_INODE_EXTENTS);
++static struct inode *mext_create_test_inode(struct kunit *test,
++					    struct super_block *sb,
++					    unsigned long ino,
++					    ext4_lblk_t size_blks)
++{
++	struct ext4_extent_header *eh;
++	struct inode *inode;
 +
-+	/* Collapsing up to or beyond i_size -> -EINVAL */
-+	ret = ext4_fallocate(&file, FALLOC_FL_COLLAPSE_RANGE,
-+			     8 * 4096, 2 * 4096);
-+	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
++	inode = new_inode(sb);
++	KUNIT_ASSERT_NOT_NULL(test, inode);
 +
++	inode->i_ino = ino;
++	inode->i_mode = S_IFREG | 0644;
++	set_nlink(inode, 1);
++	inode->i_blkbits = sb->s_blocksize_bits;
 +	/*
-+	 * Build [0, 2)@200 writ, [2, 4)@500 writ, [4, 7)@202 writ, and
-+	 * [8, 10)@600 unwrit. Collapsing [2, 4) frees [2, 4)@500, shifts
-+	 * [4, 7)@202 left to [2, 5)@202 where it merges with [0, 2)@200 into
-+	 * [0, 5)@200, and shifts [8, 10)@600 left to [6, 8)@600.
++	 * Note: leave S_NOQUOTA clear so ext4_is_quota_file(inode) is false.
 +	 */
-+	KUNIT_ASSERT_EQ(test, ext_insert_one(inode, 0, 2, 200, false, 0), 0);
-+	KUNIT_ASSERT_EQ(test, ext_insert_one(inode, 2, 2, 500, false, 0), 0);
-+	KUNIT_ASSERT_EQ(test, ext_insert_one(inode, 4, 3, 202, false, 0), 0);
-+	KUNIT_ASSERT_EQ(test, ext_insert_one(inode, 8, 2, 600, true, 0), 0);
++	inode->i_flags |= S_NOSEC;
++	inode_state_set_raw(inode,
++			    I_DIRTY_SYNC | I_DIRTY_DATASYNC | I_DIRTY_PAGES);
++	mapping_set_gfp_mask(&inode->i_data, GFP_KERNEL);
 +
-+	ret = ext4_fallocate(&file, FALLOC_FL_COLLAPSE_RANGE,
-+			     2 * 4096, 2 * 4096);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, k_ctx.total_freed_blocks, 2UL);
-+	KUNIT_EXPECT_EQ(test, inode->i_size, 8LL * 4096);
-+	KUNIT_EXPECT_EQ(test, EXT4_I(inode)->i_disksize, 8LL * 4096);
-+	KUNIT_EXPECT_EQ(test, le16_to_cpu(ext_inode_hdr(inode)->eh_entries), 2);
-+	ext_expect_extent_at(test, inode, 0, 5, 200, false);
-+	ext_expect_extent_at(test, inode, 6, 2, 600, true);
-+}
-+
-+/*
-+ * Verify ext4_insert_range() alignment, EOF, and s_maxbytes checks, as well as
-+ * mid-extent splitting, right-shift of trailing extents, and i_size growth.
-+ */
-+static void test_insert_range(struct kunit *test)
-+{
-+	struct inode *inode = &k_ctx.k_ei->vfs_inode;
-+	struct file file;
-+	long ret;
-+
-+	ext_setup_range_test(test, inode, &file);
-+	inode->i_size = 10LL * 4096;
-+	EXT4_I(inode)->i_disksize = 10LL * 4096;
-+
-+	/* Block-unaligned offset or length -> -EINVAL */
-+	ret = ext4_fallocate(&file, FALLOC_FL_INSERT_RANGE, 1024, 4096);
-+	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
-+	ret = ext4_fallocate(&file, FALLOC_FL_INSERT_RANGE, 4096, 1024);
-+	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
-+
-+	/* Non-extent inode -> -EOPNOTSUPP */
-+	ext4_clear_inode_flag(inode, EXT4_INODE_EXTENTS);
-+	ret = ext4_fallocate(&file, FALLOC_FL_INSERT_RANGE, 0, 4096);
-+	KUNIT_EXPECT_EQ(test, ret, -EOPNOTSUPP);
++	EXT4_I(inode)->i_csum_seed = 0x13572468U;
++	EXT4_I(inode)->i_disksize = (loff_t)size_blks << sb->s_blocksize_bits;
++	i_size_write(inode, EXT4_I(inode)->i_disksize);
 +	ext4_set_inode_flag(inode, EXT4_INODE_EXTENTS);
++	ext4_set_aops(inode);
 +
-+	/* Offset at or beyond i_size -> -EINVAL */
-+	ret = ext4_fallocate(&file, FALLOC_FL_INSERT_RANGE, 10 * 4096, 4096);
-+	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
++	eh = ext_inode_hdr(inode);
++	memset(EXT4_I(inode)->i_data, 0, sizeof(EXT4_I(inode)->i_data));
++	eh->eh_magic = EXT4_EXT_MAGIC;
++	eh->eh_entries = 0;
++	eh->eh_max = cpu_to_le16(ext4_ext_space_root_idx_test(inode, 0));
++	eh->eh_depth = 0;
 +
-+	/* Length exceeding s_maxbytes - i_size -> -EFBIG */
-+	ret = ext4_fallocate(&file, FALLOC_FL_INSERT_RANGE, 4096,
-+			     round_down(inode->i_sb->s_maxbytes, 4096));
-+	KUNIT_EXPECT_EQ(test, ret, -EFBIG);
-+
-+	/*
-+	 * Insert 3-block hole at lblk 2 inside [0, 6)@200 writ with trailing
-+	 * [8, 10)@400 unwrit: produces [0, 2)@200 writ, [5, 9)@202 writ, and
-+	 * [11, 13)@400 unwrit, with i_size = 13 blocks.
-+	 */
-+	KUNIT_ASSERT_EQ(test, ext_insert_one(inode, 0, 6, 200, false, 0), 0);
-+	KUNIT_ASSERT_EQ(test, ext_insert_one(inode, 8, 2, 400, true, 0), 0);
-+
-+	ret = ext4_fallocate(&file, FALLOC_FL_INSERT_RANGE,
-+			     2 * 4096, 3 * 4096);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, inode->i_size, 13LL * 4096);
-+	KUNIT_EXPECT_EQ(test, EXT4_I(inode)->i_disksize, 13LL * 4096);
-+	KUNIT_EXPECT_EQ(test, le16_to_cpu(ext_inode_hdr(inode)->eh_entries), 3);
-+	ext_expect_extent_at(test, inode, 0, 2, 200, false);
-+	ext_expect_extent_at(test, inode, 5, 4, 202, false);
-+	ext_expect_extent_at(test, inode, 11, 2, 400, true);
++	return inode;
 +}
 +
-+/*
-+ * Verify unwritten-to-written IO completion conversion helpers:
-+ * ext4_convert_unwritten_extents(), ext4_convert_unwritten_extents_atomic()
-+ * across a split unwritten mapping, and ext4_convert_unwritten_io_end_vec().
-+ */
-+static void test_convert_unwritten_extents_and_io_end(struct kunit *test)
++static void mext_insert_extent(struct kunit *test, struct inode *inode,
++			       ext4_lblk_t lblk, u16 len, ext4_fsblk_t pblk,
++			       bool unwritten)
 +{
-+	struct inode *inode = &k_ctx.k_ei->vfs_inode;
-+	ext4_io_end_t io_end = {};
-+	struct ext4_io_end_vec vec1 = {}, vec2 = {};
-+	ext4_lblk_t converted = 0;
++	struct ext4_extent newex = {};
++	struct ext4_ext_path *path;
++
++	newex.ee_block = cpu_to_le32(lblk);
++	newex.ee_len = cpu_to_le16(len);
++	if (unwritten)
++		ext4_ext_mark_unwritten(&newex);
++	ext4_ext_store_pblock(&newex, pblk);
++
++	inode_lock(inode);
++	down_write(&EXT4_I(inode)->i_data_sem);
++	path = ext4_find_extent(inode, lblk, NULL, 0);
++	if (!IS_ERR(path))
++		path = ext4_ext_insert_extent(NULL, inode, path, &newex, 0);
++	up_write(&EXT4_I(inode)->i_data_sem);
++	inode_unlock(inode);
++
++	KUNIT_ASSERT_FALSE(test, IS_ERR(path));
++	ext4_free_ext_path(path);
++}
++
++static void mext_populate_folio_block(struct kunit *test, struct inode *inode,
++				      ext4_lblk_t lblk, u8 pattern)
++{
++	loff_t pos = (loff_t)lblk << inode->i_blkbits;
++	size_t bsize = i_blocksize(inode);
++	struct folio *folio;
++	u8 *addr;
++
++	folio = __filemap_get_folio(inode->i_mapping, pos >> PAGE_SHIFT,
++				    FGP_CREAT | FGP_LOCK, GFP_KERNEL);
++	KUNIT_ASSERT_FALSE(test, IS_ERR(folio));
++
++	addr = folio_address(folio);
++	memset(addr + offset_in_folio(folio, pos), pattern, bsize);
++	folio_mark_uptodate(folio);
++	folio_unlock(folio);
++	folio_put(folio);
++}
++
++static void mext_assert_mapped_block(struct kunit *test, struct inode *inode,
++				     ext4_lblk_t lblk, ext4_fsblk_t exp_pblk,
++				     unsigned int exp_flag)
++{
++	struct ext4_map_blocks map = {
++		.m_lblk	= lblk,
++		.m_len	= 1,
++	};
++	int ret;
++
++	inode_lock(inode);
++	ret = ext4_map_blocks(NULL, inode, &map, 0);
++	inode_unlock(inode);
++
++	KUNIT_EXPECT_EQ(test, ret, 1);
++	KUNIT_EXPECT_EQ(test, map.m_pblk, exp_pblk);
++	KUNIT_EXPECT_TRUE(test, (map.m_flags & exp_flag) != 0);
++	if (exp_flag == EXT4_MAP_MAPPED)
++		KUNIT_EXPECT_EQ(test, map.m_flags & EXT4_MAP_UNWRITTEN, 0U);
++	else if (exp_flag == EXT4_MAP_UNWRITTEN)
++		KUNIT_EXPECT_EQ(test, map.m_flags & EXT4_MAP_MAPPED, 0U);
++}
++
++static void mext_cleanup_ctx(void *data)
++{
++	struct mext_test_ctx *ctx = data;
++
++	active_mext_test = NULL;
++
++	cancel_work_sync(&ctx->sbi.s_sb_upd_work);
++	timer_delete_sync(&ctx->sbi.s_err_report);
++
++	if (ctx->orig_inode) {
++		iput(ctx->orig_inode);
++		ctx->orig_inode = NULL;
++	}
++	if (ctx->donor_inode) {
++		iput(ctx->donor_inode);
++		ctx->donor_inode = NULL;
++	}
++
++	if (ctx->sb) {
++		deactivate_super(ctx->sb);
++		ctx->sb = NULL;
++	}
++	rcu_barrier();
++
++	if (ctx->es_shrinker_inited) {
++		ext4_es_unregister_shrinker(&ctx->sbi);
++		ext4_es_destroy_stats(&ctx->sbi);
++		ctx->es_shrinker_inited = false;
++	}
++	if (ctx->counters_inited) {
++		percpu_counter_destroy(&ctx->sbi.s_freeclusters_counter);
++		percpu_counter_destroy(&ctx->sbi.s_dirtyclusters_counter);
++		ctx->counters_inited = false;
++	}
++
++	if (ctx->bdev.bd_stats) {
++		free_percpu(ctx->bdev.bd_stats);
++		ctx->bdev.bd_stats = NULL;
++	}
++}
++
++static struct mext_test_ctx *mext_setup_ctx(struct kunit *test)
++{
++	struct mext_test_ctx *ctx;
++	struct fs_context *fc;
++	struct super_block *sb;
 +	int err;
 +
-+	/* 1. ext4_convert_unwritten_extents() on middle of unwritten extent */
-+	ext_setup_range_test(test, inode, NULL);
-+	KUNIT_ASSERT_EQ(test, ext_insert_one(inode, 0, 6, 200, true, 0), 0);
++	ctx = kunit_kzalloc(test, sizeof(*ctx), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, ctx);
++	ctx->es = kunit_kzalloc(test, sizeof(*ctx->es), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, ctx->es);
++	ctx->meta_blks = kunit_kcalloc(test, MEXT_MAX_META_BLKS,
++				       sizeof(*ctx->meta_blks), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, ctx->meta_blks);
++	ctx->next_meta_pblk = MEXT_META_BASE_PBLK;
 +
-+	err = ext4_convert_unwritten_extents(NULL, inode, 2 * 4096, 2 * 4096,
-+					     &converted);
++	fc = fs_context_for_mount(&mext_test_fs_type, 0);
++	KUNIT_ASSERT_FALSE(test, IS_ERR(fc));
++	sb = sget_fc(fc, NULL, mext_set_super);
++	put_fs_context(fc);
++	KUNIT_ASSERT_FALSE(test, IS_ERR(sb));
++	up_write(&sb->s_umount);
++	ctx->sb = sb;
++
++	INIT_WORK(&ctx->sbi.s_sb_upd_work, mext_noop_work);
++	timer_setup(&ctx->sbi.s_err_report, mext_noop_timer, 0);
++
++	err = kunit_add_action_or_reset(test, mext_cleanup_ctx, ctx);
 +	KUNIT_ASSERT_EQ(test, err, 0);
-+	KUNIT_EXPECT_EQ(test, converted, 2U);
-+	ext_expect_extent_at(test, inode, 0, 2, 200, true);
-+	ext_expect_extent_at(test, inode, 2, 2, 202, false);
-+	ext_expect_extent_at(test, inode, 4, 2, 204, true);
 +
-+	/* 2. ext4_convert_unwritten_extents_atomic() across split unwritten */
-+	ext_setup_range_test(test, inode, NULL);
-+	KUNIT_ASSERT_EQ(test, ext_insert_one(inode, 0, 2, 200, true, 0), 0);
-+	KUNIT_ASSERT_EQ(test, ext_insert_one(inode, 2, 3, 300, true, 0), 0);
++	ctx->bdev.bd_stats = alloc_percpu(struct disk_stats);
++	KUNIT_ASSERT_TRUE(test, ctx->bdev.bd_stats != NULL);
++	ctx->bdev_disk.queue = &ctx->bdev_queue;
++	ctx->bdev.bd_disk = &ctx->bdev_disk;
++	ctx->bdev.bd_queue = &ctx->bdev_queue;
++	ctx->bdev.bd_mapping = &ctx->bdev_mapping;
++	bdev_set_flag(&ctx->bdev, BD_READ_ONLY);
 +
-+	err = ext4_convert_unwritten_extents_atomic(NULL, inode, 0, 5 * 4096);
++	sb->s_bdev = &ctx->bdev;
++	sb->s_blocksize = MEXT_TEST_BLK_SIZE;
++	sb->s_blocksize_bits = MEXT_TEST_BLK_BITS;
++	sb->s_maxbytes = MAX_LFS_FILESIZE;
++	sb->s_magic = EXT4_SUPER_MAGIC;
++	sb->s_op = &mext_test_sops;
++#ifdef CONFIG_QUOTA
++	sb->dq_op = &mext_dummy_qops;
++#endif
++#ifdef CONFIG_FS_ENCRYPTION
++	sb->s_cop = &ext4_cryptops;
++#endif
++	sb->s_fs_info = &ctx->sbi;
++	strscpy(sb->s_id, "ext4_mext_kunit", sizeof(sb->s_id));
++
++	ctx->sbh.b_data = ctx->sbh_data;
++	ctx->sbh.b_size = MEXT_TEST_BLK_SIZE;
++	ctx->sbh.b_bdev = &ctx->bdev;
++	atomic_set(&ctx->sbh.b_count, 2);
++	set_buffer_uptodate(&ctx->sbh);
++	clear_buffer_mapped(&ctx->sbh);
++
++	ctx->es->s_magic = cpu_to_le16(EXT4_SUPER_MAGIC);
++	ctx->es->s_rev_level = cpu_to_le32(EXT4_DYNAMIC_REV);
++	ctx->es->s_first_data_block = cpu_to_le32(MEXT_TEST_FIRST_DATA_BLK);
++	ctx->es->s_log_block_size = cpu_to_le32(2);
++	ctx->es->s_log_cluster_size = cpu_to_le32(2);
++	ctx->es->s_blocks_per_group = cpu_to_le32(MEXT_TEST_BLOCKS_PER_GRP);
++	ctx->es->s_clusters_per_group = cpu_to_le32(MEXT_TEST_BLOCKS_PER_GRP);
++	ctx->es->s_inodes_per_group = cpu_to_le32(8192);
++	ctx->es->s_inodes_count = cpu_to_le32(MEXT_TEST_NGROUPS * 8192);
++	ctx->es->s_feature_incompat = cpu_to_le32(EXT4_FEATURE_INCOMPAT_EXTENTS);
++	ext4_blocks_count_set(ctx->es, MEXT_TEST_TOTAL_BLKS);
++
++	bgl_lock_init(&ctx->bgl);
++	ctx->sbi.s_sb = sb;
++	ctx->sbi.s_es = ctx->es;
++	ctx->sbi.s_sbh = &ctx->sbh;
++	ctx->sbi.s_blockgroup_lock = &ctx->bgl;
++	ctx->sbi.s_blocks_per_group = MEXT_TEST_BLOCKS_PER_GRP;
++	ctx->sbi.s_clusters_per_group = MEXT_TEST_BLOCKS_PER_GRP;
++	ctx->sbi.s_cluster_ratio = 1;
++	ctx->sbi.s_cluster_bits = 0;
++	ctx->sbi.s_groups_count = MEXT_TEST_NGROUPS;
++	ctx->sbi.s_desc_size = EXT4_MIN_DESC_SIZE;
++	ctx->sbi.s_desc_per_block = MEXT_TEST_BLK_SIZE / EXT4_MIN_DESC_SIZE;
++	ctx->sbi.s_inodes_per_group = 8192;
++	ctx->sbi.s_inode_size = sizeof(struct ext4_inode);
++	ctx->sbi.s_inodes_per_block = MEXT_TEST_BLK_SIZE /
++				      sizeof(struct ext4_inode);
++	ctx->sbi.s_bitmap_maxbytes = MAX_LFS_FILESIZE;
++	set_opt(sb, ERRORS_CONT);
++
++	mutex_init(&ctx->sbi.s_orphan_lock);
++	INIT_LIST_HEAD(&ctx->sbi.s_orphan);
++	spin_lock_init(&ctx->sbi.s_bdev_wb_lock);
++	spin_lock_init(&ctx->sbi.s_error_lock);
++	spin_lock_init(&ctx->sbi.s_md_lock);
++	INIT_LIST_HEAD(&ctx->sbi.s_fc_q[FC_Q_MAIN]);
++	INIT_LIST_HEAD(&ctx->sbi.s_fc_q[FC_Q_STAGING]);
++	INIT_LIST_HEAD(&ctx->sbi.s_fc_dentry_q[FC_Q_MAIN]);
++	INIT_LIST_HEAD(&ctx->sbi.s_fc_dentry_q[FC_Q_STAGING]);
++	mutex_init(&ctx->sbi.s_fc_lock);
++	ratelimit_state_init(&ctx->sbi.s_err_ratelimit_state,
++			     DEFAULT_RATELIMIT_INTERVAL,
++			     DEFAULT_RATELIMIT_BURST);
++	ratelimit_state_init(&ctx->sbi.s_warning_ratelimit_state,
++			     DEFAULT_RATELIMIT_INTERVAL,
++			     DEFAULT_RATELIMIT_BURST);
++	ratelimit_state_init(&ctx->sbi.s_msg_ratelimit_state,
++			     DEFAULT_RATELIMIT_INTERVAL,
++			     DEFAULT_RATELIMIT_BURST);
++
++	err = percpu_counter_init(&ctx->sbi.s_freeclusters_counter, 65536,
++				  GFP_KERNEL);
 +	KUNIT_ASSERT_EQ(test, err, 0);
-+	ext_expect_extent_at(test, inode, 0, 2, 200, false);
-+	ext_expect_extent_at(test, inode, 2, 3, 300, false);
++	err = percpu_counter_init(&ctx->sbi.s_dirtyclusters_counter, 0,
++				  GFP_KERNEL);
++	if (err) {
++		percpu_counter_destroy(&ctx->sbi.s_freeclusters_counter);
++		KUNIT_FAIL_AND_ABORT(test, "dirtyclusters counter init failed");
++	}
++	ctx->counters_inited = true;
 +
-+	/* 3. ext4_convert_unwritten_io_end_vec() across multiple vecs */
-+	ext_setup_range_test(test, inode, NULL);
-+	KUNIT_ASSERT_EQ(test, ext_insert_one(inode, 0, 8, 200, true, 0), 0);
-+
-+	io_end.inode = inode;
-+	INIT_LIST_HEAD(&io_end.list_vec);
-+	vec1.offset = 1 * 4096;
-+	vec1.size = 2 * 4096;
-+	vec2.offset = 5 * 4096;
-+	vec2.size = 2 * 4096;
-+	list_add_tail(&vec1.list, &io_end.list_vec);
-+	list_add_tail(&vec2.list, &io_end.list_vec);
-+
-+	err = ext4_convert_unwritten_io_end_vec(NULL, &io_end);
++	err = ext4_es_register_shrinker(&ctx->sbi);
 +	KUNIT_ASSERT_EQ(test, err, 0);
-+	ext_expect_extent_at(test, inode, 0, 1, 200, true);
-+	ext_expect_extent_at(test, inode, 1, 2, 201, false);
-+	ext_expect_extent_at(test, inode, 3, 2, 203, true);
-+	ext_expect_extent_at(test, inode, 5, 2, 205, false);
-+	ext_expect_extent_at(test, inode, 7, 1, 207, true);
++	ctx->sbi.s_es_shrinker->count_objects = mext_dummy_shrinker_count;
++	ctx->sbi.s_es_shrinker->scan_objects = mext_dummy_shrinker_scan;
++	ctx->es_shrinker_inited = true;
++
++	ctx->orig_inode = mext_create_test_inode(test, sb, 21, 16);
++	ctx->donor_inode = mext_create_test_inode(test, sb, 22, 16);
++	mext_init_mock_file(&ctx->orig_file, &ctx->orig_dentry,
++			    ctx->orig_inode);
++	mext_init_mock_file(&ctx->donor_file, &ctx->donor_dentry,
++			    ctx->donor_inode);
++
++	test->priv = ctx;
++	active_mext_test = test;
++
++	kunit_activate_static_stub(test, __ext4_ext_dirty,
++				   mext_ext_dirty_stub);
++	kunit_activate_static_stub(test, __ext4_handle_dirty_metadata,
++				   mext_handle_dirty_metadata_stub);
++	kunit_activate_static_stub(test, __ext4_mark_inode_dirty,
++				   mext_mark_inode_dirty_stub);
++	kunit_activate_static_stub(test, ext4_ext_getblk,
++				   mext_ext_getblk_stub);
++	kunit_activate_static_stub(test, ext4_mb_new_blocks,
++				   mext_mb_new_blocks_stub);
++	kunit_activate_static_stub(test, ext4_free_blocks,
++				   mext_free_blocks_stub);
++
++	return ctx;
 +}
 +
-+/*
-+ * Verify ext4_fiemap() (range checks, FIEMAP_FLAG_CACHE precaching, data and
-+ * external xattr reporting) and ext4_get_es_cache() (flag checks, precaching,
-+ * and reporting mapped + delayed status extents).
-+ */
-+static void test_ext_fiemap_and_get_es_cache(struct kunit *test)
++static void test_double_data_sem_lock_order(struct kunit *test)
 +{
-+	struct inode *inode = &k_ctx.k_ei->vfs_inode;
-+	struct fiemap_extent_info fieinfo = {};
-+	struct extent_status es = {};
-+	int err;
++	struct mext_test_ctx *ctx = mext_setup_ctx(test);
++	struct inode *low = ctx->orig_inode;
++	struct inode *high = ctx->donor_inode;
 +
-+	ext_setup_range_test(test, inode, NULL);
-+	KUNIT_ASSERT_EQ(test, ext_insert_one(inode, 0, 3, 200, false, 0), 0);
-+	KUNIT_ASSERT_EQ(test, ext_insert_one(inode, 6, 2, 300, true, 0), 0);
-+	inode->i_size = 10LL * 4096;
-+	EXT4_I(inode)->i_disksize = 10LL * 4096;
++	if (low > high)
++		swap(low, high);
 +
-+	/* Zero-length FIEMAP -> -EINVAL */
-+	err = ext4_fiemap(inode, &fieinfo, 0, 0);
-+	KUNIT_EXPECT_EQ(test, err, -EINVAL);
++	/* Acquire with first < second */
++	ext4_double_down_write_data_sem(low, high);
++	KUNIT_EXPECT_TRUE(test, rwsem_is_locked(&EXT4_I(low)->i_data_sem));
++	KUNIT_EXPECT_TRUE(test, rwsem_is_locked(&EXT4_I(high)->i_data_sem));
++	ext4_double_up_write_data_sem(low, high);
++	KUNIT_EXPECT_FALSE(test, rwsem_is_locked(&EXT4_I(low)->i_data_sem));
++	KUNIT_EXPECT_FALSE(test, rwsem_is_locked(&EXT4_I(high)->i_data_sem));
 +
-+	/* Start past maxbytes on non-extent inode -> -EFBIG */
-+	ext4_clear_inode_flag(inode, EXT4_INODE_EXTENTS);
-+	err = ext4_fiemap(inode, &fieinfo,
-+			  EXT4_SB(inode->i_sb)->s_bitmap_maxbytes + 4096, 4096);
-+	KUNIT_EXPECT_EQ(test, err, -EFBIG);
-+	ext4_set_inode_flag(inode, EXT4_INODE_EXTENTS);
-+
-+	/* Count-only data FIEMAP with FIEMAP_FLAG_CACHE populates ES cache */
-+	memset(&fieinfo, 0, sizeof(fieinfo));
-+	fieinfo.fi_flags = FIEMAP_FLAG_CACHE;
-+	err = ext4_fiemap(inode, &fieinfo, 0, 10 * 4096);
-+	KUNIT_ASSERT_EQ(test, err, 0);
-+	KUNIT_EXPECT_EQ(test, fieinfo.fi_flags & FIEMAP_FLAG_CACHE, 0U);
-+	KUNIT_EXPECT_EQ(test, fieinfo.fi_extents_mapped, 2U);
-+	KUNIT_EXPECT_EQ(test, ext4_es_lookup_extent(inode, 0, NULL, &es, NULL),
-+			1);
-+
-+	/* FIEMAP_FLAG_XATTR with no xattrs vs external i_file_acl block */
-+	memset(&fieinfo, 0, sizeof(fieinfo));
-+	fieinfo.fi_flags = FIEMAP_FLAG_XATTR;
-+	err = ext4_fiemap(inode, &fieinfo, 0, 4096);
-+	KUNIT_EXPECT_EQ(test, err, 0);
-+	KUNIT_EXPECT_EQ(test, fieinfo.fi_extents_mapped, 0U);
-+
-+	EXT4_I(inode)->i_file_acl = 750;
-+	memset(&fieinfo, 0, sizeof(fieinfo));
-+	fieinfo.fi_flags = FIEMAP_FLAG_XATTR;
-+	err = ext4_fiemap(inode, &fieinfo, 0, 4096);
-+	EXT4_I(inode)->i_file_acl = 0;
-+	KUNIT_EXPECT_EQ(test, err, 0);
-+	KUNIT_EXPECT_EQ(test, fieinfo.fi_extents_mapped, 1U);
-+
-+	/* ext4_get_es_cache: unsupported flag -> -EBADR, len == 0 -> -EINVAL */
-+	memset(&fieinfo, 0, sizeof(fieinfo));
-+	fieinfo.fi_flags = FIEMAP_FLAG_XATTR;
-+	err = ext4_get_es_cache(inode, &fieinfo, 0, 4096);
-+	KUNIT_EXPECT_EQ(test, err, -EBADR);
-+
-+	memset(&fieinfo, 0, sizeof(fieinfo));
-+	err = ext4_get_es_cache(inode, &fieinfo, 0, 0);
-+	KUNIT_EXPECT_EQ(test, err, -EINVAL);
-+
-+	/*
-+	 * Populate ES tree with written, hole, delayed, and unwritten entries
-+	 * and verify ext4_get_es_cache reports all 4 entries.
-+	 */
-+	down_write(&EXT4_I(inode)->i_data_sem);
-+	ext4_es_remove_extent(inode, 0, EXT_MAX_BLOCKS);
-+	ext4_es_insert_extent(inode, 0, 3, 200, EXTENT_STATUS_WRITTEN, 0);
-+	ext4_es_insert_extent(inode, 3, 1, ~0, EXTENT_STATUS_HOLE, 0);
-+	ext4_es_insert_delayed_extent(inode, 4, 2, false, false);
-+	ext4_es_insert_extent(inode, 6, 2, 300, EXTENT_STATUS_UNWRITTEN, 0);
-+	up_write(&EXT4_I(inode)->i_data_sem);
-+
-+	memset(&fieinfo, 0, sizeof(fieinfo));
-+	err = ext4_get_es_cache(inode, &fieinfo, 0, 10 * 4096);
-+	KUNIT_ASSERT_EQ(test, err, 0);
-+	KUNIT_EXPECT_EQ(test, fieinfo.fi_extents_mapped, 4U);
-+
-+	/*
-+	 * Build a depth-1 tree (5 discontiguous extents), clear ES cache, and
-+	 * verify FIEMAP_FLAG_CACHE precaches external leaf extents + holes.
-+	 */
-+	ext_setup_range_test(test, inode, NULL);
-+	KUNIT_ASSERT_EQ(test, ext_insert_one(inode, 0, 1, 200, false, 0), 0);
-+	KUNIT_ASSERT_EQ(test, ext_insert_one(inode, 2, 1, 202, false, 0), 0);
-+	KUNIT_ASSERT_EQ(test, ext_insert_one(inode, 4, 1, 204, false, 0), 0);
-+	KUNIT_ASSERT_EQ(test, ext_insert_one(inode, 6, 1, 206, false, 0), 0);
-+	KUNIT_ASSERT_EQ(test, ext_insert_one(inode, 8, 1, 208, false, 0), 0);
-+	inode->i_size = 10LL * 4096;
-+	EXT4_I(inode)->i_disksize = 10LL * 4096;
-+
-+	down_write(&EXT4_I(inode)->i_data_sem);
-+	ext4_es_remove_extent(inode, 0, EXT_MAX_BLOCKS);
-+	up_write(&EXT4_I(inode)->i_data_sem);
-+
-+	memset(&fieinfo, 0, sizeof(fieinfo));
-+	fieinfo.fi_flags = FIEMAP_FLAG_CACHE;
-+	err = ext4_get_es_cache(inode, &fieinfo, 0, 10 * 4096);
-+	KUNIT_ASSERT_EQ(test, err, 0);
-+	KUNIT_EXPECT_EQ(test, fieinfo.fi_flags & FIEMAP_FLAG_CACHE, 0U);
-+	KUNIT_EXPECT_GE(test, fieinfo.fi_extents_mapped, 5U);
++	/* Acquire with first > second */
++	ext4_double_down_write_data_sem(high, low);
++	KUNIT_EXPECT_TRUE(test, rwsem_is_locked(&EXT4_I(low)->i_data_sem));
++	KUNIT_EXPECT_TRUE(test, rwsem_is_locked(&EXT4_I(high)->i_data_sem));
++	ext4_double_up_write_data_sem(high, low);
++	KUNIT_EXPECT_FALSE(test, rwsem_is_locked(&EXT4_I(low)->i_data_sem));
++	KUNIT_EXPECT_FALSE(test, rwsem_is_locked(&EXT4_I(high)->i_data_sem));
 +}
 +
- static const struct kunit_ext_test_param test_split_convert_params[] = {
- 	/* unwrit to writ splits */
- 	{ .desc = "split unwrit extent to 2 extents and convert 1st half writ",
-@@ -3018,6 +3536,12 @@ static struct kunit_case extents_test_cases[] = {
- 	KUNIT_CASE(test_clu_mapped),
- 	KUNIT_CASE(test_ext_credits_calculation),
- 	KUNIT_CASE(test_ext_fast_commit_replay),
-+	KUNIT_CASE(test_fallocate_modes_and_prealloc),
-+	KUNIT_CASE(test_zero_range_and_write_zeroes),
-+	KUNIT_CASE(test_collapse_range),
-+	KUNIT_CASE(test_insert_range),
-+	KUNIT_CASE(test_convert_unwritten_extents_and_io_end),
-+	KUNIT_CASE(test_ext_fiemap_and_get_es_cache),
- 	{}
- };
++static void test_mext_check_validity_rejections(struct kunit *test)
++{
++	struct mext_test_ctx *ctx = mext_setup_ctx(test);
++	struct inode *orig = ctx->orig_inode;
++	struct inode *donor = ctx->donor_inode;
++	struct super_block *other_sb;
++	__u64 moved_len = 99;
++	int ret;
++
++	/* Valid baseline */
++	KUNIT_EXPECT_EQ(test, ext4_mext_check_validity_test(orig, donor), 0);
++
++	/* Same inode rejected both directly and via ext4_move_extents() */
++	KUNIT_EXPECT_EQ(test, ext4_mext_check_validity_test(orig, orig),
++			-EINVAL);
++	ret = ext4_move_extents(&ctx->orig_file, &ctx->orig_file, 0, 0, 1,
++				&moved_len);
++	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
++	KUNIT_EXPECT_EQ(test, moved_len, 0ULL);
++
++	/* Cross-superblock rejected */
++	other_sb = kunit_kzalloc(test, sizeof(*other_sb), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, other_sb);
++	donor->i_sb = other_sb;
++	KUNIT_EXPECT_EQ(test, ext4_mext_check_validity_test(orig, donor),
++			-EINVAL);
++	donor->i_sb = ctx->sb;
++
++	/* Non-regular files rejected */
++	orig->i_mode = S_IFIFO | 0644;
++	KUNIT_EXPECT_EQ(test, ext4_mext_check_validity_test(orig, donor),
++			-EINVAL);
++	ret = ext4_move_extents(&ctx->orig_file, &ctx->donor_file, 0, 0, 1,
++				&moved_len);
++	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
++	orig->i_mode = S_IFREG | 0644;
++
++	donor->i_mode = S_IFDIR | 0755;
++	KUNIT_EXPECT_EQ(test, ext4_mext_check_validity_test(orig, donor),
++			-EINVAL);
++	donor->i_mode = S_IFREG | 0644;
++
++	/* Bigalloc feature rejected */
++	ext4_set_feature_bigalloc(ctx->sb);
++	KUNIT_EXPECT_EQ(test, ext4_mext_check_validity_test(orig, donor),
++			-EOPNOTSUPP);
++	ext4_clear_feature_bigalloc(ctx->sb);
++
++#if IS_ENABLED(CONFIG_FS_DAX)
++	/* DAX inode rejected */
++	orig->i_flags |= S_DAX;
++	KUNIT_EXPECT_EQ(test, ext4_mext_check_validity_test(orig, donor),
++			-EOPNOTSUPP);
++	orig->i_flags &= ~S_DAX;
++#endif
++
++	/* Data journaling mode rejected */
++	kunit_activate_static_stub(test, ext4_inode_journal_mode,
++				   mext_journal_data_mode_stub);
++	KUNIT_EXPECT_EQ(test, ext4_mext_check_validity_test(orig, donor),
++			-EOPNOTSUPP);
++	kunit_deactivate_static_stub(test, ext4_inode_journal_mode);
++
++	/* Encrypted inode rejected */
++	donor->i_flags |= S_ENCRYPTED;
++	KUNIT_EXPECT_EQ(test, ext4_mext_check_validity_test(orig, donor),
++			-EOPNOTSUPP);
++	donor->i_flags &= ~S_ENCRYPTED;
++
++	/* Non-extent inode rejected */
++	ext4_clear_inode_flag(orig, EXT4_INODE_EXTENTS);
++	KUNIT_EXPECT_EQ(test, ext4_mext_check_validity_test(orig, donor),
++			-EOPNOTSUPP);
++	ext4_set_inode_flag(orig, EXT4_INODE_EXTENTS);
++
++	/* SUID / SGID on donor rejected */
++	donor->i_mode |= S_ISUID;
++	KUNIT_EXPECT_EQ(test, ext4_mext_check_validity_test(orig, donor),
++			-EINVAL);
++	donor->i_mode = (donor->i_mode & ~S_ISUID) | S_ISGID;
++	KUNIT_EXPECT_EQ(test, ext4_mext_check_validity_test(orig, donor),
++			-EINVAL);
++	donor->i_mode &= ~S_ISGID;
++
++	/* Immutable / append-only donor rejected with -EPERM */
++	donor->i_flags |= S_IMMUTABLE;
++	KUNIT_EXPECT_EQ(test, ext4_mext_check_validity_test(orig, donor),
++			-EPERM);
++	donor->i_flags = (donor->i_flags & ~S_IMMUTABLE) | S_APPEND;
++	KUNIT_EXPECT_EQ(test, ext4_mext_check_validity_test(orig, donor),
++			-EPERM);
++	donor->i_flags &= ~S_APPEND;
++
++	/* Swapfile rejected with -ETXTBSY */
++	orig->i_flags |= S_SWAPFILE;
++	KUNIT_EXPECT_EQ(test, ext4_mext_check_validity_test(orig, donor),
++			-ETXTBSY);
++	orig->i_flags &= ~S_SWAPFILE;
++
++	/* Quota file (S_NOQUOTA without EXT4_INODE_EA_INODE) rejected */
++	orig->i_flags |= S_NOQUOTA;
++	KUNIT_EXPECT_EQ(test, ext4_mext_check_validity_test(orig, donor),
++			-EOPNOTSUPP);
++	ext4_set_inode_flag(orig, EXT4_INODE_EA_INODE);
++	KUNIT_EXPECT_EQ(test, ext4_mext_check_validity_test(orig, donor), 0);
++	ext4_clear_inode_flag(orig, EXT4_INODE_EA_INODE);
++	orig->i_flags &= ~S_NOQUOTA;
++
++	/* Zero-byte file rejected with -EINVAL */
++	i_size_write(donor, 0);
++	KUNIT_EXPECT_EQ(test, ext4_mext_check_validity_test(orig, donor),
++			-EINVAL);
++	i_size_write(donor, EXT4_I(donor)->i_disksize);
++}
++
++static void test_mext_check_adjust_range(struct kunit *test)
++{
++	struct mext_test_ctx *ctx = mext_setup_ctx(test);
++	struct inode *orig = ctx->orig_inode;
++	struct inode *donor = ctx->donor_inode;
++	__u64 len;
++	int ret;
++
++	/* Sub-page block alignment check when blocksize (1024) < PAGE_SIZE */
++	orig->i_blkbits = 10;
++	donor->i_blkbits = 10;
++	i_size_write(orig, max_t(loff_t, 32 * 1024, 4 * PAGE_SIZE));
++	i_size_write(donor, max_t(loff_t, 32 * 1024, 4 * PAGE_SIZE));
++
++	len = 4;
++	ret = ext4_mext_check_adjust_range_test(orig, donor, 1, 2, &len);
++	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
++
++	len = 4;
++	ret = ext4_mext_check_adjust_range_test(orig, donor, 1,
++						1 + (PAGE_SIZE >> 10), &len);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, len, 4ULL);
++
++	orig->i_blkbits = MEXT_TEST_BLK_BITS;
++	donor->i_blkbits = MEXT_TEST_BLK_BITS;
++
++	/* EXT_MAX_BLOCKS boundary and sum-overflow checks */
++	len = 1;
++	KUNIT_EXPECT_EQ(test,
++			ext4_mext_check_adjust_range_test(orig, donor,
++							  EXT_MAX_BLOCKS,
++							  EXT_MAX_BLOCKS, &len),
++			-EINVAL);
++
++	len = (u64)EXT_MAX_BLOCKS + 1;
++	KUNIT_EXPECT_EQ(test,
++			ext4_mext_check_adjust_range_test(orig, donor, 0, 0,
++							  &len),
++			-EINVAL);
++
++	len = 4;
++	KUNIT_EXPECT_EQ(test,
++			ext4_mext_check_adjust_range_test(orig, donor,
++							  EXT_MAX_BLOCKS - 4,
++							  EXT_MAX_BLOCKS - 4,
++							  &len),
++			-EINVAL);
++
++	/* Clamping to shorter EOF (including partial trailing block i_size) */
++	i_size_write(orig, 5 * MEXT_TEST_BLK_SIZE + 100);  /* orig_eof = 6 */
++	i_size_write(donor, 4 * MEXT_TEST_BLK_SIZE);       /* donor_eof = 4 */
++
++	len = 12;
++	ret = ext4_mext_check_adjust_range_test(orig, donor, 1, 1, &len);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, len, 3ULL);
++
++	/* Start at or beyond EOF clamps len to 0 and returns -EINVAL */
++	len = 4;
++	ret = ext4_mext_check_adjust_range_test(orig, donor, 4, 4, &len);
++	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
++	KUNIT_EXPECT_EQ(test, len, 0ULL);
++}
++
++static void test_move_extents_holes_and_unwritten(struct kunit *test)
++{
++	struct mext_test_ctx *ctx = mext_setup_ctx(test);
++	struct inode *orig = ctx->orig_inode;
++	struct inode *donor = ctx->donor_inode;
++	__u64 moved_len = 0;
++	int ret;
++
++	/*
++	 * orig:  [0, 2) hole, [2, 4) unwritten -> pblk 202..203,
++	 *        [4, 6) unwritten -> pblk 204..205
++	 * donor: [0, 2) unwritten -> pblk 300..301, [2, 4) hole,
++	 *        [4, 6) unwritten -> pblk 304..305
++	 *
++	 * Expected across [0, 6) (clamped from requested len = 16 to EOF = 6):
++	 *   - [0, 2): skipped in ext4_move_extents() because orig is a hole
++	 *   - [2, 4): skipped via MEXT_SKIP_EXTENT because donor is a hole
++	 *   - [4, 6): swapped via MEXT_MOVE_EXTENT (both unwritten)
++	 */
++	i_size_write(orig, 6 * MEXT_TEST_BLK_SIZE);
++	EXT4_I(orig)->i_disksize = 6 * MEXT_TEST_BLK_SIZE;
++	i_size_write(donor, 6 * MEXT_TEST_BLK_SIZE);
++	EXT4_I(donor)->i_disksize = 6 * MEXT_TEST_BLK_SIZE;
++
++	mext_insert_extent(test, orig, 2, 4, 202, true);
++	mext_insert_extent(test, donor, 0, 2, 300, true);
++	mext_insert_extent(test, donor, 4, 2, 304, true);
++
++	ret = ext4_move_extents(&ctx->orig_file, &ctx->donor_file, 0, 0, 16,
++				&moved_len);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, moved_len, 2ULL);
++
++	/* [2, 4) on orig remained on pblk 202..203; [4, 6) swapped to 304..305 */
++	mext_assert_mapped_block(test, orig, 2, 202, EXT4_MAP_UNWRITTEN);
++	mext_assert_mapped_block(test, orig, 3, 203, EXT4_MAP_UNWRITTEN);
++	mext_assert_mapped_block(test, orig, 4, 304, EXT4_MAP_UNWRITTEN);
++	mext_assert_mapped_block(test, orig, 5, 305, EXT4_MAP_UNWRITTEN);
++
++	/* [0, 2) on donor remained 300..301; [4, 6) received 204..205 */
++	mext_assert_mapped_block(test, donor, 0, 300, EXT4_MAP_UNWRITTEN);
++	mext_assert_mapped_block(test, donor, 4, 204, EXT4_MAP_UNWRITTEN);
++	mext_assert_mapped_block(test, donor, 5, 205, EXT4_MAP_UNWRITTEN);
++}
++
++static void test_move_extents_written_copy_data_and_split(struct kunit *test)
++{
++	struct mext_test_ctx *ctx = mext_setup_ctx(test);
++	struct inode *orig = ctx->orig_inode;
++	struct inode *donor = ctx->donor_inode;
++	ext4_lblk_t stride = max_t(ext4_lblk_t, 1,
++				   PAGE_SIZE >> MEXT_TEST_BLK_BITS);
++	ext4_lblk_t ext1 = stride;
++	ext4_lblk_t ext2 = 3 * stride;
++	ext4_lblk_t total_blks = ext2 + 3;
++	ext4_lblk_t moved_lblks[] = { ext1, ext2, ext2 + 1 };
++	ext4_lblk_t lblk;
++	__u64 moved_len = 0;
++	unsigned int i;
++	int ret;
++
++	/*
++	 * orig:  [0, total_blks) written -> pblk 400.., uptodate folios
++	 * donor: [ext1, ext1 + 1) written -> pblk 501,
++	 *        [ext1 + 1, ext2) hole,
++	 *        [ext2, ext2 + 2) unwritten -> pblk 503..504
++	 *
++	 * Spacing donor extents by @stride ensures distinct pagecache folios on
++	 * 16K/64K PAGE_SIZE kernels so dirtying ext1's folio does not make
++	 * ext2's folio unreleasable (-EBUSY).
++	 *
++	 * Moving [ext1, ext2 + 2) exercises MEXT_COPY_DATA, left/right extent
++	 * splits on orig, donor hole skipping, written preservation on orig,
++	 * mark_unwritten=1 on donor, and page cache data preservation.
++	 */
++	i_size_write(orig, (loff_t)total_blks * MEXT_TEST_BLK_SIZE);
++	EXT4_I(orig)->i_disksize = (loff_t)total_blks * MEXT_TEST_BLK_SIZE;
++	i_size_write(donor, (loff_t)total_blks * MEXT_TEST_BLK_SIZE);
++	EXT4_I(donor)->i_disksize = (loff_t)total_blks * MEXT_TEST_BLK_SIZE;
++
++	mext_insert_extent(test, orig, 0, total_blks, 400, false);
++	mext_insert_extent(test, donor, ext1, 1, 501, false);
++	mext_insert_extent(test, donor, ext2, 2, 503, true);
++
++	for (lblk = 0; lblk < total_blks; lblk++)
++		mext_populate_folio_block(test, orig, lblk, 0xA0 + lblk);
++
++	ret = ext4_move_extents(&ctx->orig_file, &ctx->donor_file, ext1, ext1,
++				ext2 + 2 - ext1, &moved_len);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, moved_len, 3ULL);
++
++	/* Verify orig mappings: leading/hole/trailing unchanged; moved swapped */
++	mext_assert_mapped_block(test, orig, 0, 400, EXT4_MAP_MAPPED);
++	mext_assert_mapped_block(test, orig, ext1, 501, EXT4_MAP_MAPPED);
++	mext_assert_mapped_block(test, orig, ext1 + 1, 400 + ext1 + 1,
++				 EXT4_MAP_MAPPED);
++	mext_assert_mapped_block(test, orig, ext2, 503, EXT4_MAP_MAPPED);
++	mext_assert_mapped_block(test, orig, ext2 + 1, 504, EXT4_MAP_MAPPED);
++	mext_assert_mapped_block(test, orig, ext2 + 2, 400 + ext2 + 2,
++				 EXT4_MAP_MAPPED);
++
++	/* Donor's swapped extents are marked unwritten to avoid leaking data */
++	mext_assert_mapped_block(test, donor, ext1, 400 + ext1,
++				 EXT4_MAP_UNWRITTEN);
++	mext_assert_mapped_block(test, donor, ext2, 400 + ext2,
++				 EXT4_MAP_UNWRITTEN);
++	mext_assert_mapped_block(test, donor, ext2 + 1, 400 + ext2 + 1,
++				 EXT4_MAP_UNWRITTEN);
++
++	/* Verify cached bytes in orig's moved folios were preserved & dirtied */
++	for (i = 0; i < ARRAY_SIZE(moved_lblks); i++) {
++		loff_t pos;
++		struct folio *folio;
++		u8 *addr;
++
++		lblk = moved_lblks[i];
++		pos = (loff_t)lblk << orig->i_blkbits;
++		folio = filemap_get_folio(orig->i_mapping, pos >> PAGE_SHIFT);
++		KUNIT_ASSERT_FALSE(test, IS_ERR(folio));
++		KUNIT_EXPECT_TRUE(test, folio_test_uptodate(folio));
++		KUNIT_EXPECT_TRUE(test, folio_test_dirty(folio));
++		addr = folio_address(folio);
++		KUNIT_EXPECT_EQ(test, addr[offset_in_folio(folio, pos)],
++				(u8)(0xA0 + lblk));
++		folio_put(folio);
++	}
++}
++
++static void test_move_extents_unwritten_orig_and_ebusy(struct kunit *test)
++{
++	struct mext_test_ctx *ctx = mext_setup_ctx(test);
++	struct inode *orig = ctx->orig_inode;
++	struct inode *donor = ctx->donor_inode;
++	ext4_lblk_t stride = max_t(ext4_lblk_t, 1,
++				   PAGE_SIZE >> MEXT_TEST_BLK_BITS);
++	ext4_lblk_t ebusy_lblk = max_t(ext4_lblk_t, 2, stride);
++	ext4_lblk_t total_blks = ebusy_lblk + 2;
++	struct folio *donor_folio;
++	__u64 moved_len = 0;
++	int ret;
++
++	/*
++	 * Part 1: orig unwritten [0, 2) -> 600..601 (no pre-populated folios),
++	 * donor written [0, 2) -> 700..701. Exercises MEXT_COPY_DATA through
++	 * mext_folio_mkuptodate()'s non-uptodate unwritten buffer zeroing path.
++	 */
++	i_size_write(orig, (loff_t)total_blks * MEXT_TEST_BLK_SIZE);
++	EXT4_I(orig)->i_disksize = (loff_t)total_blks * MEXT_TEST_BLK_SIZE;
++	i_size_write(donor, (loff_t)total_blks * MEXT_TEST_BLK_SIZE);
++	EXT4_I(donor)->i_disksize = (loff_t)total_blks * MEXT_TEST_BLK_SIZE;
++
++	mext_insert_extent(test, orig, 0, 2, 600, true);
++	mext_insert_extent(test, donor, 0, 2, 700, false);
++
++	ret = ext4_move_extents(&ctx->orig_file, &ctx->donor_file, 0, 0, 2,
++				&moved_len);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, moved_len, 2ULL);
++
++	mext_assert_mapped_block(test, orig, 0, 700, EXT4_MAP_UNWRITTEN);
++	mext_assert_mapped_block(test, orig, 1, 701, EXT4_MAP_UNWRITTEN);
++	mext_assert_mapped_block(test, donor, 0, 600, EXT4_MAP_UNWRITTEN);
++	mext_assert_mapped_block(test, donor, 1, 601, EXT4_MAP_UNWRITTEN);
++
++	/*
++	 * Part 2: non-releasable folio on donor triggers -EBUSY from
++	 * filemap_release_folio() without altering extent mappings.
++	 */
++	mext_insert_extent(test, orig, ebusy_lblk, 1, 602, true);
++	mext_insert_extent(test, donor, ebusy_lblk, 1, 702, true);
++
++	donor_folio = __filemap_get_folio(donor->i_mapping,
++					  ((loff_t)ebusy_lblk <<
++					   donor->i_blkbits) >> PAGE_SHIFT,
++					  FGP_CREAT | FGP_LOCK, GFP_KERNEL);
++	KUNIT_ASSERT_FALSE(test, IS_ERR(donor_folio));
++	if (!folio_buffers(donor_folio))
++		create_empty_buffers(donor_folio, MEXT_TEST_BLK_SIZE, 0);
++	folio_set_checked(donor_folio);
++	folio_unlock(donor_folio);
++
++	ret = ext4_move_extents(&ctx->orig_file, &ctx->donor_file,
++				ebusy_lblk, ebusy_lblk, 1, &moved_len);
++	folio_clear_checked(donor_folio);
++	folio_put(donor_folio);
++
++	KUNIT_EXPECT_EQ(test, ret, -EBUSY);
++	KUNIT_EXPECT_EQ(test, moved_len, 0ULL);
++	mext_assert_mapped_block(test, orig, ebusy_lblk, 602,
++				 EXT4_MAP_UNWRITTEN);
++	mext_assert_mapped_block(test, donor, ebusy_lblk, 702,
++				 EXT4_MAP_UNWRITTEN);
++}
++
++static struct kunit_case move_extent_test_cases[] = {
++	KUNIT_CASE(test_double_data_sem_lock_order),
++	KUNIT_CASE(test_mext_check_validity_rejections),
++	KUNIT_CASE(test_mext_check_adjust_range),
++	KUNIT_CASE(test_move_extents_holes_and_unwritten),
++	KUNIT_CASE(test_move_extents_written_copy_data_and_split),
++	KUNIT_CASE(test_move_extents_unwritten_orig_and_ebusy),
++	{}
++};
++
++static struct kunit_suite move_extent_test_suite = {
++	.name = "ext4_move_extent_test",
++	.test_cases = move_extent_test_cases,
++};
++
++kunit_test_suites(&move_extent_test_suite);
++
++MODULE_DESCRIPTION("KUnit tests for ext4 move_extent");
++MODULE_LICENSE("GPL");
+diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+index e5450e83da80..15f4126c5c51 100644
+--- a/fs/ext4/move_extent.c
++++ b/fs/ext4/move_extent.c
+@@ -40,6 +40,7 @@ ext4_double_down_write_data_sem(struct inode *first, struct inode *second)
+ 		down_write_nested(&EXT4_I(first)->i_data_sem, I_DATA_SEM_OTHER);
+ 	}
+ }
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_double_down_write_data_sem);
  
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 0a442844b954..cbe187914fe2 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -5106,6 +5106,7 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
- 	inode_unlock(inode);
+ /**
+  * ext4_double_up_write_data_sem - Release two inodes' write lock of i_data_sem
+@@ -55,6 +56,7 @@ ext4_double_up_write_data_sem(struct inode *orig_inode,
+ 	up_write(&EXT4_I(orig_inode)->i_data_sem);
+ 	up_write(&EXT4_I(donor_inode)->i_data_sem);
+ }
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_double_up_write_data_sem);
+ 
+ /* Grab and lock folio on both @inode1 and @inode2 by inode order. */
+ static int mext_folio_double_lock(struct inode *inode1, struct inode *inode2,
+@@ -667,8 +669,23 @@ int ext4_move_extents(struct file *o_filp, struct file *d_filp, __u64 orig_blk,
+ 	unlock_two_nondirectories(orig_inode, donor_inode);
  	return ret;
  }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_fallocate);
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_move_extents);
  
- /*
-  * This function converts a range of blocks to written extents. The caller of
-@@ -5201,6 +5202,7 @@ int ext4_convert_unwritten_extents_atomic(handle_t *handle, struct inode *inode,
- 
- 	return ret > 0 ? ret2 : ret;
- }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_convert_unwritten_extents_atomic);
- 
- /*
-  * This function convert a range of blocks to written extents
-@@ -5293,6 +5295,7 @@ int ext4_convert_unwritten_extents(handle_t *handle, struct inode *inode,
- 
- 	return ret;
- }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_convert_unwritten_extents);
- 
- int ext4_convert_unwritten_io_end_vec(handle_t *handle, ext4_io_end_t *io_end)
- {
-@@ -5324,6 +5327,7 @@ int ext4_convert_unwritten_io_end_vec(handle_t *handle, ext4_io_end_t *io_end)
- 
- 	return ret < 0 ? ret : err;
- }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_convert_unwritten_io_end_vec);
- 
- static int ext4_iomap_xattr_fiemap(struct inode *inode, struct iomap *iomap)
- {
-@@ -5436,6 +5440,7 @@ int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
- 	inode_unlock_shared(inode);
- 	return error;
- }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_fiemap);
- 
- int ext4_get_es_cache(struct inode *inode, struct fiemap_extent_info *fieinfo,
- 		      __u64 start, __u64 len)
-@@ -5483,6 +5488,7 @@ int ext4_get_es_cache(struct inode *inode, struct fiemap_extent_info *fieinfo,
- 	 */
- 	return ext4_fill_es_cache_info(inode, start_blk, len_blks, fieinfo);
- }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_get_es_cache);
- 
- /*
-  * ext4_ext_shift_path_extents:
+ #if IS_ENABLED(CONFIG_EXT4_KUNIT_TESTS)
+-EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_double_down_write_data_sem);
+-EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_double_up_write_data_sem);
++int ext4_mext_check_validity_test(struct inode *orig_inode,
++				  struct inode *donor_inode)
++{
++	return mext_check_validity(orig_inode, donor_inode);
++}
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_mext_check_validity_test);
++
++int ext4_mext_check_adjust_range_test(struct inode *orig_inode,
++				      struct inode *donor_inode,
++				      __u64 orig_start, __u64 donor_start,
++				      __u64 *len)
++{
++	return mext_check_adjust_range(orig_inode, donor_inode, orig_start,
++				       donor_start, len);
++}
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_mext_check_adjust_range_test);
+ #endif
 -- 
 2.56.1.708.g77570a6a1d-goog
 
