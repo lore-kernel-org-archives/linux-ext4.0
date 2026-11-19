@@ -1,13 +1,13 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795082799;
-	b=a2+ibWbJYqTOobQbsL3Rmynl4L0yNQe1GkfM1y20PPzX9Q3cobz/5Q37HHPY2qp67ufs
-	 LBhHuOOJGtAa8l5tTFQHqfmyWTPr//H/5OjQWyEXW/0XNBqSjz5h0fHOXquBsV5xhFDjU
-	 gmyQiAlTkvRLHUCoCIeCXIZLc+HF1D2T61G6Nr8ESxWK5t8SQmwR1dyAfuJ43Qx7woP1K
-	 rtho8ThwHRJtBJkaF0ccDHqW3C50yvy1jY5ydGU9mdhtRR4uOCZYRunuGa0N1EsKnRs9/
-	 z3lQxjlksY8TSvgv7VNjsRJx2PfzPX7UqGQZ3fnAXX3Di6rdjq+rcPGj+/iWPKspisg==
+	t=1795083194;
+	b=OxtEmWv/KjgtiYkxEvtQPMpYXQTDrj7FKZpDv9P+YT4/tm6X0Rb5yiLwLBGaC1PKc1l8
+	 KuZQV4cRsRvrHp4FMNogqsdk5NgkWpc0dBhjvB8Cw/rziYYIcGW9BMP8YtFVE05DcfiKs
+	 2T7nnZNoX+sfmaCVnXy0aIzEr6gbJjk4qK3uYOP9+M0ja+37iXhOzteU5thZMsOLwnpv4
+	 sL28AV/JmdLaU1RRWHqxSclujR5i5iyerlgmlQOdhLdaTt8Jvvt1S0RdYMAwnlvA+vy6v
+	 SEGX+Rp7X+tgLDMIbtO/3OADwgSpcuiZcJnmCO7OeNZe+F7h213WANY/UsI9SrF308Q==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795082799;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795083194;
 	h=Received:DKIM-Signature:Received:From:To:Subject:Date:
 	 X-Bugzilla-Reason:X-Bugzilla-Type:X-Bugzilla-Watch-Reason:
 	 X-Bugzilla-Product:X-Bugzilla-Component:X-Bugzilla-Version:
@@ -16,43 +16,43 @@ ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
 	 X-Bugzilla-Assigned-To:X-Bugzilla-Flags:X-Bugzilla-Changed-Fields:
 	 Message-ID:In-Reply-To:References:Content-Type:
 	 Content-Transfer-Encoding:X-Bugzilla-URL:Auto-Submitted:MIME-Version;
-	bh=E1pCsl7PTAcI4S//BsIM05SLO+pLh5XMA/WKpkB3C/0=;
-	b=fsVIQ0NqaXdraqSzAccNyeSNc3qDfFhJO0yEZwuYdKN35r12PofN/9IjMPll3sT9hmIL
-	 IuplhPT+jiECNWbvXlUVHV7Jrh8BRzkBMfntpO9xDlTbt+mD5/Sk3Jg9sBmYt352SivdD
-	 W2WC4RXy7rYr54hRFjZzTxm+7fD1jUIS64M0PHJv/YBoBVE5ir7LnZF70dPJAPR0IDGdK
-	 gT80J9UZ5z30fxAqKQlzgWe1WOqJ6iML4VzBsbigC8w4brYdB58lG3M9kfI7dOoZOQv6f
-	 solLBufj/Xb40MwJ8jmyPNxrHqhzKW3sGaQhPyfTJxXeYcaQrefhCmw65odGJvotRVA==
+	bh=Lj7nj9dgk6Ip9wghXk7APeg6mGUcIS69ChDbTKYekEE=;
+	b=r00QulWjbg++6WhTYzDsvbDoZVT9QxXtK9ON95YnGRlF+z73widGCpwiVFt3K/f3gSxF
+	 OWvKVx+jmm3wp8gkPhVh9//irOksjbxhJ4aOBEC7hDVOmyhEFQMyMqTYTABMbFwASJCyo
+	 Iz9R/uXlCdsdNvhjzu4HMlqS3Nofmt0E2xVD9KkuwS3Dh3u7GoMsRt2CzR2bWjw22/Kba
+	 oOFhhBmlGD4Foodsrw7hH+F6sZm12qFx3qXMfdl0jfs06tkImCEu/3ZD2Zzzr7XxqpwA8
+	 uNCAWl6ckRSw89AKBmUnoJOlZKs/vyDn/0oeRbbBwMm7OAPiE7X/YEs72GTC+pcuZ/Q==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=axGnpUgB;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Y8Zhsfl9;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2DBFE606A324
-	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2026 10:06:39 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DD447606A320
+	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2026 10:13:14 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=axGnpUgB
-Received: by smtp.kernel.org (Postfix) with ESMTPS id 0BE471F00926
-	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2026 10:06:39 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Y8Zhsfl9
+Received: by smtp.kernel.org (Postfix) with ESMTPS id 674F31F000C6
+	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2026 10:13:14 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795082799;
-	bh=E1pCsl7PTAcI4S//BsIM05SLO+pLh5XMA/WKpkB3C/0=;
+	s=k20260515; t=1795083194;
+	bh=Lj7nj9dgk6Ip9wghXk7APeg6mGUcIS69ChDbTKYekEE=;
 	h=From:To:Subject:Date:In-Reply-To:References;
-	b=axGnpUgBTUbWxY0lshdjfaqw6Pj3KpAXi/VyVlvTl3IEf3hBSYYZC6kIN9mGBSC4O
-	 fLwtKIj7GLLmhQmq8GKmrDVNNorJ/CUrDzMtPWX1smOVOxDo9rg/UMA28PBODwxndJ
-	 9xkJcowb4unSIHSZh873Qym67ldaVfGB8NriOB2XiS90UkB8L7eeox+gl/oEkdyZq1
-	 jt5TRiAopi9JgLRkoI0/3xC1c3W5O9GeRLkJrMBHAq4NRyeHbFHhr+OxJ9h9nkRX/a
-	 tpIMjb7jGWpz9hZqgUgaCjhNKUag7ZAP++f6Qc7FapYmsuAVKNoJLybESiFCDshABr
-	 Wpn58Vy3DQgHQ==
+	b=Y8Zhsfl9BH8wOXolG1mimhVUjGjpM/WSsgcPuPpApXzsJlGF6N3HKyOMVscGruc52
+	 NS9hUr2Oh6Puwjk1ackD5On2TiDDwEKLxE3AvZUx+UvtlHPTDtfZGJYqtznv2RhhkD
+	 1XI0gzjVmmq8Lkxm0ikgaVSe7r5SHM+5M7ZOHoqaCzssuEil8RBovV2zF+Bh9Ne5Zy
+	 4Ft6y/EvUxN/t+H4SnsuzMrHqRHeKGn8nLPpolYZi4S06aCgRWZMYsf/YjS1bLKVJg
+	 9+lGLyb3mCrp/RRyCLdlZQDxZWhJQYttmQbWvrkOyovb239lvOfLqrFVxUhir3MLoN
+	 j+er7pWrG3Hiw==
 Received: by aws-us-west-2-korg-bugzilla-alma10-1.codeaurora.org (Postfix, from userid 48)
-	id 08359240040C; Thu, 19 Nov 2026 10:06:39 +0000 (UTC)
+	id 642E8240040E; Thu, 19 Nov 2026 10:13:14 +0000 (UTC)
 From: bugzilla-daemon@kernel.org
 To: linux-ext4@vger.kernel.org
 Subject: [Bug 222294] [REGRESSION] 6.1.191+: NULL deref in
  ext4_mb_load_buddy_gfp() after a3a7d360252c ("ext4: fix e4b bitmap
  inconsistency reports")
-Date: Thu, 19 Nov 2026 10:06:38 +0000
+Date: Thu, 19 Nov 2026 10:13:14 +0000
 X-Bugzilla-Reason: None
 X-Bugzilla-Type: changed
 X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
@@ -67,8 +67,8 @@ X-Bugzilla-Resolution:
 X-Bugzilla-Priority: P3
 X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
 X-Bugzilla-Flags: 
-X-Bugzilla-Changed-Fields: cf_regression cf_bisect_commit cf_kernel_version
-Message-ID: <bug-222294-13602-CuRpxdaT07@https.bugzilla.kernel.org/>
+X-Bugzilla-Changed-Fields: attachments.created
+Message-ID: <bug-222294-13602-FHONC5Cxuq@https.bugzilla.kernel.org/>
 In-Reply-To: <bug-222294-13602@https.bugzilla.kernel.org/>
 References: <bug-222294-13602@https.bugzilla.kernel.org/>
 Content-Type: text/plain; charset="UTF-8"
@@ -87,14 +87,10 @@ MIME-Version: 1.0
 
 https://bugzilla.kernel.org/show_bug.cgi?id=3D222294
 
-Dawid Partyka (internet.jejkowice@gmail.com) changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-         Regression|No                          |Yes
- Bisected commit-id|                            |a3a7d360252c0d84ae8bda067fb
-                   |                            |296c9e82928d3
-     Kernel Version|                            |6.1.192
+--- Comment #2 from Dawid Partyka (internet.jejkowice@gmail.com) ---
+Created attachment 311520
+  --> https://bugzilla.kernel.org/attachment.cgi?id=3D311520&action=3Dedit
+log
 
 --=20
 You are receiving this mail because:
