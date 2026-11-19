@@ -1,55 +1,55 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795105020;
-	b=ZjAoiYbg5afVJWAGsflRpXz4qgfCoB9gGUMTI/DDQOy1ISOGFhR1OZ8Z78tYw4aviDy0
-	 e3LBM8GVFrjW0gn0m/hAgwz15ojVACPPd9fECPIo9Nj6VmP7bvipRmLyI4SKSV/ZYHLbi
-	 63xaU1fXpgaJh1E1EqvL2CUSyluwrLyhns9sZvl6DVpd/UfQVQdQ4v4lEDHHYgpjgNNUH
-	 CVm4+mFoGwswND71tcAj088u4xsBUo/XkYaPR2U4VqRC+0Aiy+kXLQU2uR/H49SQBsYwG
-	 0TIJsdvjlxE5LCJXZdtXck7/PtZf4sOZxaE5kfVQniFVap3dmDu7pw+9Dn56unYtf9g==
+	t=1795105066;
+	b=ZPjKuZYlMtg7B+2YC8sy8IPwuKMquXM6pPVYgwEX6bIvbd3Bi32FUaA5RsSMFqx1lnop
+	 ZfRJMuGQtVEEQLlVApOBeh3Om/qFT0GjUv0k7GMhKIaraLN082HTXPESIr0akNlpxPRcm
+	 w1l4HsQDRxRGqKhEAaaog9SrIRpDn2Rv9ofE3MgxZkZgMwx8hXneGJrlrIwWC/JFH6Ciw
+	 r1kaA5+5HIICNlyjpXdcFnoijk1isMAAu3tICc1YLiUkokapYx0Kc0CmdPMsPBz2ZrKGx
+	 gmL0Ti2nlJQZD/VXEPPt0U+Cz8nFoXf8pSQJn8sSAGRF1cu5VgrvjwO31vXDU7ZT/vA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795105020;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795105066;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=UqqGQc7XH52fXGbQHRVNBSRf4oeaIZ3mKRhsZ6Y1GTU=;
-	b=qxL5QJHn3f410mIp5Bj81WN39bZpQkmkGLAlzNdFM0w64EnEGf7lLL8Z4u5f/hjaow/L
-	 KBz7oR41onJrKDilv4aY/gpTuRRoY5CvqWmf9C+Gu7XSymjVOL7/wPG+Lv2BGjdKHqp+C
-	 rM+FHhaeu3gfulxwebvKTLtpVVZOy0fggXrwNzGEd2lBHf7XeEkNdDvKtMIk1m07UR199
-	 +r1eKkTTp+DwNjMcuB/vSH/XVKQD0aDjoN8vWPd2IVd6vtxUE8I/FgtGOUgrtjdiUVS6h
-	 ILHHdcUxCTVJjZylpGhzDeMVobqPUma+VBuw2X6/YnmJVVtMG1kf6trsMgYmEmzUeKw==
+	bh=Ek6wOWWUQmRiXAOsuufzKptet3xneruwSETGHFu9nRE=;
+	b=ZMo4ZOPJMp2qCpJ+kgwVoHbcpR9nDPLWEVY1ujMpG7DQ8uKrDn0McXcAUndZYNGU1hA5
+	 WqXzz6vAn+h3l0b38VKPTv98IeCFNqek18Lv0I2vezAFbaGHbFeMwrlBCR5x2RrSCWtgl
+	 jGjOFEPonzHR1uyQSN7kttHep7amZNr4B0CiOlh3uNNIZF3Mya3gdTvaIRnWJ3l8d16oX
+	 Pp87QXiil41K5FSFTNWhPBnkbT8mOsi+O4lHvLK4po6OhmECPC5amZhvJUkHz+ttJCPJw
+	 nENYAvxCT4RTBKQPoJ1j/fzQi+mO9ynrMQ/9JMV1hEobvcGwtpreMBWWEQTlqmMi+VQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=nF4JtNch;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="GtqWXo/x";
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 57BF7606A320
-	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2026 16:17:00 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 05A4A606A320
+	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2026 16:17:45 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=nF4JtNch
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C769A1F000C6;
-	Thu, 19 Nov 2026 16:16:59 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=GtqWXo/x
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 844951F000C4;
+	Thu, 19 Nov 2026 16:17:45 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795105020;
-	bh=UqqGQc7XH52fXGbQHRVNBSRf4oeaIZ3mKRhsZ6Y1GTU=;
+	s=k20260515; t=1795105065;
+	bh=Ek6wOWWUQmRiXAOsuufzKptet3xneruwSETGHFu9nRE=;
 	h=From:Subject:Reply-To:To:In-Reply-To:References:Date;
-	b=nF4JtNch7pmY91yUyQkyYPB1oom1jq2Lq5Il/iqclBxWOtbnIGyS1W5dNqpArYbF+
-	 qJqMVWL3tqFa+YEhUuWaXjygzrNoOUTO2HOHQKRNIXAsvVp6FWbMCYtEQKM3sitC9K
-	 xW2il3llhZubfa97N+jtVhvRhrqu21UzT76AVk1rfZum+nn/Kuw3lMi6kusGhKh8GY
-	 DRdQdrWtDAsWIJtl2aOIcQym6w42PMyjgZ7NcXoNrPGmuDJp6CpRILTTFkNxCxTmIy
-	 cCPtIk0HQvMxRY+TOtD3p1fjaP4PcQM8FNDnHHnUJh5oYIXA0MLO41anj140cnFw7i
-	 HRhaJBUzDcOEA==
-Message-ID: <sashiko-outbox-223504@kernel.org>
+	b=GtqWXo/xgUZXNcwm+hzrxwJWJ1NBk8h+kjYqHvBKfW/XD7IfRzy97uJxaWBnHR6xT
+	 9leXvmb9aLUm6d4aRhIu7gAeHE4gRcbDuhgMaKFOzZa1gihLXPElXn+I2fSgKS1HCD
+	 IN++7WVoz3R+jZ1I2QcwKdnuF1ORJsVtHjQpf93u9xePU0hd62dArf/npRbSf8QIvV
+	 4RbF4STPSbX2ZU6698mvJVlsJ1tT5bW4yV/JYsbcsc4P7Mll3vKYjIM/MY9/hUasos
+	 8Qi2q2+NBzwvfV7AcgwClqJvNPsHz5ZZmMXNhlHuf2/qWofwZ+KvoZNSZM5hzncp87
+	 ddIbtGtl/SP1Q==
+Message-ID: <sashiko-outbox-223505@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH -v2 20/26] ext4: add KUnit tests for fs/ext4/indirect.c
+Subject: Re: [PATCH -v2 25/26] ext4: add KUnit tests for fs/ext4/dir.c
 Reply-To: sashiko-reviews@lists.linux.dev
 To: =?utf-8?b?VGhlb2RvcmUgVHMnbw==?= <tytso@mit.edu>, "Ext4 Developers List" <linux-ext4@vger.kernel.org>
-In-Reply-To: <20261119155658.1940864-21-tytso@mit.edu>
+In-Reply-To: <20261119155658.1940864-26-tytso@mit.edu>
 References: <20261119155658.1940864-1-tytso@mit.edu>
- <20261119155658.1940864-21-tytso@mit.edu>
+ <20261119155658.1940864-26-tytso@mit.edu>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Thu, 19 Nov 2026 16:16:59 +0000
+Date: Thu, 19 Nov 2026 16:17:45 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -59,89 +59,40 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-Thank you for your contribution! Sashiko AI review found 1 potential
-issue to consider:
-- [Low] ext4: leak of test inode and handle on KUNIT_ASSERT abort in
-  indirect-test.c
---
+> Add a KUnit test suite (ext4_dir_test) in fs/ext4/dir-test.c covering
+> directory entry validation, hash-cookie helpers, directory llseek, and
+> both linear and HTree directory iteration in fs/ext4/dir.c:
+>=20
+> - __ext4_check_dir_entry() and ext4_check_all_de() validation across
+>   valid blocks (including fake '.', '..', and metadata_csum tail
+>   entries, as well as encrypted+casefolded extended-hash entries) and
+>   corrupt rec_len, alignment, name_len, block-end slack, overrun,
+>   out-of-bounds inode numbers, and full-block '.' entries.
+> - is_dx_dir(), get_dtype(), and 32-bit vs 64-bit HTree telldir hash
+>   position conversions (hash2pos, pos2maj_hash, pos2min_hash, and
+>   ext4_get_htree_eof).
+> - ext4_dir_operations open(), llseek() (64-bit and 32-bit HTree EOF
+>   bounds vs non-DX s_bitmap_maxbytes/SEEK_END bounds and cookie
+>   invalidation), and release().
+> - ext4_htree_store_dirent() rbtree ordering across major/minor hashes,
+>   64-bit hash collision chaining, and ext4_htree_free_dir_info().
+> - Linear ext4_readdir() across multi-block directories with sparse
+>   holes, deleted entries, stop/resume, unaligned f_pos revalidation on
+>   i_version change, bad checksum and corrupt entry skipping, and
+>   ERR_BAD_DX_DIR fallback clearing EXT4_INODE_INDEX.
+> - HTree ext4_dx_readdir() across multi-leaf next_hash continuations,
+>   mid-collision extra_fname stop/resume, EOF handling, seek reset, and
+>   mid-iteration i_version refill.
+>=20
+> Export ext4_dir_operations, expose thin KUnit wrappers for static
+> helpers in fs/ext4/dir.c, and add a KUNIT_STATIC_STUB_REDIRECT hook to
+> ext4_htree_fill_tree().
+>=20
+> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 
-commit ac1d07e8010829fce0fd4a0596e2f92e79885c99
-Author: Theodore Ts'o <tytso@mit.edu>
-
-ext4: add KUnit tests for fs/ext4/indirect.c
-
-This commit adds the ext4_indirect_test KUnit test suite covering legacy
-indirect block mapping, truncation, and hole punching in fs/ext4/indirect.c.
-
-> diff --git a/fs/ext4/indirect-test.c b/fs/ext4/indirect-test.c
-> new file mode 100644
-> index 0000000000000..8d4a430ecb272
-> --- /dev/null
-> +++ b/fs/ext4/indirect-test.c
-
-[ ... ]
-
-> +static __le32 *ind_blk_ptrs(struct kunit *test, ext4_fsblk_t blk)
-> +{
-> +	struct ind_test_ctx *ctx =3D test->priv;
-> +	struct buffer_head *bh;
-> +
-> +	bh =3D ind_get_or_create_bh(ctx, blk);
-> +	KUNIT_ASSERT_NOT_NULL(test, bh);
-> +	brelse(bh);
-> +	return (__le32 *)bh->b_data;
-> +}
-> +
-> +static struct inode *ind_make_test_inode(struct kunit *test, unsigned lo=
-ng ino)
-> +{
-> +	struct ind_test_ctx *ctx =3D test->priv;
-> +	struct inode *inode;
-> +
-> +	inode =3D new_inode(ctx->sb);
-> +	KUNIT_ASSERT_NOT_NULL(test, inode);
-> +	inode->i_ino =3D ino;
-> +	inode->i_mode =3D S_IFREG | 0644;
-> +	inode->i_blkbits =3D IND_TEST_BLK_BITS;
-> +	inode->i_flags |=3D S_NOQUOTA;
-> +	EXT4_I(inode)->i_block_group =3D 0;
-> +	return inode;
-> +}
-
-[ ... ]
-
-> +static void test_ind_remove_space_levels_and_convergence(struct kunit *t=
-est)
-> +{
-> +	struct ind_test_ctx *ctx =3D test->priv;
-> +	struct inode *inode =3D ind_make_test_inode(test, 17);
-> +	__le32 *ind, *dind, *c0, *c1, *c2;
-> +	handle_t *handle;
-> +	unsigned int i;
-> +	int ret;
-> +
-> +	handle =3D ext4_journal_start(inode, EXT4_HT_TRUNCATE, 8);
-> +	KUNIT_ASSERT_FALSE(test, IS_ERR(handle));
-
-[ ... ]
-
-> +	EXT4_I(inode)->i_data[EXT4_IND_BLOCK] =3D cpu_to_le32(510);
-> +	ind =3D ind_blk_ptrs(test, 510);
-
-[Severity: Low]
-Can a KUNIT_ASSERT_* failure after ind_make_test_inode() or
-ext4_journal_start() leak the test inode and journal handle?
-
-If ind_get_or_create_bh() fails inside ind_blk_ptrs() (or in
-test_ind_map_blocks_errors_and_alloc_branch_unwind()), or if
-ext4_journal_start() fails after ind_make_test_inode(), the test aborts
-before reaching ext4_journal_stop() and iput().  That leaves the no-journal
-handle in current->journal_info with memalloc_nofs_save() active on the
-KUnit runner thread, and leaves an active inode on ctx->sb->s_inodes when
-ind_test_cleanup() calls deactivate_super(sb).  Registering KUnit cleanup
-actions for the inode (as in migrate_make_test_inode()) and handle, or
-releasing them before aborting, would avoid this.
+Sashiko has reviewed this patch and found no issues.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261119155658.1940=
-864-1-tytso@mit.edu?part=3D20
+864-1-tytso@mit.edu?part=3D25
+
