@@ -1,60 +1,60 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=18.9.28.11
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
 	t=1795103831;
-	b=BC4CFDZE0ShSW055kOP425rMlaB0LxIYAJ6qPhjdfwjXyRFBP9uHUNqTFCSp7ICNpzQW
-	 XNzv+pTI0qHf5LluvpN432ajSKWymp6zobKjcvUHoYUjlAqEa6Lc0OpKeugXpdxEPoRTV
-	 0WgtZToHNGYj8VqRzV78WLL25UQDfjJj6Obrtlhfy2uVy5kwjVQaFZcCH7bpVmbx1XnD7
-	 33LcbrMF4/9V6qqgc2UM86YxcKW2sVrbq3P6iXCdJPA5M/B+61BshK+nwrP1xbvKsdAZB
-	 iljSIVQ76inbtHpWVatxtw0fNZJKU0971tf2R1IUc1eKyc5beP3UK3eZCTJNw5Qbh9g==
+	b=MOsgpekjaeux2DeIM135UtfP3he/nt1W9PPf8ltf/c95b85eiGBoLFjMeO7MNnJsn58K
+	 esZTBpurfLR5XkKy7jsZfzjhJXonA7yQad9bRtvMtqzU5hgz8PAn5Gn8n+1/vOglDV6SV
+	 XXHQCFagkdjdf5HS4tDHg/MVZ4OtOuweOHTL55ejqRePcAvlKvSs0NL1vsElJw7UQzule
+	 6eDpj/pMXbFfKbwkuQD0FQ8gcpybPJXWgrDc2CNFY7QdFiIp5zANun/LSvdA4Xmw/TLaB
+	 qVfm+PPzDCUOZkFAuCqPHYdpiXA34l5hA4KE8tldfm010wHfMJ9iSxWJaOHaFf6/oAw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
 	a=rsa-sha256; c=relaxed/relaxed; t=1795103831;
 	h=DMARC-Filter:Received:DKIM-Signature:Received:From:To:Cc:Subject:
 	 Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
 	 Content-Transfer-Encoding;
-	bh=RveK3lHimp/TMc/vp+DmPZFUYQGs5xvbaIc6ZlI3sSs=;
-	b=1iGwANJNaOh8U+lrc6UMRUecYE4hM0kpPag4T0hy1ZcJDE+gluWTMwfWBXKIam7sYsAj
-	 J4sekHmv1qaMgp2Zvql94eKm6MpKjqt4YcgZH2/qTPNY+0ajfeYUDwX5djWZnErxUmDRE
-	 ieFpzBKehFUH2cxeG6d/MklpjAnddnRSMgbqsbvo6t0TAB/uuxD8YcBzs6bUY9X2IRXti
-	 2N2F98u8SJYgdlC2HwJb/FQzume/oHaiDP71FRNWIrI8HqfX6BvRknI7H0iOYkeB7J4Nn
-	 dAi8si2QW40MVSdQKkKfF5kma5Pfdp3IQKc80uj0cTfJaEhO3g/Ie74JZL6xELKNmPQ==
+	bh=bVGx/lqpUjc/WeFwS6dvZ+tVUxCaRjvT3cNpi6+xgmE=;
+	b=lwrh7lRTZAVQXDjpBp7t7DPlfr73NHx2tmEqtgo0GMWDwtEY0dRPtsturJistLtGbGlF
+	 5UZzaRi05qafAewBSn37qzPPqhvjq5uEq92rt2uERcu1t3Gr/UskP8qPw1FO4N4BRuDNZ
+	 VU/sgSzZK35kD6QamzhhFPixrCjnhQb92KZjOckUAa8bMyesLGJ7szCUYNGHErphltRN9
+	 ye3S+P8KHf89Melo+HjiOL++RWuN5KLF3U/lGMLUL9ICAIlkz2q6c8+peexeJE3n3xFwM
+	 O27zDtTMVRP0dFoiVuyLU2VQ4nhIj/aNIg9gCFykA15q7v20BDn36aKBdLuDhajBthg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=mit.edu;
 	spf=pass smtp.mailfrom=mit.edu;
-	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=npFn+06Z;
+	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=GDUPxiWo;
 	arc=none smtp.remote-ip=18.9.28.11
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 63C0A606A339
-	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2026 15:57:06 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 63C0A606A339
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6D6A960A261C
+	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2026 15:57:07 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 6D6A960A261C
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=npFn+06Z
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=GDUPxiWo
 Received: from trampoline.thunk.org (pool-173-48-114-214.bstnma.fios.verizon.net [173.48.114.214])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AJFv3Cm001664
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AJFv354001665
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
 	Thu, 19 Nov 2026 10:57:04 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1795103824; bh=RveK3lHimp/TMc/vp+DmPZFUYQGs5xvbaIc6ZlI3sSs=;
+	t=1795103824; bh=bVGx/lqpUjc/WeFwS6dvZ+tVUxCaRjvT3cNpi6+xgmE=;
 	h=From:Subject:Date:Message-ID:MIME-Version;
-	b=npFn+06Z8xF1Rmx21vira2NwZ1y1A6PSw58Nvv6eNbj8sDAJ/YSFxa5k2QmGNVaU6
-	 1EZ6qWBZIoPBp3BLtT1ysuKsKfSsN9x3EtY8EDti/782NIZIhsOB70r2Iz6xZ8Mo5w
-	 ypPMsAcbEChljoGWtqH2C57kCSWNT8Ukqzd8Pq3/9wgtGSxCn6ix3xxXh213g/gyay
-	 IBMzvzI2PZaGWgI4PaeyEUG6OLGbaVAmS8+wldFFIHiPrs0zi1nJ4WUxbt44+3Secb
-	 tulyRuDT8KZP0bHwvdPJ1hJm6Wb1VuCPiDHvmZLiavl5YMH0t6qmOrt2bo/Z5e/BmP
-	 9O0bF3ZuGrqvQ==
+	b=GDUPxiWorlVTvBQ5tdzR4D8f+WjCOSrsRp8HNmhympXIOizdQddfc4yFHjM/gMmtf
+	 W6OAkJ0ZnvxB5Ji9BzVvbqo8sxDzWMc1zYByUk1Go/gz3/W6fSK0A/lySL+ZFxpPIH
+	 XI3jNxD0/XbVmQs7xzbsQL7TUz91lWWklTN2QZerTiknWLtyCdu+t08DF02ySN5s+N
+	 diHvPhkPQl7vRk4JkCYoMYx90U0gjSdgKPo+mKFw74pFxiYeb5BjS8jctAxkeCD9W4
+	 eQqC79RzjFNh1XM/KEK5UvSqr/eKayXdSxyakw2BiZ8D6t8hHYWWKT27j/Nj7jWFs6
+	 xOsifmVT5scnQ==
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id 942AA2E015C; Thu, 19 Nov 2026 10:57:00 -0500 (EST)
+	id 9798E2E015D; Thu, 19 Nov 2026 10:57:00 -0500 (EST)
 From: "Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Cc: "Theodore Ts'o" <tytso@mit.edu>
-Subject: [PATCH -v2 23/26] ext4: add KUnit tests for fs/ext4/move_extent.c
-Date: Thu, 19 Nov 2026 10:56:55 -0500
-Message-ID: <20261119155658.1940864-24-tytso@mit.edu>
+Subject: [PATCH -v2 24/26] ext4: add KUnit tests for fs/ext4/mmp.c
+Date: Thu, 19 Nov 2026 10:56:56 -0500
+Message-ID: <20261119155658.1940864-25-tytso@mit.edu>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <20261119155658.1940864-1-tytso@mit.edu>
 References: <20261119155658.1940864-1-tytso@mit.edu>
@@ -69,520 +69,341 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Add a KUnit test suite (ext4_move_extent_test) covering online extent
-swapping and validation helpers in fs/ext4/move_extent.c:
+Add a KUnit test suite (ext4_mmp_test) covering multi-mount protection
+checksums, block I/O validation, and mount state transitions in
+fs/ext4/mmp.c:
 
-- Ordered i_data_sem lock acquisition/release in
-  ext4_double_down_write_data_sem() and ext4_double_up_write_data_sem()
-- File, feature, and mode checks in mext_check_validity() (same inode,
-  cross-sb, non-regular, bigalloc, DAX, data journaling, encrypted,
-  non-extent, SUID/SGID, immutable/append, swapfile, quota, zero size)
-- Sub-page alignment, EXT_MAX_BLOCKS bounds, and EOF clamping in
-  mext_check_adjust_range()
-- End-to-end ext4_move_extents() across origin/donor holes, unwritten
-  extent moves, written MEXT_COPY_DATA with extent splitting and page
-  cache preservation, unwritten-origin zeroing, and -EBUSY release
+- CRC32C generation and verification in ext4_mmp_csum_set() and
+  ext4_mmp_csum_verify() with and without METADATA_CSUM
+- Block read/write error handling, magic validation (-EFSCORRUPTED),
+  CRC mismatch handling (-EFSBADCRC), and buffer cleanup in
+  read_mmp_block() and write_mmp_block()
+- ext4_multi_mount_protect() validation of out-of-range MMP blocks,
+  EXT4_MMP_SEQ_FSCK rejection (-EBUSY), EXT4_MMP_SEQ_CLEAN claim and
+  ext4_stop_mmpd() teardown, active/racing node sequence conflicts,
+  check_interval clamping, interrupted waits (-ETIMEDOUT), and kthread
+  startup failure
 
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/Makefile           |    3 +-
- fs/ext4/ext4.h             |    8 +
- fs/ext4/move_extent-test.c | 1023 ++++++++++++++++++++++++++++++++++++
- fs/ext4/move_extent.c      |   21 +-
- 4 files changed, 1052 insertions(+), 3 deletions(-)
- create mode 100644 fs/ext4/move_extent-test.c
+ fs/ext4/Makefile   |   2 +-
+ fs/ext4/ext4.h     |  20 +-
+ fs/ext4/mmp-test.c | 661 +++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/mmp.c      | 117 ++++++--
+ 4 files changed, 770 insertions(+), 30 deletions(-)
+ create mode 100644 fs/ext4/mmp-test.c
 
 diff --git a/fs/ext4/Makefile b/fs/ext4/Makefile
-index e1964407be24..5cf735df7656 100644
+index 5cf735df7656..cb0d7b6edf6d 100644
 --- a/fs/ext4/Makefile
 +++ b/fs/ext4/Makefile
-@@ -23,7 +23,8 @@ ext4-test-objs				+= inode-test.o mballoc-test.o \
- 					   block_validity-test.o super-test.o \
+@@ -24,7 +24,7 @@ ext4-test-objs				+= inode-test.o mballoc-test.o \
  					   sysfs-test.o ioctl-test.o \
  					   resize-test.o migrate-test.o \
--					   indirect-test.o fsmap-test.o
-+					   indirect-test.o fsmap-test.o \
-+					   move_extent-test.o
+ 					   indirect-test.o fsmap-test.o \
+-					   move_extent-test.o
++					   move_extent-test.o mmp-test.o
  obj-$(CONFIG_EXT4_KUNIT_TESTS)		+= ext4-test.o
  ext4-$(CONFIG_FS_VERITY)		+= verity.o
  ext4-$(CONFIG_FS_ENCRYPTION)		+= crypto.o
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 03689d55e751..29277a79c65b 100644
+index 29277a79c65b..9cf1dd6351a7 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -4250,6 +4250,14 @@ extern void ext4_double_up_write_data_sem(struct inode *orig_inode,
- extern int ext4_move_extents(struct file *o_filp, struct file *d_filp,
- 			     __u64 start_orig, __u64 start_donor,
- 			     __u64 len, __u64 *moved_len);
+@@ -4285,9 +4285,25 @@ extern void ext4_iomap_end_bio(struct bio *bio);
+ 
+ /* mmp.c */
+ extern int ext4_multi_mount_protect(struct super_block *, ext4_fsblk_t);
+-
+-/* mmp.c */
+ extern void ext4_stop_mmpd(struct ext4_sb_info *sbi);
++extern int ext4_mmp_submit_write(struct buffer_head *bh);
++extern int ext4_mmp_load_bh(struct super_block *sb, struct buffer_head **bh,
++			    ext4_fsblk_t mmp_block);
++extern long ext4_mmp_wait_timeout(long timeout);
++extern struct task_struct *ext4_mmp_run_thread(struct super_block *sb,
++					       const char *bdevname,
++					       int bdevname_len);
 +#if IS_ENABLED(CONFIG_EXT4_KUNIT_TESTS)
-+extern int ext4_mext_check_validity_test(struct inode *orig_inode,
-+					 struct inode *donor_inode);
-+extern int ext4_mext_check_adjust_range_test(struct inode *orig_inode,
-+					     struct inode *donor_inode,
-+					     __u64 orig_start,
-+					     __u64 donor_start, __u64 *len);
++extern int ext4_mmp_csum_verify_test(struct super_block *sb,
++				     struct mmp_struct *mmp);
++extern void ext4_mmp_csum_set_test(struct super_block *sb,
++				   struct mmp_struct *mmp);
++extern int ext4_read_mmp_block_test(struct super_block *sb,
++				    struct buffer_head **bh,
++				    ext4_fsblk_t mmp_block);
++extern int ext4_write_mmp_block_test(struct super_block *sb,
++				     struct buffer_head *bh);
 +#endif
  
- /* page-io.c */
- /*
-diff --git a/fs/ext4/move_extent-test.c b/fs/ext4/move_extent-test.c
+ /* verity.c */
+ extern const struct fsverity_operations ext4_verityops;
+diff --git a/fs/ext4/mmp-test.c b/fs/ext4/mmp-test.c
 new file mode 100644
-index 000000000000..a3e002f14109
+index 000000000000..e8496e8940f5
 --- /dev/null
-+++ b/fs/ext4/move_extent-test.c
-@@ -0,0 +1,1023 @@
++++ b/fs/ext4/mmp-test.c
+@@ -0,0 +1,661 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
-+ * KUnit tests for fs/ext4/move_extent.c
++ * KUnit tests for fs/ext4/mmp.c
 + */
 +
 +#include <kunit/static_stub.h>
 +#include <kunit/test.h>
 +#include <linux/blkdev.h>
 +#include <linux/buffer_head.h>
-+#include <linux/dcache.h>
 +#include <linux/fs.h>
 +#include <linux/fs_context.h>
-+#include <linux/fscrypt.h>
-+#include <linux/iversion.h>
-+#include <linux/mm.h>
++#include <linux/kthread.h>
 +#include <linux/module.h>
-+#include <linux/pagemap.h>
 +#include <linux/part_stat.h>
 +#include <linux/percpu.h>
-+#include <linux/percpu_counter.h>
-+#include <linux/quotaops.h>
-+#include <linux/rcupdate.h>
++#include <linux/sched.h>
 +#include <linux/slab.h>
 +#include <linux/string.h>
 +#include <linux/timer.h>
 +#include <linux/workqueue.h>
 +
 +#include "ext4.h"
-+#include "ext4_extents.h"
-+#include "ext4_jbd2.h"
 +
-+#define MEXT_TEST_BLK_SIZE		4096U
-+#define MEXT_TEST_BLK_BITS		12U
-+#define MEXT_TEST_BLOCKS_PER_GRP	32768U
-+#define MEXT_TEST_NGROUPS		8U
-+#define MEXT_TEST_FIRST_DATA_BLK	1U
-+#define MEXT_TEST_TOTAL_BLKS		(MEXT_TEST_FIRST_DATA_BLK + \
-+					 MEXT_TEST_NGROUPS * \
-+					 MEXT_TEST_BLOCKS_PER_GRP)
-+#define MEXT_MAX_META_BLKS		16U
-+#define MEXT_META_BASE_PBLK		1000U
++#define MMP_TEST_BLK_SIZE	4096U
++#define MMP_TEST_BLK_BITS	12U
++#define MMP_TEST_FIRST_DATA_BLK	1ULL
++#define MMP_TEST_TOTAL_BLKS	1024ULL
++#define MMP_TEST_VALID_BLK	10ULL
++#define MMP_MAX_WAITS		8U
 +
-+struct mext_meta_blk {
-+	ext4_fsblk_t pblk;
-+	struct buffer_head bh;
-+	u8 data[MEXT_TEST_BLK_SIZE];
-+	bool in_use;
-+};
-+
-+struct mext_test_ctx {
++struct mmp_test_ctx {
 +	struct super_block *sb;
 +	struct ext4_sb_info sbi;
 +	struct ext4_super_block *es;
-+	struct blockgroup_lock bgl;
 +	struct gendisk bdev_disk;
 +	struct block_device bdev;
 +	struct request_queue bdev_queue;
 +	struct address_space bdev_mapping;
 +	struct buffer_head sbh;
-+	u8 sbh_data[MEXT_TEST_BLK_SIZE];
-+	struct mext_meta_blk *meta_blks;
-+	ext4_fsblk_t next_meta_pblk;
-+	struct inode *orig_inode;
-+	struct inode *donor_inode;
-+	struct dentry orig_dentry;
-+	struct dentry donor_dentry;
-+	struct file orig_file;
-+	struct file donor_file;
-+	bool es_shrinker_inited;
-+	bool counters_inited;
++	u8 sbh_data[MMP_TEST_BLK_SIZE];
++
++	/* Simulated on-disk MMP block and in-memory buffer_head */
++	u8 disk_buf[MMP_TEST_BLK_SIZE];
++	struct buffer_head mmp_bh;
++	u8 bh_buf[MMP_TEST_BLK_SIZE];
++
++	/* Deterministic I/O, sleep, and kthread fault injection */
++	int load_nomem;
++	int load_err_on_call;
++	unsigned int load_calls;
++	ext4_fsblk_t last_load_blk;
++
++	int write_err_on_call;
++	unsigned int write_calls;
++
++	unsigned int wait_calls;
++	long wait_timeouts[MMP_MAX_WAITS];
++	long wait_ret_on_call;
++	unsigned int wait_ret_target_call;
++	unsigned int mutate_seq_on_wait_call;
++	u32 mutated_seq;
++
++	int run_thread_err;
++	unsigned int run_thread_calls;
 +};
 +
-+static struct kunit *active_mext_test;
++static struct kunit *active_mmp_test;
 +
-+static void mext_noop_work(struct work_struct *work)
++static void mmp_noop_work(struct work_struct *work)
 +{
 +}
 +
-+static void mext_noop_timer(struct timer_list *t)
++static void mmp_noop_timer(struct timer_list *t)
 +{
 +}
 +
-+static unsigned long mext_dummy_shrinker_count(struct shrinker *shrink,
-+					       struct shrink_control *sc)
++static const struct super_operations mmp_test_sops = {};
++
++static int mmp_init_fs_context(struct fs_context *fc)
 +{
 +	return 0;
 +}
 +
-+static unsigned long mext_dummy_shrinker_scan(struct shrinker *shrink,
-+					      struct shrink_control *sc)
-+{
-+	return SHRINK_STOP;
-+}
-+
-+static struct inode *mext_test_alloc_inode(struct super_block *sb)
-+{
-+	struct ext4_inode_info *ei;
-+
-+	ei = kzalloc_obj(*ei);
-+	if (!ei)
-+		return NULL;
-+
-+	init_rwsem(&ei->i_data_sem);
-+	inode_init_once(&ei->vfs_inode);
-+	inode_set_iversion(&ei->vfs_inode, 1);
-+	ei->i_prealloc_node = RB_ROOT;
-+	rwlock_init(&ei->i_prealloc_lock);
-+	ext4_es_init_tree(&ei->i_es_tree);
-+	rwlock_init(&ei->i_es_lock);
-+	INIT_LIST_HEAD(&ei->i_es_list);
-+	spin_lock_init(&ei->i_raw_lock);
-+	spin_lock_init(&ei->i_block_reservation_lock);
-+	ext4_init_pending_tree(&ei->i_pending_tree);
-+	init_rwsem(&ei->xattr_sem);
-+	INIT_LIST_HEAD(&ei->i_rsv_conversion_list);
-+	spin_lock_init(&ei->i_completed_io_lock);
-+	INIT_LIST_HEAD(&ei->i_orphan);
-+	ext4_fc_init_inode(&ei->vfs_inode);
-+	spin_lock_init(&ei->i_fc_lock);
-+	ei->i_projid = make_kprojid(&init_user_ns, EXT4_DEF_PROJID);
-+	ei->i_extra_isize = sizeof(struct ext4_inode) - EXT4_GOOD_OLD_INODE_SIZE;
-+	ei->i_last_alloc_group = ~0U;
-+
-+	return &ei->vfs_inode;
-+}
-+
-+static void mext_test_free_inode(struct inode *inode)
-+{
-+	kfree(EXT4_I(inode));
-+}
-+
-+static void mext_test_evict_inode(struct inode *inode)
-+{
-+	truncate_inode_pages_final(&inode->i_data);
-+	ext4_es_remove_extent(inode, 0, EXT_MAX_BLOCKS);
-+	clear_inode(inode);
-+}
-+
-+#ifdef CONFIG_QUOTA
-+static struct dquot __rcu **mext_get_dquots(struct inode *inode)
-+{
-+	return EXT4_I(inode)->i_dquot;
-+}
-+
-+static qsize_t *mext_get_reserved_space(struct inode *inode)
-+{
-+	return &EXT4_I(inode)->i_reserved_quota;
-+}
-+
-+static const struct dquot_operations mext_dummy_qops = {
-+	.get_reserved_space	= mext_get_reserved_space,
-+};
-+#endif
-+
-+static const struct super_operations mext_test_sops = {
-+	.alloc_inode	= mext_test_alloc_inode,
-+	.free_inode	= mext_test_free_inode,
-+	.evict_inode	= mext_test_evict_inode,
-+#ifdef CONFIG_QUOTA
-+	.get_dquots	= mext_get_dquots,
-+#endif
-+};
-+
-+static int mext_init_fs_context(struct fs_context *fc)
-+{
-+	return 0;
-+}
-+
-+static int mext_set_super(struct super_block *sb, struct fs_context *fc)
++static int mmp_set_super(struct super_block *sb, struct fs_context *fc)
 +{
 +	return set_anon_super_fc(sb, fc);
 +}
 +
-+static struct file_system_type mext_test_fs_type = {
-+	.name			= "ext4_move_extent_test",
-+	.init_fs_context	= mext_init_fs_context,
++static struct file_system_type mmp_test_fs_type = {
++	.name			= "ext4_mmp_test",
++	.init_fs_context	= mmp_init_fs_context,
 +	.kill_sb		= kill_anon_super,
 +};
 +
-+static int mext_ext_dirty_stub(const char *where, unsigned int line,
-+			       handle_t *handle, struct inode *inode,
-+			       struct ext4_ext_path *path)
++static int mmp_dummy_kthread_fn(void *data)
 +{
-+	if (path && path->p_bh) {
-+		ext4_extent_block_csum_set_test(inode,
-+						ext_block_hdr(path->p_bh));
-+		set_buffer_verified(path->p_bh);
++	while (!kthread_should_stop()) {
++		set_current_state(TASK_INTERRUPTIBLE);
++		if (!kthread_should_stop())
++			schedule();
 +	}
++	__set_current_state(TASK_RUNNING);
 +	return 0;
 +}
 +
-+static int mext_handle_dirty_metadata_stub(const char *where,
-+					   unsigned int line,
-+					   handle_t *handle,
-+					   struct inode *inode,
-+					   struct buffer_head *bh)
++static int mmp_submit_write_stub(struct buffer_head *bh)
 +{
-+	if (bh)
-+		set_buffer_uptodate(bh);
-+	return 0;
-+}
-+
-+static int mext_mark_inode_dirty_stub(handle_t *handle, struct inode *inode,
-+				      const char *func, unsigned int line)
-+{
-+	return 0;
-+}
-+
-+static struct buffer_head *mext_ext_getblk_stub(struct inode *inode,
-+						ext4_fsblk_t pblk,
-+						gfp_t gfp_flags)
-+{
-+	struct kunit *test = active_mext_test;
-+	struct mext_test_ctx *ctx;
-+	struct mext_meta_blk *slot = NULL;
-+	unsigned int i;
++	struct kunit *test = active_mmp_test;
++	struct mmp_test_ctx *ctx;
 +
 +	if (!test)
-+		return NULL;
++		return -EIO;
 +	ctx = test->priv;
-+	if (!ctx || !ctx->meta_blks)
-+		return NULL;
-+
-+	for (i = 0; i < MEXT_MAX_META_BLKS; i++) {
-+		if (ctx->meta_blks[i].in_use &&
-+		    ctx->meta_blks[i].pblk == pblk) {
-+			slot = &ctx->meta_blks[i];
-+			break;
-+		}
++	ctx->write_calls++;
++	if (ctx->write_err_on_call &&
++	    ctx->write_calls == (unsigned int)ctx->write_err_on_call) {
++		clear_buffer_uptodate(bh);
++		return -EIO;
 +	}
 +
-+	if (!slot) {
-+		for (i = 0; i < MEXT_MAX_META_BLKS; i++) {
-+			if (!ctx->meta_blks[i].in_use) {
-+				slot = &ctx->meta_blks[i];
-+				break;
-+			}
-+		}
-+		if (!slot)
-+			return NULL;
-+
-+		memset(slot, 0, sizeof(*slot));
-+		slot->in_use = true;
-+		slot->pblk = pblk;
-+		slot->bh.b_data = slot->data;
-+		slot->bh.b_size = inode->i_sb->s_blocksize;
-+		slot->bh.b_blocknr = pblk;
-+		slot->bh.b_bdev = inode->i_sb->s_bdev;
-+		atomic_set(&slot->bh.b_count, 1);
-+		set_buffer_uptodate(&slot->bh);
-+		set_buffer_mapped(&slot->bh);
-+	}
-+
-+	get_bh(&slot->bh);
-+	return &slot->bh;
++	memcpy(ctx->disk_buf, bh->b_data, MMP_TEST_BLK_SIZE);
++	set_buffer_uptodate(bh);
++	return 0;
 +}
 +
-+static ext4_fsblk_t mext_mb_new_blocks_stub(handle_t *handle,
-+					    struct ext4_allocation_request *ar,
-+					    int *errp)
++static int mmp_load_bh_stub(struct super_block *sb, struct buffer_head **bh,
++			    ext4_fsblk_t mmp_block)
 +{
-+	struct kunit *test = active_mext_test;
-+	struct mext_test_ctx *ctx;
-+	ext4_fsblk_t pblk;
++	struct kunit *test = active_mmp_test;
++	struct mmp_test_ctx *ctx;
 +
-+	if (!test) {
-+		*errp = -EIO;
-+		return 0;
-+	}
++	if (!test)
++		return -EIO;
 +	ctx = test->priv;
-+	pblk = ctx->next_meta_pblk;
-+	ctx->next_meta_pblk += ar->len;
-+	*errp = 0;
-+	return pblk;
++	ctx->load_calls++;
++	ctx->last_load_blk = mmp_block;
++
++	if (ctx->load_nomem && !*bh)
++		return -ENOMEM;
++
++	if (!*bh) {
++		*bh = &ctx->mmp_bh;
++		get_bh(*bh);
++	}
++
++	if (ctx->load_err_on_call &&
++	    ctx->load_calls == (unsigned int)ctx->load_err_on_call)
++		return -EIO;
++
++	memcpy((*bh)->b_data, ctx->disk_buf, MMP_TEST_BLK_SIZE);
++	set_buffer_uptodate(*bh);
++	return 0;
 +}
 +
-+static void mext_free_blocks_stub(handle_t *handle, struct inode *inode,
-+				  struct buffer_head *bh, ext4_fsblk_t block,
-+				  unsigned long count, int flags)
++static long mmp_wait_timeout_stub(long timeout)
 +{
++	struct kunit *test = active_mmp_test;
++	struct mmp_test_ctx *ctx;
++
++	if (!test)
++		return 1;
++	ctx = test->priv;
++	if (ctx->wait_calls < MMP_MAX_WAITS)
++		ctx->wait_timeouts[ctx->wait_calls] = timeout;
++	ctx->wait_calls++;
++
++	if (ctx->mutate_seq_on_wait_call &&
++	    ctx->wait_calls == ctx->mutate_seq_on_wait_call) {
++		struct mmp_struct *disk_mmp = (struct mmp_struct *)ctx->disk_buf;
++
++		disk_mmp->mmp_seq = cpu_to_le32(ctx->mutated_seq);
++		strscpy(disk_mmp->mmp_nodename, "other-node",
++			sizeof(disk_mmp->mmp_nodename));
++		ext4_mmp_csum_set_test(ctx->sb, disk_mmp);
++	}
++
++	if (ctx->wait_ret_target_call &&
++	    ctx->wait_calls == ctx->wait_ret_target_call)
++		return ctx->wait_ret_on_call;
++
++	return 0;
 +}
 +
-+static int mext_journal_data_mode_stub(struct inode *inode)
++static struct task_struct *mmp_run_thread_stub(struct super_block *sb,
++					       const char *bdevname,
++					       int bdevname_len)
 +{
-+	return EXT4_INODE_JOURNAL_DATA_MODE;
++	struct kunit *test = active_mmp_test;
++	struct mmp_test_ctx *ctx;
++
++	if (!test)
++		return ERR_PTR(-EINVAL);
++	ctx = test->priv;
++	ctx->run_thread_calls++;
++	if (ctx->run_thread_err)
++		return ERR_PTR(ctx->run_thread_err);
++
++	return kthread_run(mmp_dummy_kthread_fn, NULL, "kunit-mmpd");
 +}
 +
-+static void mext_init_mock_file(struct file *filp, struct dentry *dentry,
-+				struct inode *inode)
++static void mmp_init_disk_block(struct mmp_test_ctx *ctx, u32 seq,
++				u16 check_interval)
 +{
-+	struct file tmp = {
-+		.f_path		= { .dentry = dentry },
-+		.f_inode	= inode,
-+		.f_mapping	= inode->i_mapping,
-+		.f_mode		= FMODE_READ | FMODE_WRITE | FMODE_NOCMTIME,
-+	};
++	struct mmp_struct *mmp = (struct mmp_struct *)ctx->disk_buf;
 +
-+	memset(dentry, 0, sizeof(*dentry));
-+	dentry->d_inode = inode;
-+	memcpy(filp, &tmp, sizeof(*filp));
++	memset(ctx->disk_buf, 0, sizeof(ctx->disk_buf));
++	mmp->mmp_magic = cpu_to_le32(EXT4_MMP_MAGIC);
++	mmp->mmp_seq = cpu_to_le32(seq);
++	mmp->mmp_time = cpu_to_le64(1700000000ULL);
++	strscpy(mmp->mmp_nodename, "init-node", sizeof(mmp->mmp_nodename));
++	strscpy(mmp->mmp_bdevname, "init-bdev", sizeof(mmp->mmp_bdevname));
++	mmp->mmp_check_interval = cpu_to_le16(check_interval);
++	ext4_mmp_csum_set_test(ctx->sb, mmp);
 +}
 +
-+static struct inode *mext_create_test_inode(struct kunit *test,
-+					    struct super_block *sb,
-+					    unsigned long ino,
-+					    ext4_lblk_t size_blks)
++static void mmp_reset_counters(struct mmp_test_ctx *ctx)
 +{
-+	struct ext4_extent_header *eh;
-+	struct inode *inode;
-+
-+	inode = new_inode(sb);
-+	KUNIT_ASSERT_NOT_NULL(test, inode);
-+
-+	inode->i_ino = ino;
-+	inode->i_mode = S_IFREG | 0644;
-+	set_nlink(inode, 1);
-+	inode->i_blkbits = sb->s_blocksize_bits;
-+	/*
-+	 * Note: leave S_NOQUOTA clear so ext4_is_quota_file(inode) is false.
-+	 */
-+	inode->i_flags |= S_NOSEC;
-+	inode_state_set_raw(inode,
-+			    I_DIRTY_SYNC | I_DIRTY_DATASYNC | I_DIRTY_PAGES);
-+	mapping_set_gfp_mask(&inode->i_data, GFP_KERNEL);
-+
-+	EXT4_I(inode)->i_csum_seed = 0x13572468U;
-+	EXT4_I(inode)->i_disksize = (loff_t)size_blks << sb->s_blocksize_bits;
-+	i_size_write(inode, EXT4_I(inode)->i_disksize);
-+	ext4_set_inode_flag(inode, EXT4_INODE_EXTENTS);
-+	ext4_set_aops(inode);
-+
-+	eh = ext_inode_hdr(inode);
-+	memset(EXT4_I(inode)->i_data, 0, sizeof(EXT4_I(inode)->i_data));
-+	eh->eh_magic = EXT4_EXT_MAGIC;
-+	eh->eh_entries = 0;
-+	eh->eh_max = cpu_to_le16(ext4_ext_space_root_idx_test(inode, 0));
-+	eh->eh_depth = 0;
-+
-+	return inode;
++	ctx->load_nomem = 0;
++	ctx->load_err_on_call = 0;
++	ctx->load_calls = 0;
++	ctx->last_load_blk = 0;
++	ctx->write_err_on_call = 0;
++	ctx->write_calls = 0;
++	ctx->wait_calls = 0;
++	memset(ctx->wait_timeouts, 0, sizeof(ctx->wait_timeouts));
++	ctx->wait_ret_on_call = 0;
++	ctx->wait_ret_target_call = 0;
++	ctx->mutate_seq_on_wait_call = 0;
++	ctx->mutated_seq = 0;
++	ctx->run_thread_err = 0;
++	ctx->run_thread_calls = 0;
 +}
 +
-+static void mext_insert_extent(struct kunit *test, struct inode *inode,
-+			       ext4_lblk_t lblk, u16 len, ext4_fsblk_t pblk,
-+			       bool unwritten)
++static void mmp_cleanup_ctx(void *data)
 +{
-+	struct ext4_extent newex = {};
-+	struct ext4_ext_path *path;
++	struct mmp_test_ctx *ctx = data;
 +
-+	newex.ee_block = cpu_to_le32(lblk);
-+	newex.ee_len = cpu_to_le16(len);
-+	if (unwritten)
-+		ext4_ext_mark_unwritten(&newex);
-+	ext4_ext_store_pblock(&newex, pblk);
++	active_mmp_test = NULL;
 +
-+	inode_lock(inode);
-+	down_write(&EXT4_I(inode)->i_data_sem);
-+	path = ext4_find_extent(inode, lblk, NULL, 0);
-+	if (!IS_ERR(path))
-+		path = ext4_ext_insert_extent(NULL, inode, path, &newex, 0);
-+	up_write(&EXT4_I(inode)->i_data_sem);
-+	inode_unlock(inode);
-+
-+	KUNIT_ASSERT_FALSE(test, IS_ERR(path));
-+	ext4_free_ext_path(path);
-+}
-+
-+static void mext_populate_folio_block(struct kunit *test, struct inode *inode,
-+				      ext4_lblk_t lblk, u8 pattern)
-+{
-+	loff_t pos = (loff_t)lblk << inode->i_blkbits;
-+	size_t bsize = i_blocksize(inode);
-+	struct folio *folio;
-+	u8 *addr;
-+
-+	folio = __filemap_get_folio(inode->i_mapping, pos >> PAGE_SHIFT,
-+				    FGP_CREAT | FGP_LOCK, GFP_KERNEL);
-+	KUNIT_ASSERT_FALSE(test, IS_ERR(folio));
-+
-+	addr = folio_address(folio);
-+	memset(addr + offset_in_folio(folio, pos), pattern, bsize);
-+	folio_mark_uptodate(folio);
-+	folio_unlock(folio);
-+	folio_put(folio);
-+}
-+
-+static void mext_assert_mapped_block(struct kunit *test, struct inode *inode,
-+				     ext4_lblk_t lblk, ext4_fsblk_t exp_pblk,
-+				     unsigned int exp_flag)
-+{
-+	struct ext4_map_blocks map = {
-+		.m_lblk	= lblk,
-+		.m_len	= 1,
-+	};
-+	int ret;
-+
-+	inode_lock(inode);
-+	ret = ext4_map_blocks(NULL, inode, &map, 0);
-+	inode_unlock(inode);
-+
-+	KUNIT_EXPECT_EQ(test, ret, 1);
-+	KUNIT_EXPECT_EQ(test, map.m_pblk, exp_pblk);
-+	KUNIT_EXPECT_TRUE(test, (map.m_flags & exp_flag) != 0);
-+	if (exp_flag == EXT4_MAP_MAPPED)
-+		KUNIT_EXPECT_EQ(test, map.m_flags & EXT4_MAP_UNWRITTEN, 0U);
-+	else if (exp_flag == EXT4_MAP_UNWRITTEN)
-+		KUNIT_EXPECT_EQ(test, map.m_flags & EXT4_MAP_MAPPED, 0U);
-+}
-+
-+static void mext_cleanup_ctx(void *data)
-+{
-+	struct mext_test_ctx *ctx = data;
-+
-+	active_mext_test = NULL;
++	if (ctx->sbi.s_mmp_tsk)
++		ext4_stop_mmpd(&ctx->sbi);
++	ctx->sbi.s_mmp_bh = NULL;
 +
 +	cancel_work_sync(&ctx->sbi.s_sb_upd_work);
 +	timer_delete_sync(&ctx->sbi.s_err_report);
 +
-+	if (ctx->orig_inode) {
-+		iput(ctx->orig_inode);
-+		ctx->orig_inode = NULL;
-+	}
-+	if (ctx->donor_inode) {
-+		iput(ctx->donor_inode);
-+		ctx->donor_inode = NULL;
-+	}
-+
 +	if (ctx->sb) {
++		ctx->sb->s_fs_info = NULL;
 +		deactivate_super(ctx->sb);
 +		ctx->sb = NULL;
 +	}
-+	rcu_barrier();
-+
-+	if (ctx->es_shrinker_inited) {
-+		ext4_es_unregister_shrinker(&ctx->sbi);
-+		ext4_es_destroy_stats(&ctx->sbi);
-+		ctx->es_shrinker_inited = false;
-+	}
-+	if (ctx->counters_inited) {
-+		percpu_counter_destroy(&ctx->sbi.s_freeclusters_counter);
-+		percpu_counter_destroy(&ctx->sbi.s_dirtyclusters_counter);
-+		ctx->counters_inited = false;
-+	}
-+
 +	if (ctx->bdev.bd_stats) {
 +		free_percpu(ctx->bdev.bd_stats);
 +		ctx->bdev.bd_stats = NULL;
 +	}
 +}
 +
-+static struct mext_test_ctx *mext_setup_ctx(struct kunit *test)
++static struct mmp_test_ctx *mmp_setup_ctx(struct kunit *test)
 +{
-+	struct mext_test_ctx *ctx;
++	struct mmp_test_ctx *ctx;
 +	struct fs_context *fc;
 +	struct super_block *sb;
 +	int err;
@@ -591,96 +412,68 @@ index 000000000000..a3e002f14109
 +	KUNIT_ASSERT_NOT_NULL(test, ctx);
 +	ctx->es = kunit_kzalloc(test, sizeof(*ctx->es), GFP_KERNEL);
 +	KUNIT_ASSERT_NOT_NULL(test, ctx->es);
-+	ctx->meta_blks = kunit_kcalloc(test, MEXT_MAX_META_BLKS,
-+				       sizeof(*ctx->meta_blks), GFP_KERNEL);
-+	KUNIT_ASSERT_NOT_NULL(test, ctx->meta_blks);
-+	ctx->next_meta_pblk = MEXT_META_BASE_PBLK;
 +
-+	fc = fs_context_for_mount(&mext_test_fs_type, 0);
++	fc = fs_context_for_mount(&mmp_test_fs_type, 0);
 +	KUNIT_ASSERT_FALSE(test, IS_ERR(fc));
-+	sb = sget_fc(fc, NULL, mext_set_super);
++	sb = sget_fc(fc, NULL, mmp_set_super);
 +	put_fs_context(fc);
 +	KUNIT_ASSERT_FALSE(test, IS_ERR(sb));
 +	up_write(&sb->s_umount);
 +	ctx->sb = sb;
 +
-+	INIT_WORK(&ctx->sbi.s_sb_upd_work, mext_noop_work);
-+	timer_setup(&ctx->sbi.s_err_report, mext_noop_timer, 0);
++	INIT_WORK(&ctx->sbi.s_sb_upd_work, mmp_noop_work);
++	timer_setup(&ctx->sbi.s_err_report, mmp_noop_timer, 0);
 +
-+	err = kunit_add_action_or_reset(test, mext_cleanup_ctx, ctx);
++	err = kunit_add_action_or_reset(test, mmp_cleanup_ctx, ctx);
 +	KUNIT_ASSERT_EQ(test, err, 0);
 +
 +	ctx->bdev.bd_stats = alloc_percpu(struct disk_stats);
 +	KUNIT_ASSERT_TRUE(test, ctx->bdev.bd_stats != NULL);
++	strscpy(ctx->bdev_disk.disk_name, "mmp_bdev",
++		sizeof(ctx->bdev_disk.disk_name));
 +	ctx->bdev_disk.queue = &ctx->bdev_queue;
 +	ctx->bdev.bd_disk = &ctx->bdev_disk;
 +	ctx->bdev.bd_queue = &ctx->bdev_queue;
 +	ctx->bdev.bd_mapping = &ctx->bdev_mapping;
-+	bdev_set_flag(&ctx->bdev, BD_READ_ONLY);
 +
 +	sb->s_bdev = &ctx->bdev;
-+	sb->s_blocksize = MEXT_TEST_BLK_SIZE;
-+	sb->s_blocksize_bits = MEXT_TEST_BLK_BITS;
-+	sb->s_maxbytes = MAX_LFS_FILESIZE;
++	sb->s_blocksize = MMP_TEST_BLK_SIZE;
++	sb->s_blocksize_bits = MMP_TEST_BLK_BITS;
 +	sb->s_magic = EXT4_SUPER_MAGIC;
-+	sb->s_op = &mext_test_sops;
-+#ifdef CONFIG_QUOTA
-+	sb->dq_op = &mext_dummy_qops;
-+#endif
-+#ifdef CONFIG_FS_ENCRYPTION
-+	sb->s_cop = &ext4_cryptops;
-+#endif
++	sb->s_op = &mmp_test_sops;
 +	sb->s_fs_info = &ctx->sbi;
-+	strscpy(sb->s_id, "ext4_mext_kunit", sizeof(sb->s_id));
++	strscpy(sb->s_id, "ext4_mmp_kunit", sizeof(sb->s_id));
 +
 +	ctx->sbh.b_data = ctx->sbh_data;
-+	ctx->sbh.b_size = MEXT_TEST_BLK_SIZE;
++	ctx->sbh.b_size = MMP_TEST_BLK_SIZE;
 +	ctx->sbh.b_bdev = &ctx->bdev;
 +	atomic_set(&ctx->sbh.b_count, 2);
 +	set_buffer_uptodate(&ctx->sbh);
 +	clear_buffer_mapped(&ctx->sbh);
 +
-+	ctx->es->s_magic = cpu_to_le16(EXT4_SUPER_MAGIC);
-+	ctx->es->s_rev_level = cpu_to_le32(EXT4_DYNAMIC_REV);
-+	ctx->es->s_first_data_block = cpu_to_le32(MEXT_TEST_FIRST_DATA_BLK);
-+	ctx->es->s_log_block_size = cpu_to_le32(2);
-+	ctx->es->s_log_cluster_size = cpu_to_le32(2);
-+	ctx->es->s_blocks_per_group = cpu_to_le32(MEXT_TEST_BLOCKS_PER_GRP);
-+	ctx->es->s_clusters_per_group = cpu_to_le32(MEXT_TEST_BLOCKS_PER_GRP);
-+	ctx->es->s_inodes_per_group = cpu_to_le32(8192);
-+	ctx->es->s_inodes_count = cpu_to_le32(MEXT_TEST_NGROUPS * 8192);
-+	ctx->es->s_feature_incompat = cpu_to_le32(EXT4_FEATURE_INCOMPAT_EXTENTS);
-+	ext4_blocks_count_set(ctx->es, MEXT_TEST_TOTAL_BLKS);
++	ctx->mmp_bh.b_data = ctx->bh_buf;
++	ctx->mmp_bh.b_size = MMP_TEST_BLK_SIZE;
++	ctx->mmp_bh.b_blocknr = MMP_TEST_VALID_BLK;
++	ctx->mmp_bh.b_bdev = &ctx->bdev;
++	atomic_set(&ctx->mmp_bh.b_count, 2);
++	set_buffer_mapped(&ctx->mmp_bh);
 +
-+	bgl_lock_init(&ctx->bgl);
++	ctx->es->s_magic = cpu_to_le16(EXT4_SUPER_MAGIC);
++	ctx->es->s_first_data_block = cpu_to_le32(MMP_TEST_FIRST_DATA_BLK);
++	ctx->es->s_mmp_block = cpu_to_le64(MMP_TEST_VALID_BLK);
++	ctx->es->s_mmp_update_interval = cpu_to_le16(EXT4_MMP_MIN_CHECK_INTERVAL);
++	ctx->es->s_feature_incompat = cpu_to_le32(EXT4_FEATURE_INCOMPAT_MMP);
++	ctx->es->s_feature_ro_compat =
++		cpu_to_le32(EXT4_FEATURE_RO_COMPAT_METADATA_CSUM);
++	ext4_blocks_count_set(ctx->es, MMP_TEST_TOTAL_BLKS);
++
 +	ctx->sbi.s_sb = sb;
 +	ctx->sbi.s_es = ctx->es;
 +	ctx->sbi.s_sbh = &ctx->sbh;
-+	ctx->sbi.s_blockgroup_lock = &ctx->bgl;
-+	ctx->sbi.s_blocks_per_group = MEXT_TEST_BLOCKS_PER_GRP;
-+	ctx->sbi.s_clusters_per_group = MEXT_TEST_BLOCKS_PER_GRP;
-+	ctx->sbi.s_cluster_ratio = 1;
-+	ctx->sbi.s_cluster_bits = 0;
-+	ctx->sbi.s_groups_count = MEXT_TEST_NGROUPS;
-+	ctx->sbi.s_desc_size = EXT4_MIN_DESC_SIZE;
-+	ctx->sbi.s_desc_per_block = MEXT_TEST_BLK_SIZE / EXT4_MIN_DESC_SIZE;
-+	ctx->sbi.s_inodes_per_group = 8192;
-+	ctx->sbi.s_inode_size = sizeof(struct ext4_inode);
-+	ctx->sbi.s_inodes_per_block = MEXT_TEST_BLK_SIZE /
-+				      sizeof(struct ext4_inode);
-+	ctx->sbi.s_bitmap_maxbytes = MAX_LFS_FILESIZE;
++	ctx->sbi.s_csum_seed = 0x9abcdef0U;
 +	set_opt(sb, ERRORS_CONT);
-+
-+	mutex_init(&ctx->sbi.s_orphan_lock);
-+	INIT_LIST_HEAD(&ctx->sbi.s_orphan);
 +	spin_lock_init(&ctx->sbi.s_bdev_wb_lock);
 +	spin_lock_init(&ctx->sbi.s_error_lock);
-+	spin_lock_init(&ctx->sbi.s_md_lock);
-+	INIT_LIST_HEAD(&ctx->sbi.s_fc_q[FC_Q_MAIN]);
-+	INIT_LIST_HEAD(&ctx->sbi.s_fc_q[FC_Q_STAGING]);
-+	INIT_LIST_HEAD(&ctx->sbi.s_fc_dentry_q[FC_Q_MAIN]);
-+	INIT_LIST_HEAD(&ctx->sbi.s_fc_dentry_q[FC_Q_STAGING]);
-+	mutex_init(&ctx->sbi.s_fc_lock);
 +	ratelimit_state_init(&ctx->sbi.s_err_ratelimit_state,
 +			     DEFAULT_RATELIMIT_INTERVAL,
 +			     DEFAULT_RATELIMIT_BURST);
@@ -691,515 +484,527 @@ index 000000000000..a3e002f14109
 +			     DEFAULT_RATELIMIT_INTERVAL,
 +			     DEFAULT_RATELIMIT_BURST);
 +
-+	err = percpu_counter_init(&ctx->sbi.s_freeclusters_counter, 65536,
-+				  GFP_KERNEL);
-+	KUNIT_ASSERT_EQ(test, err, 0);
-+	err = percpu_counter_init(&ctx->sbi.s_dirtyclusters_counter, 0,
-+				  GFP_KERNEL);
-+	if (err) {
-+		percpu_counter_destroy(&ctx->sbi.s_freeclusters_counter);
-+		KUNIT_FAIL_AND_ABORT(test, "dirtyclusters counter init failed");
-+	}
-+	ctx->counters_inited = true;
-+
-+	err = ext4_es_register_shrinker(&ctx->sbi);
-+	KUNIT_ASSERT_EQ(test, err, 0);
-+	ctx->sbi.s_es_shrinker->count_objects = mext_dummy_shrinker_count;
-+	ctx->sbi.s_es_shrinker->scan_objects = mext_dummy_shrinker_scan;
-+	ctx->es_shrinker_inited = true;
-+
-+	ctx->orig_inode = mext_create_test_inode(test, sb, 21, 16);
-+	ctx->donor_inode = mext_create_test_inode(test, sb, 22, 16);
-+	mext_init_mock_file(&ctx->orig_file, &ctx->orig_dentry,
-+			    ctx->orig_inode);
-+	mext_init_mock_file(&ctx->donor_file, &ctx->donor_dentry,
-+			    ctx->donor_inode);
-+
 +	test->priv = ctx;
-+	active_mext_test = test;
++	active_mmp_test = test;
 +
-+	kunit_activate_static_stub(test, __ext4_ext_dirty,
-+				   mext_ext_dirty_stub);
-+	kunit_activate_static_stub(test, __ext4_handle_dirty_metadata,
-+				   mext_handle_dirty_metadata_stub);
-+	kunit_activate_static_stub(test, __ext4_mark_inode_dirty,
-+				   mext_mark_inode_dirty_stub);
-+	kunit_activate_static_stub(test, ext4_ext_getblk,
-+				   mext_ext_getblk_stub);
-+	kunit_activate_static_stub(test, ext4_mb_new_blocks,
-+				   mext_mb_new_blocks_stub);
-+	kunit_activate_static_stub(test, ext4_free_blocks,
-+				   mext_free_blocks_stub);
++	kunit_activate_static_stub(test, ext4_mmp_submit_write,
++				   mmp_submit_write_stub);
++	kunit_activate_static_stub(test, ext4_mmp_load_bh,
++				   mmp_load_bh_stub);
++	kunit_activate_static_stub(test, ext4_mmp_wait_timeout,
++				   mmp_wait_timeout_stub);
++	kunit_activate_static_stub(test, ext4_mmp_run_thread,
++				   mmp_run_thread_stub);
 +
 +	return ctx;
 +}
 +
-+static void test_double_data_sem_lock_order(struct kunit *test)
++static void test_mmp_csum_set_and_verify(struct kunit *test)
 +{
-+	struct mext_test_ctx *ctx = mext_setup_ctx(test);
-+	struct inode *low = ctx->orig_inode;
-+	struct inode *high = ctx->donor_inode;
++	struct mmp_test_ctx *ctx = mmp_setup_ctx(test);
++	struct mmp_struct *mmp;
++	__le32 orig_csum;
 +
-+	if (low > high)
-+		swap(low, high);
++	mmp = kunit_kzalloc(test, sizeof(*mmp), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, mmp);
 +
-+	/* Acquire with first < second */
-+	ext4_double_down_write_data_sem(low, high);
-+	KUNIT_EXPECT_TRUE(test, rwsem_is_locked(&EXT4_I(low)->i_data_sem));
-+	KUNIT_EXPECT_TRUE(test, rwsem_is_locked(&EXT4_I(high)->i_data_sem));
-+	ext4_double_up_write_data_sem(low, high);
-+	KUNIT_EXPECT_FALSE(test, rwsem_is_locked(&EXT4_I(low)->i_data_sem));
-+	KUNIT_EXPECT_FALSE(test, rwsem_is_locked(&EXT4_I(high)->i_data_sem));
++	mmp->mmp_magic = cpu_to_le32(EXT4_MMP_MAGIC);
++	mmp->mmp_seq = cpu_to_le32(EXT4_MMP_SEQ_CLEAN);
++	strscpy(mmp->mmp_nodename, "node-a", sizeof(mmp->mmp_nodename));
 +
-+	/* Acquire with first > second */
-+	ext4_double_down_write_data_sem(high, low);
-+	KUNIT_EXPECT_TRUE(test, rwsem_is_locked(&EXT4_I(low)->i_data_sem));
-+	KUNIT_EXPECT_TRUE(test, rwsem_is_locked(&EXT4_I(high)->i_data_sem));
-+	ext4_double_up_write_data_sem(high, low);
-+	KUNIT_EXPECT_FALSE(test, rwsem_is_locked(&EXT4_I(low)->i_data_sem));
-+	KUNIT_EXPECT_FALSE(test, rwsem_is_locked(&EXT4_I(high)->i_data_sem));
++	/* Without METADATA_CSUM, set is a no-op and verify always returns 1 */
++	ext4_clear_feature_metadata_csum(ctx->sb);
++	mmp->mmp_checksum = cpu_to_le32(0xdeadbeefU);
++	ext4_mmp_csum_set_test(ctx->sb, mmp);
++	KUNIT_EXPECT_EQ(test, le32_to_cpu(mmp->mmp_checksum), 0xdeadbeefU);
++	KUNIT_EXPECT_EQ(test, ext4_mmp_csum_verify_test(ctx->sb, mmp), 1);
++
++	/* With METADATA_CSUM, set computes CRC32C and verify detects tampering */
++	ext4_set_feature_metadata_csum(ctx->sb);
++	mmp->mmp_checksum = 0;
++	ext4_mmp_csum_set_test(ctx->sb, mmp);
++	orig_csum = mmp->mmp_checksum;
++	KUNIT_EXPECT_NE(test, le32_to_cpu(orig_csum), 0U);
++	KUNIT_EXPECT_EQ(test, ext4_mmp_csum_verify_test(ctx->sb, mmp), 1);
++
++	/* Flipping payload field or csum seed invalidates verification */
++	mmp->mmp_seq = cpu_to_le32(7);
++	KUNIT_EXPECT_EQ(test, ext4_mmp_csum_verify_test(ctx->sb, mmp), 0);
++	mmp->mmp_seq = cpu_to_le32(EXT4_MMP_SEQ_CLEAN);
++	KUNIT_EXPECT_EQ(test, ext4_mmp_csum_verify_test(ctx->sb, mmp), 1);
++
++	ctx->sbi.s_csum_seed ^= 1U;
++	KUNIT_EXPECT_EQ(test, ext4_mmp_csum_verify_test(ctx->sb, mmp), 0);
 +}
 +
-+static void test_mext_check_validity_rejections(struct kunit *test)
++static void test_read_and_write_mmp_block(struct kunit *test)
 +{
-+	struct mext_test_ctx *ctx = mext_setup_ctx(test);
-+	struct inode *orig = ctx->orig_inode;
-+	struct inode *donor = ctx->donor_inode;
-+	struct super_block *other_sb;
-+	__u64 moved_len = 99;
++	struct mmp_test_ctx *ctx = mmp_setup_ctx(test);
++	struct buffer_head *bh = NULL;
++	struct mmp_struct *mmp;
++	int base_ref;
 +	int ret;
 +
-+	/* Valid baseline */
-+	KUNIT_EXPECT_EQ(test, ext4_mext_check_validity_test(orig, donor), 0);
-+
-+	/* Same inode rejected both directly and via ext4_move_extents() */
-+	KUNIT_EXPECT_EQ(test, ext4_mext_check_validity_test(orig, orig),
-+			-EINVAL);
-+	ret = ext4_move_extents(&ctx->orig_file, &ctx->orig_file, 0, 0, 1,
-+				&moved_len);
-+	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
-+	KUNIT_EXPECT_EQ(test, moved_len, 0ULL);
-+
-+	/* Cross-superblock rejected */
-+	other_sb = kunit_kzalloc(test, sizeof(*other_sb), GFP_KERNEL);
-+	KUNIT_ASSERT_NOT_NULL(test, other_sb);
-+	donor->i_sb = other_sb;
-+	KUNIT_EXPECT_EQ(test, ext4_mext_check_validity_test(orig, donor),
-+			-EINVAL);
-+	donor->i_sb = ctx->sb;
-+
-+	/* Non-regular files rejected */
-+	orig->i_mode = S_IFIFO | 0644;
-+	KUNIT_EXPECT_EQ(test, ext4_mext_check_validity_test(orig, donor),
-+			-EINVAL);
-+	ret = ext4_move_extents(&ctx->orig_file, &ctx->donor_file, 0, 0, 1,
-+				&moved_len);
-+	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
-+	orig->i_mode = S_IFREG | 0644;
-+
-+	donor->i_mode = S_IFDIR | 0755;
-+	KUNIT_EXPECT_EQ(test, ext4_mext_check_validity_test(orig, donor),
-+			-EINVAL);
-+	donor->i_mode = S_IFREG | 0644;
-+
-+	/* Bigalloc feature rejected */
-+	ext4_set_feature_bigalloc(ctx->sb);
-+	KUNIT_EXPECT_EQ(test, ext4_mext_check_validity_test(orig, donor),
-+			-EOPNOTSUPP);
-+	ext4_clear_feature_bigalloc(ctx->sb);
-+
-+#if IS_ENABLED(CONFIG_FS_DAX)
-+	/* DAX inode rejected */
-+	orig->i_flags |= S_DAX;
-+	KUNIT_EXPECT_EQ(test, ext4_mext_check_validity_test(orig, donor),
-+			-EOPNOTSUPP);
-+	orig->i_flags &= ~S_DAX;
-+#endif
-+
-+	/* Data journaling mode rejected */
-+	kunit_activate_static_stub(test, ext4_inode_journal_mode,
-+				   mext_journal_data_mode_stub);
-+	KUNIT_EXPECT_EQ(test, ext4_mext_check_validity_test(orig, donor),
-+			-EOPNOTSUPP);
-+	kunit_deactivate_static_stub(test, ext4_inode_journal_mode);
-+
-+	/* Encrypted inode rejected */
-+	donor->i_flags |= S_ENCRYPTED;
-+	KUNIT_EXPECT_EQ(test, ext4_mext_check_validity_test(orig, donor),
-+			-EOPNOTSUPP);
-+	donor->i_flags &= ~S_ENCRYPTED;
-+
-+	/* Non-extent inode rejected */
-+	ext4_clear_inode_flag(orig, EXT4_INODE_EXTENTS);
-+	KUNIT_EXPECT_EQ(test, ext4_mext_check_validity_test(orig, donor),
-+			-EOPNOTSUPP);
-+	ext4_set_inode_flag(orig, EXT4_INODE_EXTENTS);
-+
-+	/* SUID / SGID on donor rejected */
-+	donor->i_mode |= S_ISUID;
-+	KUNIT_EXPECT_EQ(test, ext4_mext_check_validity_test(orig, donor),
-+			-EINVAL);
-+	donor->i_mode = (donor->i_mode & ~S_ISUID) | S_ISGID;
-+	KUNIT_EXPECT_EQ(test, ext4_mext_check_validity_test(orig, donor),
-+			-EINVAL);
-+	donor->i_mode &= ~S_ISGID;
-+
-+	/* Immutable / append-only donor rejected with -EPERM */
-+	donor->i_flags |= S_IMMUTABLE;
-+	KUNIT_EXPECT_EQ(test, ext4_mext_check_validity_test(orig, donor),
-+			-EPERM);
-+	donor->i_flags = (donor->i_flags & ~S_IMMUTABLE) | S_APPEND;
-+	KUNIT_EXPECT_EQ(test, ext4_mext_check_validity_test(orig, donor),
-+			-EPERM);
-+	donor->i_flags &= ~S_APPEND;
-+
-+	/* Swapfile rejected with -ETXTBSY */
-+	orig->i_flags |= S_SWAPFILE;
-+	KUNIT_EXPECT_EQ(test, ext4_mext_check_validity_test(orig, donor),
-+			-ETXTBSY);
-+	orig->i_flags &= ~S_SWAPFILE;
-+
-+	/* Quota file (S_NOQUOTA without EXT4_INODE_EA_INODE) rejected */
-+	orig->i_flags |= S_NOQUOTA;
-+	KUNIT_EXPECT_EQ(test, ext4_mext_check_validity_test(orig, donor),
-+			-EOPNOTSUPP);
-+	ext4_set_inode_flag(orig, EXT4_INODE_EA_INODE);
-+	KUNIT_EXPECT_EQ(test, ext4_mext_check_validity_test(orig, donor), 0);
-+	ext4_clear_inode_flag(orig, EXT4_INODE_EA_INODE);
-+	orig->i_flags &= ~S_NOQUOTA;
-+
-+	/* Zero-byte file rejected with -EINVAL */
-+	i_size_write(donor, 0);
-+	KUNIT_EXPECT_EQ(test, ext4_mext_check_validity_test(orig, donor),
-+			-EINVAL);
-+	i_size_write(donor, EXT4_I(donor)->i_disksize);
-+}
-+
-+static void test_mext_check_adjust_range(struct kunit *test)
-+{
-+	struct mext_test_ctx *ctx = mext_setup_ctx(test);
-+	struct inode *orig = ctx->orig_inode;
-+	struct inode *donor = ctx->donor_inode;
-+	__u64 len;
-+	int ret;
-+
-+	/* Sub-page block alignment check when blocksize (1024) < PAGE_SIZE */
-+	orig->i_blkbits = 10;
-+	donor->i_blkbits = 10;
-+	i_size_write(orig, max_t(loff_t, 32 * 1024, 4 * PAGE_SIZE));
-+	i_size_write(donor, max_t(loff_t, 32 * 1024, 4 * PAGE_SIZE));
-+
-+	len = 4;
-+	ret = ext4_mext_check_adjust_range_test(orig, donor, 1, 2, &len);
-+	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
-+
-+	len = 4;
-+	ret = ext4_mext_check_adjust_range_test(orig, donor, 1,
-+						1 + (PAGE_SIZE >> 10), &len);
++	/* Write populates checksum and persists block into disk_buf */
++	mmp = (struct mmp_struct *)ctx->mmp_bh.b_data;
++	memset(ctx->mmp_bh.b_data, 0, MMP_TEST_BLK_SIZE);
++	mmp->mmp_magic = cpu_to_le32(EXT4_MMP_MAGIC);
++	mmp->mmp_seq = cpu_to_le32(19);
++	ret = ext4_write_mmp_block_test(ctx->sb, &ctx->mmp_bh);
 +	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, len, 4ULL);
-+
-+	orig->i_blkbits = MEXT_TEST_BLK_BITS;
-+	donor->i_blkbits = MEXT_TEST_BLK_BITS;
-+
-+	/* EXT_MAX_BLOCKS boundary and sum-overflow checks */
-+	len = 1;
++	KUNIT_EXPECT_EQ(test, ctx->write_calls, 1U);
 +	KUNIT_EXPECT_EQ(test,
-+			ext4_mext_check_adjust_range_test(orig, donor,
-+							  EXT_MAX_BLOCKS,
-+							  EXT_MAX_BLOCKS, &len),
-+			-EINVAL);
++			ext4_mmp_csum_verify_test(ctx->sb,
++				(struct mmp_struct *)ctx->disk_buf), 1);
 +
-+	len = (u64)EXT_MAX_BLOCKS + 1;
++	/* Simulated write I/O error returns -EIO */
++	ctx->write_err_on_call = 2;
++	KUNIT_EXPECT_EQ(test, ext4_write_mmp_block_test(ctx->sb, &ctx->mmp_bh),
++			-EIO);
++	ctx->write_err_on_call = 0;
++
++	/* Valid read allocates/populates bh and verifies magic + checksum */
++	base_ref = atomic_read(&ctx->mmp_bh.b_count);
++	ret = ext4_read_mmp_block_test(ctx->sb, &bh, MMP_TEST_VALID_BLK);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_ASSERT_PTR_EQ(test, bh, &ctx->mmp_bh);
++	KUNIT_EXPECT_EQ(test, atomic_read(&ctx->mmp_bh.b_count), base_ref + 1);
++
++	/* Re-reading with existing bh refreshes contents without leaking ref */
++	((struct mmp_struct *)ctx->disk_buf)->mmp_seq = cpu_to_le32(23);
++	ext4_mmp_csum_set_test(ctx->sb, (struct mmp_struct *)ctx->disk_buf);
++	ret = ext4_read_mmp_block_test(ctx->sb, &bh, MMP_TEST_VALID_BLK);
++	KUNIT_EXPECT_EQ(test, ret, 0);
 +	KUNIT_EXPECT_EQ(test,
-+			ext4_mext_check_adjust_range_test(orig, donor, 0, 0,
-+							  &len),
-+			-EINVAL);
++			le32_to_cpu(((struct mmp_struct *)bh->b_data)->mmp_seq),
++			23U);
++	KUNIT_EXPECT_EQ(test, atomic_read(&ctx->mmp_bh.b_count), base_ref + 1);
++	brelse(bh);
++	bh = NULL;
 +
-+	len = 4;
++	/* -ENOMEM when bh allocation fails */
++	ctx->load_nomem = 1;
 +	KUNIT_EXPECT_EQ(test,
-+			ext4_mext_check_adjust_range_test(orig, donor,
-+							  EXT_MAX_BLOCKS - 4,
-+							  EXT_MAX_BLOCKS - 4,
-+							  &len),
++			ext4_read_mmp_block_test(ctx->sb, &bh,
++						 MMP_TEST_VALID_BLK),
++			-ENOMEM);
++	KUNIT_EXPECT_NULL(test, bh);
++	ctx->load_nomem = 0;
++
++	/* -EIO read failure releases bh and resets *bh to NULL */
++	mmp_reset_counters(ctx);
++	ctx->load_err_on_call = 1;
++	KUNIT_EXPECT_EQ(test,
++			ext4_read_mmp_block_test(ctx->sb, &bh,
++						 MMP_TEST_VALID_BLK),
++			-EIO);
++	KUNIT_EXPECT_NULL(test, bh);
++	KUNIT_EXPECT_EQ(test, atomic_read(&ctx->mmp_bh.b_count), base_ref);
++
++	/* Bad magic returns -EFSCORRUPTED and cleans up bh */
++	mmp_reset_counters(ctx);
++	((struct mmp_struct *)ctx->disk_buf)->mmp_magic = cpu_to_le32(0x1234U);
++	KUNIT_EXPECT_EQ(test,
++			ext4_read_mmp_block_test(ctx->sb, &bh,
++						 MMP_TEST_VALID_BLK),
++			-EFSCORRUPTED);
++	KUNIT_EXPECT_NULL(test, bh);
++	KUNIT_EXPECT_EQ(test, atomic_read(&ctx->mmp_bh.b_count), base_ref);
++
++	/* Bad checksum returns -EFSBADCRC and cleans up bh */
++	mmp_init_disk_block(ctx, EXT4_MMP_SEQ_CLEAN, 5);
++	((struct mmp_struct *)ctx->disk_buf)->mmp_checksum ^= cpu_to_le32(1U);
++	KUNIT_EXPECT_EQ(test,
++			ext4_read_mmp_block_test(ctx->sb, &bh,
++						 MMP_TEST_VALID_BLK),
++			-EFSBADCRC);
++	KUNIT_EXPECT_NULL(test, bh);
++	KUNIT_EXPECT_EQ(test, atomic_read(&ctx->mmp_bh.b_count), base_ref);
++}
++
++static void test_mmp_invalid_block_and_io_errors(struct kunit *test)
++{
++	struct mmp_test_ctx *ctx = mmp_setup_ctx(test);
++
++	/* Block below s_first_data_block (1) or >= blocks_count (1024) */
++	KUNIT_EXPECT_EQ(test, ext4_multi_mount_protect(ctx->sb, 0), -EINVAL);
++	KUNIT_EXPECT_EQ(test,
++			ext4_multi_mount_protect(ctx->sb, MMP_TEST_TOTAL_BLKS),
 +			-EINVAL);
++	KUNIT_EXPECT_EQ(test, ctx->load_calls, 0U);
 +
-+	/* Clamping to shorter EOF (including partial trailing block i_size) */
-+	i_size_write(orig, 5 * MEXT_TEST_BLK_SIZE + 100);  /* orig_eof = 6 */
-+	i_size_write(donor, 4 * MEXT_TEST_BLK_SIZE);       /* donor_eof = 4 */
++	/* Initial read failure propagates error */
++	mmp_init_disk_block(ctx, EXT4_MMP_SEQ_CLEAN, 5);
++	mmp_reset_counters(ctx);
++	ctx->load_err_on_call = 1;
++	KUNIT_EXPECT_EQ(test,
++			ext4_multi_mount_protect(ctx->sb, MMP_TEST_VALID_BLK),
++			-EIO);
 +
-+	len = 12;
-+	ret = ext4_mext_check_adjust_range_test(orig, donor, 1, 1, &len);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, len, 3ULL);
++	/* Write failure when claiming MMP block */
++	mmp_reset_counters(ctx);
++	ctx->write_err_on_call = 1;
++	KUNIT_EXPECT_EQ(test,
++			ext4_multi_mount_protect(ctx->sb, MMP_TEST_VALID_BLK),
++			-EIO);
 +
-+	/* Start at or beyond EOF clamps len to 0 and returns -EINVAL */
-+	len = 4;
-+	ret = ext4_mext_check_adjust_range_test(orig, donor, 4, 4, &len);
-+	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
-+	KUNIT_EXPECT_EQ(test, len, 0ULL);
++	/* Post-write verification read failure */
++	mmp_init_disk_block(ctx, EXT4_MMP_SEQ_CLEAN, 5);
++	mmp_reset_counters(ctx);
++	ctx->load_err_on_call = 2;
++	KUNIT_EXPECT_EQ(test,
++			ext4_multi_mount_protect(ctx->sb, MMP_TEST_VALID_BLK),
++			-EIO);
 +}
 +
-+static void test_move_extents_holes_and_unwritten(struct kunit *test)
++static void test_mmp_clean_and_fsck_sequences(struct kunit *test)
 +{
-+	struct mext_test_ctx *ctx = mext_setup_ctx(test);
-+	struct inode *orig = ctx->orig_inode;
-+	struct inode *donor = ctx->donor_inode;
-+	__u64 moved_len = 0;
++	struct mmp_test_ctx *ctx = mmp_setup_ctx(test);
++	struct mmp_struct *disk_mmp = (struct mmp_struct *)ctx->disk_buf;
++	int base_ref;
 +	int ret;
 +
-+	/*
-+	 * orig:  [0, 2) hole, [2, 4) unwritten -> pblk 202..203,
-+	 *        [4, 6) unwritten -> pblk 204..205
-+	 * donor: [0, 2) unwritten -> pblk 300..301, [2, 4) hole,
-+	 *        [4, 6) unwritten -> pblk 304..305
-+	 *
-+	 * Expected across [0, 6) (clamped from requested len = 16 to EOF = 6):
-+	 *   - [0, 2): skipped in ext4_move_extents() because orig is a hole
-+	 *   - [2, 4): skipped via MEXT_SKIP_EXTENT because donor is a hole
-+	 *   - [4, 6): swapped via MEXT_MOVE_EXTENT (both unwritten)
-+	 */
-+	i_size_write(orig, 6 * MEXT_TEST_BLK_SIZE);
-+	EXT4_I(orig)->i_disksize = 6 * MEXT_TEST_BLK_SIZE;
-+	i_size_write(donor, 6 * MEXT_TEST_BLK_SIZE);
-+	EXT4_I(donor)->i_disksize = 6 * MEXT_TEST_BLK_SIZE;
-+
-+	mext_insert_extent(test, orig, 2, 4, 202, true);
-+	mext_insert_extent(test, donor, 0, 2, 300, true);
-+	mext_insert_extent(test, donor, 4, 2, 304, true);
-+
-+	ret = ext4_move_extents(&ctx->orig_file, &ctx->donor_file, 0, 0, 16,
-+				&moved_len);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, moved_len, 2ULL);
-+
-+	/* [2, 4) on orig remained on pblk 202..203; [4, 6) swapped to 304..305 */
-+	mext_assert_mapped_block(test, orig, 2, 202, EXT4_MAP_UNWRITTEN);
-+	mext_assert_mapped_block(test, orig, 3, 203, EXT4_MAP_UNWRITTEN);
-+	mext_assert_mapped_block(test, orig, 4, 304, EXT4_MAP_UNWRITTEN);
-+	mext_assert_mapped_block(test, orig, 5, 305, EXT4_MAP_UNWRITTEN);
-+
-+	/* [0, 2) on donor remained 300..301; [4, 6) received 204..205 */
-+	mext_assert_mapped_block(test, donor, 0, 300, EXT4_MAP_UNWRITTEN);
-+	mext_assert_mapped_block(test, donor, 4, 204, EXT4_MAP_UNWRITTEN);
-+	mext_assert_mapped_block(test, donor, 5, 205, EXT4_MAP_UNWRITTEN);
-+}
-+
-+static void test_move_extents_written_copy_data_and_split(struct kunit *test)
-+{
-+	struct mext_test_ctx *ctx = mext_setup_ctx(test);
-+	struct inode *orig = ctx->orig_inode;
-+	struct inode *donor = ctx->donor_inode;
-+	ext4_lblk_t stride = max_t(ext4_lblk_t, 1,
-+				   PAGE_SIZE >> MEXT_TEST_BLK_BITS);
-+	ext4_lblk_t ext1 = stride;
-+	ext4_lblk_t ext2 = 3 * stride;
-+	ext4_lblk_t total_blks = ext2 + 3;
-+	ext4_lblk_t moved_lblks[] = { ext1, ext2, ext2 + 1 };
-+	ext4_lblk_t lblk;
-+	__u64 moved_len = 0;
-+	unsigned int i;
-+	int ret;
-+
-+	/*
-+	 * orig:  [0, total_blks) written -> pblk 400.., uptodate folios
-+	 * donor: [ext1, ext1 + 1) written -> pblk 501,
-+	 *        [ext1 + 1, ext2) hole,
-+	 *        [ext2, ext2 + 2) unwritten -> pblk 503..504
-+	 *
-+	 * Spacing donor extents by @stride ensures distinct pagecache folios on
-+	 * 16K/64K PAGE_SIZE kernels so dirtying ext1's folio does not make
-+	 * ext2's folio unreleasable (-EBUSY).
-+	 *
-+	 * Moving [ext1, ext2 + 2) exercises MEXT_COPY_DATA, left/right extent
-+	 * splits on orig, donor hole skipping, written preservation on orig,
-+	 * mark_unwritten=1 on donor, and page cache data preservation.
-+	 */
-+	i_size_write(orig, (loff_t)total_blks * MEXT_TEST_BLK_SIZE);
-+	EXT4_I(orig)->i_disksize = (loff_t)total_blks * MEXT_TEST_BLK_SIZE;
-+	i_size_write(donor, (loff_t)total_blks * MEXT_TEST_BLK_SIZE);
-+	EXT4_I(donor)->i_disksize = (loff_t)total_blks * MEXT_TEST_BLK_SIZE;
-+
-+	mext_insert_extent(test, orig, 0, total_blks, 400, false);
-+	mext_insert_extent(test, donor, ext1, 1, 501, false);
-+	mext_insert_extent(test, donor, ext2, 2, 503, true);
-+
-+	for (lblk = 0; lblk < total_blks; lblk++)
-+		mext_populate_folio_block(test, orig, lblk, 0xA0 + lblk);
-+
-+	ret = ext4_move_extents(&ctx->orig_file, &ctx->donor_file, ext1, ext1,
-+				ext2 + 2 - ext1, &moved_len);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, moved_len, 3ULL);
-+
-+	/* Verify orig mappings: leading/hole/trailing unchanged; moved swapped */
-+	mext_assert_mapped_block(test, orig, 0, 400, EXT4_MAP_MAPPED);
-+	mext_assert_mapped_block(test, orig, ext1, 501, EXT4_MAP_MAPPED);
-+	mext_assert_mapped_block(test, orig, ext1 + 1, 400 + ext1 + 1,
-+				 EXT4_MAP_MAPPED);
-+	mext_assert_mapped_block(test, orig, ext2, 503, EXT4_MAP_MAPPED);
-+	mext_assert_mapped_block(test, orig, ext2 + 1, 504, EXT4_MAP_MAPPED);
-+	mext_assert_mapped_block(test, orig, ext2 + 2, 400 + ext2 + 2,
-+				 EXT4_MAP_MAPPED);
-+
-+	/* Donor's swapped extents are marked unwritten to avoid leaking data */
-+	mext_assert_mapped_block(test, donor, ext1, 400 + ext1,
-+				 EXT4_MAP_UNWRITTEN);
-+	mext_assert_mapped_block(test, donor, ext2, 400 + ext2,
-+				 EXT4_MAP_UNWRITTEN);
-+	mext_assert_mapped_block(test, donor, ext2 + 1, 400 + ext2 + 1,
-+				 EXT4_MAP_UNWRITTEN);
-+
-+	/* Verify cached bytes in orig's moved folios were preserved & dirtied */
-+	for (i = 0; i < ARRAY_SIZE(moved_lblks); i++) {
-+		loff_t pos;
-+		struct folio *folio;
-+		u8 *addr;
-+
-+		lblk = moved_lblks[i];
-+		pos = (loff_t)lblk << orig->i_blkbits;
-+		folio = filemap_get_folio(orig->i_mapping, pos >> PAGE_SHIFT);
-+		KUNIT_ASSERT_FALSE(test, IS_ERR(folio));
-+		KUNIT_EXPECT_TRUE(test, folio_test_uptodate(folio));
-+		KUNIT_EXPECT_TRUE(test, folio_test_dirty(folio));
-+		addr = folio_address(folio);
-+		KUNIT_EXPECT_EQ(test, addr[offset_in_folio(folio, pos)],
-+				(u8)(0xA0 + lblk));
-+		folio_put(folio);
-+	}
-+}
-+
-+static void test_move_extents_unwritten_orig_and_ebusy(struct kunit *test)
-+{
-+	struct mext_test_ctx *ctx = mext_setup_ctx(test);
-+	struct inode *orig = ctx->orig_inode;
-+	struct inode *donor = ctx->donor_inode;
-+	ext4_lblk_t stride = max_t(ext4_lblk_t, 1,
-+				   PAGE_SIZE >> MEXT_TEST_BLK_BITS);
-+	ext4_lblk_t ebusy_lblk = max_t(ext4_lblk_t, 2, stride);
-+	ext4_lblk_t total_blks = ebusy_lblk + 2;
-+	struct folio *donor_folio;
-+	__u64 moved_len = 0;
-+	int ret;
-+
-+	/*
-+	 * Part 1: orig unwritten [0, 2) -> 600..601 (no pre-populated folios),
-+	 * donor written [0, 2) -> 700..701. Exercises MEXT_COPY_DATA through
-+	 * mext_folio_mkuptodate()'s non-uptodate unwritten buffer zeroing path.
-+	 */
-+	i_size_write(orig, (loff_t)total_blks * MEXT_TEST_BLK_SIZE);
-+	EXT4_I(orig)->i_disksize = (loff_t)total_blks * MEXT_TEST_BLK_SIZE;
-+	i_size_write(donor, (loff_t)total_blks * MEXT_TEST_BLK_SIZE);
-+	EXT4_I(donor)->i_disksize = (loff_t)total_blks * MEXT_TEST_BLK_SIZE;
-+
-+	mext_insert_extent(test, orig, 0, 2, 600, true);
-+	mext_insert_extent(test, donor, 0, 2, 700, false);
-+
-+	ret = ext4_move_extents(&ctx->orig_file, &ctx->donor_file, 0, 0, 2,
-+				&moved_len);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, moved_len, 2ULL);
-+
-+	mext_assert_mapped_block(test, orig, 0, 700, EXT4_MAP_UNWRITTEN);
-+	mext_assert_mapped_block(test, orig, 1, 701, EXT4_MAP_UNWRITTEN);
-+	mext_assert_mapped_block(test, donor, 0, 600, EXT4_MAP_UNWRITTEN);
-+	mext_assert_mapped_block(test, donor, 1, 601, EXT4_MAP_UNWRITTEN);
-+
-+	/*
-+	 * Part 2: non-releasable folio on donor triggers -EBUSY from
-+	 * filemap_release_folio() without altering extent mappings.
-+	 */
-+	mext_insert_extent(test, orig, ebusy_lblk, 1, 602, true);
-+	mext_insert_extent(test, donor, ebusy_lblk, 1, 702, true);
-+
-+	donor_folio = __filemap_get_folio(donor->i_mapping,
-+					  ((loff_t)ebusy_lblk <<
-+					   donor->i_blkbits) >> PAGE_SHIFT,
-+					  FGP_CREAT | FGP_LOCK, GFP_KERNEL);
-+	KUNIT_ASSERT_FALSE(test, IS_ERR(donor_folio));
-+	if (!folio_buffers(donor_folio))
-+		create_empty_buffers(donor_folio, MEXT_TEST_BLK_SIZE, 0);
-+	folio_set_checked(donor_folio);
-+	folio_unlock(donor_folio);
-+
-+	ret = ext4_move_extents(&ctx->orig_file, &ctx->donor_file,
-+				ebusy_lblk, ebusy_lblk, 1, &moved_len);
-+	folio_clear_checked(donor_folio);
-+	folio_put(donor_folio);
-+
++	/* EXT4_MMP_SEQ_FSCK fails immediately with -EBUSY without sleeping */
++	mmp_init_disk_block(ctx, EXT4_MMP_SEQ_FSCK, 5);
++	mmp_reset_counters(ctx);
++	ret = ext4_multi_mount_protect(ctx->sb, MMP_TEST_VALID_BLK);
 +	KUNIT_EXPECT_EQ(test, ret, -EBUSY);
-+	KUNIT_EXPECT_EQ(test, moved_len, 0ULL);
-+	mext_assert_mapped_block(test, orig, ebusy_lblk, 602,
-+				 EXT4_MAP_UNWRITTEN);
-+	mext_assert_mapped_block(test, donor, ebusy_lblk, 702,
-+				 EXT4_MAP_UNWRITTEN);
++	KUNIT_EXPECT_EQ(test, ctx->wait_calls, 0U);
++	KUNIT_EXPECT_EQ(test, ctx->write_calls, 0U);
++
++	/*
++	 * EXT4_MMP_SEQ_CLEAN skips pre-claim wait, writes a valid sequence
++	 * <= EXT4_MMP_SEQ_MAX, starts kmmpd, and ext4_stop_mmpd() cleans up.
++	 */
++	mmp_init_disk_block(ctx, EXT4_MMP_SEQ_CLEAN, 5);
++	mmp_reset_counters(ctx);
++	base_ref = atomic_read(&ctx->mmp_bh.b_count);
++
++	ret = ext4_multi_mount_protect(ctx->sb, MMP_TEST_VALID_BLK);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, ctx->wait_calls, 1U);
++	KUNIT_EXPECT_EQ(test, ctx->write_calls, 1U);
++	KUNIT_EXPECT_EQ(test, ctx->run_thread_calls, 1U);
++	KUNIT_EXPECT_LE(test, le32_to_cpu(disk_mmp->mmp_seq), EXT4_MMP_SEQ_MAX);
++	KUNIT_EXPECT_NOT_NULL(test, ctx->sbi.s_mmp_tsk);
++	KUNIT_EXPECT_PTR_EQ(test, ctx->sbi.s_mmp_bh, &ctx->mmp_bh);
++	KUNIT_EXPECT_STREQ(test,
++			   ((struct mmp_struct *)ctx->mmp_bh.b_data)->mmp_bdevname,
++			   "mmp_bdev");
++
++	ext4_stop_mmpd(&ctx->sbi);
++	KUNIT_EXPECT_NULL(test, ctx->sbi.s_mmp_tsk);
++	KUNIT_EXPECT_EQ(test, atomic_read(&ctx->mmp_bh.b_count), base_ref);
++	ctx->sbi.s_mmp_bh = NULL;
 +}
 +
-+static struct kunit_case move_extent_test_cases[] = {
-+	KUNIT_CASE(test_double_data_sem_lock_order),
-+	KUNIT_CASE(test_mext_check_validity_rejections),
-+	KUNIT_CASE(test_mext_check_adjust_range),
-+	KUNIT_CASE(test_move_extents_holes_and_unwritten),
-+	KUNIT_CASE(test_move_extents_written_copy_data_and_split),
-+	KUNIT_CASE(test_move_extents_unwritten_orig_and_ebusy),
++static void test_mmp_active_seq_conflict_and_claim(struct kunit *test)
++{
++	struct mmp_test_ctx *ctx = mmp_setup_ctx(test);
++	int ret;
++
++	/*
++	 * Case 1: Active sequence on disk; s_mmp_update_interval = 3 (floored
++	 * to 5), disk mmp_check_interval = 12 (overrides 5 -> wait_time = 25s).
++	 * Remote node updates mmp_seq during wait #1 -> fails with -EBUSY.
++	 */
++	ctx->es->s_mmp_update_interval = cpu_to_le16(3);
++	mmp_init_disk_block(ctx, 100, 12);
++	mmp_reset_counters(ctx);
++	ctx->mutate_seq_on_wait_call = 1;
++	ctx->mutated_seq = 101;
++
++	ret = ext4_multi_mount_protect(ctx->sb, MMP_TEST_VALID_BLK);
++	KUNIT_EXPECT_EQ(test, ret, -EBUSY);
++	KUNIT_EXPECT_EQ(test, ctx->wait_calls, 1U);
++	KUNIT_EXPECT_EQ(test, ctx->wait_timeouts[0], (long)(25 * HZ));
++	KUNIT_EXPECT_EQ(test, ctx->write_calls, 0U);
++
++	/*
++	 * Case 2: Stale sequence unchanged on wait #1, but racing mounter
++	 * overwrites mmp_seq during post-claim wait #2 -> fails with -EBUSY.
++	 */
++	mmp_init_disk_block(ctx, 100, 12);
++	mmp_reset_counters(ctx);
++	ctx->mutate_seq_on_wait_call = 2;
++	ctx->mutated_seq = 0x5555U;
++
++	ret = ext4_multi_mount_protect(ctx->sb, MMP_TEST_VALID_BLK);
++	KUNIT_EXPECT_EQ(test, ret, -EBUSY);
++	KUNIT_EXPECT_EQ(test, ctx->wait_calls, 2U);
++	KUNIT_EXPECT_EQ(test, ctx->wait_timeouts[0], (long)(25 * HZ));
++	KUNIT_EXPECT_EQ(test, ctx->wait_timeouts[1], (long)(25 * HZ));
++	KUNIT_EXPECT_EQ(test, ctx->write_calls, 1U);
++
++	/*
++	 * Case 3: Stale sequence with large check_interval = 80 (wait_time
++	 * capped to 80 + 60 = 140s via min(2*x+1, x+60)) succeeds cleanly.
++	 */
++	mmp_init_disk_block(ctx, 100, 80);
++	mmp_reset_counters(ctx);
++
++	ret = ext4_multi_mount_protect(ctx->sb, MMP_TEST_VALID_BLK);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, ctx->wait_calls, 2U);
++	KUNIT_EXPECT_EQ(test, ctx->wait_timeouts[0], (long)(140 * HZ));
++	KUNIT_EXPECT_EQ(test, ctx->wait_timeouts[1], (long)(140 * HZ));
++
++	ext4_stop_mmpd(&ctx->sbi);
++	ctx->sbi.s_mmp_bh = NULL;
++}
++
++static void test_mmp_interrupted_waits_and_kthread_failure(struct kunit *test)
++{
++	struct mmp_test_ctx *ctx = mmp_setup_ctx(test);
++
++	/* Signal interruption on pre-claim wait returns -ETIMEDOUT */
++	mmp_init_disk_block(ctx, 77, 5);
++	mmp_reset_counters(ctx);
++	ctx->wait_ret_target_call = 1;
++	ctx->wait_ret_on_call = 3 * HZ;
++	KUNIT_EXPECT_EQ(test,
++			ext4_multi_mount_protect(ctx->sb, MMP_TEST_VALID_BLK),
++			-ETIMEDOUT);
++
++	/* Signal interruption on post-claim wait returns -ETIMEDOUT */
++	mmp_init_disk_block(ctx, 77, 5);
++	mmp_reset_counters(ctx);
++	ctx->wait_ret_target_call = 2;
++	ctx->wait_ret_on_call = 2 * HZ;
++	KUNIT_EXPECT_EQ(test,
++			ext4_multi_mount_protect(ctx->sb, MMP_TEST_VALID_BLK),
++			-ETIMEDOUT);
++
++	/* kthread creation failure returns -ENOMEM and leaves s_mmp_tsk NULL */
++	mmp_init_disk_block(ctx, EXT4_MMP_SEQ_CLEAN, 5);
++	mmp_reset_counters(ctx);
++	ctx->run_thread_err = -ENOMEM;
++	KUNIT_EXPECT_EQ(test,
++			ext4_multi_mount_protect(ctx->sb, MMP_TEST_VALID_BLK),
++			-ENOMEM);
++	KUNIT_EXPECT_NULL(test, ctx->sbi.s_mmp_tsk);
++	ctx->sbi.s_mmp_bh = NULL;
++}
++
++static struct kunit_case mmp_test_cases[] = {
++	KUNIT_CASE(test_mmp_csum_set_and_verify),
++	KUNIT_CASE(test_read_and_write_mmp_block),
++	KUNIT_CASE(test_mmp_invalid_block_and_io_errors),
++	KUNIT_CASE(test_mmp_clean_and_fsck_sequences),
++	KUNIT_CASE(test_mmp_active_seq_conflict_and_claim),
++	KUNIT_CASE(test_mmp_interrupted_waits_and_kthread_failure),
 +	{}
 +};
 +
-+static struct kunit_suite move_extent_test_suite = {
-+	.name = "ext4_move_extent_test",
-+	.test_cases = move_extent_test_cases,
++static struct kunit_suite mmp_test_suite = {
++	.name = "ext4_mmp_test",
++	.test_cases = mmp_test_cases,
 +};
 +
-+kunit_test_suites(&move_extent_test_suite);
++kunit_test_suites(&mmp_test_suite);
 +
-+MODULE_DESCRIPTION("KUnit tests for ext4 move_extent");
++MODULE_DESCRIPTION("KUnit tests for ext4 multi-mount protection (MMP)");
 +MODULE_LICENSE("GPL");
-diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index e5450e83da80..15f4126c5c51 100644
---- a/fs/ext4/move_extent.c
-+++ b/fs/ext4/move_extent.c
-@@ -40,6 +40,7 @@ ext4_double_down_write_data_sem(struct inode *first, struct inode *second)
- 		down_write_nested(&EXT4_I(first)->i_data_sem, I_DATA_SEM_OTHER);
+diff --git a/fs/ext4/mmp.c b/fs/ext4/mmp.c
+index 4b18ddef468d..9e9eac6060af 100644
+--- a/fs/ext4/mmp.c
++++ b/fs/ext4/mmp.c
+@@ -1,4 +1,5 @@
+ // SPDX-License-Identifier: GPL-2.0
++#include <kunit/static_stub.h>
+ #include <linux/fs.h>
+ #include <linux/random.h>
+ #include <linux/buffer_head.h>
+@@ -35,6 +36,20 @@ static void ext4_mmp_csum_set(struct super_block *sb, struct mmp_struct *mmp)
+ 	mmp->mmp_checksum = ext4_mmp_csum(sb, mmp);
+ }
+ 
++int ext4_mmp_submit_write(struct buffer_head *bh)
++{
++	KUNIT_STATIC_STUB_REDIRECT(ext4_mmp_submit_write, bh);
++
++	lock_buffer(bh);
++	bh_submit(bh, REQ_OP_WRITE | REQ_SYNC | REQ_META | REQ_PRIO,
++		  bh_end_write);
++	wait_on_buffer(bh);
++	if (unlikely(buffer_write_io_error(bh)))
++		return -EIO;
++	return 0;
++}
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_mmp_submit_write);
++
+ /*
+  * Write the MMP block using REQ_SYNC to try to get the block on-disk
+  * faster.
+@@ -45,13 +60,7 @@ static int write_mmp_block_thawed(struct super_block *sb,
+ 	struct mmp_struct *mmp = (struct mmp_struct *)(bh->b_data);
+ 
+ 	ext4_mmp_csum_set(sb, mmp);
+-	lock_buffer(bh);
+-	bh_submit(bh, REQ_OP_WRITE | REQ_SYNC | REQ_META | REQ_PRIO,
+-			bh_end_write);
+-	wait_on_buffer(bh);
+-	if (unlikely(buffer_write_io_error(bh)))
+-		return -EIO;
+-	return 0;
++	return ext4_mmp_submit_write(bh);
+ }
+ 
+ static int write_mmp_block(struct super_block *sb, struct buffer_head *bh)
+@@ -64,6 +73,35 @@ static int write_mmp_block(struct super_block *sb, struct buffer_head *bh)
+ 		return write_mmp_block_thawed(sb, bh);
+ }
+ 
++int ext4_mmp_load_bh(struct super_block *sb, struct buffer_head **bh,
++		     ext4_fsblk_t mmp_block)
++{
++	KUNIT_STATIC_STUB_REDIRECT(ext4_mmp_load_bh, sb, bh, mmp_block);
++
++	/*
++	 * This would be sb_bread(sb, mmp_block), except we need to be sure
++	 * that the MD RAID device cache has been bypassed, and that the read
++	 * is not blocked in the elevator.
++	 */
++	if (!*bh) {
++		*bh = sb_getblk(sb, mmp_block);
++		if (!*bh)
++			return -ENOMEM;
++	}
++
++	lock_buffer(*bh);
++	return ext4_read_bh(*bh, REQ_META | REQ_PRIO, NULL, false);
++}
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_mmp_load_bh);
++
++long ext4_mmp_wait_timeout(long timeout)
++{
++	KUNIT_STATIC_STUB_REDIRECT(ext4_mmp_wait_timeout, timeout);
++
++	return schedule_timeout_interruptible(timeout);
++}
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_mmp_wait_timeout);
++
+ /*
+  * Read the MMP block. It _must_ be read from disk and hence we clear the
+  * uptodate flag on the buffer.
+@@ -77,19 +115,7 @@ static int read_mmp_block(struct super_block *sb, struct buffer_head **bh,
+ 	if (*bh)
+ 		clear_buffer_uptodate(*bh);
+ 
+-	/* This would be sb_bread(sb, mmp_block), except we need to be sure
+-	 * that the MD RAID device cache has been bypassed, and that the read
+-	 * is not blocked in the elevator. */
+-	if (!*bh) {
+-		*bh = sb_getblk(sb, mmp_block);
+-		if (!*bh) {
+-			ret = -ENOMEM;
+-			goto warn_exit;
+-		}
+-	}
+-
+-	lock_buffer(*bh);
+-	ret = ext4_read_bh(*bh, REQ_META | REQ_PRIO, NULL, false);
++	ret = ext4_mmp_load_bh(sb, bh, mmp_block);
+ 	if (ret)
+ 		goto warn_exit;
+ 
+@@ -185,8 +211,7 @@ static int kmmpd(void *data)
+ 
+ 		diff = jiffies - last_update_time;
+ 		if (diff < mmp_update_interval * HZ)
+-			schedule_timeout_interruptible(mmp_update_interval *
+-						       HZ - diff);
++			ext4_mmp_wait_timeout(mmp_update_interval * HZ - diff);
+ 
+ 		/*
+ 		 * We need to make sure that more than mmp_check_interval
+@@ -250,6 +275,16 @@ static int kmmpd(void *data)
+ 	return retval;
+ }
+ 
++struct task_struct *ext4_mmp_run_thread(struct super_block *sb,
++					const char *bdevname, int bdevname_len)
++{
++	KUNIT_STATIC_STUB_REDIRECT(ext4_mmp_run_thread, sb, bdevname,
++				   bdevname_len);
++
++	return kthread_run(kmmpd, sb, "kmmpd-%.*s", bdevname_len, bdevname);
++}
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_mmp_run_thread);
++
+ void ext4_stop_mmpd(struct ext4_sb_info *sbi)
+ {
+ 	if (sbi->s_mmp_tsk) {
+@@ -258,6 +293,7 @@ void ext4_stop_mmpd(struct ext4_sb_info *sbi)
+ 		sbi->s_mmp_tsk = NULL;
  	}
  }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_double_down_write_data_sem);
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_stop_mmpd);
  
- /**
-  * ext4_double_up_write_data_sem - Release two inodes' write lock of i_data_sem
-@@ -55,6 +56,7 @@ ext4_double_up_write_data_sem(struct inode *orig_inode,
- 	up_write(&EXT4_I(orig_inode)->i_data_sem);
- 	up_write(&EXT4_I(donor_inode)->i_data_sem);
+ /*
+  * Get a random new sequence number but make sure it is not greater than
+@@ -323,7 +359,7 @@ int ext4_multi_mount_protect(struct super_block *sb,
+ 		ext4_warning(sb, "MMP interval %u higher than expected, please"
+ 			     " wait.\n", wait_time * 2);
+ 
+-	if (schedule_timeout_interruptible(HZ * wait_time) != 0) {
++	if (ext4_mmp_wait_timeout(HZ * wait_time) != 0) {
+ 		ext4_warning(sb, "MMP startup interrupted, failing mount\n");
+ 		retval = -ETIMEDOUT;
+ 		goto failed;
+@@ -358,7 +394,7 @@ int ext4_multi_mount_protect(struct super_block *sb,
+ 	/*
+ 	 * wait for MMP interval and check mmp_seq.
+ 	 */
+-	if (schedule_timeout_interruptible(HZ * wait_time) != 0) {
++	if (ext4_mmp_wait_timeout(HZ * wait_time) != 0) {
+ 		ext4_warning(sb, "MMP startup interrupted, failing mount");
+ 		retval = -ETIMEDOUT;
+ 		goto failed;
+@@ -384,9 +420,8 @@ int ext4_multi_mount_protect(struct super_block *sb,
+ 	/*
+ 	 * Start a kernel thread to update the MMP block periodically.
+ 	 */
+-	EXT4_SB(sb)->s_mmp_tsk = kthread_run(kmmpd, sb, "kmmpd-%.*s",
+-					     (int)sizeof(mmp->mmp_bdevname),
+-					     mmp->mmp_bdevname);
++	EXT4_SB(sb)->s_mmp_tsk = ext4_mmp_run_thread(sb, mmp->mmp_bdevname,
++					     (int)sizeof(mmp->mmp_bdevname));
+ 	if (IS_ERR(EXT4_SB(sb)->s_mmp_tsk)) {
+ 		EXT4_SB(sb)->s_mmp_tsk = NULL;
+ 		ext4_warning(sb, "Unable to create kmmpd thread for %s.",
+@@ -401,3 +436,31 @@ int ext4_multi_mount_protect(struct super_block *sb,
+ 	brelse(bh);
+ 	return retval;
  }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_double_up_write_data_sem);
- 
- /* Grab and lock folio on both @inode1 and @inode2 by inode order. */
- static int mext_folio_double_lock(struct inode *inode1, struct inode *inode2,
-@@ -667,8 +669,23 @@ int ext4_move_extents(struct file *o_filp, struct file *d_filp, __u64 orig_blk,
- 	unlock_two_nondirectories(orig_inode, donor_inode);
- 	return ret;
- }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_move_extents);
- 
- #if IS_ENABLED(CONFIG_EXT4_KUNIT_TESTS)
--EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_double_down_write_data_sem);
--EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_double_up_write_data_sem);
-+int ext4_mext_check_validity_test(struct inode *orig_inode,
-+				  struct inode *donor_inode)
-+{
-+	return mext_check_validity(orig_inode, donor_inode);
-+}
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_mext_check_validity_test);
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_multi_mount_protect);
 +
-+int ext4_mext_check_adjust_range_test(struct inode *orig_inode,
-+				      struct inode *donor_inode,
-+				      __u64 orig_start, __u64 donor_start,
-+				      __u64 *len)
++#if IS_ENABLED(CONFIG_EXT4_KUNIT_TESTS)
++int ext4_mmp_csum_verify_test(struct super_block *sb, struct mmp_struct *mmp)
 +{
-+	return mext_check_adjust_range(orig_inode, donor_inode, orig_start,
-+				       donor_start, len);
++	return ext4_mmp_csum_verify(sb, mmp);
 +}
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_mext_check_adjust_range_test);
- #endif
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_mmp_csum_verify_test);
++
++void ext4_mmp_csum_set_test(struct super_block *sb, struct mmp_struct *mmp)
++{
++	ext4_mmp_csum_set(sb, mmp);
++}
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_mmp_csum_set_test);
++
++int ext4_read_mmp_block_test(struct super_block *sb, struct buffer_head **bh,
++			     ext4_fsblk_t mmp_block)
++{
++	return read_mmp_block(sb, bh, mmp_block);
++}
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_read_mmp_block_test);
++
++int ext4_write_mmp_block_test(struct super_block *sb, struct buffer_head *bh)
++{
++	return write_mmp_block(sb, bh);
++}
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_write_mmp_block_test);
++#endif
 -- 
 2.56.1.708.g77570a6a1d-goog
 
