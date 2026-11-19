@@ -1,80 +1,50 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.127.230.112
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795083194;
-	b=OxtEmWv/KjgtiYkxEvtQPMpYXQTDrj7FKZpDv9P+YT4/tm6X0Rb5yiLwLBGaC1PKc1l8
-	 KuZQV4cRsRvrHp4FMNogqsdk5NgkWpc0dBhjvB8Cw/rziYYIcGW9BMP8YtFVE05DcfiKs
-	 2T7nnZNoX+sfmaCVnXy0aIzEr6gbJjk4qK3uYOP9+M0ja+37iXhOzteU5thZMsOLwnpv4
-	 sL28AV/JmdLaU1RRWHqxSclujR5i5iyerlgmlQOdhLdaTt8Jvvt1S0RdYMAwnlvA+vy6v
-	 SEGX+Rp7X+tgLDMIbtO/3OADwgSpcuiZcJnmCO7OeNZe+F7h213WANY/UsI9SrF308Q==
+	t=1795091193;
+	b=PiWo+eFGMswDSrdnGF88gs2d0pYVkDd+nKCXkK3LsqGFo8zhlunnEZttLRiMKvSJYI5O
+	 7+o+KxYuLB4W3eWL1TOW/Ih7349aJ3YoVFv2HJtjuxakN9slLlIQW01fXbKTSZi0qZ0dP
+	 YxSxYnWXb0VvaUKtRb01pzduIH7blFoEJ3ZaoeKk0s4AUq18sLuNGM8Qv+SrpjC/dCaU5
+	 K1mxh/Qr/rna/gs01HC2foT0yNCZw1CVLQNHMWuk9TayYDQKKKWAOayi+Z9WEgB0EkYe2
+	 n62Rdae3CLjbZCh9DFoQrlFoAa3f5+frIFzELSH5qdII5LQCXij8l49xonZ25azUfZw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795083194;
-	h=Received:DKIM-Signature:Received:From:To:Subject:Date:
-	 X-Bugzilla-Reason:X-Bugzilla-Type:X-Bugzilla-Watch-Reason:
-	 X-Bugzilla-Product:X-Bugzilla-Component:X-Bugzilla-Version:
-	 X-Bugzilla-Keywords:X-Bugzilla-Severity:X-Bugzilla-Who:
-	 X-Bugzilla-Status:X-Bugzilla-Resolution:X-Bugzilla-Priority:
-	 X-Bugzilla-Assigned-To:X-Bugzilla-Flags:X-Bugzilla-Changed-Fields:
-	 Message-ID:In-Reply-To:References:Content-Type:
-	 Content-Transfer-Encoding:X-Bugzilla-URL:Auto-Submitted:MIME-Version;
-	bh=Lj7nj9dgk6Ip9wghXk7APeg6mGUcIS69ChDbTKYekEE=;
-	b=r00QulWjbg++6WhTYzDsvbDoZVT9QxXtK9ON95YnGRlF+z73widGCpwiVFt3K/f3gSxF
-	 OWvKVx+jmm3wp8gkPhVh9//irOksjbxhJ4aOBEC7hDVOmyhEFQMyMqTYTABMbFwASJCyo
-	 Iz9R/uXlCdsdNvhjzu4HMlqS3Nofmt0E2xVD9KkuwS3Dh3u7GoMsRt2CzR2bWjw22/Kba
-	 oOFhhBmlGD4Foodsrw7hH+F6sZm12qFx3qXMfdl0jfs06tkImCEu/3ZD2Zzzr7XxqpwA8
-	 uNCAWl6ckRSw89AKBmUnoJOlZKs/vyDn/0oeRbbBwMm7OAPiE7X/YEs72GTC+pcuZ/Q==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795091193;
+	h=DMARC-Filter:DKIM-Signature:Subject:X-Original-From:Mime-Version:
+	 Content-Type:To:Date:X-Mailer:From:Message-Id:
+	 Content-Transfer-Encoding:Cc:X-Lms-Return-Path;
+	bh=jse7ytWs++1dDBa2AyXcwOH6VrhUJJTlrNBoPj4agAM=;
+	b=hf5P/BPuLFjLoleQqrZ51AeIeMgLwJDv6ypozf8NB34RYmtQFHpOxF8ursSs9FLXH9v0
+	 lf/4ujwpe9ydQA1VSa3xCoZJSfwnWXoPx2C3Lc4rIse8N6ugXZ5Nv6/zk61QuUqqmanYD
+	 7PD3Yqeg5E9oJtJRR0RnY8cvzdnCIxHHwlEhoEAG1gc9xEHO60359kKa9tTC1lRSGIhPg
+	 n4OckvcYfPGYKVEG+t9iJEe4oTme8jTIcKRCNBaQ2bZw3m5Mk2OOdFutC90lm9qH2pCJR
+	 LIAOFEUXIwSZFtcgr/41C24df+n0alkrX+dsRM09VkkWNzlWozFYu6F/RPGznysYXGQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Y8Zhsfl9;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=pass header.from=bytedance.com;
+	spf=pass smtp.mailfrom=bytedance.com;
+	dkim=pass header.d=bytedance.com header.i=@bytedance.com header.a=rsa-sha256 header.s=2212171451 header.b=Gu7ghLKx;
+	arc=none smtp.remote-ip=209.127.230.112
+Received: from va-1-112.ptr.blmpb.com (va-1-112.ptr.blmpb.com [209.127.230.112])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DD447606A320
-	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2026 10:13:14 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C65B3606A325
+	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2026 12:26:31 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org C65B3606A325
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=bytedance.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Y8Zhsfl9
-Received: by smtp.kernel.org (Postfix) with ESMTPS id 674F31F000C6
-	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2026 10:13:14 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795083194;
-	bh=Lj7nj9dgk6Ip9wghXk7APeg6mGUcIS69ChDbTKYekEE=;
-	h=From:To:Subject:Date:In-Reply-To:References;
-	b=Y8Zhsfl9BH8wOXolG1mimhVUjGjpM/WSsgcPuPpApXzsJlGF6N3HKyOMVscGruc52
-	 NS9hUr2Oh6Puwjk1ackD5On2TiDDwEKLxE3AvZUx+UvtlHPTDtfZGJYqtznv2RhhkD
-	 1XI0gzjVmmq8Lkxm0ikgaVSe7r5SHM+5M7ZOHoqaCzssuEil8RBovV2zF+Bh9Ne5Zy
-	 4Ft6y/EvUxN/t+H4SnsuzMrHqRHeKGn8nLPpolYZi4S06aCgRWZMYsf/YjS1bLKVJg
-	 9+lGLyb3mCrp/RRyCLdlZQDxZWhJQYttmQbWvrkOyovb239lvOfLqrFVxUhir3MLoN
-	 j+er7pWrG3Hiw==
-Received: by aws-us-west-2-korg-bugzilla-alma10-1.codeaurora.org (Postfix, from userid 48)
-	id 642E8240040E; Thu, 19 Nov 2026 10:13:14 +0000 (UTC)
-From: bugzilla-daemon@kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 222294] [REGRESSION] 6.1.191+: NULL deref in
- ext4_mb_load_buddy_gfp() after a3a7d360252c ("ext4: fix e4b bitmap
- inconsistency reports")
-Date: Thu, 19 Nov 2026 10:13:14 +0000
-X-Bugzilla-Reason: None
-X-Bugzilla-Type: changed
-X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
-X-Bugzilla-Product: File System
-X-Bugzilla-Component: ext4
-X-Bugzilla-Version: 2.5
-X-Bugzilla-Keywords: 
-X-Bugzilla-Severity: normal
-X-Bugzilla-Who: internet.jejkowice@gmail.com
-X-Bugzilla-Status: NEW
-X-Bugzilla-Resolution: 
-X-Bugzilla-Priority: P3
-X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
-X-Bugzilla-Flags: 
-X-Bugzilla-Changed-Fields: attachments.created
-Message-ID: <bug-222294-13602-FHONC5Cxuq@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-222294-13602@https.bugzilla.kernel.org/>
-References: <bug-222294-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-X-Bugzilla-URL: https://bugzilla.kernel.org/
-Auto-Submitted: auto-generated
+	dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.a=rsa-sha256 header.s=2212171451 header.b=Gu7ghLKx
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+ s=2212171451; d=bytedance.com; t=1795091186; h=from:subject:
+ mime-version:from:date:message-id:subject:to:cc:reply-to:content-type:
+ mime-version:in-reply-to:message-id;
+ bh=jse7ytWs++1dDBa2AyXcwOH6VrhUJJTlrNBoPj4agAM=;
+ b=Gu7ghLKxmTWROaYmifo2U5oopRSpm99Nv/V85WuOtjdLqtt96droxESn6Waaig+tfIf3tX
+ PcENGCXCmBbtiEFqJMNj8DLTpnjGVKetWU5/YnTFDXTfU3m86vqGOnbDK0HtNKESqL93RF
+ ja8YFofR3R9F2Li/U8yeHY40tFs1a0J7Dq/bgpWxzBBJnWgKr3QnN/6MRDoEUlmYqJddOz
+ 2e70qLDRgPERA/Xu1Dm+mShyIiW8J2Z8d+XBGuD79c/j2EN338UFsqgxml/oIk5k31coMW
+ 44jus+Ci4w94EORojxD7wniJ/SdcPeOOorejgqRAzCiB2p/p/uUwmlkSS6DkgA==
+Subject: [PATCH v2 0/2] ext4: reject impossible group free cluster counts
+X-Original-From: Zhao Gongyi <zhaogongyi@bytedance.com>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -83,15 +53,76 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
-MIME-Version: 1.0
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+To: <linux-ext4@vger.kernel.org>
+Date: Thu, 19 Nov 2026 20:25:59 +0800
+X-Mailer: git-send-email 2.39.5 (Apple Git-154)
+From: "Zhao Gongyi" <zhaogongyi@bytedance.com>
+Message-Id: <20261119122601.85293-1-zhaogongyi@bytedance.com>
+Content-Transfer-Encoding: 7bit
+Cc: "Zhao Gongyi" <zhaogongyi@bytedance.com>, <linux-kernel@vger.kernel.org>, 
+	<tytso@mit.edu>, <adilger.kernel@dilger.ca>, 
+	<libaokun@linux.alibaba.com>, <jack@suse.cz>, <ojaswin@linux.ibm.com>, 
+	<ritesh.list@gmail.com>, <yi.zhang@huawei.com>
+X-Lms-Return-Path: <lba+26afeeaf0+a1d40e+vger.kernel.org+zhaogongyi@bytedance.com>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=3D222294
+ext4 initializes its free-space counters from the group descriptors. A
+corrupt descriptor can advertise more free clusters than its group can
+hold. Journal block replay can also replace the superblock and group
+descriptors that were examined when mounting.
 
---- Comment #2 from Dawid Partyka (internet.jejkowice@gmail.com) ---
-Created attachment 311520
-  --> https://bugzilla.kernel.org/attachment.cgi?id=3D311520&action=3Dedit
-log
+This series adds an optional JBD2 recovery callback and uses it in ext4
+to validate the recovered geometry and group descriptors. It checks the
+metadata before fast commit replay consumes it and checks the
+descriptors again after fast commit replay. The ext4 check reads both
+halves of the free-cluster count while holding the group lock.
 
---=20
-You are receiving this mail because:
-You are watching the assignee of the bug.=
+Changes since v1
+
+- Defer full descriptor validation on recovery mounts until journal
+  block replay completes. Keep the initial checks needed to load the
+  internal journal.
+- Revalidate the superblock geometry and reload the descriptor table
+  when replay changes its layout. Validate the free-cluster counts
+  against the recovered geometry.
+- Put the JBD2 interface in its own patch. Sample the group free-cluster
+  count under the existing group lock.
+
+Testing
+
+The earlier combined patch was tested in an amd64 QEMU/KVM guest
+running a 7.4.0-rc2-based kernel. The runs covered these cases.
+
+- ext4 rejected the corrupted bigalloc image before free-space
+  accounting. Valid read-only mounts succeeded and read-only mounts
+  with an out-of-range count failed.
+- Ordinary journal recovery succeeded and mounted read-write when the
+  recovered group descriptors were valid.
+- The recovery callback rejected an out-of-range count with an empty
+  journal and during recovery with a nonempty journal when corruption
+  remained in a separate group descriptor block.
+
+The recovery tests used additional diagnostic logging to identify the
+callback. The QEMU runs preceded the split and group-lock change.
+Fast commit replay and recovery from an online resize that crosses a
+group descriptor block boundary still need runtime coverage.
+
+Built fs/ext4/ and fs/jbd2/ on the ext4 dev base with arm64 GCC 15.2
+and W=1 after applying each patch in the series.
+
+Link: https://lore.kernel.org/linux-ext4/20261102042428.65204-1-zhaogongyi@bytedance.com/
+
+Zhao Gongyi (2):
+  jbd2: add a metadata validation hook to journal recovery
+  ext4: reject impossible group free cluster counts
+
+ fs/ext4/balloc.c     |  10 +-
+ fs/ext4/ext4.h       |   2 +
+ fs/ext4/super.c      | 294 +++++++++++++++++++++++++++++++++----------
+ fs/jbd2/journal.c    |  22 +++-
+ fs/jbd2/recovery.c   |  38 ++++--
+ include/linux/jbd2.h |   7 +-
+ 6 files changed, 287 insertions(+), 86 deletions(-)
+
+base-commit: 4aa05e642bade8cf8405936b03cabf848fe6c456
