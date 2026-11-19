@@ -1,55 +1,56 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795104500;
-	b=V8IQoLddDgnx2YNC3aEl2+QNQruQx8QTVNb70LnSffAAA0JUU34MVebxKkZaUAodb1eX
-	 1plRnb3l0kVxH8Cv60DN6Q5HOF6llWf3qBLJVS5NZbz11ZYmAlLJMnHAV6JfwRpM099KH
-	 SSQKrtMfOBGUGLEzLKsuzrRUs0KYSa1r9KBY89jA3uH6XPzPEqJlB3yHNEhQB2nQrTNOz
-	 EXa7uunrTfglWOqf38mttIV5rpt8G5v7V78AkCKLOGmjxxwDE/wp5fYg03YJhyYvFy0NA
-	 lMNMu+rr73FuBvicPy52bLZvbQ0ShRtb2Zox/KPuowrC766CRoaeeTia0/Powv1hALg==
+	t=1795104531;
+	b=Cn7/lkxVf9moEI9mJSpIqQ6ZH/iXn9soCsLk/J5Vtm+N8P7wT2RZfm/uqDPdGABuYHP/
+	 LTadyoecyx25B/Js3K05ggvK5oN7JnNv28Km9+C3+Mds9EptvzXKkGIh6MKEkf7Aio5tK
+	 kZvP5WSgiRBxPFbLT+JkGCzgKByllNfOxv5TaBPAh6Jnqh/jFkGmZScpxpf3cCHjXBvTq
+	 oAHSlXV+PRgmBY8Kr9R76tx59nhO7Of+0WUQBmM5oklSpxOmDwByYdCnVhfMdTo391czC
+	 +zRpCjZEgnWyYfpvHcDabtxu05DZP3Zm4PKS3J5xt4c7IHVgKjfDbfr26PEEv757Y4Q==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795104500;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795104531;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=vFW5wCDQsUs+MnXsSV7xUdm21FuFHfROO1tSO0Ss6Jg=;
-	b=DMgryfdttrNUTaJ3WaLVvkgJaIsEROPGnHPsK4vyrcpTXY1bPjTITtcz02E1jqbXs3r4
-	 BQz2hT5LnXYGiS3XYvwauT921te6kfOOIpl4gwtHdF6KWzSoHNRhTrut4JLJGKQvUOCfN
-	 YhMjCHa2Rj7uqaTS0+WJKiPFS17v71Fsb5VvkbaEyZ+dc5B0y6Cj+mSNs4DtD+0B/vksZ
-	 xpKW4Cd6zvNAU22o3zQXrGu3KJq3KfszAZRMca3T6MjHD1XV7ukOxugMQUV76dSyVWrjL
-	 lgWUkceK4Hr2XG1r9fnmx2wyki2A3P5siGZl6pUdBQtbjDiq+pXWhu2D5XR121LbfHQ==
+	bh=VGypSNPf3jey8XPTx1b2iPH4uxiXraxHnNjiOi51Ffo=;
+	b=D+p0cG+U5gFoxkEEPKb0FYgkNJVobXk6St9QoUcmMIJu+m1wj6ErousnW/sbdm45fi44
+	 7Qb2u71OfN9It7lUmmya5XfwvIZtuG0Nd+dWafjdSNCKf4CMVJxRe9QQww6B+JCyAg2PY
+	 Tx92Mo2RmAbq7m2hrIAUSfl9DclbQc8nAUh+f5EUMFYPAaHNFjCXU/2OKUsct8Cc+Gk+W
+	 ujAasflfxpZGwX16YOYJgIZSPFxGWI0Pvii6b1kIF+nhLEti7ALjlrnpZBnxrqvpn9xBI
+	 unPG23O/nqXDsMN+WX43awZfwO1+0O8Lbr1J48laVezR5GG1cbAcplPqg/WKh4Fg+0g==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Otb9Jl08;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="Y/eRmKSz";
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A7D0C606A320
-	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2026 16:08:20 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3A1FD60A261C
+	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2026 16:08:51 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Otb9Jl08
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 22DB61F000C8;
-	Thu, 19 Nov 2026 16:08:20 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Y/eRmKSz
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id EC84B1F000C6;
+	Thu, 19 Nov 2026 16:08:50 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795104500;
-	bh=vFW5wCDQsUs+MnXsSV7xUdm21FuFHfROO1tSO0Ss6Jg=;
+	s=k20260515; t=1795104531;
+	bh=VGypSNPf3jey8XPTx1b2iPH4uxiXraxHnNjiOi51Ffo=;
 	h=From:Subject:Reply-To:To:In-Reply-To:References:Date;
-	b=Otb9Jl08/1ZDZZeW4cIvUeu9tb73X3zr2KhRDOsHCcomk+J0qSoeBTJumLar9cQ5I
-	 NR80rjJuw55n0kQhqa0BTDT1pugEM4aRVt++IGDCczTUErmJKPPYr0yjrkyz5GQQ8Q
-	 ADxPT4D336+lb7IRw1xuaSglOOnFcEIRRNIRIKc8TgdGLhgyOMg9NVo0eqOnpx9g1F
-	 DHITtzZMv3HRC8smyXy0Sr/g1PpR6947guPqwV+oJNMJmPlBBXKUcXb8KX0/K3rKJI
-	 5lsVy9qWUYionLF0BB46NkFVLH7m1MVY8d0KGLdgvg9Rve3t6EsLlklRGSNu3tlHh4
-	 5A4NpoV5sD3YQ==
-Message-ID: <sashiko-outbox-223477@kernel.org>
+	b=Y/eRmKSzOEf6GsTFqa7Unq/QbzhMJYQef/tm1r5Fzx0GH+EKKKPI5Xz2SiQNsgoAg
+	 hzuCJ4ZoRbnFJMnCGwKDUt4mB5cel/HXIBkWCpvnHTYGDGWC3AuNlR0OT+kdwzUHEm
+	 OZkDhctXMOGl6A6Bv6T2JwwkNbzojMKeL5a4viWwX0RQaap7eVkNisw3GC6b06e23N
+	 +vfhLcJID0sDpRzsefCArmf5YB3FRwiB70hQxUyislnIkU19hZ72hpYXE1tY4u3Dvu
+	 aCYPcaXNgTPdnZc3mhVzbYDkg1XLOiNACLxQZqqVvFlz4ps+PvKmFyjA1R7Sez+9lh
+	 tLNhgLpJOHWSw==
+Message-ID: <sashiko-outbox-223479@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH -v2 16/26] ext4: add KUnit tests for fs/ext4/sysfs.c
+Subject: Re: [PATCH -v2 05/26] ext4: expand KUnit tests for
+ fs/ext4/mballoc.c
 Reply-To: sashiko-reviews@lists.linux.dev
 To: =?utf-8?b?VGhlb2RvcmUgVHMnbw==?= <tytso@mit.edu>, "Ext4 Developers List" <linux-ext4@vger.kernel.org>
-In-Reply-To: <20261119155658.1940864-17-tytso@mit.edu>
+In-Reply-To: <20261119155658.1940864-6-tytso@mit.edu>
 References: <20261119155658.1940864-1-tytso@mit.edu>
- <20261119155658.1940864-17-tytso@mit.edu>
+ <20261119155658.1940864-6-tytso@mit.edu>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Thu, 19 Nov 2026 16:08:19 +0000
+Date: Thu, 19 Nov 2026 16:08:50 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -59,26 +60,25 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-> Add a KUnit test suite (ext4_sysfs_test) covering ext4 sysfs attribute
-> show/store handlers, feature capability attributes, and sysfs/procfs
-> registration in fs/ext4/sysfs.c:
+> Expand the ext4_mballoc_test KUnit test suite in fs/ext4/mballoc-test.c
+> from 7 subtests (21 test cases) to 32 subtests (96 parameterized test
+> cases across 1K, 4K, and 64K block sizes) to comprehensively exercise
+> the multi-block allocator in fs/ext4/mballoc.c:
 >=20
-> - Generic pointer attributes across sbi, superblock, and explicit
->   targets (attr_pointer_ui, attr_pointer_ul, attr_pointer_pi negative
->   value rejection, attr_pointer_u8, attr_pointer_u64 LE64 decoding,
->   attr_pointer_string 32-byte bounding, and attr_pointer_atomic).
-> - Range-checked read-write attributes: inode_readahead_blks power-of-2
->   and upper-bound enforcement, reserved_clusters bounds against total
->   clusters, mb_best_avail_max_trim_order <=3D 64, mb_group_prealloc <=3D
->   s_clusters_per_group, and err_report_sec <=3D 1 year.
-> - Computed read-only attributes: delayed_allocation_blocks cluster-to-
->   block scaling, session_write_kbytes and lifetime_write_kbytes sector
->   accounting, sra_exceeded_retry_limit percpu summation, 40-bit error
->   timestamps (first_error_time / last_error_time), and journal_task.
-> - Feature capability attributes under /sys/fs/ext4/features, error
->   injection via trigger_fs_error, and lifecycle coverage of
->   ext4_register_sysfs(), ext4_notify_error_sysfs(), and
->   ext4_unregister_sysfs().
+> - Low-level bitmap helpers (mb_set_bit, mb_clear_bit, mb_test_bit,
+>   mb_find_next_zero_bit, mb_find_next_bit, mb_clear_bits, mb_set_bits,
+>   and mb_test_and_clear_bits across clean, partially clear, and fully
+>   clear ranges).
+> - Buddy bitmap lookup and extent discovery (mb_find_buddy,
+>   mb_find_order_for_block, mb_find_extent for free, used, and merged
+>   power-of-two ranges, and mb_regenerate_buddy).
+> - Corrupted block bitmap detection in ext4_mb_generate_buddy (setting
+>   EXT4_GROUP_INFO_BBITMAP_CORRUPT when bitmap free count mismatches
+>   grp->bb_free) and double-free / EXT4_STATE_FC_REPLAY handling in
+> [ ... ]
+>=20
+> Export the tested functions with EXPORT_SYMBOL_FOR_EXT4_TEST and add a
+> KUNIT_STATIC_STUB_REDIRECT hook to ext4_issue_discard.
 >=20
 > Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 
@@ -86,5 +86,5 @@ Sashiko has reviewed this patch and found no issues.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261119155658.1940=
-864-1-tytso@mit.edu?part=3D16
+864-1-tytso@mit.edu?part=3D5
 
