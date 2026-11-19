@@ -1,60 +1,60 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=18.9.28.11
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
 	t=1795115856;
-	b=Hepp+6SRDbx83l89Ex7UOnhed9svI+CkY5IeD8pFmw7N54fTI0HwA5x6/8JnFBqtrd2M
-	 TqJnUx47Eg57B+1xMYtn+OxjVsAOPwRKR/TviAvnCuVEJBAdf3zL0zHgPA1UzgZBwwV+m
-	 d6Dtr74oYo/yO2HbBMx0vVC1Iy6SG0ODw7ia6GGM4VyrsaOH9hlvLdGAlu5GjNk7z/iP9
-	 GdFLbsYTBOR1bzayETNzS8eo5jg1grK8mno8NDDzEYavm6DYPbWMtxXx89Eqgoq2XUUpQ
-	 I/ItuWcb/1sPSjdDWYyy/Ix74VI08RCDuGKVe0hIQq8+7yW7hIkyTwMXBz4DU5rvolQ==
+	b=mY/01ZQfafP2NvF5CzX4kf5Z11r3tZx+CTozFyrATyKEvN6IlubSqS9dcg9gUjx5lS3N
+	 fnl3AwjLYcHJikhmlARZUGtNX4Zp9NpOIxsGHNpe/WGua/wyyC9PaIxH+Wzo8y9ykUx+E
+	 NFwKbA2rhdQkhCYRsKugXMax+JgSX+cEANRBRvaC2eoZW0me2jdlDKkYO6ifA0RSoGsdY
+	 Bwr0VnbIq5UhnopMPqVaAPa0p3wmEQ7n59A8A2ic+qFR6O5veOlnKfc+MGocbsLpnOKRb
+	 ot6GFodiYHefvIs2526B4in516nBf20SaJaTtxD0lDRZXC3kNToMHkJRWnbbV5Np1ew==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
 	a=rsa-sha256; c=relaxed/relaxed; t=1795115856;
 	h=DMARC-Filter:Received:DKIM-Signature:Received:From:To:Cc:Subject:
 	 Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
 	 Content-Transfer-Encoding;
-	bh=rdT2aGVsijitO/9ca6lbPYERUZnHpj6PMn72bD9xCS4=;
-	b=f5nFuzfeugTdiRmgIPfaLzYTmgj4y7Ud/2xHm67FAg4wzpBfo74TXRzWAm6FQ1yDoR4e
-	 nAj6Kycv4UQowwplCepN2Tp1BDFaIdPAN0faBMoiCRHPPSBbWDF7Pw/WHj5ZV6IPBC0Cv
-	 9sSM8WIEmrzfW8KrkKt9eBUR5IsqFA4JcMeA9lTjHAwlX/wZQa6xxnhjqDZV20sMugt7U
-	 SyVxVm6KR2Qwe16B3pToR2g9ptqG6agwHrT2hAPx1TuHON+TqyypoL6PtlUYFYCNdW513
-	 8ZwMTKNa236PUaonOYXqpkXuZ271ag0VuWegi/SH57BZo28Fj4KoeYgoCFcQVekOrCQ==
+	bh=Lbp43MGHJB3rxMflNejkGAi7lGYC8VWQCaB0tmVPE+I=;
+	b=m2C7zr93AIoMHByh6i/5k1doRIMc0l0UJxaXzG1k7qUjTljJiEiocqP3BjoObnFQUt1p
+	 3YlN3jKRkKGiteSlPTbxagBTLLXNmyoqBXX5oGJqbVOywBHlJ9h9U96J7FCWJ4QYVoB1F
+	 uj327vlmdg1wuezG5goznl1aKd+iReSbvPk239AirlU1acuwJMzyt5RC+WGpHhR+TTY3T
+	 y0a62hEpCMvWGkj5yd3iAuBzJjk60dM/z25CwI8eDyKVNT06PhAmupcJaICgdXrm9WahZ
+	 9lTnGYxhmZqj4c0noCy5OFZt3EgGrCZyUPiPQaKTS8Iqcng0i8JaMt4gm0j9gf3R32A==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=mit.edu;
 	spf=pass smtp.mailfrom=mit.edu;
-	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=aU9Xvqru;
+	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b="p/8uAWR8";
 	arc=none smtp.remote-ip=18.9.28.11
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ECEDD606A337
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E6A76606A336
 	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2026 19:17:35 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org ECEDD606A337
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org E6A76606A336
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=aU9Xvqru
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=p/8uAWR8
 Received: from trampoline.thunk.org (pool-173-48-114-214.bstnma.fios.verizon.net [173.48.114.214])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AJJHWVt029861
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AJJHWBW029881
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
 	Thu, 19 Nov 2026 14:17:33 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1795115853; bh=rdT2aGVsijitO/9ca6lbPYERUZnHpj6PMn72bD9xCS4=;
+	t=1795115853; bh=Lbp43MGHJB3rxMflNejkGAi7lGYC8VWQCaB0tmVPE+I=;
 	h=From:Subject:Date:Message-ID:MIME-Version;
-	b=aU9XvqruTrUqssYYxmrJQttJHTt6ZZMg61mmlv5ho34ZeT/Oy4Uabg3fY6OVLescq
-	 Fo46sdR8Amu60zywYA0gqnVE518KXopk4l4h4aXbJrR63j1v9GBMCYVDQVc81AD0nt
-	 EfoHcrkXMQty+/myyEzuXiixXPqUOluR3J3dgzrJsh0idAUN/PbgNfzfVhpgmTTC6Y
-	 wfdFZgUtozbUHzD4ps9bc913xpQwKT4mpyiwDXYdHiMfcP574g3vcgB9PtvXZyjJgs
-	 n6t90TJryUPxIwhzoFHVPzLhdZaNb5A3l5++SMeMu146CRaXzfhK14MUPMliRbYpGz
-	 4p3aM2ZPahgNw==
+	b=p/8uAWR8w72QC9OUmyhFcT35QQ42EssmT673F14B/grXKgAxuY3Ud3gea++MnNI14
+	 Il45lp27WUKGbJw0J1nhJVaDhBE6B+ckn3ezyc8b9SFf5+z61HVce5rc/7W8Jq0FmD
+	 qNindjk1OYaBxoS2czb2YLD97VUPDaHy1YZhOILo4YUEiS3IKSqROiY49Buc0T935j
+	 CdV8JUEm0z7di5m009/RG4Lctou+pXx5CvWAxsoHNWKnFP5NpgIIBTkjM10ST4kzbb
+	 J9SbsLWVRcB5HRNxEeNYuSJKUJvQXbLDAiStCNVmZdetq7GD39QMZdQa3fAMb7JPNg
+	 StnUT7qi75WsQ==
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id 2FCD62E014F; Thu, 19 Nov 2026 14:17:31 -0500 (EST)
+	id 3335C2E0150; Thu, 19 Nov 2026 14:17:31 -0500 (EST)
 From: "Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Cc: "Theodore Ts'o" <tytso@mit.edu>
-Subject: [PATCH -v2 10/32] ext4: fix inode table accounting in count_overhead()
-Date: Thu, 19 Nov 2026 14:16:57 -0500
-Message-ID: <20261119191719.1943298-11-tytso@mit.edu>
+Subject: [PATCH -v2 11/32] ext4: handle flex groups straddling s_first_meta_bg in online resize
+Date: Thu, 19 Nov 2026 14:16:58 -0500
+Message-ID: <20261119191719.1943298-12-tytso@mit.edu>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <20261119191719.1943298-1-tytso@mit.edu>
 References: <20261119191719.1943298-1-tytso@mit.edu>
@@ -69,104 +69,269 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-count_overhead() computes the per-group overhead of bigalloc file
-systems which do not have s_overhead_clusters set in the superblock.
-It only counts a group's inode table if the whole table lies inside
-the block group being examined, using
+When a file system without resize_inode is grown online past the last
+GDT block, ext4_resize_fs() converts it to meta_bg and sets
+s_first_meta_bg to the current number of GDT blocks.  Descriptor
+blocks below s_first_meta_bg keep the traditional layout (backed up
+right after each backup superblock in groups < s_first_meta_bg *
+EXT4_DESC_PER_BLOCK), the later ones use the meta_bg layout.  The
+online resize code does not handle this boundary correctly:
 
-	b >= first_block && b + sbi->s_itb_per_group <= last_block
+ - ext4_flex_group_add() decides meta_bg and padding_blocks once, from
+   the first descriptor block touched by the flex group.  When a flex
+   group straddles s_first_meta_bg (possible whenever the flex_bg size
+   exceeds EXT4_DESC_PER_BLOCK, e.g. 1k blocks, 64bit and -G 32), the
+   meta_bg descriptor blocks are passed to update_backups() as
+   traditional ones, so their physical block number is used as an
+   in-group offset.  This writes descriptor blocks over free or data
+   blocks (and over backup superblocks) of unrelated groups, or past
+   the end of the file system, while the real meta_bg backups are never
+   written.
 
-where last_block is the (inclusive) last block of the group.  This
-has two problems:
+ - Even with the layout known per block, update_backups() copies a
+   traditional GDT block into every sparse group below s_groups_count,
+   including the newly added groups beyond s_first_meta_bg, which have
+   no traditional GDT backup area.  This again overwrites blocks that
+   are free (or meta_bg descriptor backups) in those groups.
 
- - The end check is off by one: an inode table occupying the last
-   s_itb_per_group blocks of the group is not counted at all.
+ - setup_new_flex_group_blocks() skips copying the GDT blocks into a
+   new backup group whenever the meta_bg feature is set.  Sparse groups
+   added below s_first_meta_bg still have a traditional backup area of
+   s_first_meta_bg blocks (reserved in the block bitmap), but only the
+   last traditional GDT block gets written there later by
+   update_backups(), leaving stale contents in the backup copies of all
+   earlier GDT blocks.
 
- - With flex_bg, mke2fs and online resize pack the inode tables of a
-   flex group back to back, so an inode table can straddle the
-   boundary between two block groups.  Such a table is not entirely
-   contained in either group and so is not counted in either.
+Add ext4_gdb_is_meta_bg() and use it to decide the layout per
+descriptor block in ext4_flex_group_add() and per group in
+setup_new_flex_group_blocks(), and limit the backups of traditional GDT
+blocks in update_backups() to the groups below s_first_meta_bg.
 
-In both cases the overhead is underestimated, so statfs(2) reports
-f_blocks (and thus the file system size and used space shown by df)
-as larger than it should be.
+ext4_add_new_descs() does not need changing: a new descriptor block is
+always number s_gdb_count, and s_first_meta_bg can never exceed it (it
+is checked at mount time and set to the current GDT block count during
+online conversion).
 
-Fix this by counting the intersection of the inode table with the
-block group, which handles both cases.
-
-Fixes: 952fc18ef9ec ("ext4: fix overhead calculation used by ext4_statfs()")
+Fixes: 01f795f9e0d6 ("ext4: add online resizing support for meta_bg and 64-bit file systems")
+Fixes: a6b3bfe176e8 ("ext4: fix corruption during on-line resize")
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/super-test.c | 25 +++++++++++++++++++++++++
- fs/ext4/super.c      | 15 +++++++++++++--
- 2 files changed, 38 insertions(+), 2 deletions(-)
+ fs/ext4/resize-test.c | 80 +++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/resize.c      | 55 ++++++++++++++++++++++-------
+ 2 files changed, 122 insertions(+), 13 deletions(-)
 
-diff --git a/fs/ext4/super-test.c b/fs/ext4/super-test.c
-index 5f34a56fc219..d64e0551ac46 100644
---- a/fs/ext4/super-test.c
-+++ b/fs/ext4/super-test.c
-@@ -1079,6 +1079,31 @@ static void test_overhead_and_statfs(struct kunit *test)
- 	/* Cluster 0 holds super+gdb+bbitmap+ibitmap; clusters 1..2 hold itb */
- 	KUNIT_EXPECT_EQ(test, ext4_count_overhead_test(sb, 0, buf), 3);
+diff --git a/fs/ext4/resize-test.c b/fs/ext4/resize-test.c
+index 81c9fd96816c..da08bfbd2fe2 100644
+--- a/fs/ext4/resize-test.c
++++ b/fs/ext4/resize-test.c
+@@ -1312,6 +1312,85 @@ static void test_resize_fs_across_resize_inode_to_meta_bg(struct kunit *test)
+ 			34U * RESIZE_TEST_INODES_PER_GRP);
+ }
  
-+	/* Inode table ending on the group's last block: clusters 254..255 */
-+	ext4_inode_table_set(sb, &ctx->gdps[0], SUPER_TEST_BLOCKS_PER_GRP - 8);
-+	memset(buf, 0, SUPER_TEST_BLK_SIZE);
-+	KUNIT_EXPECT_EQ(test, ext4_count_overhead_test(sb, 0, buf), 3);
++static bool resize_blk_matches(struct resize_test_ctx *ctx, ext4_fsblk_t blk,
++			       struct buffer_head *src)
++{
++	struct buffer_head *bh = resize_lookup_bh(ctx, blk);
++
++	return bh && !memcmp(bh->b_data, src->b_data, src->b_size);
++}
++
++/*
++ * Test 9: ext4_resize_fs() on a file system without resize_inode, where a
++ * single 64-group flex batch (groups 20..63) straddles s_first_meta_bg (2).
++ * GDT blocks 0 and 1 use the traditional layout and must be backed up only
++ * into sparse groups below 32 (including new groups 25 and 27); GDT blocks
++ * 2 and 3 use the meta_bg layout and must be backed up into the second and
++ * last group of their meta group, without scribbling over other blocks.
++ */
++static void test_resize_fs_flex_group_straddles_first_meta_bg(struct kunit *test)
++{
++	struct resize_test_ctx *ctx = test->priv;
++	struct super_block *sb = ctx->sb;
++	struct ext4_sb_info *sbi = &ctx->sbi;
++	struct ext4_super_block *backup_es;
++	struct buffer_head *gdb[4], *bh;
++	ext4_fsblk_t target_blks;
++	unsigned int i;
++
++	/* 20 groups: GDT block 0 full, GDT block 1 holds groups 16..19 */
++	resize_configure_fs(test, 20, 0, 6, RESIZE_TEST_BLOCKS_PER_GRP);
++	target_blks = RESIZE_TEST_FIRST_DATA_BLK +
++		      64ULL * RESIZE_TEST_BLOCKS_PER_GRP;
++
++	KUNIT_ASSERT_EQ(test, ext4_resize_fs(sb, target_blks), 0);
++	KUNIT_ASSERT_EQ(test, sbi->s_groups_count, 64U);
++	KUNIT_ASSERT_EQ(test, sbi->s_gdb_count, 4UL);
++	KUNIT_ASSERT_TRUE(test, ext4_has_feature_meta_bg(sb));
++	KUNIT_ASSERT_EQ(test, le32_to_cpu(ctx->es->s_first_meta_bg), 2U);
++
++	for (i = 0; i < ARRAY_SIZE(gdb); i++)
++		gdb[i] = sbi_array_rcu_deref(sbi, s_group_desc, i);
++
++	/* Traditional GDT backups in the new sparse groups 25 and 27 */
++	KUNIT_EXPECT_TRUE(test, resize_blk_matches(ctx,
++			  ext4_group_first_block_no(sb, 25) + 1, gdb[0]));
++	KUNIT_EXPECT_TRUE(test, resize_blk_matches(ctx,
++			  ext4_group_first_block_no(sb, 25) + 2, gdb[1]));
++	KUNIT_EXPECT_TRUE(test, resize_blk_matches(ctx,
++			  ext4_group_first_block_no(sb, 27) + 1, gdb[0]));
++	KUNIT_EXPECT_TRUE(test, resize_blk_matches(ctx,
++			  ext4_group_first_block_no(sb, 27) + 2, gdb[1]));
++
++	/* meta_bg descriptor backups in groups 33/47 and 49/63 */
++	KUNIT_EXPECT_TRUE(test, resize_blk_matches(ctx,
++			  ext4_group_first_block_no(sb, 33), gdb[2]));
++	KUNIT_EXPECT_TRUE(test, resize_blk_matches(ctx,
++			  ext4_group_first_block_no(sb, 47), gdb[2]));
++	KUNIT_EXPECT_TRUE(test, resize_blk_matches(ctx,
++			  ext4_group_first_block_no(sb, 49) + 1, gdb[3]));
++	KUNIT_EXPECT_TRUE(test, resize_blk_matches(ctx,
++			  ext4_group_first_block_no(sb, 63), gdb[3]));
++
++	/* Backup superblock in group 49 must not be overwritten */
++	bh = resize_lookup_bh(ctx, ext4_group_first_block_no(sb, 49));
++	KUNIT_ASSERT_NOT_NULL(test, bh);
++	backup_es = (struct ext4_super_block *)bh->b_data;
++	KUNIT_EXPECT_EQ(test, le16_to_cpu(backup_es->s_magic),
++			EXT4_SUPER_MAGIC);
++	KUNIT_EXPECT_EQ(test, le16_to_cpu(backup_es->s_block_group_nr), 49U);
 +
 +	/*
-+	 * flex_bg style layout where group 1's inode table (2044..2051)
-+	 * straddles the boundary between group 1 (1024..2047) and group 2
-+	 * (2048..3071); each group must count its own part of it.
++	 * Free blocks must not be written: the start of group 35 (meta_bg
++	 * GDT block 2 treated as a traditional offset) and the block after
++	 * group 49's meta_bg backup (traditional GDT block 1 copy).
 +	 */
-+	sbi->s_groups_count = 3;
-+	ext4_inode_table_set(sb, &ctx->gdps[0], 4);
-+	ext4_block_bitmap_set(sb, &ctx->gdps[1], 1028);
-+	ext4_inode_bitmap_set(sb, &ctx->gdps[1], 1029);
-+	ext4_inode_table_set(sb, &ctx->gdps[1], 2044);
-+	ext4_block_bitmap_set(sb, &ctx->gdps[2], 2056);
-+	ext4_inode_bitmap_set(sb, &ctx->gdps[2], 2057);
-+	ext4_inode_table_set(sb, &ctx->gdps[2], 2060);
-+	/* Group 1: super+gdb, bitmaps, and the head of its inode table */
-+	memset(buf, 0, SUPER_TEST_BLK_SIZE);
-+	KUNIT_EXPECT_EQ(test, ext4_count_overhead_test(sb, 1, buf), 3);
-+	/* Group 2: tail of group 1's inode table, bitmaps, own inode table */
-+	memset(buf, 0, SUPER_TEST_BLK_SIZE);
-+	KUNIT_EXPECT_EQ(test, ext4_count_overhead_test(sb, 2, buf), 4);
++	KUNIT_EXPECT_NULL(test, resize_lookup_bh(ctx,
++			  ext4_group_first_block_no(sb, 35)));
++	KUNIT_EXPECT_NULL(test, resize_lookup_bh(ctx,
++			  ext4_group_first_block_no(sb, 49) + 2));
++}
 +
- 	/* Restore 1:1 geometry and verify ext4_statfs accounting & clamping */
- 	ext4_clear_feature_bigalloc(sb);
- 	ctx->es.s_first_data_block = cpu_to_le32(SUPER_TEST_FIRST_DATA_BLK);
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index f54b02650de6..3fc6c08528bd 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -4309,12 +4309,23 @@ static int count_overhead(struct super_block *sb, ext4_group_t grp,
- 			count++;
- 		}
- 		b = ext4_inode_table(sb, gdp);
--		if (b >= first_block && b + sbi->s_itb_per_group <= last_block)
--			for (j = 0; j < sbi->s_itb_per_group; j++, b++) {
+ static struct kunit_case ext4_resize_test_cases[] = {
+ 	KUNIT_CASE(test_resize_begin_and_end_guards),
+ 	KUNIT_CASE(test_list_backups_and_verify_reserved_gdb),
+@@ -1321,6 +1400,7 @@ static struct kunit_case ext4_resize_test_cases[] = {
+ 	KUNIT_CASE(test_group_add_with_resize_inode_and_backup_gdb),
+ 	KUNIT_CASE(test_convert_meta_bg_validation_and_conversion),
+ 	KUNIT_CASE(test_resize_fs_across_resize_inode_to_meta_bg),
++	KUNIT_CASE(test_resize_fs_flex_group_straddles_first_meta_bg),
+ 	{}
+ };
+ 
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index 8bc79819ef16..a873527fbfd7 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -127,6 +127,17 @@ static ext4_grpblk_t ext4_group_overhead_blocks(struct super_block *sb,
+ 	return overhead;
+ }
+ 
++/*
++ * Return true if group descriptor block @gdb_num uses the meta_bg layout
++ * (stored in the first group of its meta block group) rather than the
++ * traditional layout (stored right after the superblock).
++ */
++static bool ext4_gdb_is_meta_bg(struct super_block *sb, unsigned long gdb_num)
++{
++	return ext4_has_feature_meta_bg(sb) &&
++	       gdb_num >= le32_to_cpu(EXT4_SB(sb)->s_es->s_first_meta_bg);
++}
++
+ #define outside(b, first, last)	((b) < (first) || (b) >= (last))
+ #define inside(b, first, last)	((b) >= (first) && (b) < (last))
+ 
+@@ -538,13 +549,11 @@ static int setup_new_flex_group_blocks(struct super_block *sb,
+ 	ext4_group_t group, count;
+ 	struct buffer_head *bh = NULL;
+ 	int reserved_gdb, i, j, err = 0, err2;
+-	int meta_bg;
+ 
+ 	BUG_ON(!flex_gd->count || !group_data ||
+ 	       group_data[0].group != sbi->s_groups_count);
+ 
+ 	reserved_gdb = le16_to_cpu(es->s_reserved_gdt_blocks);
+-	meta_bg = ext4_has_feature_meta_bg(sb);
+ 
+ 	/* This transaction may be extended/restarted along the way */
+ 	handle = ext4_journal_start_sb(sb, EXT4_HT_RESIZE, EXT4_MAX_TRANS_DATA);
+@@ -559,10 +568,14 @@ static int setup_new_flex_group_blocks(struct super_block *sb,
+ 		gdblocks = ext4_bg_num_gdb(sb, group);
+ 		start = ext4_group_first_block_no(sb, group);
+ 
+-		if (meta_bg == 0 && !ext4_bg_has_super(sb, group))
+-			goto handle_itb;
+-
+-		if (meta_bg == 1)
 +		/*
-+		 * The inode table is s_itb_per_group blocks long and, with
-+		 * flex_bg, may straddle a block group boundary.  Only count
-+		 * the part of it which lies inside this block group.
++		 * Only groups covered by the traditional GDT layout carry
++		 * backups of the traditional GDT blocks; meta_bg descriptor
++		 * blocks are handled by add_new_gdb_meta_bg() and
++		 * update_backups().
 +		 */
-+		if (b <= last_block &&
-+		    b + sbi->s_itb_per_group - 1 >= first_block) {
-+			ext4_fsblk_t start = max(b, first_block);
-+			ext4_fsblk_t end = min(b + sbi->s_itb_per_group - 1,
-+					       last_block);
-+
-+			for (b = start; b <= end; b++) {
- 				int c = EXT4_B2C(sbi, b - first_block);
- 				ext4_set_bit(c, buf);
- 				count++;
- 			}
++		if (ext4_gdb_is_meta_bg(sb, group / EXT4_DESC_PER_BLOCK(sb)) ||
++		    !ext4_bg_has_super(sb, group))
+ 			goto handle_itb;
+ 
+ 		block = start + ext4_bg_has_super(sb, group);
+@@ -1159,6 +1172,15 @@ static void update_backups(struct super_block *sb, sector_t blk_off, char *data,
+ 	if (meta_bg == 0) {
+ 		group = ext4_list_backups(sb, &three, &five, &seven);
+ 		last = sbi->s_groups_count;
++		/*
++		 * Superblock backups live in every backup group, but with
++		 * meta_bg only the groups below s_first_meta_bg hold copies
++		 * of the traditional GDT blocks.
++		 */
++		if (data != (char *)sbi->s_es && ext4_has_feature_meta_bg(sb))
++			last = min_t(ext4_group_t, last,
++				     le32_to_cpu(sbi->s_es->s_first_meta_bg) *
++				     EXT4_DESC_PER_BLOCK(sb));
+ 	} else {
+ 		group = ext4_get_group_number(sb, blk_off) + 1;
+ 		last = (ext4_group_t)(group + EXT4_DESC_PER_BLOCK(sb) - 2);
+@@ -1207,12 +1229,15 @@ static void update_backups(struct super_block *sb, sector_t blk_off, char *data,
+ 			ext4_std_error(sb, err);
+ 		brelse(bh);
+ 
+-		if (meta_bg == 0)
++		if (meta_bg == 0) {
+ 			group = ext4_list_backups(sb, &three, &five, &seven);
+-		else if (group == last)
++			if (group >= last)
++				break;
++		} else if (group == last) {
+ 			break;
+-		else
++		} else {
+ 			group = last;
 +		}
- 		if (i != grp)
- 			continue;
- 		s = 0;
+ 	}
+ 	if ((err2 = ext4_journal_stop(handle)) && !err)
+ 		err = err2;
+@@ -1603,15 +1628,19 @@ static int ext4_flex_group_add(struct super_block *sb,
+ 		int gdb_num = group / EXT4_DESC_PER_BLOCK(sb);
+ 		int gdb_num_end = ((group + flex_gd->count - 1) /
+ 				   EXT4_DESC_PER_BLOCK(sb));
+-		int meta_bg = ext4_has_feature_meta_bg(sb) &&
+-			      gdb_num >= le32_to_cpu(es->s_first_meta_bg);
+-		sector_t padding_blocks = meta_bg ? 0 : sbi->s_sbh->b_blocknr -
+-					 ext4_group_first_block_no(sb, 0);
+ 
+ 		update_backups(sb, ext4_group_first_block_no(sb, 0),
+ 			       (char *)es, sizeof(struct ext4_super_block), 0);
++		/*
++		 * A flex group may straddle s_first_meta_bg, so the layout
++		 * of each descriptor block has to be checked separately.
++		 */
+ 		for (; gdb_num <= gdb_num_end; gdb_num++) {
+ 			struct buffer_head *gdb_bh;
++			int meta_bg = ext4_gdb_is_meta_bg(sb, gdb_num);
++			sector_t padding_blocks = meta_bg ? 0 :
++				sbi->s_sbh->b_blocknr -
++				ext4_group_first_block_no(sb, 0);
+ 
+ 			gdb_bh = sbi_array_rcu_deref(sbi, s_group_desc,
+ 						     gdb_num);
 -- 
 2.56.1.708.g77570a6a1d-goog
 
