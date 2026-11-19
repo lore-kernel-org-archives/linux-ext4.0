@@ -1,77 +1,60 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=192.198.163.15
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=18.9.28.11
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795103262;
-	b=PjexDLHFn/2Ody5z74rdU6rnFHTw2RMF/lqib3pd+3dnVCQs0uZKOa1XN2DzD8TPVs9X
-	 s8E4tIweaEcRP5bAYaxzGUrZOoLrZwj3bRthpihhtzKWZGP0IkeRW9xnH9rY3V2m57/Wl
-	 a17gnrJuw9j34MViBm7fCvPBlcncltyfJthZv+Iq18mNxZYTihXJcRb3ozf/fq7qzM4C5
-	 ikR8VMkxbuelj4ZkDKStHhn2zQUZhDOncbQ3/GI8rU96UEQ/RyygnRtP1hP9MXKB/G5x2
-	 0WcIIFfMaqzgcuUnLPotS4pMY3T2x5P1ub7w0fQaQYyB8DOH9ugmm2+2d3Xw5eAS9vA==
+	t=1795103825;
+	b=Wa/Qrzsaif24RYCWiVDCjBDjY2Vi2EJKTWme7OZD5RoIKfrdGD83q6fVIG2yInU7KZEj
+	 /PtOYgGBfLKP5tLVJHymqHhm2eQqGBbqmhhgbFHgB69jJ+UPxZVIdoafRSGP30i23jqzX
+	 MOtPDSyfMIoOnlxyxhReArACRcr+YNh3q/dXZWJHazsB0SPnzAgGa3O/glezftefxrD9f
+	 q1VzGB6ip+gGeMAaL9nl1+qdI6WO56AHzmRAw0nEUCrdJ+14dOEo7I0v7MqCgCEkReL6Q
+	 h658ibbt/WuE6N8wKm9r7ktXYdnE22yegYiEhyiYOsT8GP/1sKB4nESEA+HwXMpm+/g==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795103262;
-	h=DMARC-Filter:DKIM-Signature:X-CSE-ConnectionGUID:X-CSE-MsgGUID:
-	 X-IronPort-AV:X-IronPort-AV:Received:X-CSE-ConnectionGUID:
-	 X-CSE-MsgGUID:X-ExtLoop1:X-IronPort-AV:Received:Received:Date:From:To:
-	 Cc:Subject:Message-ID:User-Agent;
-	bh=XqkD6FEff53Jjz7W685vkgslIFy+FvhoUIYmSzSLEJA=;
-	b=4k5Tx0SdbIol5x7pCg/1/o63trf36MoUDDf9qmCNtr7K/1jYJFRTshBKvLyS2Xm09DjZ
-	 LyCK8DfH26MPBc2nWmEMaHBY0czITxgHyBzA9bPQl6K6Iea8lfq4+ovqkPD1YJDF5SrYL
-	 4nzJNFHDKzkIBO9NB/cCXJqbLUuPfUG7hdOlovVYPlqYfCMmQgIsUjAGWDzI35pbZ5yX3
-	 QDIJhivWytgIy0cqr1i9D+BxYM79EIAhrwGndDXJZuqs28IPS1X6LtsQnCFusdOSouBvc
-	 iQYRYMsqBKY7YNr3j6pOGmM8KaBGBVpSBe2CkNwFw+fAlY+5L90uiQibgkjQ+Xlfa8A==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795103825;
+	h=DMARC-Filter:Received:DKIM-Signature:Received:From:To:Cc:Subject:
+	 Date:Message-ID:X-Mailer:MIME-Version:Content-Transfer-Encoding;
+	bh=AmPOcqk14RXDJ7VTp6EkJ38VMQbhJTDpFAyaDxHqk7I=;
+	b=LMnC19kH20imZ+PszEfqjpzNVAyHSJN4MDBqhFmKkul/IjPxpdhdi/NUcYa4wgs6fQ1c
+	 W2TycPwuP9QXFyxY3Hr3U9QdFfcbsK8DIDYLrGClIhYQtxrGqikrDjIJoFgnI4iJ5Sku4
+	 hhnXuSbPt/7t43VAtTr36DikjIxkiEZQVczLRqhyByRIiR0kbbEAQkI8wv8pEVzMg5mAE
+	 PMSAr+kAvVNflwKw86hNHENW8yQeNxgsfMSobkMCSaDftIcPP3bCbqJZcUz6eLBxpPIOu
+	 KGNrxox+i/3DxRZlRuQBf6FmXikE1BZXuK5vdQlo4jwyu4musN83ALmT9AJyzjWV3hQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=intel.com;
-	spf=pass smtp.mailfrom=intel.com;
-	dkim=pass header.d=intel.com header.i=@intel.com header.a=rsa-sha256 header.s=Intel header.b=corUhgzJ;
-	arc=none smtp.remote-ip=192.198.163.15
-Received: from mgamail.intel.com (mgamail.intel.com [192.198.163.15])
+	dmarc=pass header.from=mit.edu;
+	spf=pass smtp.mailfrom=mit.edu;
+	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=eUTRCCBs;
+	arc=none smtp.remote-ip=18.9.28.11
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7E0C260A2611
-	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2026 15:47:40 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 7E0C260A2611
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=intel.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C2509606A334
+	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2026 15:57:04 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org C2509606A334
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=intel.com header.i=@intel.com header.a=rsa-sha256 header.s=Intel header.b=corUhgzJ
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
-  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
-  t=1795103261; x=1826639261;
-  h=date:from:to:cc:subject:message-id;
-  bh=Y48iTwvBBfbcIGSmIJZ280zNfnFvbSZwSImEARbk+eY=;
-  b=corUhgzJw5tTYgvIOhFKeUDIIq81vuTFPhxfEL+z5YRjeFNpjHyZQifV
-   pmwOWScbCzk6H6zoQwBTdZjqhHzOOQud5z7W83P3vKyVJAK1zM9ECim9Y
-   nff3xadNY6ZIEtmfIvn/vuGuXUyxh0gpb2QFLRGoHJvbBfl4rQSVRrnV7
-   zlW0qnzN00iOWzzEKbqAcSB7VX25o1DycQTU1WGdx30VkVpYjCGBuj1Df
-   FaZiYZpOtolyiN7InvRg2kg+PtD4mrr2jn5g91Czb75ZlrnB0mQIGM6RP
-   rBnP4LubxMPST7CxtDoMM5iAhrm+eLJ5WGqZQJ+84rlFgeeM1xwurUGnY
-   g==;
-X-CSE-ConnectionGUID: Dyelwl/lQy+mabYYsO5foQ==
-X-CSE-MsgGUID: ofp+EfMZTmOwxkgrjf/PCw==
-X-IronPort-AV: E=McAfee;i="6800,10657,11971"; a="3965194"
-X-IronPort-AV: E=Sophos;i="6.27,221,1787036400"; 
-   d="scan'208";a="3965194"
-Received: from orviesa007.jf.intel.com ([10.64.159.147])
-  by fmvoesa109.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 19 Nov 2026 07:47:40 -0800
-X-CSE-ConnectionGUID: 3HCRVHBPToCwhGXCn9RqJA==
-X-CSE-MsgGUID: 87FT5LY2SxqvJCZ+xnRnng==
-X-ExtLoop1: 1
-X-IronPort-AV: E=Sophos;i="6.27,221,1787036400"; 
-   d="scan'208";a="10369879"
-Received: from igk-lkp-server01.igk.intel.com (HELO 1073a420ae3a) ([10.211.93.152])
-  by orviesa007.jf.intel.com with ESMTP; 19 Nov 2026 07:47:39 -0800
-Received: from kbuild by 1073a420ae3a with local (Exim 4.98.2)
-	(envelope-from <lkp@intel.com>)
-	id 1xU4MJ-000000003o5-2GE9;
-	Thu, 19 Nov 2026 15:47:35 +0000
-Date: Thu, 19 Nov 2026 16:47:21 +0100
-From: kernel test robot <lkp@intel.com>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Cc: oe-kbuild-all@lists.linux.dev, linux-ext4@vger.kernel.org
-Subject: [tytso-ext4:test 9/26]
- arch/x86/include/asm/atomic64_32.h:122:34: sparse: sparse: cast truncates
- bits from constant value (f11335577 becomes 11335577)
-Message-ID: <20261119163935.Eg68iXGt-lkp@intel.com>
-User-Agent: s-nail v14.9.25
+	dkim=pass (2048-bit key, unprotected) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=eUTRCCBs
+Received: from trampoline.thunk.org (pool-173-48-114-214.bstnma.fios.verizon.net [173.48.114.214])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AJFv0WP001487
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Thu, 19 Nov 2026 10:57:01 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1795103821; bh=AmPOcqk14RXDJ7VTp6EkJ38VMQbhJTDpFAyaDxHqk7I=;
+	h=From:Subject:Date:Message-ID:MIME-Version;
+	b=eUTRCCBsYC9Bl/uiRHMalcwp9XQJEc8cKak8z+h/1/u0quxxyhwV5Tgs5x1prd71N
+	 1lrMbLHf38Vf9Lx2urK0XUd4KVS7aH/SPSm7WgsOYk+kD/aaLmTFcUSXUTNiG2FE1L
+	 XRu1mUFCHobrJSdfOJJoNcwLc/pfoOLQ3hhYjotulCHK9Go2ouLiyZ8kwMIiLyq7Gg
+	 xUeSmdUXLX2xw5I9tX7l45Fwkf9GoZ+WKBA4m+4SnBc1BCbxz+v9pFRBHI05Do6sU5
+	 +iAwBUSdAJZhlNkffMGyDF0Ohz8SxN0YK052EGShrnCqa6W4Lw4znkSaNVEcJ7His+
+	 TMs9mxm0Ys1KQ==
+Received: by trampoline.thunk.org (Postfix, from userid 15806)
+	id 39DDD2E00BB; Thu, 19 Nov 2026 10:57:00 -0500 (EST)
+From: "Theodore Ts'o" <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Subject: [PATCH -v2 00/26] ext4: add lots of KUnit tests!
+Date: Thu, 19 Nov 2026 10:56:32 -0500
+Message-ID: <20261119155658.1940864-1-tytso@mit.edu>
+X-Mailer: git-send-email 2.53.0
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -80,45 +63,181 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 
-tree:   https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git test
-head:   f39b6beaed1c1cd9cd503d548008710ba2b9d9e6
-commit: ea68739b04998227f615097d2b1f94605979c539 [9/26] ext4: expand KUnit tests for fs/ext4/inode.c
-config: i386-randconfig-2302-20261119 (https://download.01.org/0day-ci/archive/20261119/20261119163935.Eg68iXGt-lkp@intel.com/config)
-compiler: clang version 22.1.8 (https://github.com/llvm/llvm-project ca7933e47d3a3451d81e72ac174dcb5aa28b59d1)
-sparse: v0.6.5-rc1-21-g84ec0658
-reproduce (this is a W=1 build): (https://download.01.org/0day-ci/archive/20261119/20261119163935.Eg68iXGt-lkp@intel.com/reproduce)
+These unit tests were written using the writing-kunit-tests.md
+prompt[1].  It has received human review, as well as multiple passes
+with LLM's, especially since the -v1 release.
 
-If you fix the issue in a separate patch/commit (i.e. not just a new version of
-the same patch/commit), kindly add following tags
-| Reported-by: kernel test robot <lkp@intel.com>
-| Closes: https://lore.kernel.org/oe-kbuild-all/20261119163935.Eg68iXGt-lkp@intel.com/
+[1] https://drive.google.com/file/d/1MVZIhlG79kTRX_A65phWiZkTPJEtypsL/view
 
-sparse warnings: (new ones prefixed by >>)
-   fs/ext4/inode-test.c: note: in included file (through arch/x86/include/asm/atomic.h, include/linux/atomic.h, include/linux/cpumask.h, arch/x86/include/asm/paravirt.h, ...):
->> arch/x86/include/asm/atomic64_32.h:122:34: sparse: sparse: cast truncates bits from constant value (f11335577 becomes 11335577)
->> arch/x86/include/asm/atomic64_32.h:122:34: sparse: sparse: cast truncates bits from constant value (2cafebabe becomes cafebabe)
+While the LLM was busily generating these unit tests, it also found
+around two dozen potential bug fixes[2].  Those will be sent in a
+separate series.
 
-vim +122 arch/x86/include/asm/atomic64_32.h
+[2] https://drive.google.com/file/d/1pnTKAVf9pAoCK27619uP4_3_hpE04SkR/view
 
-1a3b1d89eded68 Brian Gerst    2010-01-07  118  
-7aab7aa4b4bed2 Peter Zijlstra 2023-01-26  119  static __always_inline void arch_atomic64_set(atomic64_t *v, s64 i)
-a7e926abc3adfb Luca Barbieri  2010-02-24  120  {
-a7e926abc3adfb Luca Barbieri  2010-02-24  121  	unsigned high = (unsigned)(i >> 32);
-a7e926abc3adfb Luca Barbieri  2010-02-24 @122  	unsigned low = (unsigned)i;
-224788b63a2e42 Josh Poimboeuf 2025-03-02  123  	alternative_atomic64(set,
-224788b63a2e42 Josh Poimboeuf 2025-03-02  124  			     /* no output */,
-224788b63a2e42 Josh Poimboeuf 2025-03-02  125  			     ASM_INPUT("S" (v), "b" (low), "c" (high)),
-224788b63a2e42 Josh Poimboeuf 2025-03-02  126  			     "eax", "edx", "memory");
-a7e926abc3adfb Luca Barbieri  2010-02-24  127  }
-1a3b1d89eded68 Brian Gerst    2010-01-07  128  
+The patches in this series are available at the ext4.git tree on the
+branch ext4-kunit-tests[3], which is now based on the ext4.git dev
+branch[4] (commit 008aad6508e3, on top of v7.4-rc2).
 
-:::::: The code at line 122 was first introduced by commit
-:::::: a7e926abc3adfbd2e5e20d2b46177adb4e313915 x86-32: Rewrite 32-bit atomic64 functions in assembly
+[3] https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git/log/?h=ext4-kunit-tests
+[4] https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git/log/?h=dev
 
-:::::: TO: Luca Barbieri <luca@luca-barbieri.com>
-:::::: CC: H. Peter Anvin <hpa@zytor.com>
+Changes since v1[5]:
 
+ - Rebased from v7.3-rc4 onto the ext4.git dev branch (on top of
+   v7.4-rc2), updating test stubs, teardown helpers, and expectations
+   for upstream and dev changes (ext4_es_destroy_stats(), const struct
+   mnt_idmap *, buffer_write_io_error(), handle_t * zeroout arguments,
+   blkdev_issue_flush() error propagation, sb_find_get_block() inode
+   bitmap lookups, the 2 MiB max orphan file size, flex_bg sibling
+   directory spreading, and stopping cleanly on incomplete fast commit
+   replay).
+ - Dropped "ext4: zero s_fc_replay_state in ext4_fc_replay_cleanup()",
+   superseded by commit 2d36dbdbf575 ("ext4: free fast commit replay
+   state on failed mounts") in dev.
+ - Squashed "ext4: add KUnit tests for ext4_ext_split() leaf and index
+   splitting" into "ext4: add KUnit tests for fs/ext4/extents.c".
+ - Added "ext4: add KUnit regression tests for inode migration fixes"
+   covering the ext4_ext_migrate() fixes now in dev.
+ - Addressed build, sparse, bisection, portability, and test-lifecycle
+   issues reported by the kernel test robot and sashiko-bot, along
+   with follow-up verification fixes across UML, x86_64, i386, arm,
+   and arm64 (including 16K/64K pages, lockdep, KASAN, sparse C=2,
+   and per-commit CONFIG_EXT4_KUNIT_TESTS=m builds):
+    * Deduplicated and reordered EXPORT_SYMBOL_FOR_EXT4_TEST()
+      exports, dropped unused mballoc test wrappers, and moved the
+      SB_ENC_STRICT_MODE_FL fix into the namei test patch for clean
+      modular and CONFIG_UNICODE=y bisection.
+    * Fixed 32-bit 64-bit-division link errors (div_u64/div_u64_rem),
+      big-endian EXT4_EXT_MAGIC checks, sparse warnings (__le16/__le32,
+      __percpu, __bitwise, flexible-array structs, upper_32_bits()),
+      unaligned bitmap word ops, and large stack frames in tests.
+    * Fixed mock superblock and inode teardown (attaching s_root via
+      d_make_root() so deactivate_super() drains fserror_worker(),
+      moving ext4_es_remove_extent() from .free_inode to .evict_inode,
+      draining RCU callbacks via rcu_barrier(), and registering KUnit
+      cleanup actions for early-abort safety).
+    * Fixed lockdep key initialization, i_size_ordered_init() on mock
+      inodes, CONFIG_HIGHMEM folio copies, 16K/64K PAGE_SIZE block and
+      buddy-group spacing, SMP/preemption test races, RTC-less i_dtime
+      checks, and !CONFIG_QUOTA / !CONFIG_PRINTK handling.
+
+[5] https://lore.kernel.org/r/20261112040638.1576836-1-tytso@mit.edu
+
+Theodore Ts'o (26):
+  ext4: add KUinit tests for fs/ext4/extents_status.c
+  ext4: add KUnit tests for fs/ext4/extents.c
+  ext4: add KUnit tests for fs/ext4/xattr.c
+  ext4: add KUnit tests for fs/ext4/namei.c
+  ext4: expand KUnit tests for fs/ext4/mballoc.c
+  ext4: add KUnit tests for fs/ext4/inline.c
+  ext4: add KUnit tests for fs/ext4/fast_commit.c
+  ext4: expand KUnit tests for fs/ext4/inode.c
+  ext4: add KUnit tests for fs/ext4/ialloc.c
+  ext4: add KUnit tests for fs/ext4/balloc.c
+  ext4: add KUnit tests for fs/ext4/orphan.c
+  ext4: add KUnit tests for fs/ext4/block_validity.c
+  ext4: check multi-block overlap on left traversal in add_system_zone()
+  ext4: enable full feature coverage in fs/ext4/.kunitconfig
+  ext4: add KUnit tests for fs/ext4/super.c
+  ext4: add KUnit tests for fs/ext4/sysfs.c
+  ext4: add KUnit tests for fs/ext4/ioctl.c
+  ext4: add KUnit tests for fs/ext4/resize.c
+  ext4: add KUnit tests for fs/ext4/migrate.c
+  ext4: add KUnit tests for fs/ext4/indirect.c
+  ext4: expand KUnit tests in fs/ext4/extents-test.c for file range
+    operations
+  ext4: add KUnit tests for fs/ext4/fsmap.c
+  ext4: add KUnit tests for fs/ext4/move_extent.c
+  ext4: add KUnit tests for fs/ext4/mmp.c
+  ext4: add KUnit tests for fs/ext4/dir.c
+  ext4: add KUnit regression tests for inode migration fixes
+
+ fs/ext4/.kunitconfig          |    7 +
+ fs/ext4/Makefile              |   12 +-
+ fs/ext4/balloc-test.c         | 2403 ++++++++++++++++++++++
+ fs/ext4/balloc.c              |   11 +-
+ fs/ext4/bitmap.c              |    5 +
+ fs/ext4/block_validity-test.c | 1598 +++++++++++++++
+ fs/ext4/block_validity.c      |   11 +-
+ fs/ext4/crypto.c              |    4 +
+ fs/ext4/dir-test.c            |  993 ++++++++++
+ fs/ext4/dir.c                 |   37 +
+ fs/ext4/ext4.h                |  255 ++-
+ fs/ext4/ext4_extents.h        |   21 +
+ fs/ext4/ext4_jbd2.c           |   21 +
+ fs/ext4/extents-test.c        | 2625 +++++++++++++++++++++++-
+ fs/ext4/extents.c             |   99 +-
+ fs/ext4/extents_status-test.c | 1646 ++++++++++++++++
+ fs/ext4/extents_status.c      |   23 +
+ fs/ext4/fast_commit-test.c    | 2714 +++++++++++++++++++++++++
+ fs/ext4/fast_commit.c         |  180 +-
+ fs/ext4/fsmap-test.c          |  796 ++++++++
+ fs/ext4/fsmap.c               |    3 +
+ fs/ext4/ialloc-test.c         | 2731 +++++++++++++++++++++++++
+ fs/ext4/ialloc.c              |  104 +-
+ fs/ext4/indirect-test.c       | 1293 ++++++++++++
+ fs/ext4/indirect.c            |   18 +-
+ fs/ext4/inline-test.c         | 1866 ++++++++++++++++++
+ fs/ext4/inline.c              |   34 +-
+ fs/ext4/inode-test.c          | 3511 ++++++++++++++++++++++++++++++++-
+ fs/ext4/inode.c               |  192 +-
+ fs/ext4/ioctl-test.c          | 1198 +++++++++++
+ fs/ext4/ioctl.c               |  249 ++-
+ fs/ext4/mballoc-test.c        | 1940 +++++++++++++++++-
+ fs/ext4/mballoc.c             |  181 +-
+ fs/ext4/mballoc.h             |   40 +
+ fs/ext4/migrate-test.c        | 1384 +++++++++++++
+ fs/ext4/migrate.c             |   11 +
+ fs/ext4/mmp-test.c            |  661 +++++++
+ fs/ext4/mmp.c                 |  117 +-
+ fs/ext4/move_extent-test.c    | 1023 ++++++++++
+ fs/ext4/move_extent.c         |   22 +
+ fs/ext4/namei-test.c          | 2347 ++++++++++++++++++++++
+ fs/ext4/namei.c               |  342 ++--
+ fs/ext4/namei.h               |  213 ++
+ fs/ext4/orphan-test.c         | 2372 ++++++++++++++++++++++
+ fs/ext4/orphan.c              |   12 +
+ fs/ext4/page-io.c             |    1 +
+ fs/ext4/resize-test.c         | 1336 +++++++++++++
+ fs/ext4/resize.c              |  102 +-
+ fs/ext4/super-test.c          | 1345 +++++++++++++
+ fs/ext4/super.c               |  276 ++-
+ fs/ext4/sysfs-test.c          |  679 +++++++
+ fs/ext4/sysfs.c               |   55 +
+ fs/ext4/xattr-test.c          | 1822 +++++++++++++++++
+ fs/ext4/xattr.c               |   30 +-
+ fs/ext4/xattr.h               |    2 +
+ fs/ext4/xattr_hurd.c          |    4 +
+ fs/ext4/xattr_security.c      |    4 +
+ fs/ext4/xattr_trusted.c       |    4 +
+ fs/ext4/xattr_user.c          |    4 +
+ 59 files changed, 40569 insertions(+), 420 deletions(-)
+ create mode 100644 fs/ext4/balloc-test.c
+ create mode 100644 fs/ext4/block_validity-test.c
+ create mode 100644 fs/ext4/dir-test.c
+ create mode 100644 fs/ext4/extents_status-test.c
+ create mode 100644 fs/ext4/fast_commit-test.c
+ create mode 100644 fs/ext4/fsmap-test.c
+ create mode 100644 fs/ext4/ialloc-test.c
+ create mode 100644 fs/ext4/indirect-test.c
+ create mode 100644 fs/ext4/inline-test.c
+ create mode 100644 fs/ext4/ioctl-test.c
+ create mode 100644 fs/ext4/migrate-test.c
+ create mode 100644 fs/ext4/mmp-test.c
+ create mode 100644 fs/ext4/move_extent-test.c
+ create mode 100644 fs/ext4/namei-test.c
+ create mode 100644 fs/ext4/namei.h
+ create mode 100644 fs/ext4/orphan-test.c
+ create mode 100644 fs/ext4/resize-test.c
+ create mode 100644 fs/ext4/super-test.c
+ create mode 100644 fs/ext4/sysfs-test.c
+ create mode 100644 fs/ext4/xattr-test.c
+
+base-commit: 008aad6508e30cd1bb6d2c2cf65221ba1f16a065
 -- 
-0-DAY CI Kernel Test Service
-https://github.com/intel/lkp-tests/wiki
+2.56.1.708.g77570a6a1d-goog
+
