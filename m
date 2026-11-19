@@ -1,104 +1,104 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.130
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795119083;
-	b=ZojOSOyKIRVfexMpoWDSOpWaWDDS4ZB/H/ujJF4f6UP5bZB6XxEGrnnC/I8I6mw/P4pb
-	 y12pBMBg4zfTd4Wa3OLJOnjac41GK+qa2d2QZIo+KMa10iYZdQecqJexmxjfMGNhaXhWr
-	 I1glhwo6fNXyumrA+GfUyQHlS41PJshPclImumfFNGozfzUMsV/2gmHtrpKfViqwo6d1s
-	 X1/+itmgTv5Rhdo4NW5rP5bOafI5vK0nwjS3RVE8EfPROTy0puCZs4cVf3dNFKqr8n4Zt
-	 kudThfZ0uP76z0Q/hozcuS4VSie47O9iSrrKL6LaKyeoNoquYmnXEL3tMPou5GeXidA==
+	t=1795119091;
+	b=ZespSNrTOI8Qe5FKISWsVI2h5t3ySym/onbdTqb9tW9hfG4iOSiOssDvvwWbC6WHgsdK
+	 mIKhS0q1gAgDb1btlaj+y7Ya6TBXJLC0E/q83ScbLsmpYd1YnNIdS3lMdKDRR7oH4VXuE
+	 99Ntg0H1+bQhRBYGLIEDpxnd84q+7MVtW3md6KM5QcwHGefgLuOyzh+DJQtyQAyr30PxD
+	 eYT3xhDf/Hk3g/coIMjGguoQrK6LSssYL3KTRxnSvhhi71BPU14bTHCA/wVOYYHth3pXZ
+	 23ZFcAF5/RjuXOAQKt9PijJuzvhJKVFLBAQeHabjyvjAyc9rMVstUXbp+jY9LvUjzRw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795119083;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795119091;
 	h=DMARC-Filter:Received:DKIM-Signature:DKIM-Signature:DKIM-Signature:
 	 DKIM-Signature:Received:Received:From:Date:Subject:MIME-Version:
 	 Content-Type:Content-Transfer-Encoding:Message-Id:References:
-	 In-Reply-To:To:Cc:X-Mailer:X-Spamd-Result:X-Spam-Score:X-Spam-Level:
-	 X-Spam-Flag;
-	bh=4P5Cb+/gfgFBvqXWLKpYKOVGpUcYfuN40MLcJ/ms72w=;
-	b=J7JYltgROSpVm1/SQbFlIdek+d90Mzyy8F49oGxWHGthVmiBCtVGlQAzCeaFEOWBQRJV
-	 wAndC4yWpyiMGwluarJ9G7/yQYHL+IpMg6ZNd60HeFRXmHxyplEdkJr4XUeCVHieFXkMJ
-	 Y0ZCePgDd9h1Fieq69LWu//DsBkoOB6plKfssygRtdV4E2eqmGqfGF4dGLYLnxODWWwij
-	 7b7eclLqmd+LrY0rk6KuqO75QF58Z4qTmXrjaMip/71nvYlMiltFDtOfxw69S+4dt1W4h
-	 2oWc+fiW9lKBP7oSXY4LLhQvTC/NCTL8yWZKBgmnsQnWlkYOvpY9jgH6Ef6jzNhEiRQ==
+	 In-Reply-To:To:Cc:X-Mailer:X-Spam-Flag:X-Spam-Level:X-Spamd-Result:
+	 X-Spam-Score;
+	bh=Uo8Olo98zjikgX57G69RkSYYgroY5lrc04l+gH4JzoI=;
+	b=0PojVmwh6CZJYw9B1X5I/fTUnPC91q3Wq8fD2AaFI9vLmwSw6C4Bl2xARHENQXsrf6Wj
+	 KCHr2qTepXdRLVoAuOQY70qDAsVaCzqZ+P2gmYvbSw4w7UBYO59qcEPq81uNMnF17+tDI
+	 nCD4m+TV/Pe9MHh7jQykAYDZZFBkWzk3WZk71rWHLbGa60rOeyCDjZL8K4nsvckdqOn1H
+	 H6jAZmCPDOt3ArCQE5ZUbVWW2zAJmwsIpWReZiOiYANdn5aHu5iGR1gEmQP+Wke36sjCW
+	 t4rJdZG6jMIMezwmTYjENEvk4WK3HyYD20DQFzHEMeaHECTgwKsAMsyLzYIm08Turxg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=suse.de;
 	spf=pass smtp.mailfrom=suse.de;
-	dkim=pass header.d=suse.de header.i=@suse.de header.a=rsa-sha256 header.s=susede2_rsa header.b="sDuz0/k8";
-	dkim=pass header.d=suse.de header.i=@suse.de header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=Ckv9HDGF;
-	dkim=pass header.d=suse.de header.i=@suse.de header.a=rsa-sha256 header.s=susede2_rsa header.b=heYlqDV6;
-	dkim=neutral header.d=suse.de header.i=@suse.de header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=TUJeWbF6;
-	arc=none smtp.remote-ip=195.135.223.131
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+	dkim=pass header.d=suse.de header.i=@suse.de header.a=rsa-sha256 header.s=susede2_rsa header.b=eUas+9Ii;
+	dkim=pass header.d=suse.de header.i=@suse.de header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=9uOMWgZ7;
+	dkim=pass header.d=suse.de header.i=@suse.de header.a=rsa-sha256 header.s=susede2_rsa header.b=eUas+9Ii;
+	dkim=neutral header.d=suse.de header.i=@suse.de header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=9uOMWgZ7;
+	arc=none smtp.remote-ip=195.135.223.130
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EFF4660A2604;
-	Thu, 19 Nov 2026 20:11:22 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org EFF4660A2604
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C510E60A2615;
+	Thu, 19 Nov 2026 20:11:30 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org C510E60A2615
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.a=rsa-sha256 header.s=susede2_rsa header.b=sDuz0/k8;
-	dkim=pass header.d=suse.de header.i=@suse.de header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=Ckv9HDGF;
-	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.a=rsa-sha256 header.s=susede2_rsa header.b=heYlqDV6;
-	dkim=neutral header.d=suse.de header.i=@suse.de header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=TUJeWbF6
+	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.a=rsa-sha256 header.s=susede2_rsa header.b=eUas+9Ii;
+	dkim=pass header.d=suse.de header.i=@suse.de header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=9uOMWgZ7;
+	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.a=rsa-sha256 header.s=susede2_rsa header.b=eUas+9Ii;
+	dkim=neutral header.d=suse.de header.i=@suse.de header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=9uOMWgZ7
 Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id DC3401FCEB;
-	Thu, 19 Nov 2026 20:11:20 +0000 (UTC)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id 157D521DE6;
+	Thu, 19 Nov 2026 20:11:29 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-	t=1795119081; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1795119089; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=4P5Cb+/gfgFBvqXWLKpYKOVGpUcYfuN40MLcJ/ms72w=;
-	b=sDuz0/k8dN04iladdCn1gPyygaKd0MO/dxStH2IZjsRRA/w5CATIAYcySkadXUYjOwviFc
-	3mzhJ+eboRgKsfOV+T2wIdUAyyAxjY0+rroxNyciIdn1GqgB4MEPCaiNwDYd54NGzF/mi/
-	reG0ytBYtl/iWXFp6zbR2aKSwZx2QxE=
+	bh=Uo8Olo98zjikgX57G69RkSYYgroY5lrc04l+gH4JzoI=;
+	b=eUas+9Ii0hUYbJmdigy5WcIR6MFLbDG4Q9+MkKg469E/fJUfE5s9LcwEWCZ3ugZSzJbQ5E
+	G227ThVtEgjDER5qFmK1F/+icKCjUX8+0fRswIRqHMGNAHJfdWh4NdyBomb3k1h29ogcpA
+	wLvJ+2nCJSl6+n/ZHpjZrYGuTlwOUM4=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-	s=susede2_ed25519; t=1795119081;
+	s=susede2_ed25519; t=1795119089;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=4P5Cb+/gfgFBvqXWLKpYKOVGpUcYfuN40MLcJ/ms72w=;
-	b=Ckv9HDGF4PAjrItC/XomsJDUu5vT0fLYjHvKcgIG4FffcfRNPkM2697Qc1w+/4uKtApvxx
-	6QttGd9wgRq6geBw==
-Authentication-Results: smtp-out2.suse.de;
+	bh=Uo8Olo98zjikgX57G69RkSYYgroY5lrc04l+gH4JzoI=;
+	b=9uOMWgZ7LG+LRni/R/J6QJ0QU42oZZHseqFgpO9phvi749VDZI6fswGtgIFGlShqu3eqYu
+	vCHCaUFOxZdKZxAg==
+Authentication-Results: smtp-out1.suse.de;
 	none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-	t=1795119080; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1795119089; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=4P5Cb+/gfgFBvqXWLKpYKOVGpUcYfuN40MLcJ/ms72w=;
-	b=heYlqDV66zR3q53/DcGEzUxq5XDHxwEP5Ctk9fMS48ak8rgF38T8TQwbAs20stNJf1wvqa
-	iwPxYnQLqtFeV+PxepBWtsU1mNmLy9l6FhB/53at8XXCOavDNJid1RYQt4EJq4FpvVowUP
-	Hba7vzM5zACDa155GUl79PArhsGC+8I=
+	bh=Uo8Olo98zjikgX57G69RkSYYgroY5lrc04l+gH4JzoI=;
+	b=eUas+9Ii0hUYbJmdigy5WcIR6MFLbDG4Q9+MkKg469E/fJUfE5s9LcwEWCZ3ugZSzJbQ5E
+	G227ThVtEgjDER5qFmK1F/+icKCjUX8+0fRswIRqHMGNAHJfdWh4NdyBomb3k1h29ogcpA
+	wLvJ+2nCJSl6+n/ZHpjZrYGuTlwOUM4=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-	s=susede2_ed25519; t=1795119080;
+	s=susede2_ed25519; t=1795119089;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=4P5Cb+/gfgFBvqXWLKpYKOVGpUcYfuN40MLcJ/ms72w=;
-	b=TUJeWbF6iWKkwT3EER10NoYiXdDCviji5x375945ma7CsJdZww9XPuSzdiCGiroyr96b87
-	lEDDs8k9n4kb5vAw==
+	bh=Uo8Olo98zjikgX57G69RkSYYgroY5lrc04l+gH4JzoI=;
+	b=9uOMWgZ7LG+LRni/R/J6QJ0QU42oZZHseqFgpO9phvi749VDZI6fswGtgIFGlShqu3eqYu
+	vCHCaUFOxZdKZxAg==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id CFA1B134F6;
-	Thu, 19 Nov 2026 20:11:18 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 0B280134F6;
+	Thu, 19 Nov 2026 20:11:26 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id OqV1JuRX/2pPYQAAD6G6ig:T2
-	(envelope-from <pfalcato@suse.de>); Thu, 19 Nov 2026 20:11:18 +0000
+	id OqV1JuRX/2pPYQAAD6G6ig:T6
+	(envelope-from <pfalcato@suse.de>); Thu, 19 Nov 2026 20:11:26 +0000
 From: Pedro Falcato <pfalcato@suse.de>
-Date: Thu, 19 Nov 2026 20:10:44 +0000
-Subject: [PATCH RFC 1/5] mm/khugepaged: fix filemap_release_folio()
- interaction with GUP dirty
+Date: Thu, 19 Nov 2026 20:10:48 +0000
+Subject: [PATCH RFC 5/5] mm/filemap: refuse releasing maybe_dma_pinned
+ folios
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -110,7 +110,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261119-gup-dirty-what-v1-1-236d69f25c24@suse.de>
+Message-Id: <20261119-gup-dirty-what-v1-5-236d69f25c24@suse.de>
 References: <20261119-gup-dirty-what-v1-0-236d69f25c24@suse.de>
 In-Reply-To: <20261119-gup-dirty-what-v1-0-236d69f25c24@suse.de>
 To: David Hildenbrand <david@kernel.org>, 
@@ -133,6 +133,8 @@ Cc: linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org,
  Michal Hocko <mhocko@kernel.org>, linux-fsdevel@vger.kernel.org, 
  Pedro Falcato <pfalcato@suse.de>, stable@vger.kernel.org
 X-Mailer: b4 0.15.2
+X-Spam-Flag: NO
+X-Spam-Level: 
 X-Spamd-Result: default: False [-17.30 / 50.00];
 	SUSE_INTERNAL_BYPASS(-9.00)[];
 	REPLY(-4.00)[];
@@ -153,181 +155,45 @@ X-Spamd-Result: default: False [-17.30 / 50.00];
 	TO_MATCH_ENVRCPT_ALL(0.00)[];
 	DKIM_SIGNED(0.00)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
 	RCVD_COUNT_TWO(0.00)[2];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,suse.de:email]
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.de:email,imap1.dmz-prg2.suse.org:helo]
 X-Spam-Score: -17.30
-X-Spam-Level: 
-X-Spam-Flag: NO
 
-Whether a folio can be "released" (drop attached buffer_heads, iomap
-state, etc) is a complicated matter.
+Some callers, like folio_unmap_invalidate(), call filemap_release_folio()
+without any care for folio refcounts. This is on purpose. As
+folio_unmap_invalidate() states, invalidate_inode_pages2() needs stronger
+guarantees, and "can't afford to leave folios behind because
+shrink_folio_list() has a temp ref on them". Ok.
 
-Namely, the act of calling pin_user_pages()/get_user_pages(FOLL_WRITE)
-and later calling folio_mark_dirty() on these same folios relies on
-on these structures to have been set up by ->page_mkwrite() or
-->write_begin() elsewhere. ->dirty_folio() implementations usually
-cannot set these up themselves, as ->dirty_folio() is not allowed to
-block.
+Use folio_maybe_dma_pinned() universally, in filemap_release_folio(). This
+has a much lower false positive rate, and should be ok enough for most
+serious cases.
 
-    [get_user_pages(), etc]
-       ->page_mkwrite() called here, or before
-         ->private correctly populated with whatever the filesystem
-           expects.
-         folio is marked as dirty, initially.
-   *write finishes*
-   folio_lock();
-   folio_mark_dirty();
-     ->dirty_folio()
-          dirty_folio expects ->private to be populated by
-          ->page_mkwrite(), ->write_begin().
-   folio_unlock();
+While here, properly assert that no folio passed to release_folio is
+mapped.
 
-So, what happens if filemap_release_folio() is randomly called on
-folios?
-
-              T0                             |       T1
-    [get_user_pages(), etc]
-       ->page_mkwrite() called here
-	 ->private is ok
-         folio is marked as dirty, initially.
-   *write finishes*
-					      |   *some op*
-					      | filemap_release_folio()
-   folio_lock();
-   folio_mark_dirty();
-     ->dirty_folio()
-          dirty_folio expects ->private
-   folio_unlock();
-
-In, e.g. ext4's case, this results in a WARN_ON(!folio_buffers(folio))
-and very likely data loss, as block_dirty_folio() will not find any
-buffers.
-
-Thus, introduce a new helper to help figure out if
-filemap_release_folio() can be called. filemap_may_release_folio()
-mainly takes into account the refcount to help figure out if it's safe
-to release. The NFS ->private refcount funkyness will be handled in a
-separate patch.
-
-As a part of this change, move try_to_unmap() back to before calling
-filemap_may_release_folio(). This is required for mappings which don't
-require write notification, and as such the dirty=1 -> folio dirty=1
-transition is actually meaningful.
-
-Reported-by: David Hildenbrand <david@kernel.org>
 Cc: stable@vger.kernel.org
 Fixes: d824ec2a1546 ("mm: do not reclaim private data from pinned page")
 Signed-off-by: Pedro Falcato <pfalcato@suse.de>
 ---
- mm/internal.h   | 48 ++++++++++++++++++++++++++++++++++++++++++++++++
- mm/khugepaged.c | 19 +++++++++++++------
- 2 files changed, 61 insertions(+), 6 deletions(-)
+ mm/filemap.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/mm/internal.h b/mm/internal.h
-index 85cf7becf858..4c22d27ace96 100644
---- a/mm/internal.h
-+++ b/mm/internal.h
-@@ -718,6 +718,54 @@ static inline bool folio_needs_release(struct folio *folio)
- 		(mapping && mapping_release_always(mapping));
- }
+diff --git a/mm/filemap.c b/mm/filemap.c
+index f9e34144c53c..4fa75663b7f3 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -4571,8 +4571,11 @@ bool filemap_release_folio(struct folio *folio, gfp_t gfp)
+ 	struct address_space * const mapping = folio->mapping;
  
-+static inline bool filemap_may_release_folio(struct folio *folio, int extra_refs)
-+{
-+	/*
-+	 * Whether we may "release a folio" (drop attached buffers,
-+	 * etc) is a bit more complex than what you could be hoping for.
-+	 * There are two types of dirtying users in the kernel:
-+	 * 1) ones which take the regular page fault/write(2) paths.
-+	 * These regular paths (which fall into ->page_mkwrite or ->write_begin)
-+	 * take enough care to e.g establish buffers and attach them to the folio.
-+	 *
-+	 * 2) ones that don't necessarily do that.
-+	 * Essentially, the act of writing to a pinned/GUP'd page relies on the
-+	 * above (for GUP-like operations, ->page_mkwrite). However, the folio
-+	 * does not stay locked all the time. It is released somewhere in between
-+	 * get_user_pages() and whatever it is you're doing with the page (e.g IO
-+	 * submission). These users rely on the following logic:
-+	 *
-+	 *    [get_user_pages(), etc]
-+	 *       ->page_mkwrite() called here, or before
-+	 *         ->private correctly populated with whatever the filesystem
-+	 *           expects.
-+	 *         folio is marked as dirty, initially.
-+	 *   *write finishes*
-+	 *   folio_lock();
-+	 *   folio_mark_dirty();
-+	 *     ->dirty_folio()
-+	 *          dirty_folio expects ->private to be populated by
-+	 *          ->page_mkwrite(), ->write_begin().
-+	 *   folio_unlock();
-+	 *
-+	 * Thus, it's not possible to call filemap_release_folio() if _anyone_
-+	 * has a reference we don't expect, that can plausibly dirty the folio.
-+	 * Additionally, we can't have mappings for these. These checks are
-+	 * racy, but the folio lock guarantees that whomever is e.g starting IO
-+	 * on these pages will inevitably wait for us to finish.
-+	 */
-+	VM_WARN_ON_FOLIO(!folio_test_locked(folio), folio);
-+	if (!folio_needs_release(folio))
-+		return true;
-+
-+	/* There's no way to know whether these are write-mapped, so give up. */
-+	if (folio_mapped(folio))
+ 	BUG_ON(!folio_test_locked(folio));
++	VM_WARN_ON_FOLIO(folio_mapped(folio), folio);
+ 	if (!folio_needs_release(folio))
+ 		return true;
++	if (folio_maybe_dma_pinned(folio))
 +		return false;
-+	if (folio_ref_count(folio) != extra_refs + folio_expected_ref_count(folio))
-+		return false;
-+	return true;
-+}
-+
- extern unsigned long highest_memmap_pfn;
+ 	if (folio_test_writeback(folio))
+ 		return false;
  
- /*
-diff --git a/mm/khugepaged.c b/mm/khugepaged.c
-index 964f78c3856b..1f1b93371a7e 100644
---- a/mm/khugepaged.c
-+++ b/mm/khugepaged.c
-@@ -2396,6 +2396,15 @@ static enum scan_result collapse_file(struct mm_struct *mm, unsigned long addr,
- 			goto out_unlock;
- 		}
- 
-+		if (!folio_isolate_lru(folio)) {
-+			result = SCAN_DEL_PAGE_LRU;
-+			goto out_unlock;
-+		}
-+
-+		if (folio_mapped(folio))
-+			try_to_unmap(folio,
-+					TTU_IGNORE_MLOCK | TTU_BATCH_FLUSH);
-+
- 		if (!is_shmem && (folio_test_dirty(folio) ||
- 				  folio_test_writeback(folio))) {
- 			/*
-@@ -2404,11 +2413,13 @@ static enum scan_result collapse_file(struct mm_struct *mm, unsigned long addr,
- 			 * since first write.
- 			 */
- 			result = SCAN_PAGE_DIRTY_OR_WRITEBACK;
-+			folio_putback_lru(folio);
- 			goto out_unlock;
- 		}
- 
--		if (!folio_isolate_lru(folio)) {
--			result = SCAN_DEL_PAGE_LRU;
-+		if (!filemap_may_release_folio(folio, 2)) {
-+			result = SCAN_PAGE_COUNT;
-+			folio_putback_lru(folio);
- 			goto out_unlock;
- 		}
- 
-@@ -2418,10 +2429,6 @@ static enum scan_result collapse_file(struct mm_struct *mm, unsigned long addr,
- 			goto out_unlock;
- 		}
- 
--		if (folio_mapped(folio))
--			try_to_unmap(folio,
--					TTU_IGNORE_MLOCK | TTU_BATCH_FLUSH);
--
- 		xas_lock_irq(&xas);
- 
- 		VM_BUG_ON_FOLIO(folio != xa_load(xas.xa, index), folio);
 
 -- 
 2.56.1
