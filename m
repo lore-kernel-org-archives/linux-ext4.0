@@ -1,60 +1,60 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=18.9.28.11
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
 	t=1795115856;
-	b=0RZW3cuKDx7kmbJa6e8znPeIkTpinJPdGK6ldo6himo/HZyc9fLaQTRza2K0ib0rzb9z
-	 3AKHKE/FW3dfTLffno0smry2UMslRVlhtozWyUIreWbmZDH+Uopc5lcGbI6BhH88LDahA
-	 xoMkZpQYrL5dGhU0qrmcxhUH63hMrjric5ZbriEHeAeCZZCRW9Bvi98jpalGR0+gbmXm2
-	 pDAW1ZVndiBqBIHIdy4eRvhc5gCr0SwWI6Twxq+pklmA+pz8tqtkQcSRvRO2DH3TsybZI
-	 s6X7u9U8hG8vXPZY7K5vkGArxYDL8P22JTwGOWkZ9qzajsQL/P+u3YqmWSu9CzvPZBA==
+	b=zX1Als4uiKdXuQ2HmIxrdjl8zANmLd9aEw6Ld0tFfl+DINOU1/q75zjJitnOEFNCU1up
+	 UnWGSmYgIiYmkn2vVtzfeOlLwe6xWmV6YNcPmwEgtBTt6T0tQw/CAodd2NcR8lZzGd6id
+	 hF7Pgk0vq036O1dTG70qEi99fbm1kZc//lUAwvCnOyCT3mqWXtSsME63Vq34vFYizQAon
+	 EPQkaFWE2wUtHwqPLuW9zMKtBrGqMzecxijAX+AHyCQOD3UAIu56Lvy6Z6UuZjcB1HlCA
+	 hObDGYfK85NrhZOef0EzhRlXU+AsTntxmVmK1Dz6eQY5enp38YOo4je4d8VLM7Aom4g==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
 	a=rsa-sha256; c=relaxed/relaxed; t=1795115856;
 	h=DMARC-Filter:Received:DKIM-Signature:Received:From:To:Cc:Subject:
 	 Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
 	 Content-Transfer-Encoding;
-	bh=o3XKI8i908VKkeetL/DAar4dDIvKFbOtTV96EVPtR1M=;
-	b=LUPdBDR4RfDs6cA9cFp9YX/rK3QtH9eKue6GabbaoH87BGoX1a89DYysFaJ6Urpbf/un
-	 rxpKertHGDU0WTxNv6AtbJeuHZOHlDz/qsJsB65q8fTeRxWtGycvk5DdBiNLL3h/GA7Va
-	 gT2vY0gKY2tI3Bl0qtzxB5eLA10F/8Bgv/hEZ7U+7dwjOgsKs2hzr9LAUCJEn1mvunwGR
-	 jJuIFexlw7Bit8w8KZRjcFU3HIoEnFD9DSh1bEO5QjJKZm5lbII/Uc75AS9t4/MQxnwLo
-	 Hoq81aAKBK7psd/TUEDEt5lbfgrEucyQRkIy0xnd82VotMC1/sy1rwhOi+EjKYlEvTg==
+	bh=jUlW+f9+z/blNJC9YONrfV7fewSTS2RZOd/1NhhCW3I=;
+	b=gBf5UPIT0U7g8coj2osXJwVq0QDqYU11hQtbfVHELuS7QY3pwOx5vbsHJz4zXpYXpuM7
+	 zTX8mnOU44i/5y55HeRdsNyLkglrSlDeb0tM3p2tEcUAwHnp2PyhajlMKCJIpJSraHe0O
+	 XcUEA4nqHEgCHFfmQfKJO/GJ82qmPQ/mtiQg6xrcZ8O4XhhhiNHZfn8x4fG7ZAUNkuUrh
+	 qxfRA5v2wJ5LrlUHS9SBjHrH1CMok+1WX2wwn6Mrp9tmqEr2D5duITLugZ8pg8TEn02mP
+	 d2vEbhFce+sMUPx1Qgf2f4/eNzw6fxJpDklX2hE/DfUAwKO3YP+1TGf7/l2+Z+TEVNg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=mit.edu;
 	spf=pass smtp.mailfrom=mit.edu;
-	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=pw+HaD4I;
+	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=cu1WkYYd;
 	arc=none smtp.remote-ip=18.9.28.11
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E945F606A326
-	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2026 19:17:34 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org E945F606A326
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 34124606A33B
+	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2026 19:17:36 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 34124606A33B
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=pw+HaD4I
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=cu1WkYYd
 Received: from trampoline.thunk.org (pool-173-48-114-214.bstnma.fios.verizon.net [173.48.114.214])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AJJHVeE029821
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AJJHWro029866
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 19 Nov 2026 14:17:32 -0500
+	Thu, 19 Nov 2026 14:17:33 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1795115852; bh=o3XKI8i908VKkeetL/DAar4dDIvKFbOtTV96EVPtR1M=;
+	t=1795115853; bh=jUlW+f9+z/blNJC9YONrfV7fewSTS2RZOd/1NhhCW3I=;
 	h=From:Subject:Date:Message-ID:MIME-Version;
-	b=pw+HaD4I1RrBwrDUWv3j+falEW1C9dogO23fO1UcYT87ce1ebsputZJYcu0L0BuJ7
-	 q/Oh3PLS/FHpaamSelc1HN8vqkbIvKYbTLcKOYRYRIeNFToOpzw9WnP1qXof0nDkZ7
-	 8Md/bsIhtpKkthsN7ysSfhutsPT/bUHsYMNbKUqSLqdxAXYM+sssfiFHt/7WZQlIZ9
-	 pdK72TquQ1GIeyxkhVZs7YGm4uQbo4VmmPe0KnVxhwX7l0ot0nfbtv0G5XAaJPtONz
-	 TFXLrhIQaor9DgeA0W3Zc803yZW1etFpHD/W40pNmfP/vYWbWKtz66ccDO7cH72HAG
-	 110zsgnDqKtsg==
+	b=cu1WkYYdQ32+Zw9tBHuyydycpWEthLArcoxBgOxnPSzHlcTL/wviqkCLWgsp9CXxw
+	 ew1Zeer6MLs+U3PvGi16U6O6hAaIVfuTZCtaeFOUuVF50RuZixI18acQWEo4SdIj0s
+	 hMbQ/U5QgcoVeWzha+Z2M4lioDsAeFdkUibuhpeo1n+XCd8l6p+hMQ47JjuIXG31Ct
+	 4NwpMjt0OOBMHQ4ejsBJxiA/UdLc9ttJsRccau/sa+KaMNVlKega9It/rL1LePHEF1
+	 KcqMawZMABQ0qO743YJOQz/82NmuG4NkyVBmH1zVTp8DylcTZoxGeNG6KFDKak+47o
+	 /lINuCMNgKxNw==
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id 1DB232E0146; Thu, 19 Nov 2026 14:17:31 -0500 (EST)
+	id 29F0C2E014A; Thu, 19 Nov 2026 14:17:31 -0500 (EST)
 From: "Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Cc: "Theodore Ts'o" <tytso@mit.edu>
-Subject: [PATCH -v2 04/32] ext4: persist the htree hash seed when enabling dir_index online
-Date: Thu, 19 Nov 2026 14:16:51 -0500
-Message-ID: <20261119191719.1943298-5-tytso@mit.edu>
+Subject: [PATCH -v2 08/32] ext4: fix inverted err_report_sec check in ext4_update_super()
+Date: Thu, 19 Nov 2026 14:16:55 -0500
+Message-ID: <20261119191719.1943298-9-tytso@mit.edu>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <20261119191719.1943298-1-tytso@mit.edu>
 References: <20261119191719.1943298-1-tytso@mit.edu>
@@ -69,161 +69,79 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-When EXT4_IOC_SET_TUNE_SB_PARAM enables the dir_index feature,
-ext4_validate_tune_sb_params() generates a random sbi->s_hash_seed if
-the current one is all zeroes, and picks the hash signedness in
-sbi->s_hash_unsigned.  However, ext4_sb_setparams() only copies
-s_def_hash_version to the superblocks; the hash seed and the
-EXT2_FLAGS_{UNSIGNED,SIGNED}_HASH flag are never written out.
+When the first error is copied into the on-disk superblock,
+ext4_update_super() is supposed to start the periodic error reporting
+timer if it is not already running and err_report_sec is non-zero, as
+the comment above the code says.  However, the check was inverted:
 
-Any directory converted to an htree before the next unmount has its
-names hashed with the random in-memory seed.  After a remount the seed
-is reloaded from the (still all-zero) on-disk superblock, so lookups in
-those directories compute different hashes and fail with -ENOENT, and
-new entries are inserted into the wrong leaf blocks.
+	if (!es->s_error_count && !sbi->s_err_report_sec)
 
-In addition, if the superblock already has EXT2_FLAGS_UNSIGNED_HASH
-set (e.g. it was created by mke2fs on an unsigned-char platform with
-dir_index disabled), sbi->s_hash_unsigned is left at 0, so names
-containing bytes >= 0x80 are hashed differently than they will be
-after the next mount, which honors the flag.
+With the default err_report_sec of 86400 the timer is therefore never
+started when a clean file system records its first error, so the
+"error count since last fsck" messages are not printed until the file
+system is remounted.  Conversely, if the administrator disabled the
+report by writing 0 to /sys/fs/ext4/<dev>/err_report_sec, the first
+error arms the timer to fire immediately.
 
-Write the hash seed and, if neither flag is present, the signedness
-flag matching sbi->s_hash_unsigned to the primary and backup
-superblocks, and set sbi->s_hash_unsigned from an existing
-EXT2_FLAGS_UNSIGNED_HASH flag just like ext4_fill_super() does.
+Drop the stray negation.  Also read s_err_report_sec only once, with
+READ_ONCE(), since it can be changed concurrently via sysfs, so that
+the value tested is the value used to arm the timer.
 
-The in-memory values are still set up before the superblocks are
-updated, since htree directories may be created as soon as the
-feature bit is visible in the primary superblock.
-
-Fixes: 04a91570ac67 ("ext4: implemet new ioctls to set and get superblock parameters")
+Fixes: d518215c2719 ("ext4: add sysfs attribute err_report_sec to control s_err_report timer")
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/ioctl-test.c | 60 ++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/ioctl.c      | 23 +++++++++++++----
- 2 files changed, 78 insertions(+), 5 deletions(-)
+ fs/ext4/super-test.c | 12 ++++++++++++
+ fs/ext4/super.c      |  6 ++++--
+ 2 files changed, 16 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/ioctl-test.c b/fs/ext4/ioctl-test.c
-index 4e4a2abd5189..b564178b7d77 100644
---- a/fs/ext4/ioctl-test.c
-+++ b/fs/ext4/ioctl-test.c
-@@ -748,6 +748,65 @@ static void test_tune_sb_mount_opts_guard(struct kunit *test)
- 	KUNIT_EXPECT_STREQ(test, (char *)es->s_mount_opts, "nodelalloc");
- }
+diff --git a/fs/ext4/super-test.c b/fs/ext4/super-test.c
+index 606798ef0258..5f34a56fc219 100644
+--- a/fs/ext4/super-test.c
++++ b/fs/ext4/super-test.c
+@@ -1308,6 +1308,18 @@ static void test_error_recording_and_update_super(struct kunit *test)
+ 	KUNIT_EXPECT_EQ(test, le32_to_cpu(es->s_checksum),
+ 			le32_to_cpu(ext4_superblock_csum(es)));
  
-+/*
-+ * Verify that enabling DIR_INDEX online persists the (possibly freshly
-+ * generated) hash seed and the hash signedness flag to the superblock, and
-+ * that an existing signedness flag in s_flags is honored in memory.
-+ */
-+static void test_tune_sb_dir_index_hash_state(struct kunit *test)
-+{
-+	struct ioctl_test_ctx *ctx = test->priv;
-+	struct super_block *sb = ctx->sb;
-+	struct ext4_sb_info *sbi = &ctx->sbi;
-+	struct ext4_super_block *es = ctx->es;
-+	struct ext4_tune_sb_params params;
-+	__le32 hash_flags;
-+	uuid_t uu;
-+	int i;
++	/* First recorded error arms the periodic error report timer */
++	KUNIT_EXPECT_TRUE(test, timer_pending(&sbi->s_err_report));
 +
-+	memset(sbi->s_hash_seed, 0, sizeof(sbi->s_hash_seed));
-+	memset(es->s_hash_seed, 0, sizeof(es->s_hash_seed));
-+	sbi->s_def_hash_version = 0;
-+	es->s_flags = 0;
++	/* err_report_sec == 0 disables the timer even for a first error */
++	timer_delete_sync(&sbi->s_err_report);
++	es->s_error_count = 0;
++	sbi->s_err_report_sec = 0;
++	ext4_save_error_info_test(sb, EIO, 31, 4096, "third_fn", 333);
++	ext4_update_super_test(sb);
++	KUNIT_EXPECT_EQ(test, le32_to_cpu(es->s_error_count), 1U);
++	KUNIT_EXPECT_FALSE(test, timer_pending(&sbi->s_err_report));
 +
-+	memset(&params, 0, sizeof(params));
-+	params.set_flags = EXT4_TUNE_FL_FEATURES;
-+	params.feature_compat = le32_to_cpu(es->s_feature_compat) |
-+				EXT4_FEATURE_COMPAT_DIR_INDEX;
-+	params.feature_incompat = le32_to_cpu(es->s_feature_incompat);
-+	params.feature_ro_compat = le32_to_cpu(es->s_feature_ro_compat);
-+	KUNIT_ASSERT_EQ(test, ext4_validate_tune_sb_params_test(sb, &params),
-+			0);
-+	ext4_sb_setparams_test(sbi, es, &params);
-+
-+	KUNIT_EXPECT_TRUE(test, ext4_has_feature_dir_index(sb));
-+	KUNIT_EXPECT_EQ(test, es->s_def_hash_version, DX_HASH_HALF_MD4);
-+	memcpy(&uu, es->s_hash_seed, UUID_SIZE);
-+	KUNIT_EXPECT_FALSE(test, uuid_is_null(&uu));
-+	for (i = 0; i < ARRAY_SIZE(es->s_hash_seed); i++)
-+		KUNIT_EXPECT_EQ(test, le32_to_cpu(es->s_hash_seed[i]),
-+				sbi->s_hash_seed[i]);
-+	hash_flags = es->s_flags & cpu_to_le32(EXT2_FLAGS_UNSIGNED_HASH |
-+					       EXT2_FLAGS_SIGNED_HASH);
-+	KUNIT_EXPECT_EQ(test, le32_to_cpu(hash_flags),
-+			sbi->s_hash_unsigned ? EXT2_FLAGS_UNSIGNED_HASH :
-+					       EXT2_FLAGS_SIGNED_HASH);
-+
-+	/* An existing unsigned-hash flag must be honored in memory */
-+	ext4_clear_feature_dir_index(sb);
-+	es->s_flags = cpu_to_le32(EXT2_FLAGS_UNSIGNED_HASH);
-+	sbi->s_hash_unsigned = 0;
-+	memset(&params, 0, sizeof(params));
-+	params.set_flags = EXT4_TUNE_FL_EDIT_FEATURES;
-+	params.set_feature_compat_mask = EXT4_FEATURE_COMPAT_DIR_INDEX;
-+	KUNIT_ASSERT_EQ(test, ext4_validate_tune_sb_params_test(sb, &params),
-+			0);
-+	KUNIT_EXPECT_EQ(test, sbi->s_hash_unsigned, 3U);
-+	ext4_sb_setparams_test(sbi, es, &params);
-+	KUNIT_EXPECT_EQ(test, le32_to_cpu(es->s_flags),
-+			EXT2_FLAGS_UNSIGNED_HASH);
-+}
-+
- /*
-  * Verify ext4_update_backup_sb, ext4_update_superblocks_fn, and
-  * ext4_update_overhead across primary + 4 sparse_super backup groups (1, 3,
-@@ -1272,6 +1331,7 @@ static struct kunit_case ioctl_test_cases[] = {
- 	KUNIT_CASE(test_sb_callbacks_and_setparams),
- 	KUNIT_CASE(test_validate_tune_sb_params),
- 	KUNIT_CASE(test_tune_sb_mount_opts_guard),
-+	KUNIT_CASE(test_tune_sb_dir_index_hash_state),
- 	KUNIT_CASE(test_update_superblocks_and_overhead),
- 	KUNIT_CASE(test_update_backup_sb_bad_csum),
- 	KUNIT_CASE(test_swap_inode_data_and_seed),
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 228afe4bc26b..2d985ac5e222 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -1392,8 +1392,20 @@ static void ext4_sb_setparams(struct ext4_sb_info *sbi,
- 		es->s_feature_ro_compat &=
- 			~cpu_to_le32(params->clear_feature_ro_compat_mask);
- 		if (params->set_feature_compat_mask &
--		    EXT4_FEATURE_COMPAT_DIR_INDEX)
-+		    EXT4_FEATURE_COMPAT_DIR_INDEX) {
-+			int i;
-+
- 			es->s_def_hash_version = sbi->s_def_hash_version;
-+			for (i = 0; i < ARRAY_SIZE(es->s_hash_seed); i++)
-+				es->s_hash_seed[i] =
-+					cpu_to_le32(sbi->s_hash_seed[i]);
-+			if (!(es->s_flags &
-+			      cpu_to_le32(EXT2_FLAGS_UNSIGNED_HASH |
-+					  EXT2_FLAGS_SIGNED_HASH)))
-+				es->s_flags |= sbi->s_hash_unsigned ?
-+					cpu_to_le32(EXT2_FLAGS_UNSIGNED_HASH) :
-+					cpu_to_le32(EXT2_FLAGS_SIGNED_HASH);
-+		}
- 		if (params->set_feature_incompat_mask &
- 		    EXT4_FEATURE_INCOMPAT_CSUM_SEED)
- 			es->s_checksum_seed = cpu_to_le32(sbi->s_csum_seed);
-@@ -1490,10 +1502,11 @@ static int ext4_validate_tune_sb_params(struct super_block *sb,
- 				sbi->s_def_hash_version = params->def_hash_alg;
- 			else if (sbi->s_def_hash_version == 0)
- 				sbi->s_def_hash_version = DX_HASH_HALF_MD4;
--			if (!(es->s_flags &
--			      cpu_to_le32(EXT2_FLAGS_UNSIGNED_HASH)) &&
--			    !(es->s_flags &
--			      cpu_to_le32(EXT2_FLAGS_SIGNED_HASH))) {
-+			if (es->s_flags &
-+			    cpu_to_le32(EXT2_FLAGS_UNSIGNED_HASH)) {
-+				sbi->s_hash_unsigned = 3;
-+			} else if (!(es->s_flags &
-+				     cpu_to_le32(EXT2_FLAGS_SIGNED_HASH))) {
- #ifdef __CHAR_UNSIGNED__
- 				sbi->s_hash_unsigned = 3;
- #else
+ 	/* Read-only superblock update must not touch s_wtime */
+ 	es->s_wtime = cpu_to_le32(123456U);
+ 	saved_wtime = es->s_wtime;
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 880f664d6c04..6a3079c29988 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -6370,6 +6370,7 @@ static void ext4_update_super(struct super_block *sb)
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	struct ext4_super_block *es = sbi->s_es;
+ 	struct buffer_head *sbh = sbi->s_sbh;
++	unsigned long err_report_sec;
+ 
+ 	lock_buffer(sbh);
+ 	/*
+@@ -6428,9 +6429,10 @@ static void ext4_update_super(struct super_block *sb)
+ 		 * Start the daily error reporting function if it hasn't been
+ 		 * started already and sbi->s_err_report_sec is not zero
+ 		 */
+-		if (!es->s_error_count && !sbi->s_err_report_sec)
++		err_report_sec = READ_ONCE(sbi->s_err_report_sec);
++		if (!es->s_error_count && err_report_sec)
+ 			mod_timer(&sbi->s_err_report,
+-					  jiffies + secs_to_jiffies(sbi->s_err_report_sec));
++				  jiffies + secs_to_jiffies(err_report_sec));
+ 		le32_add_cpu(&es->s_error_count, sbi->s_add_error_count);
+ 		sbi->s_add_error_count = 0;
+ 	}
 -- 
 2.56.1.708.g77570a6a1d-goog
 
