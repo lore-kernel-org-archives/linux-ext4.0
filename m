@@ -1,60 +1,60 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=18.9.28.11
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795103826;
-	b=frOYWKzzBZJkUDxK6T+iLYC33LUpYoAXnJUIgjVNEaCnKwTzXQ+d5ukSs52ugVscs+8O
-	 MN9jQ3Q9xksOdx3GjnbQ5DtvIQEYWYz4U0jJvdvIxMGA48DfbgyBdntmB8wEufSyQ4xP1
-	 y3K614vRenVNdDUP+KOUPP7RRc8IArgr15hvzhpYTGB9nD5qF1rdvISwofaHr5ThKAWb/
-	 2nyHwx8UhoeykQ0LKp7HtwdZPaHpoGv9j2NeNxJvS/sjDnnMVMPMxyS2h6qCoJvBZY+xg
-	 QFv+7BnCxDNoe3V6lI9HlJg4KecvIMSI0hh76LMXKnuKFToFsQaxGsOcsyVJ/OU9zag==
+	t=1795103827;
+	b=VKEUt5uhUzOI9hgrSjq+1fuBIhWNBtwinM6D8JQ9F4Hug8PG1nupWY6CXawb9Tcrj/DV
+	 tPsK3qZmFRxKg5mbHWCZPUNayG/vrml+ItdjJffswZ4PC1uonfcPmw1yPk4W0FDdjY6LR
+	 05b8luRY6BcdWsSu8YU1DAa80Le5wxAuVX38GQKrpcy+heRmSlQvEIOzI40zXTRY0UKtC
+	 E8h2CGjLlAAt3lfVTu3ZetZ9UvHCAYkIgkaVkecfmcbIz8ohEblEQeD23kVL9O5IUX5Ek
+	 7oGGhtQzIpU25Kp36fqoDmGEmSbX+Iu9BuD7jqztXncIR0WwqdM/Fh+BnJ3tvCqowjQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795103826;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795103827;
 	h=DMARC-Filter:Received:DKIM-Signature:Received:From:To:Cc:Subject:
 	 Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
 	 Content-Transfer-Encoding;
-	bh=J0QOcbTIQrnRsIaQ49a4FbNjzuWTtBug/z+A804DEag=;
-	b=ex6fBrrtg21URu7Ulrg1GsSKr+vZpyCAW4cPBYJa+5yCTU51pNSzerlYm0aEZLL1gW+I
-	 qpRE51ACSMf0q75Q0Ic9ozjgY/QU+5mOwJ+hlpnAIIl8tlIQylBcsCq5vUldOnzJDraRG
-	 vn4iT8L1iqzP+g4Ie0ByLh1NHpF0r3fL8zODMMBWMdfhp32Z4XcpXcBCRbhGEwuGdxW3R
-	 2ELm8dYejqPf9/bQyphk4Rch6BzvLFMTQrBXX0AJ3zmJplmj22bWiDv7plRaOPRSQa85h
-	 eEmurpcNbjFSMr5mzcQs6PP+DkBbCYuXhO6XFwggD2YVX6r7dmTv+qSFCeqp1pzumqg==
+	bh=mXGEnWpcny6zL+/aHCncOqHVnURZF6x+lCnfZxfw0Mk=;
+	b=hviguHkbPXRdBZHTKbpJYRlLT/Cexn0sQxh6Vg5tcvTYRabG+YsYBvoLUkmbS4mM8t7a
+	 FaNr/nLrytHK+aDajNzZMJA4OvuoT7W0pewIVmQ4p7wFO3zOZUmXwAIGb0M3vDWsCmtIS
+	 C/NBKqA8h2C4QJOMfdbUVqvXYABZY+43bgjAsjc2Va/7cViyr6laMlV0sifFxZdeXpri9
+	 keKhVIMRdhH656CEI3MxqE4y+5OJDYObN/xGmSmI3ZQfYMORngTuiMbZ58Ko42IsOXh0N
+	 L5kGzeH4+/hzJ1Mpz1cKDlSVbn65pxkKc22kpVqOiu4v6fAn25SKsGe183EthPjrRnw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=mit.edu;
 	spf=pass smtp.mailfrom=mit.edu;
-	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=VdbapXru;
+	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=hzmxkLIv;
 	arc=none smtp.remote-ip=18.9.28.11
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D6ECA606A337
-	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2026 15:57:04 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org D6ECA606A337
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B21B6606A324
+	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2026 15:57:03 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org B21B6606A324
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=VdbapXru
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=hzmxkLIv
 Received: from trampoline.thunk.org (pool-173-48-114-214.bstnma.fios.verizon.net [173.48.114.214])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AJFv16g001564
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AJFv0CL001489
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 19 Nov 2026 10:57:02 -0500
+	Thu, 19 Nov 2026 10:57:01 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1795103823; bh=J0QOcbTIQrnRsIaQ49a4FbNjzuWTtBug/z+A804DEag=;
+	t=1795103821; bh=mXGEnWpcny6zL+/aHCncOqHVnURZF6x+lCnfZxfw0Mk=;
 	h=From:Subject:Date:Message-ID:MIME-Version;
-	b=VdbapXruLJy37FGVVJf++7znuUuS7t6KpG7FiRDRnlszBKm90lDpMDdwh4ADtTDO5
-	 RGtitWDqZbqLeAYbAVZMj7OHCZJvkWtddKr+XpnWIvGuGcyz7DNPJvnOrwrAZtVlBd
-	 5xXHWzYWlA+A/YOy43m//JID5cV/Je1thmanc6FvH84wWpnSMxlyMT1jr9NXpaGkaj
-	 fLwDIyfPzk2suFiC7VWuCvg08C6OD8IxfxDcRQ/RTR5LzUjpb4a+m8KE8IIldiYbHE
-	 llHszxRjQewpbkosvmbS1p6AYCKScRyE/HwG5V2LesNCIckuRVi5rLOxle3j5VhRwe
-	 KSYFIxzjiekTg==
+	b=hzmxkLIv/NujaK2x7cXnrRLOjS9JL0F70l7P5C7/jCBS4YkDw5U8eVhakqcVLob70
+	 qKxUtzwAqbO2vodXwRTpm8nWnKwO+G3M9HEevZ/2hRf0kDgaw1r3YLbnecQyVlSUu4
+	 llvXYS3H155VLFHhtO9a9oDFqHlWolZrBlrHyAEjhL2JrW9BGY3z15UH8cWNBXX+An
+	 xT3UHzOyym5jceY+0ubvK66Rp5MVvkY1AgbwIc38rwcKEzZMfLtBjWnZ6P1QWCM93T
+	 0FVrIKR8JEG+Fr9CxXj1OFyHoonIyElIJqxfJVdBc6PlCHQQMXEJwy+i1ArT+V1qcb
+	 eCAY1lLhf/Xhg==
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id 64A832E014F; Thu, 19 Nov 2026 10:57:00 -0500 (EST)
+	id 459F72E013F; Thu, 19 Nov 2026 10:57:00 -0500 (EST)
 From: "Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Cc: "Theodore Ts'o" <tytso@mit.edu>
-Subject: [PATCH -v2 10/26] ext4: add KUnit tests for fs/ext4/balloc.c
-Date: Thu, 19 Nov 2026 10:56:42 -0500
-Message-ID: <20261119155658.1940864-11-tytso@mit.edu>
+Subject: [PATCH -v2 03/26] ext4: add KUnit tests for fs/ext4/xattr.c
+Date: Thu, 19 Nov 2026 10:56:35 -0500
+Message-ID: <20261119155658.1940864-4-tytso@mit.edu>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <20261119155658.1940864-1-tytso@mit.edu>
 References: <20261119155658.1940864-1-tytso@mit.edu>
@@ -69,690 +69,775 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Add the ext4_balloc_test KUnit test suite in fs/ext4/balloc-test.c (29
-test cases, 43 subtests total) to comprehensively exercise block bitmap
-management, group descriptor and overhead calculations, cluster pool
-reservation, allocation retry policy, metadata block allocation, and
-goal block selection in fs/ext4/balloc.c using an in-memory VFS
-superblock, mock block device, and deterministic block pool without
-requiring a mounted block device:
+Add the ext4_xattr_test KUnit test suite in fs/ext4/xattr-test.c to
+exercise the core extended attribute operations in fs/ext4/xattr.c
+without requiring a mounted block device:
 
-- Block-to-group and cluster-offset mapping (ext4_get_group_number and
-  ext4_get_group_no_and_offset) across 1K and 4K block sizes, standard
-  shift-based vs. non-standard do_div group geometries, bigalloc
-  multi-block clusters, s_first_data_block offsets, >32-bit physical
-  block numbers, and optional NULL output pointers.
-- Backup superblock placement (ext4_bg_has_super) across dense
-  filesystems, sparse_super powers of 3, 5, and 7, and sparse_super2
-  explicit s_backup_bgs configurations.
-- Group descriptor table and base metadata block counts
-  (ext4_bg_num_gdb and ext4_num_base_meta_blocks) across traditional
-  GDT layouts with s_reserved_gdt_blocks and hybrid meta_bg filesystems
-  spanning pre-s_first_meta_bg and meta_bg descriptor groups.
-- Group overhead and post-init free cluster accounting
-  (ext4_free_clusters_after_init, ext4_num_overhead_clusters, and
-  num_clusters_in_group) across standard groups, partial final groups,
-  external flex_bg metadata, spanning inode tables, and bigalloc
-  shared-cluster layouts.
-- Group descriptor and group info lookup (ext4_get_group_desc and
-  ext4_get_group_info) across multi-block descriptor tables, bounds
-  checks, missing descriptor buffers, and NULL RCU slice guards.
-- Block bitmap validation, reading, prefetching, and lazy initialization
-  (ext4_read_block_bitmap_nowait, ext4_wait_block_bitmap, and
-  ext4_read_block_bitmap), covering CRC32C verification, in-group and
-  out-of-group metadata bit validation with and without flex_bg, bitmap
-  tail padding checks, EXT4_FC_REPLAY and buffer_verified
-  short-circuits, cold disk reads vs. cached buffer promotions,
-  REQ_RAHEAD locked-buffer prefetching, EXT4_BG_BLOCK_UNINIT lazy bitmap
-  initialization (CRC32C, legacy CRC16 GDT_CSUM, and unchecksummed
-  fallback), group 0 and oversized base-metadata corruption guards, and
-  simulated getblk / I/O errors.
-- Free cluster reservation and pool accounting
-  (ext4_claim_free_clusters and ext4_has_free_clusters) across
-  above-watermark fast paths, unprivileged limits, bigalloc r_blocks
-  scaling, root-reserved pool access via s_resuid, non-root s_resgid
-  supplementary group membership, EXT4_MB_USE_ROOT_BLOCKS, and
-  CAP_SYS_RESOURCE, plus EXT4_MB_USE_RESERVED internal pool access.
-- Allocation retry policy (ext4_should_retry_alloc) across non-journaled
-  mounts, pending mballoc free retries up to the 3-attempt limit with
-  s_sra_exceeded_retry_limit accounting, free-space rechecks, and
-  s_discard_work flushing under s_retry_alloc_pending.
-- Metadata block allocation (ext4_new_meta_blocks), free cluster
-  summation (ext4_count_free_clusters across corrupt bitmaps, 64-bit
-  high free-cluster counts, and unloaded descriptor blocks), and inode
-  goal block selection (ext4_inode_to_goal_block across flex_bg
-  directory vs. regular file placement, delalloc, and nodelalloc PID
-  colouring).
+- Entry/value sizing macros (EXT4_XATTR_LEN, EXT4_XATTR_SIZE,
+  EXT4_XATTR_MIN_LARGE_EA_SIZE), EXT4_INODE_HAS_XATTR_SPACE boundary
+  checks, and xattr_sem locking helpers (ext4_write_lock_xattr,
+  ext4_write_trylock_xattr, ext4_write_unlock_xattr) preserving
+  EXT4_STATE_NO_EXPAND.
+- In-inode xattr validation (xattr_check_inode / __xattr_check_inode)
+  across 11 parameterized valid and corrupted on-disk layouts (bad
+  magic, truncated headers, out-of-bounds names, unterminated entry
+  lists, non-zero offset on EA inode entries, and overlapping or
+  out-of-bounds value ranges).
+- In-inode (ibody) get/set operations (ext4_xattr_get,
+  ext4_xattr_ibody_get, ext4_xattr_set_handle, ext4_xattr_set),
+  XATTR_CREATE and XATTR_REPLACE flag enforcement, EXT4_STATE_NEW raw
+  inode initialization, superblock EXT4_FEATURE_COMPAT_EXT_ATTR update,
+  and the identical-value fastpath (ext4_xattr_value_same).
+- In-inode value replacement (same padded size vs. shifted offsets),
+  zero-length values, entry removal, and EXT4_I(inode)->i_inline_off
+  adjustment when system.data is present.
+- External xattr block allocation, entry sorting by (e_name_index,
+  e_name_len, e_name), migration from ibody to external block,
+  EXT4_XATTR_BLOCK_RESERVE enforcement when ea_inode is enabled, and
+  external block header and metadata CRC32C checksum verification.
+- External xattr block mb_cache deduplication across inodes,
+  copy-on-write cloning when modifying a shared block, and
+  EXT4_XATTR_REFCOUNT_MAX reuse bit transitions.
+- Attribute listing (ext4_listxattr) across ibody and external block
+  entries, and user/hurd/trusted xattr handler prefix and mount-option
+  filtering.
+- Large xattr inode (EXT4_FEATURE_INCOMPAT_EA_INODE) multi-block
+  write/read, 64-bit refcount and hash encoding, mb_cache deduplication,
+  reference decrement to zero, and ext4_evict_ea_inode() cache cleanup.
+- EA inode hash verification (including legacy signed-char name hash
+  fallback), ext4_xattr_inode_iget() corruption checks, and Lustre-style
+  EA inode compatibility.
+- Inode quota usage calculation (ext4_get_inode_usage), journal credit
+  estimation (__ext4_xattr_set_credits, ext4_xattr_set_credits), extra
+  isize expansion (ext4_expand_extra_isize_ea) for in-place shifts and
+  external block eviction, inode xattr deletion
+  (ext4_xattr_delete_inode), and error-injection rollback paths.
 
-Route the block bitmap buffer lookup in ext4_read_block_bitmap_nowait()
-through ext4_sb_getblk() so KUnit tests can intercept buffer-cache
-lookups via its existing static stub hook, and export the remaining
-non-static balloc.c entry points with EXPORT_SYMBOL_FOR_EXT4_TEST.
+Export the tested xattr entry points with EXPORT_SYMBOL_FOR_EXT4_TEST
+and add KUNIT_STATIC_STUB_REDIRECT hooks for ext4_xattr_getblk,
+ext4_sb_bread, ext4_map_blocks, ext4_getblk, ext4_get_inode_loc,
+ext4_mark_iloc_dirty, __ext4_iget, and __ext4_new_inode.
 
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/Makefile      |    3 +-
- fs/ext4/balloc-test.c | 2400 +++++++++++++++++++++++++++++++++++++++++
- fs/ext4/balloc.c      |   11 +-
- 3 files changed, 2412 insertions(+), 2 deletions(-)
- create mode 100644 fs/ext4/balloc-test.c
+ fs/ext4/Makefile        |    2 +-
+ fs/ext4/ext4.h          |    2 +
+ fs/ext4/ialloc.c        |    9 +
+ fs/ext4/inline.c        |    4 +
+ fs/ext4/inode.c         |   17 +-
+ fs/ext4/super.c         |   11 +-
+ fs/ext4/xattr-test.c    | 1810 +++++++++++++++++++++++++++++++++++++++
+ fs/ext4/xattr.c         |   30 +-
+ fs/ext4/xattr.h         |    2 +
+ fs/ext4/xattr_hurd.c    |    4 +
+ fs/ext4/xattr_trusted.c |    4 +
+ fs/ext4/xattr_user.c    |    4 +
+ 12 files changed, 1895 insertions(+), 4 deletions(-)
+ create mode 100644 fs/ext4/xattr-test.c
 
 diff --git a/fs/ext4/Makefile b/fs/ext4/Makefile
-index 72198aff5b45..7d0ae7fd4448 100644
+index 74b485dbb229..13040b97d2ff 100644
 --- a/fs/ext4/Makefile
 +++ b/fs/ext4/Makefile
-@@ -18,7 +18,8 @@ ext4-test-objs				+= inode-test.o mballoc-test.o \
+@@ -16,7 +16,7 @@ ext4-$(CONFIG_EXT4_FS_POSIX_ACL)	+= acl.o
+ ext4-$(CONFIG_EXT4_FS_SECURITY)		+= xattr_security.o
+ ext4-test-objs				+= inode-test.o mballoc-test.o \
  					   extents-test.o hash-test.o \
- 					   extents_status-test.o xattr-test.o \
- 					   namei-test.o inline-test.o \
--					   fast_commit-test.o ialloc-test.o
-+					   fast_commit-test.o ialloc-test.o \
-+					   balloc-test.o
+-					   extents_status-test.o
++					   extents_status-test.o xattr-test.o
  obj-$(CONFIG_EXT4_KUNIT_TESTS)		+= ext4-test.o
  ext4-$(CONFIG_FS_VERITY)		+= verity.o
  ext4-$(CONFIG_FS_ENCRYPTION)		+= crypto.o
-diff --git a/fs/ext4/balloc-test.c b/fs/ext4/balloc-test.c
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index aa0f23052ca2..30d6f7b99f07 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -4160,6 +4160,8 @@ extern int ext4_block_write_begin(handle_t *handle, struct folio *folio,
+ #if IS_ENABLED(CONFIG_EXT4_KUNIT_TESTS)
+ #define EXPORT_SYMBOL_FOR_EXT4_TEST(sym) \
+ 	EXPORT_SYMBOL_FOR_MODULES(sym, "ext4-test")
++#else
++#define EXPORT_SYMBOL_FOR_EXT4_TEST(sym)
+ #endif
+ #endif	/* __KERNEL__ */
+ 
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 92e2243b98cf..8b9833ea3802 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -23,6 +23,7 @@
+ #include <linux/bitops.h>
+ #include <linux/blkdev.h>
+ #include <linux/cred.h>
++#include <kunit/static_stub.h>
+ 
+ #include <asm/byteorder.h>
+ 
+@@ -1012,6 +1013,10 @@ struct inode *__ext4_new_inode(const struct mnt_idmap *idmap,
+ 	struct ext4_group_info *grp = NULL;
+ 	bool encrypt = false;
+ 
++	KUNIT_STATIC_STUB_REDIRECT(__ext4_new_inode, idmap, handle, dir, mode,
++				   qstr, goal, owner, i_flags, handle_type,
++				   line_no, nblocks);
++
+ 	/* Cannot create files in a deleted directory */
+ 	if (!dir || !dir->i_nlink)
+ 		return ERR_PTR(-EPERM);
+@@ -1693,3 +1698,7 @@ int ext4_init_inode_table(struct super_block *sb, ext4_group_t group,
+ out:
+ 	return ret;
+ }
++
++#if IS_ENABLED(CONFIG_EXT4_KUNIT_TESTS)
++EXPORT_SYMBOL_FOR_EXT4_TEST(__ext4_new_inode);
++#endif
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index 2e14ee9b4241..1f7aa2223d1c 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -2036,3 +2036,7 @@ int ext4_convert_inline_data(struct inode *inode)
+ 	brelse(iloc.bh);
+ 	return error;
+ }
++
++#if IS_ENABLED(CONFIG_EXT4_KUNIT_TESTS)
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_find_inline_data_nolock);
++#endif
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index c9400d505281..5fa293c9581e 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -796,6 +796,8 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 	memcpy(&orig_map, map, sizeof(*map));
+ #endif
+ 
++	KUNIT_STATIC_STUB_REDIRECT(ext4_map_blocks, handle, inode, map, flags);
++
+ 	map->m_flags = 0;
+ 	ext_debug(inode, "flag 0x%x, max_blocks %u, logical block %lu\n",
+ 		  flags, map->m_len, (unsigned long) map->m_lblk);
+@@ -996,6 +998,7 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 
+ 	return ret ? ret : retval;
+ }
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_map_blocks);
+ 
+ /*
+  * Update EXT4_MAP_FLAGS in bh->b_state. For buffer heads attached to pages
+@@ -1121,6 +1124,9 @@ struct buffer_head *ext4_getblk(handle_t *handle, struct inode *inode,
+ 	bool nowait = map_flags & EXT4_GET_BLOCKS_CACHED_NOWAIT;
+ 	int err;
+ 
++	KUNIT_STATIC_STUB_REDIRECT(ext4_getblk, handle, inode, block,
++				   map_flags);
++
+ 	ASSERT((EXT4_SB(inode->i_sb)->s_mount_state & EXT4_FC_REPLAY)
+ 		    || handle != NULL || create == 0);
+ 	ASSERT(create == 0 || !nowait);
+@@ -1183,6 +1189,7 @@ struct buffer_head *ext4_getblk(handle_t *handle, struct inode *inode,
+ 	brelse(bh);
+ 	return ERR_PTR(err);
+ }
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_getblk);
+ 
+ struct buffer_head *ext4_bread(handle_t *handle, struct inode *inode,
+ 			       ext4_lblk_t block, int map_flags)
+@@ -5922,6 +5929,8 @@ int ext4_get_inode_loc(struct inode *inode, struct ext4_iloc *iloc)
+ 	ext4_fsblk_t err_blk = 0;
+ 	int ret;
+ 
++	KUNIT_STATIC_STUB_REDIRECT(ext4_get_inode_loc, inode, iloc);
++
+ 	ret = __ext4_get_inode_loc(inode->i_sb, inode->i_ino, inode, iloc,
+ 					&err_blk);
+ 
+@@ -5931,6 +5940,7 @@ int ext4_get_inode_loc(struct inode *inode, struct ext4_iloc *iloc)
+ 
+ 	return ret;
+ }
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_get_inode_loc);
+ 
+ /*
+  * ext4_get_inode_loc_noio() is a best-effort variant of ext4_get_inode_loc().
+@@ -6288,6 +6298,8 @@ struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
+ 	gid_t i_gid;
+ 	projid_t i_projid;
+ 
++	KUNIT_STATIC_STUB_REDIRECT(__ext4_iget, sb, ino, flags, function, line);
++
+ 	if ((!(flags & EXT4_IGET_SPECIAL) && is_special_ino(sb, ino)) ||
+ 	    (ino < EXT4_ROOT_INO) ||
+ 	    (ino > le32_to_cpu(es->s_inodes_count))) {
+@@ -6663,6 +6675,7 @@ struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
+ 	iget_failed(inode);
+ 	return ERR_PTR(ret);
+ }
++EXPORT_SYMBOL_FOR_EXT4_TEST(__ext4_iget);
+ 
+ static void __ext4_update_other_inode_time(struct super_block *sb,
+ 					   unsigned long orig_ino,
+@@ -7455,6 +7468,8 @@ int ext4_mark_iloc_dirty(handle_t *handle,
+ 	struct super_block *sb = inode->i_sb;
+ 	int err = 0;
+ 
++	KUNIT_STATIC_STUB_REDIRECT(ext4_mark_iloc_dirty, handle, inode, iloc);
++
+ 	err = ext4_emergency_state(sb);
+ 	if (unlikely(err)) {
+ 		put_bh(iloc->bh);
+@@ -7488,6 +7503,7 @@ int ext4_mark_iloc_dirty(handle_t *handle,
+ 	}
+ 	return err;
+ }
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_mark_iloc_dirty);
+ 
+ /*
+  * On success, We end up with an outstanding reference count against
+@@ -8007,5 +8023,4 @@ vm_fault_t ext4_page_mkwrite(struct vm_fault *vmf)
+ EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_da_update_reserve_space);
+ EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_da_release_space);
+ EXPORT_SYMBOL_FOR_EXT4_TEST(__ext4_mark_inode_dirty);
+-EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_map_blocks);
+ #endif
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 9f0951673fa3..4542a1b8ca0f 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -49,6 +49,7 @@
+ #include <linux/fs_context.h>
+ #include <linux/fs_parser.h>
+ #include <linux/fserror.h>
++#include <kunit/static_stub.h>
+ 
+ #include "ext4.h"
+ #include "ext4_extents.h"	/* Needed for trace points definition */
+@@ -262,7 +263,11 @@ static struct buffer_head *__ext4_sb_bread_gfp(struct super_block *sb,
+ struct buffer_head *ext4_sb_bread(struct super_block *sb, sector_t block,
+ 				   blk_opf_t op_flags)
+ {
+-	gfp_t gfp = mapping_gfp_constraint(sb->s_bdev->bd_mapping,
++	gfp_t gfp;
++
++	KUNIT_STATIC_STUB_REDIRECT(ext4_sb_bread, sb, block, op_flags);
++
++	gfp = mapping_gfp_constraint(sb->s_bdev->bd_mapping,
+ 			~__GFP_FS) | __GFP_MOVABLE;
+ 
+ 	return __ext4_sb_bread_gfp(sb, block, op_flags, gfp);
+@@ -7701,3 +7706,7 @@ MODULE_DESCRIPTION("Fourth Extended Filesystem");
+ MODULE_LICENSE("GPL");
+ module_init(ext4_init_fs)
+ module_exit(ext4_exit_fs)
++
++#if IS_ENABLED(CONFIG_EXT4_KUNIT_TESTS)
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_sb_bread);
++#endif
+diff --git a/fs/ext4/xattr-test.c b/fs/ext4/xattr-test.c
 new file mode 100644
-index 000000000000..b15d50907324
+index 000000000000..30ee5c337284
 --- /dev/null
-+++ b/fs/ext4/balloc-test.c
-@@ -0,0 +1,2400 @@
++++ b/fs/ext4/xattr-test.c
+@@ -0,0 +1,1810 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
-+ * KUnit tests for fs/ext4/balloc.c
++ * KUnit tests for ext4 extended attributes (fs/ext4/xattr.c).
 + */
 +
 +#include <kunit/test.h>
 +#include <kunit/static_stub.h>
-+#include <linux/bio.h>
 +#include <linux/blkdev.h>
 +#include <linux/buffer_head.h>
-+#include <linux/capability.h>
 +#include <linux/cred.h>
-+#include <linux/delay.h>
-+#include <linux/fs.h>
-+#include <linux/fs_context.h>
-+#include <linux/jbd2.h>
-+#include <linux/kernel.h>
-+#include <linux/ktime.h>
-+#include <linux/log2.h>
-+#include <linux/module.h>
++#include <linux/dcache.h>
++#include <linux/iversion.h>
++#include <linux/mbcache.h>
 +#include <linux/quotaops.h>
-+#include <linux/rcupdate.h>
 +#include <linux/slab.h>
-+#include <linux/stat.h>
-+#include <linux/uidgid.h>
-+#include <linux/workqueue.h>
++#include <linux/string.h>
++#include <linux/xattr.h>
 +
 +#include "ext4.h"
 +#include "ext4_jbd2.h"
-+#include "mballoc.h"
++#include "xattr.h"
 +
-+/*
-+ * Default multi-group mock filesystem geometry:
-+ *  - 4 active block groups (capacity up to 32 groups across 2 GDT blocks)
-+ *  - 1024-byte blocks (8192 bits per bitmap block, 16 64-byte GDs per block)
-+ *  - s_first_data_block = 1, 1024 blocks (clusters) per group (total 4097)
-+ *  - 64 inodes per group, 16 inode table blocks per group
-+ *  - sparse_super + metadata_csum + 64bit enabled, s_gdb_count = 1:
-+ *    - Groups 0, 1, 3 have super + 1 gdb (2 base blocks) + bbitmap + ibitmap +
-+ *      16 itable blocks = 20 overhead clusters -> 1004 free clusters.
-+ *    - Group 2 has 0 base blocks + bbitmap + ibitmap + 16 itable blocks =
-+ *      18 overhead clusters -> 1006 free clusters.
-+ */
-+#define BALLOC_TEST_NGROUPS		4U
-+#define BALLOC_TEST_MAX_GROUPS		32U
-+#define BALLOC_TEST_GDESC_BLKS		2U
-+#define BALLOC_TEST_BLK_SIZE		1024U
-+#define BALLOC_TEST_BLK_BITS		10U
-+#define BALLOC_TEST_BLOCKS_PER_GRP	1024U
-+#define BALLOC_TEST_FIRST_DATA_BLK	1U
-+#define BALLOC_TEST_TOTAL_BLKS		(BALLOC_TEST_FIRST_DATA_BLK + \
-+					 BALLOC_TEST_NGROUPS * \
-+					 BALLOC_TEST_BLOCKS_PER_GRP)
-+#define BALLOC_TEST_INODE_SIZE		256U
-+#define BALLOC_TEST_INODES_PER_GRP	64U
-+#define BALLOC_TEST_ITB_PER_GRP		16U
-+#define BALLOC_TEST_CSUM_SEED		0x5a3c91e7U
-+#define BALLOC_TEST_GDESC_BLK0		2ULL
-+#define BALLOC_TEST_POOL_SIZE		16U
++#define TEST_BLK_SIZE		1024
++#define TEST_BLK_BITS		10
++#define TEST_INODE_SIZE		256
++#define TEST_EXTRA_ISIZE	(sizeof(struct ext4_inode) - \
++				 EXT4_GOOD_OLD_INODE_SIZE)
++#define TEST_FIRST_PBLK		100
++#define TEST_MAX_BLOCKS		16
++#define TEST_MAX_EA_INODES	8
++#define TEST_PRIMARY_INO	12
++#define TEST_SECONDARY_INO	13
++#define TEST_FIRST_EA_INO	20
++#define TEST_CSUM_SEED		0x87654321U
 +
-+struct balloc_test_blk {
++struct mock_block {
 +	bool in_use;
-+	ext4_fsblk_t blocknr;
 +	struct buffer_head bh;
-+	char cache_buf[BALLOC_TEST_BLK_SIZE] __aligned(8);
-+	char disk_buf[BALLOC_TEST_BLK_SIZE] __aligned(8);
++	char data[TEST_BLK_SIZE] __aligned(8);
 +};
 +
-+struct balloc_test_ctx {
-+	struct super_block *sb;
++struct mock_inode_slot {
++	bool allocated;
++	struct ext4_inode_info ei;
++	struct buffer_head iloc_bh;
++	char raw_buf[TEST_INODE_SIZE] __aligned(8);
++	ext4_fsblk_t lblk_to_pblk[8];
++};
++
++struct xattr_test_ctx {
++	struct super_block sb;
 +	struct ext4_sb_info sbi;
 +	struct ext4_super_block es;
-+	struct blockgroup_lock bgl;
 +	struct block_device bdev;
-+	struct request_queue bdev_queue;
-+	struct inode bd_inode;
++	struct address_space bd_mapping;
 +	struct buffer_head sb_bh;
++	struct dentry root_dentry;
 +
-+	struct ext4_group_desc gdps[BALLOC_TEST_MAX_GROUPS] __aligned(8);
-+	struct buffer_head gdesc_bh[BALLOC_TEST_GDESC_BLKS];
-+	struct buffer_head *gdesc_bh_ptrs[BALLOC_TEST_GDESC_BLKS];
++	struct mock_inode_slot primary;
++	struct mock_inode_slot secondary;
++	struct mock_inode_slot ea_inodes[TEST_MAX_EA_INODES];
++	struct mock_block blocks[TEST_MAX_BLOCKS];
 +
-+	struct ext4_group_info *grp_infos[BALLOC_TEST_MAX_GROUPS];
-+	struct ext4_group_info *grp_info_slice0[16];
-+	struct ext4_group_info *grp_info_slice1[16];
-+	struct ext4_group_info **grp_info_slices[BALLOC_TEST_GDESC_BLKS];
++	int fail_get_inode_loc;
++	int fail_mark_iloc_dirty;
++	int fail_dirty_metadata;
++	int fail_alloc_block;
++	int fail_sb_bread;
++	int fail_getblk;
++	int fail_iget;
++	int fail_new_inode;
++	bool fail_xattr_getblk;
 +
-+	struct inode *test_inode;
-+	journal_t journal;
-+
-+	struct balloc_test_blk pool[BALLOC_TEST_POOL_SIZE];
-+
-+	bool fcc_inited;
-+	bool dcc_inited;
-+	bool fic_inited;
-+	bool sra_inited;
-+
-+	/* Credential override tracking for deterministic cleanup */
-+	const struct cred *saved_cred;
-+	struct cred *override_cred;
-+
-+	/* Discard work tracking */
-+	unsigned int discard_work_runs;
-+	int discard_saw_retry_pending;
-+	s64 discard_release_clusters;
-+	bool discard_wait_retry_pending;
-+
-+	/* Stub fault injection and call capture */
-+	bool fail_getblk;
-+	bool fail_read_eio;
-+	unsigned int read_nowait_calls;
-+	blk_opf_t last_read_op_flags;
-+
-+	unsigned int mb_new_blocks_calls;
-+	struct ext4_allocation_request last_ar;
-+	ext4_fsblk_t mock_alloc_blk;
-+	unsigned int mock_alloc_len;
-+	int mock_alloc_err;
++	unsigned int alloc_block_calls;
++	unsigned int free_block_calls;
++	ext4_fsblk_t last_freed_block;
++	unsigned int mark_iloc_dirty_calls;
++	unsigned int mark_inode_dirty_calls;
++	unsigned int dirty_metadata_calls;
 +};
 +
-+static inline ext4_fsblk_t balloc_test_group_start(ext4_group_t g)
-+{
-+	return BALLOC_TEST_FIRST_DATA_BLK +
-+	       (ext4_fsblk_t)g * BALLOC_TEST_BLOCKS_PER_GRP;
-+}
-+
-+static inline unsigned int balloc_test_default_base_blks(ext4_group_t g)
-+{
-+	return (g == 2) ? 0U : 2U;
-+}
-+
-+static inline ext4_fsblk_t balloc_test_bbitmap_blk(ext4_group_t g)
-+{
-+	return balloc_test_group_start(g) + balloc_test_default_base_blks(g);
-+}
-+
-+static inline ext4_fsblk_t balloc_test_ibitmap_blk(ext4_group_t g)
-+{
-+	return balloc_test_bbitmap_blk(g) + 1;
-+}
-+
-+static inline ext4_fsblk_t balloc_test_itable_blk(ext4_group_t g)
-+{
-+	return balloc_test_bbitmap_blk(g) + 2;
-+}
-+
-+static inline void clear_bitmap_uptodate(struct buffer_head *bh)
-+{
-+	clear_bit(BH_BITMAP_UPTODATE, &bh->b_state);
-+}
-+
-+static struct inode *balloc_test_alloc_inode(struct super_block *sb)
-+{
-+	struct ext4_inode_info *ei;
-+
-+	ei = kzalloc_obj(*ei);
-+	if (!ei)
-+		return NULL;
-+
-+	init_rwsem(&ei->i_data_sem);
-+	init_rwsem(&ei->xattr_sem);
-+	INIT_LIST_HEAD(&ei->i_orphan);
-+	inode_init_once(&ei->vfs_inode);
-+	ext4_fc_init_inode(&ei->vfs_inode);
-+	spin_lock_init(&ei->i_raw_lock);
-+	spin_lock_init(&ei->i_block_reservation_lock);
-+#ifdef CONFIG_QUOTA
-+	memset(&ei->i_dquot, 0, sizeof(ei->i_dquot));
-+#endif
-+	return &ei->vfs_inode;
-+}
-+
-+static void balloc_test_free_inode_mem(struct inode *inode)
-+{
-+	kfree(EXT4_I(inode));
-+}
++static const struct super_operations xattr_test_sops = {};
 +
 +#ifdef CONFIG_QUOTA
-+static struct dquot __rcu **balloc_test_get_dquots(struct inode *inode)
-+{
-+	return EXT4_I(inode)->i_dquot;
-+}
-+
-+static qsize_t *balloc_test_get_reserved_space(struct inode *inode)
++static qsize_t *xattr_test_get_reserved_space(struct inode *inode)
 +{
 +	return &EXT4_I(inode)->i_reserved_quota;
 +}
 +
-+static const struct dquot_operations balloc_test_qops = {
-+	.get_reserved_space = balloc_test_get_reserved_space,
++static const struct dquot_operations xattr_test_qops = {
++	.get_reserved_space = xattr_test_get_reserved_space,
 +};
 +#endif
 +
-+static const struct super_operations balloc_test_sops = {
-+	.alloc_inode	= balloc_test_alloc_inode,
-+	.free_inode	= balloc_test_free_inode_mem,
-+	.drop_inode	= inode_just_drop,
-+#ifdef CONFIG_QUOTA
-+	.get_dquots	= balloc_test_get_dquots,
-+#endif
-+};
-+
-+static int balloc_test_init_fs_context(struct fs_context *fc)
++static void init_mock_inode_slot(struct xattr_test_ctx *ctx,
++				 struct mock_inode_slot *slot,
++				 unsigned long ino)
 +{
++	struct inode *inode = &slot->ei.vfs_inode;
++	struct ext4_inode *raw_inode;
++
++	memset(slot, 0, sizeof(*slot));
++	slot->allocated = true;
++
++	inode->i_sb = &ctx->sb;
++	inode->i_ino = ino;
++	inode->i_mode = S_IFREG | 0644;
++	inode->i_blkbits = TEST_BLK_BITS;
++	inode->i_mapping = &inode->i_data;
++	set_nlink(inode, 1);
++	atomic_set(&inode->i_count, 1);
++
++	spin_lock_init(&inode->i_lock);
++	i_size_ordered_init(inode);
++	init_rwsem(&inode->i_rwsem);
++	INIT_LIST_HEAD(&inode->i_io_list);
++	INIT_LIST_HEAD(&inode->i_wb_list);
++	INIT_LIST_HEAD(&inode->i_lru);
++	INIT_HLIST_NODE(&inode->i_hash);
++	/*
++	 * Pre-set all I_DIRTY flags so mark_inode_dirty() from quota helpers
++	 * sees the flags already set and returns without touching global bdi
++	 * writeback lists.
++	 */
++	inode_state_set_raw(inode, I_DIRTY);
++
++	init_rwsem(&slot->ei.xattr_sem);
++	init_rwsem(&slot->ei.i_data_sem);
++	spin_lock_init(&slot->ei.i_raw_lock);
++	spin_lock_init(&slot->ei.i_block_reservation_lock);
++	INIT_LIST_HEAD(&slot->ei.i_orphan);
++	slot->ei.i_extra_isize = TEST_EXTRA_ISIZE;
++	slot->ei.i_csum_seed = TEST_CSUM_SEED ^ (u32)ino;
++
++	slot->iloc_bh.b_data = slot->raw_buf;
++	slot->iloc_bh.b_size = TEST_INODE_SIZE;
++	slot->iloc_bh.b_blocknr = 10 + ino;
++	slot->iloc_bh.b_bdev = &ctx->bdev;
++	atomic_set(&slot->iloc_bh.b_count, 1);
++	set_buffer_uptodate(&slot->iloc_bh);
++	set_buffer_mapped(&slot->iloc_bh);
++
++	raw_inode = (struct ext4_inode *)slot->raw_buf;
++	raw_inode->i_extra_isize = cpu_to_le16(slot->ei.i_extra_isize);
++}
++
++static struct mock_block *alloc_mock_block(struct xattr_test_ctx *ctx)
++{
++	int i;
++
++	for (i = 0; i < TEST_MAX_BLOCKS; i++) {
++		struct mock_block *blk = &ctx->blocks[i];
++
++		if (!blk->in_use) {
++			memset(blk, 0, sizeof(*blk));
++			blk->in_use = true;
++			blk->bh.b_data = blk->data;
++			blk->bh.b_size = TEST_BLK_SIZE;
++			blk->bh.b_blocknr = TEST_FIRST_PBLK + i;
++			blk->bh.b_bdev = &ctx->bdev;
++			atomic_set(&blk->bh.b_count, 1);
++			set_buffer_uptodate(&blk->bh);
++			set_buffer_mapped(&blk->bh);
++			return blk;
++		}
++	}
++	return NULL;
++}
++
++static struct mock_block *find_mock_block(struct xattr_test_ctx *ctx,
++					  ext4_fsblk_t blocknr)
++{
++	int i;
++
++	for (i = 0; i < TEST_MAX_BLOCKS; i++) {
++		if (ctx->blocks[i].in_use &&
++		    ctx->blocks[i].bh.b_blocknr == blocknr)
++			return &ctx->blocks[i];
++	}
++	return NULL;
++}
++
++static int ext4_get_inode_loc_stub(struct inode *inode, struct ext4_iloc *iloc)
++{
++	struct kunit *test = kunit_get_current_test();
++	struct xattr_test_ctx *ctx = test->priv;
++	struct mock_inode_slot *slot;
++
++	if (ctx->fail_get_inode_loc)
++		return ctx->fail_get_inode_loc;
++
++	slot = container_of(EXT4_I(inode), struct mock_inode_slot, ei);
++	get_bh(&slot->iloc_bh);
++	iloc->bh = &slot->iloc_bh;
++	iloc->offset = 0;
++	iloc->block_group = 0;
 +	return 0;
 +}
 +
-+static struct file_system_type balloc_test_fs_type = {
-+	.name		 = "ext4_balloc_kunit",
-+	.init_fs_context = balloc_test_init_fs_context,
-+	.kill_sb	 = kill_anon_super,
-+};
-+
-+static struct balloc_test_blk *balloc_test_find_blk(struct balloc_test_ctx *ctx,
-+						    ext4_fsblk_t blocknr)
-+{
-+	unsigned int i;
-+
-+	for (i = 0; i < BALLOC_TEST_POOL_SIZE; i++) {
-+		if (ctx->pool[i].in_use && ctx->pool[i].blocknr == blocknr)
-+			return &ctx->pool[i];
-+	}
-+	return NULL;
-+}
-+
-+static struct balloc_test_blk *
-+balloc_test_find_blk_by_bh(struct balloc_test_ctx *ctx, struct buffer_head *bh)
-+{
-+	unsigned int i;
-+
-+	for (i = 0; i < BALLOC_TEST_POOL_SIZE; i++) {
-+		if (ctx->pool[i].in_use && &ctx->pool[i].bh == bh)
-+			return &ctx->pool[i];
-+	}
-+	return NULL;
-+}
-+
-+static struct balloc_test_blk *
-+balloc_test_setup_blk(struct balloc_test_ctx *ctx, ext4_fsblk_t blocknr,
-+		      bool uptodate)
-+{
-+	struct balloc_test_blk *slot = balloc_test_find_blk(ctx, blocknr);
-+	unsigned int i;
-+
-+	if (!slot) {
-+		for (i = 0; i < BALLOC_TEST_POOL_SIZE; i++) {
-+			if (!ctx->pool[i].in_use) {
-+				slot = &ctx->pool[i];
-+				break;
-+			}
-+		}
-+	}
-+	if (!slot)
-+		return NULL;
-+
-+	memset(slot, 0, sizeof(*slot));
-+	slot->in_use = true;
-+	slot->blocknr = blocknr;
-+	slot->bh.b_bdev = &ctx->bdev;
-+	slot->bh.b_blocknr = blocknr;
-+	slot->bh.b_size = BALLOC_TEST_BLK_SIZE;
-+	slot->bh.b_data = slot->cache_buf;
-+	atomic_set(&slot->bh.b_count, 1);
-+	if (uptodate)
-+		set_buffer_uptodate(&slot->bh);
-+	return slot;
-+}
-+
-+static void balloc_test_sync_bbitmap_csum(struct balloc_test_ctx *ctx,
-+					  ext4_group_t g, bool sync_disk)
-+{
-+	struct ext4_group_desc *gdp = &ctx->gdps[g];
-+	struct balloc_test_blk *slot;
-+
-+	slot = balloc_test_find_blk(ctx, ext4_block_bitmap(ctx->sb, gdp));
-+	if (slot) {
-+		ext4_block_bitmap_csum_set(ctx->sb, gdp, &slot->bh);
-+		if (sync_disk)
-+			memcpy(slot->disk_buf, slot->cache_buf,
-+			       BALLOC_TEST_BLK_SIZE);
-+	}
-+	ext4_group_desc_csum_set(ctx->sb, g, gdp);
-+}
-+
-+static void balloc_test_discard_work_fn(struct work_struct *work)
-+{
-+	struct ext4_sb_info *sbi =
-+		container_of(work, struct ext4_sb_info, s_discard_work);
-+	struct balloc_test_ctx *ctx =
-+		container_of(sbi, struct balloc_test_ctx, sbi);
-+
-+	if (ctx->discard_wait_retry_pending) {
-+		ktime_t deadline = ktime_add_ms(ktime_get(), 500);
-+
-+		while (!atomic_read(&sbi->s_retry_alloc_pending) &&
-+		       ktime_before(ktime_get(), deadline))
-+			usleep_range(100, 500);
-+	}
-+
-+	ctx->discard_work_runs++;
-+	ctx->discard_saw_retry_pending = atomic_read(&sbi->s_retry_alloc_pending);
-+	if (ctx->discard_release_clusters)
-+		percpu_counter_add(&sbi->s_freeclusters_counter,
-+				   ctx->discard_release_clusters);
-+}
-+
-+static void balloc_test_restore_creds(struct balloc_test_ctx *ctx)
-+{
-+	if (ctx->saved_cred) {
-+		revert_creds(ctx->saved_cred);
-+		ctx->saved_cred = NULL;
-+	}
-+	if (ctx->override_cred) {
-+		put_cred(ctx->override_cred);
-+		ctx->override_cred = NULL;
-+	}
-+}
-+
-+static void balloc_test_override_creds(struct kunit *test,
-+				       struct balloc_test_ctx *ctx,
-+				       uid_t uid, gid_t gid, bool cap_sys_res,
-+				       int supp_gid)
-+{
-+	struct cred *cred;
-+
-+	balloc_test_restore_creds(ctx);
-+
-+	cred = prepare_creds();
-+	KUNIT_ASSERT_NOT_NULL(test, cred);
-+	ctx->override_cred = cred;
-+
-+	cred->uid = KUIDT_INIT(uid);
-+	cred->euid = KUIDT_INIT(uid);
-+	cred->suid = KUIDT_INIT(uid);
-+	cred->fsuid = KUIDT_INIT(uid);
-+	cred->gid = KGIDT_INIT(gid);
-+	cred->egid = KGIDT_INIT(gid);
-+	cred->sgid = KGIDT_INIT(gid);
-+	cred->fsgid = KGIDT_INIT(gid);
-+	cap_clear(cred->cap_effective);
-+	cap_clear(cred->cap_permitted);
-+	cap_clear(cred->cap_inheritable);
-+	cap_clear(cred->cap_ambient);
-+	if (cap_sys_res) {
-+		cap_raise(cred->cap_permitted, CAP_SYS_RESOURCE);
-+		cap_raise(cred->cap_effective, CAP_SYS_RESOURCE);
-+	}
-+#ifdef CONFIG_MULTIUSER
-+	{
-+		struct group_info *gi = groups_alloc(supp_gid >= 0 ? 1 : 0);
-+
-+		KUNIT_ASSERT_NOT_NULL(test, gi);
-+		if (supp_gid >= 0) {
-+			gi->gid[0] = KGIDT_INIT((gid_t)supp_gid);
-+			groups_sort(gi);
-+		}
-+		set_groups(cred, gi);
-+		put_group_info(gi);
-+	}
-+#endif
-+	ctx->saved_cred = override_creds(cred);
-+}
-+
-+/* --- Static Stubs --- */
-+
-+static struct buffer_head *balloc_test_sb_getblk_stub(struct super_block *sb,
-+						      ext4_fsblk_t block)
++static int ext4_mark_iloc_dirty_stub(handle_t *handle, struct inode *inode,
++				     struct ext4_iloc *iloc)
 +{
 +	struct kunit *test = kunit_get_current_test();
-+	struct balloc_test_ctx *ctx = test ? test->priv : NULL;
-+	struct balloc_test_blk *slot;
++	struct xattr_test_ctx *ctx = test->priv;
 +
-+	if (!ctx || ctx->fail_getblk)
-+		return NULL;
-+	slot = balloc_test_find_blk(ctx, block);
-+	if (!slot)
-+		return NULL;
-+	get_bh(&slot->bh);
-+	return &slot->bh;
++	brelse(iloc->bh);
++	ctx->mark_iloc_dirty_calls++;
++	if (ctx->fail_mark_iloc_dirty)
++		return ctx->fail_mark_iloc_dirty;
++	return 0;
 +}
 +
-+static void balloc_test_read_bh_nowait_stub(struct buffer_head *bh,
-+					    blk_opf_t op_flags,
-+					    bio_end_io_t end_io,
-+					    bool simu_fail)
++static int __ext4_mark_inode_dirty_stub(handle_t *handle, struct inode *inode,
++					const char *func, unsigned int line)
 +{
 +	struct kunit *test = kunit_get_current_test();
-+	struct balloc_test_ctx *ctx = test ? test->priv : NULL;
-+	struct balloc_test_blk *slot;
-+	bool fail;
++	struct xattr_test_ctx *ctx = test->priv;
 +
-+	if (!ctx) {
-+		unlock_buffer(bh);
-+		return;
-+	}
-+	ctx->read_nowait_calls++;
-+	ctx->last_read_op_flags = op_flags;
++	ctx->mark_inode_dirty_calls++;
++	return 0;
++}
 +
-+	if (simu_fail) {
-+		clear_buffer_uptodate(bh);
-+		unlock_buffer(bh);
-+		return;
-+	}
++static int __ext4_handle_dirty_metadata_stub(const char *where,
++					     unsigned int line,
++					     handle_t *handle,
++					     struct inode *inode,
++					     struct buffer_head *bh)
++{
++	struct kunit *test = kunit_get_current_test();
++	struct xattr_test_ctx *ctx = test->priv;
 +
-+	clear_buffer_verified(bh);
-+	slot = balloc_test_find_blk_by_bh(ctx, bh);
-+	fail = ctx->fail_read_eio || !slot;
-+	if (!fail)
-+		memcpy(bh->b_data, slot->disk_buf, bh->b_size);
-+
-+	if (end_io) {
-+		struct bio *bio = bio_alloc(NULL, 0, REQ_OP_READ, GFP_KERNEL);
-+
-+		if (bio) {
-+			bio->bi_private = bh;
-+			bio->bi_status = fail ? BLK_STS_IOERR : BLK_STS_OK;
-+			end_io(bio);
-+			return;
-+		}
-+	}
-+
-+	if (fail) {
-+		clear_buffer_uptodate(bh);
-+	} else {
++	if (ctx->fail_dirty_metadata)
++		return ctx->fail_dirty_metadata;
++	if (bh)
 +		set_buffer_uptodate(bh);
-+		set_bitmap_uptodate(bh);
-+	}
-+	unlock_buffer(bh);
++	ctx->dirty_metadata_calls++;
++	return 0;
 +}
 +
-+static ext4_fsblk_t
-+balloc_test_mb_new_blocks_stub(handle_t *handle,
-+			       struct ext4_allocation_request *ar, int *errp)
++static ext4_fsblk_t ext4_mb_new_blocks_stub(handle_t *handle,
++					    struct ext4_allocation_request *ar,
++					    int *errp)
 +{
 +	struct kunit *test = kunit_get_current_test();
-+	struct balloc_test_ctx *ctx = test ? test->priv : NULL;
++	struct xattr_test_ctx *ctx = test->priv;
++	struct mock_block *blk;
 +
-+	if (!ctx) {
-+		*errp = -EIO;
++	if (ctx->fail_alloc_block) {
++		*errp = ctx->fail_alloc_block;
 +		return 0;
 +	}
-+	ctx->mb_new_blocks_calls++;
-+	ctx->last_ar = *ar;
-+	*errp = ctx->mock_alloc_err;
-+	if (ctx->mock_alloc_err)
++
++	blk = alloc_mock_block(ctx);
++	if (!blk) {
++		*errp = -ENOSPC;
 +		return 0;
-+	if (ctx->mock_alloc_len)
-+		ar->len = ctx->mock_alloc_len;
-+	return ctx->mock_alloc_blk;
++	}
++
++	ctx->alloc_block_calls++;
++	*errp = 0;
++	return blk->bh.b_blocknr;
 +}
 +
-+/* --- Fixture Setup & Teardown --- */
-+
-+static void balloc_test_cleanup(struct balloc_test_ctx *ctx)
++static void ext4_free_blocks_stub(handle_t *handle, struct inode *inode,
++				  struct buffer_head *bh, ext4_fsblk_t block,
++				  unsigned long count, int flags)
 +{
-+	unsigned int i;
++	struct kunit *test = kunit_get_current_test();
++	struct xattr_test_ctx *ctx = test->priv;
++	struct mock_block *blk;
 +
-+	balloc_test_restore_creds(ctx);
-+
-+	for (i = 0; i < BALLOC_TEST_POOL_SIZE; i++) {
-+		if (ctx->pool[i].in_use && buffer_locked(&ctx->pool[i].bh))
-+			unlock_buffer(&ctx->pool[i].bh);
++	if (bh) {
++		if (!block)
++			block = bh->b_blocknr;
++		if (flags & EXT4_FREE_BLOCKS_FORGET)
++			brelse(bh);
 +	}
++	if (!(flags & EXT4_FREE_BLOCKS_NO_QUOT_UPDATE))
++		dquot_free_block(inode,
++				 EXT4_C2B(EXT4_SB(inode->i_sb), count));
 +
-+	cancel_work_sync(&ctx->sbi.s_discard_work);
-+	ctx->sbi.s_journal = NULL;
++	blk = find_mock_block(ctx, block);
++	if (blk)
++		blk->in_use = false;
 +
-+	if (ctx->test_inode) {
-+		spin_lock(&ctx->test_inode->i_lock);
-+		inode_state_clear(ctx->test_inode, I_DIRTY_ALL);
-+		spin_unlock(&ctx->test_inode->i_lock);
-+		iput(ctx->test_inode);
-+		ctx->test_inode = NULL;
-+	}
-+
-+	if (ctx->sb) {
-+		deactivate_super(ctx->sb);
-+		rcu_barrier();
-+		ctx->sb = NULL;
-+	}
-+
-+	if (ctx->sra_inited)
-+		percpu_counter_destroy(&ctx->sbi.s_sra_exceeded_retry_limit);
-+	if (ctx->fic_inited)
-+		percpu_counter_destroy(&ctx->sbi.s_freeinodes_counter);
-+	if (ctx->dcc_inited)
-+		percpu_counter_destroy(&ctx->sbi.s_dirtyclusters_counter);
-+	if (ctx->fcc_inited)
-+		percpu_counter_destroy(&ctx->sbi.s_freeclusters_counter);
-+
-+	kfree(ctx);
++	ctx->free_block_calls++;
++	ctx->last_freed_block = block;
 +}
 +
-+KUNIT_DEFINE_ACTION_WRAPPER(balloc_test_cleanup_action, balloc_test_cleanup,
-+			    struct balloc_test_ctx *);
-+
-+static int balloc_test_init(struct kunit *test)
++static struct buffer_head *ext4_xattr_getblk_stub(struct super_block *sb,
++						  ext4_fsblk_t block)
 +{
-+	struct balloc_test_ctx *ctx;
-+	struct fs_context *fc;
++	struct kunit *test = kunit_get_current_test();
++	struct xattr_test_ctx *ctx = test->priv;
++	struct mock_block *blk;
++
++	if (ctx->fail_xattr_getblk)
++		return NULL;
++
++	blk = find_mock_block(ctx, block);
++	if (!blk)
++		return NULL;
++
++	get_bh(&blk->bh);
++	return &blk->bh;
++}
++
++static struct buffer_head *ext4_sb_bread_stub(struct super_block *sb,
++					      sector_t block,
++					      blk_opf_t op_flags)
++{
++	struct kunit *test = kunit_get_current_test();
++	struct xattr_test_ctx *ctx = test->priv;
++	struct mock_block *blk;
++
++	if (ctx->fail_sb_bread)
++		return ERR_PTR(ctx->fail_sb_bread);
++
++	blk = find_mock_block(ctx, block);
++	if (!blk)
++		return ERR_PTR(-EIO);
++
++	get_bh(&blk->bh);
++	return &blk->bh;
++}
++
++static int ext4_map_blocks_stub(handle_t *handle, struct inode *inode,
++				struct ext4_map_blocks *map, int flags)
++{
++	struct kunit *test = kunit_get_current_test();
++	struct xattr_test_ctx *ctx = test->priv;
++	struct mock_inode_slot *slot;
++	struct mock_block *blk;
++
++	slot = container_of(EXT4_I(inode), struct mock_inode_slot, ei);
++	if (map->m_lblk >= ARRAY_SIZE(slot->lblk_to_pblk))
++		return -EFSCORRUPTED;
++
++	if (!slot->lblk_to_pblk[map->m_lblk]) {
++		if (!(flags & EXT4_GET_BLOCKS_CREATE))
++			return 0;
++		if (ctx->fail_alloc_block)
++			return ctx->fail_alloc_block;
++		blk = alloc_mock_block(ctx);
++		if (!blk)
++			return -ENOSPC;
++		slot->lblk_to_pblk[map->m_lblk] = blk->bh.b_blocknr;
++		inode->i_blocks += TEST_BLK_SIZE >> 9;
++		map->m_flags = EXT4_MAP_NEW | EXT4_MAP_MAPPED;
++	} else {
++		map->m_flags = EXT4_MAP_MAPPED;
++	}
++
++	map->m_pblk = slot->lblk_to_pblk[map->m_lblk];
++	map->m_len = 1;
++	return 1;
++}
++
++static struct buffer_head *ext4_getblk_stub(handle_t *handle,
++					    struct inode *inode,
++					    ext4_lblk_t block, int map_flags)
++{
++	struct kunit *test = kunit_get_current_test();
++	struct xattr_test_ctx *ctx = test->priv;
++	struct mock_inode_slot *slot;
++	struct mock_block *blk;
++
++	if (ctx->fail_getblk)
++		return ERR_PTR(ctx->fail_getblk);
++
++	slot = container_of(EXT4_I(inode), struct mock_inode_slot, ei);
++	if (block >= ARRAY_SIZE(slot->lblk_to_pblk))
++		return ERR_PTR(-EFSCORRUPTED);
++	if (!slot->lblk_to_pblk[block]) {
++		if (!(map_flags & EXT4_GET_BLOCKS_CREATE))
++			return NULL;
++		blk = alloc_mock_block(ctx);
++		if (!blk)
++			return ERR_PTR(-ENOSPC);
++		slot->lblk_to_pblk[block] = blk->bh.b_blocknr;
++		inode->i_blocks += TEST_BLK_SIZE >> 9;
++	} else {
++		blk = find_mock_block(ctx, slot->lblk_to_pblk[block]);
++		if (!blk)
++			return ERR_PTR(-EIO);
++	}
++
++	get_bh(&blk->bh);
++	return &blk->bh;
++}
++
++static struct inode *__ext4_new_inode_stub(const struct mnt_idmap *idmap,
++					   handle_t *handle,
++					   struct inode *dir, umode_t mode,
++					   const struct qstr *qstr,
++					   __u32 goal, uid_t *owner,
++					   __u32 i_flags, int handle_type,
++					   unsigned int line_no, int nblocks)
++{
++	struct kunit *test = kunit_get_current_test();
++	struct xattr_test_ctx *ctx = test->priv;
++	int i;
++
++	if (ctx->fail_new_inode)
++		return ERR_PTR(ctx->fail_new_inode);
++
++	for (i = 0; i < TEST_MAX_EA_INODES; i++) {
++		struct mock_inode_slot *slot = &ctx->ea_inodes[i];
++		struct inode *inode = &slot->ei.vfs_inode;
++
++		if (!slot->allocated) {
++			init_mock_inode_slot(ctx, slot, TEST_FIRST_EA_INO + i);
++			inode->i_mode = mode;
++			slot->ei.i_flags = i_flags;
++			if (owner) {
++				i_uid_write(inode, owner[0]);
++				i_gid_write(inode, owner[1]);
++			}
++			/*
++			 * Set I_NEW for unlock_new_inode() and give the mock
++			 * inode an extra baseline reference (i_count = 2) so
++			 * ext4_put_ea_inode()'s iput_if_not_last() decrements
++			 * i_count to 1 and returns without entering VFS
++			 * eviction.
++			 */
++			inode_state_set_raw(inode, I_DIRTY | I_NEW);
++			atomic_set(&inode->i_count, 2);
++			return inode;
++		}
++	}
++	return ERR_PTR(-ENOSPC);
++}
++
++static struct inode *__ext4_iget_stub(struct super_block *sb,
++				      unsigned long ino,
++				      ext4_iget_flags flags,
++				      const char *function,
++				      unsigned int line)
++{
++	struct kunit *test = kunit_get_current_test();
++	struct xattr_test_ctx *ctx = test->priv;
++	int i;
++
++	if (ctx->fail_iget)
++		return ERR_PTR(ctx->fail_iget);
++
++	for (i = 0; i < TEST_MAX_EA_INODES; i++) {
++		struct mock_inode_slot *slot = &ctx->ea_inodes[i];
++		struct inode *inode = &slot->ei.vfs_inode;
++
++		if (slot->allocated && inode->i_ino == ino) {
++			if ((flags & EXT4_IGET_EA_INODE) &&
++			    !(slot->ei.i_flags & EXT4_EA_INODE_FL))
++				return ERR_PTR(-EFSCORRUPTED);
++			atomic_inc(&inode->i_count);
++			return inode;
++		}
++	}
++	return ERR_PTR(-ENOENT);
++}
++
++static int xattr_test_init(struct kunit *test)
++{
++	struct xattr_test_ctx *ctx;
 +	struct super_block *sb;
 +	struct ext4_sb_info *sbi;
-+	struct inode *root_inode;
-+	ext4_group_t g;
-+	s64 total_free_clusters = 0;
-+	s64 total_free_inodes = 0;
-+	int err;
 +
-+	ctx = kzalloc_obj(*ctx);
++	ctx = kunit_kzalloc(test, sizeof(*ctx), GFP_KERNEL);
 +	KUNIT_ASSERT_NOT_NULL(test, ctx);
 +	test->priv = ctx;
 +
-+	for (g = 0; g < BALLOC_TEST_MAX_GROUPS; g++) {
-+		ctx->grp_infos[g] = kunit_kzalloc(test,
-+						  sizeof(*ctx->grp_infos[g]),
-+						  GFP_KERNEL);
-+		KUNIT_ASSERT_NOT_NULL(test, ctx->grp_infos[g]);
-+	}
-+
-+	INIT_WORK(&ctx->sbi.s_discard_work, balloc_test_discard_work_fn);
-+	rwlock_init(&ctx->journal.j_state_lock);
-+
-+	err = kunit_add_action_or_reset(test, balloc_test_cleanup_action, ctx);
-+	KUNIT_ASSERT_EQ(test, err, 0);
-+
-+	fc = fs_context_for_mount(&balloc_test_fs_type, 0);
-+	KUNIT_ASSERT_FALSE(test, IS_ERR(fc));
-+	sb = sget_fc(fc, NULL, set_anon_super_fc);
-+	put_fs_context(fc);
-+	KUNIT_ASSERT_FALSE(test, IS_ERR(sb));
-+
++	sb = &ctx->sb;
 +	sbi = &ctx->sbi;
++
 +	sbi->s_sb = sb;
 +	sb->s_fs_info = sbi;
-+	sb->s_op = &balloc_test_sops;
++	sb->s_op = &xattr_test_sops;
 +#ifdef CONFIG_QUOTA
-+	sb->dq_op = &balloc_test_qops;
++	sb->dq_op = &xattr_test_qops;
 +#endif
-+	sb->s_flags |= SB_ACTIVE;
-+	sb->s_blocksize = BALLOC_TEST_BLK_SIZE;
-+	sb->s_blocksize_bits = BALLOC_TEST_BLK_BITS;
++	sb->s_blocksize = TEST_BLK_SIZE;
++	sb->s_blocksize_bits = TEST_BLK_BITS;
 +	sb->s_maxbytes = MAX_LFS_FILESIZE;
-+	strscpy(sb->s_id, "ext4_balloc_kunit", sizeof(sb->s_id));
++	sb->s_time_gran = 1;
++	sb->s_xattr = ext4_xattr_handlers;
++	strscpy(sb->s_id, "ext4_xattr_kunit", sizeof(sb->s_id));
++	init_rwsem(&sb->s_umount);
 +
-+	inode_init_once(&ctx->bd_inode);
-+	ctx->bd_inode.i_sb = sb;
-+	ctx->bd_inode.i_blkbits = BALLOC_TEST_BLK_BITS;
-+	ctx->bd_inode.i_mapping = &ctx->bd_inode.i_data;
-+	ctx->bd_inode.i_data.host = &ctx->bd_inode;
-+	ctx->bdev_queue.limits.logical_block_size = 512;
-+	ctx->bdev_queue.limits.dma_alignment = 511;
-+	ctx->bdev.bd_queue = &ctx->bdev_queue;
-+	ctx->bdev.bd_mapping = &ctx->bd_inode.i_data;
++	ctx->bdev.bd_mapping = &ctx->bd_mapping;
 +	bdev_set_flag(&ctx->bdev, BD_READ_ONLY);
 +	sb->s_bdev = &ctx->bdev;
 +
-+	root_inode = new_inode(sb);
-+	if (!root_inode) {
-+		deactivate_locked_super(sb);
-+		rcu_barrier();
-+		KUNIT_FAIL_AND_ABORT(test, "failed to alloc root_inode");
-+	}
-+	root_inode->i_ino = EXT4_ROOT_INO;
-+	root_inode->i_mode = S_IFDIR | 0755;
-+	root_inode->i_op = &simple_dir_inode_operations;
-+	set_nlink(root_inode, 2);
-+	sb->s_root = d_make_root(root_inode);
-+	if (!sb->s_root) {
-+		deactivate_locked_super(sb);
-+		rcu_barrier();
-+		KUNIT_FAIL_AND_ABORT(test, "failed to alloc s_root");
-+	}
-+
-+	up_write(&sb->s_umount);
-+	ctx->sb = sb;
-+
-+	bgl_lock_init(&ctx->bgl);
-+	sbi->s_blockgroup_lock = &ctx->bgl;
-+
 +	sbi->s_es = &ctx->es;
-+	ctx->es.s_magic = cpu_to_le16(EXT4_SUPER_MAGIC);
-+	ctx->es.s_first_data_block = cpu_to_le32(BALLOC_TEST_FIRST_DATA_BLK);
++	ctx->es.s_first_data_block = cpu_to_le32(1);
 +	ctx->es.s_rev_level = cpu_to_le32(EXT4_DYNAMIC_REV);
-+	ctx->es.s_inodes_count = cpu_to_le32(BALLOC_TEST_NGROUPS *
-+					     BALLOC_TEST_INODES_PER_GRP);
-+	ctx->es.s_inodes_per_group = cpu_to_le32(BALLOC_TEST_INODES_PER_GRP);
-+	ctx->es.s_blocks_per_group = cpu_to_le32(BALLOC_TEST_BLOCKS_PER_GRP);
-+	ctx->es.s_clusters_per_group = cpu_to_le32(BALLOC_TEST_BLOCKS_PER_GRP);
-+	ctx->es.s_inode_size = cpu_to_le16(BALLOC_TEST_INODE_SIZE);
-+	ctx->es.s_checksum_type = EXT4_CRC32C_CHKSUM;
-+	ext4_blocks_count_set(&ctx->es, BALLOC_TEST_TOTAL_BLKS);
-+
-+	ext4_set_feature_sparse_super(sb);
-+	ext4_set_feature_extents(sb);
-+	ext4_set_feature_metadata_csum(sb);
-+	ext4_set_feature_64bit(sb);
++	ctx->es.s_inodes_count = cpu_to_le32(1024);
++	ctx->es.s_first_ino = cpu_to_le32(11);
++	ctx->es.s_inode_size = cpu_to_le16(TEST_INODE_SIZE);
++	ext4_blocks_count_set(&ctx->es, 65536);
 +
 +	ctx->sb_bh.b_data = (char *)&ctx->es;
 +	ctx->sb_bh.b_size = sizeof(ctx->es);
@@ -761,40 +846,27 @@ index 000000000000..b15d50907324
 +	set_buffer_uptodate(&ctx->sb_bh);
 +	sbi->s_sbh = &ctx->sb_bh;
 +
-+	for (g = 0; g < BALLOC_TEST_GDESC_BLKS; g++) {
-+		ctx->gdesc_bh[g].b_data = (char *)&ctx->gdps[g * 16];
-+		ctx->gdesc_bh[g].b_size = BALLOC_TEST_BLK_SIZE;
-+		ctx->gdesc_bh[g].b_blocknr = BALLOC_TEST_GDESC_BLK0 + g;
-+		ctx->gdesc_bh[g].b_bdev = &ctx->bdev;
-+		atomic_set(&ctx->gdesc_bh[g].b_count, 1);
-+		set_buffer_uptodate(&ctx->gdesc_bh[g]);
-+		ctx->gdesc_bh_ptrs[g] = &ctx->gdesc_bh[g];
-+	}
-+	rcu_assign_pointer(sbi->s_group_desc, ctx->gdesc_bh_ptrs);
-+
-+	sbi->s_inode_size = BALLOC_TEST_INODE_SIZE;
-+	sbi->s_inodes_per_block = BALLOC_TEST_BLK_SIZE / BALLOC_TEST_INODE_SIZE;
-+	sbi->s_inodes_per_group = BALLOC_TEST_INODES_PER_GRP;
-+	sbi->s_itb_per_group = BALLOC_TEST_ITB_PER_GRP;
-+	sbi->s_blocks_per_group = BALLOC_TEST_BLOCKS_PER_GRP;
-+	sbi->s_clusters_per_group = BALLOC_TEST_BLOCKS_PER_GRP;
++	sbi->s_inode_size = TEST_INODE_SIZE;
++	sbi->s_first_ino = 11;
++	sbi->s_want_extra_isize = TEST_EXTRA_ISIZE;
++	ctx->es.s_min_extra_isize = cpu_to_le16(TEST_EXTRA_ISIZE);
++	sbi->s_blocks_per_group = 8192;
++	sbi->s_clusters_per_group = 8192;
 +	sbi->s_cluster_ratio = 1;
 +	sbi->s_cluster_bits = 0;
-+	sbi->s_groups_count = BALLOC_TEST_NGROUPS;
-+	sbi->s_gdb_count = 1;
-+	sbi->s_desc_size = EXT4_MIN_DESC_SIZE_64BIT;
-+	sbi->s_desc_per_block = BALLOC_TEST_BLK_SIZE / EXT4_MIN_DESC_SIZE_64BIT;
-+	sbi->s_desc_per_block_bits = ilog2(sbi->s_desc_per_block);
-+	sbi->s_csum_seed = BALLOC_TEST_CSUM_SEED;
-+	sbi->s_resuid = make_kuid(&init_user_ns, EXT4_DEF_RESUID);
-+	sbi->s_resgid = make_kgid(&init_user_ns, EXT4_DEF_RESGID);
++	sbi->s_groups_count = 8;
++	sbi->s_csum_seed = TEST_CSUM_SEED;
 +
 +	set_opt(sb, ERRORS_CONT);
-+	set_opt(sb, DELALLOC);
++	set_opt(sb, XATTR_USER);
 +	spin_lock_init(&sbi->s_bdev_wb_lock);
 +	spin_lock_init(&sbi->s_error_lock);
 +	spin_lock_init(&sbi->s_md_lock);
 +
++	/*
++	 * Use burst = 0 so expected corruption-test error/warning messages
++	 * are suppressed without setting EXT4_FLAGS_SHUTDOWN.
++	 */
 +	ratelimit_state_init(&sbi->s_err_ratelimit_state,
 +			     DEFAULT_RATELIMIT_INTERVAL, 0);
 +	ratelimit_state_init(&sbi->s_warning_ratelimit_state,
@@ -802,1844 +874,1511 @@ index 000000000000..b15d50907324
 +	ratelimit_state_init(&sbi->s_msg_ratelimit_state,
 +			     DEFAULT_RATELIMIT_INTERVAL, 0);
 +
-+	for (g = 0; g < BALLOC_TEST_MAX_GROUPS; g++) {
-+		init_rwsem(&ctx->grp_infos[g]->alloc_sem);
-+		ctx->grp_infos[g]->bb_state = 0;
-+		if (g < 16)
-+			ctx->grp_info_slice0[g] = ctx->grp_infos[g];
-+		else
-+			ctx->grp_info_slice1[g - 16] = ctx->grp_infos[g];
-+	}
-+	ctx->grp_info_slices[0] = ctx->grp_info_slice0;
-+	ctx->grp_info_slices[1] = ctx->grp_info_slice1;
-+	rcu_assign_pointer(sbi->s_group_info, ctx->grp_info_slices);
++	init_mock_inode_slot(ctx, &ctx->primary, TEST_PRIMARY_INO);
++	init_mock_inode_slot(ctx, &ctx->secondary, TEST_SECONDARY_INO);
 +
-+	for (g = 0; g < BALLOC_TEST_NGROUPS; g++) {
-+		struct balloc_test_blk *bblk;
-+		unsigned int overhead = balloc_test_default_base_blks(g) +
-+					2U + BALLOC_TEST_ITB_PER_GRP;
-+		u32 free_clu = BALLOC_TEST_BLOCKS_PER_GRP - overhead;
-+		unsigned int bit;
++	ctx->root_dentry.d_sb = sb;
++	ctx->root_dentry.d_inode = &ctx->primary.ei.vfs_inode;
++	sb->s_root = &ctx->root_dentry;
 +
-+		ext4_block_bitmap_set(sb, &ctx->gdps[g],
-+				      balloc_test_bbitmap_blk(g));
-+		ext4_inode_bitmap_set(sb, &ctx->gdps[g],
-+				      balloc_test_ibitmap_blk(g));
-+		ext4_inode_table_set(sb, &ctx->gdps[g],
-+				     balloc_test_itable_blk(g));
-+		ext4_free_group_clusters_set(sb, &ctx->gdps[g], free_clu);
-+		ext4_free_inodes_set(sb, &ctx->gdps[g],
-+				     BALLOC_TEST_INODES_PER_GRP);
-+		ctx->grp_infos[g]->bb_free = free_clu;
-+
-+		bblk = balloc_test_setup_blk(ctx, balloc_test_bbitmap_blk(g),
-+					     true);
-+		KUNIT_ASSERT_NOT_NULL(test, bblk);
-+
-+		for (bit = 0; bit < overhead; bit++)
-+			ext4_set_bit(bit, bblk->cache_buf);
-+		ext4_mark_bitmap_end(BALLOC_TEST_BLOCKS_PER_GRP,
-+				     BALLOC_TEST_BLK_SIZE * 8,
-+				     bblk->cache_buf);
-+		set_bitmap_uptodate(&bblk->bh);
-+		set_buffer_verified(&bblk->bh);
-+		balloc_test_sync_bbitmap_csum(ctx, g, true);
-+
-+		total_free_clusters += free_clu;
-+		total_free_inodes += BALLOC_TEST_INODES_PER_GRP;
-+	}
-+
-+	err = percpu_counter_init(&sbi->s_freeclusters_counter,
-+				  total_free_clusters, GFP_KERNEL);
-+	if (!err)
-+		ctx->fcc_inited = true;
-+	KUNIT_ASSERT_EQ(test, err, 0);
-+
-+	err = percpu_counter_init(&sbi->s_dirtyclusters_counter, 0, GFP_KERNEL);
-+	if (!err)
-+		ctx->dcc_inited = true;
-+	KUNIT_ASSERT_EQ(test, err, 0);
-+
-+	err = percpu_counter_init(&sbi->s_freeinodes_counter,
-+				  total_free_inodes, GFP_KERNEL);
-+	if (!err)
-+		ctx->fic_inited = true;
-+	KUNIT_ASSERT_EQ(test, err, 0);
-+
-+	err = percpu_counter_init(&sbi->s_sra_exceeded_retry_limit, 0,
-+				  GFP_KERNEL);
-+	if (!err)
-+		ctx->sra_inited = true;
-+	KUNIT_ASSERT_EQ(test, err, 0);
-+
-+	ctx->test_inode = new_inode(sb);
-+	KUNIT_ASSERT_NOT_NULL(test, ctx->test_inode);
-+	ctx->test_inode->i_ino = EXT4_FIRST_INO(sb);
-+	ctx->test_inode->i_mode = S_IFREG | 0644;
-+	ctx->test_inode->i_blkbits = BALLOC_TEST_BLK_BITS;
-+	inode_set_bytes(ctx->test_inode, 0);
-+	EXT4_I(ctx->test_inode)->i_block_group = 0;
-+
-+	kunit_activate_static_stub(test, ext4_sb_getblk,
-+				   balloc_test_sb_getblk_stub);
-+	kunit_activate_static_stub(test, ext4_read_bh_nowait,
-+				   balloc_test_read_bh_nowait_stub);
++	kunit_activate_static_stub(test, ext4_get_inode_loc,
++				   ext4_get_inode_loc_stub);
++	kunit_activate_static_stub(test, ext4_mark_iloc_dirty,
++				   ext4_mark_iloc_dirty_stub);
++	kunit_activate_static_stub(test, __ext4_mark_inode_dirty,
++				   __ext4_mark_inode_dirty_stub);
++	kunit_activate_static_stub(test, __ext4_handle_dirty_metadata,
++				   __ext4_handle_dirty_metadata_stub);
 +	kunit_activate_static_stub(test, ext4_mb_new_blocks,
-+				   balloc_test_mb_new_blocks_stub);
++				   ext4_mb_new_blocks_stub);
++	kunit_activate_static_stub(test, ext4_free_blocks,
++				   ext4_free_blocks_stub);
++	kunit_activate_static_stub(test, ext4_xattr_getblk,
++				   ext4_xattr_getblk_stub);
++	kunit_activate_static_stub(test, ext4_sb_bread,
++				   ext4_sb_bread_stub);
++	kunit_activate_static_stub(test, ext4_map_blocks,
++				   ext4_map_blocks_stub);
++	kunit_activate_static_stub(test, ext4_getblk,
++				   ext4_getblk_stub);
++	kunit_activate_static_stub(test, __ext4_new_inode,
++				   __ext4_new_inode_stub);
++	kunit_activate_static_stub(test, __ext4_iget,
++				   __ext4_iget_stub);
 +
 +	return 0;
 +}
 +
-+/* =========================================================================
-+ * 1. Group Number & Offset Calculation
-+ * =========================================================================
++static void xattr_test_exit(struct kunit *test)
++{
++	struct xattr_test_ctx *ctx = test->priv;
++
++	if (!ctx)
++		return;
++
++	ext4_xattr_destroy_cache(ctx->sbi.s_ea_block_cache);
++	ctx->sbi.s_ea_block_cache = NULL;
++	ext4_xattr_destroy_cache(ctx->sbi.s_ea_inode_cache);
++	ctx->sbi.s_ea_inode_cache = NULL;
++}
++
++/*
++ * Test 1: Sizing macros, EXT4_INODE_HAS_XATTR_SPACE, and xattr_sem locking
++ * helpers.
 + */
++static void test_xattr_macros_and_locking(struct kunit *test)
++{
++	struct xattr_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->primary.ei.vfs_inode;
++	int save_outer = -1, save_inner = -1;
++	int locked;
 +
-+struct group_offset_param {
++	/* EXT4_XATTR_LEN rounds (sizeof(entry) + name_len) to 4-byte boundary */
++	KUNIT_EXPECT_EQ(test, EXT4_XATTR_LEN(0), 16U);
++	KUNIT_EXPECT_EQ(test, EXT4_XATTR_LEN(1), 20U);
++	KUNIT_EXPECT_EQ(test, EXT4_XATTR_LEN(4), 20U);
++	KUNIT_EXPECT_EQ(test, EXT4_XATTR_LEN(5), 24U);
++
++	/* EXT4_XATTR_SIZE rounds value size up to 4-byte boundary */
++	KUNIT_EXPECT_EQ(test, EXT4_XATTR_SIZE(0), 0U);
++	KUNIT_EXPECT_EQ(test, EXT4_XATTR_SIZE(1), 4U);
++	KUNIT_EXPECT_EQ(test, EXT4_XATTR_SIZE(4), 4U);
++	KUNIT_EXPECT_EQ(test, EXT4_XATTR_SIZE(5), 8U);
++
++	/*
++	 * EXT4_XATTR_MIN_LARGE_EA_SIZE(b) is
++	 * b - EXT4_XATTR_LEN(3) - sizeof(struct ext4_xattr_header) - 4.
++	 */
++	KUNIT_EXPECT_EQ(test, EXT4_XATTR_MIN_LARGE_EA_SIZE(1024), 968);
++	KUNIT_EXPECT_EQ(test, EXT4_XATTR_MIN_LARGE_EA_SIZE(4096), 4040);
++
++	/*
++	 * EXT4_INODE_HAS_XATTR_SPACE requires at least
++	 * sizeof(ibody_header) + EXT4_XATTR_PAD = 8 bytes of space after
++	 * EXT4_GOOD_OLD_INODE_SIZE + i_extra_isize.
++	 */
++	KUNIT_EXPECT_TRUE(test, EXT4_INODE_HAS_XATTR_SPACE(inode));
++
++	ctx->sbi.s_inode_size = EXT4_GOOD_OLD_INODE_SIZE;
++	KUNIT_EXPECT_FALSE(test, EXT4_INODE_HAS_XATTR_SPACE(inode));
++	ctx->sbi.s_inode_size = TEST_INODE_SIZE;
++
++	/* Exact boundary: 256 - 128 - 8 = 120 bytes of i_extra_isize fits */
++	EXT4_I(inode)->i_extra_isize = 120;
++	KUNIT_EXPECT_TRUE(test, EXT4_INODE_HAS_XATTR_SPACE(inode));
++
++	/* 124 bytes leaves only 4 bytes (< 8 bytes required) */
++	EXT4_I(inode)->i_extra_isize = 124;
++	KUNIT_EXPECT_FALSE(test, EXT4_INODE_HAS_XATTR_SPACE(inode));
++	EXT4_I(inode)->i_extra_isize = TEST_EXTRA_ISIZE;
++
++	/* Locking helpers and EXT4_STATE_NO_EXPAND state preservation */
++	KUNIT_EXPECT_EQ(test,
++			ext4_test_inode_state(inode, EXT4_STATE_NO_EXPAND), 0);
++
++	ext4_write_lock_xattr(inode, &save_outer);
++	locked = ext4_test_inode_state(inode, EXT4_STATE_NO_EXPAND);
++	ext4_write_unlock_xattr(inode, &save_outer);
++
++	KUNIT_EXPECT_EQ(test, save_outer, 0);
++	KUNIT_EXPECT_NE(test, locked, 0);
++	KUNIT_EXPECT_EQ(test,
++			ext4_test_inode_state(inode, EXT4_STATE_NO_EXPAND), 0);
++
++	/* When EXT4_STATE_NO_EXPAND is already set, unlock must preserve it */
++	ext4_set_inode_state(inode, EXT4_STATE_NO_EXPAND);
++	locked = ext4_write_trylock_xattr(inode, &save_inner);
++	if (locked)
++		ext4_write_unlock_xattr(inode, &save_inner);
++
++	KUNIT_EXPECT_EQ(test, locked, 1);
++	KUNIT_EXPECT_NE(test, save_inner, 0);
++	KUNIT_EXPECT_NE(test,
++			ext4_test_inode_state(inode, EXT4_STATE_NO_EXPAND), 0);
++	ext4_clear_inode_state(inode, EXT4_STATE_NO_EXPAND);
++}
++
++/*
++ * Test 2: Parameterized xattr_check_inode() validation across valid and
++ * corrupted in-inode xattr layouts.
++ */
++enum xattr_check_case_id {
++	CHECK_VALID_EMPTY,
++	CHECK_VALID_TWO_ENTRIES,
++	CHECK_BAD_MAGIC,
++	CHECK_END_BEFORE_FIRST,
++	CHECK_ENTRY_HDR_OVERFLOW,
++	CHECK_ENTRY_NAME_OVERFLOW,
++	CHECK_UNTERMINATED_LIST,
++	CHECK_EA_INODE_WITHOUT_FEATURE,
++	CHECK_VALUE_SIZE_GT_TOTAL,
++	CHECK_VALUE_OFFS_OVERLAPS_ENTRY,
++	CHECK_VALUE_END_EXCEEDS_TOTAL,
++};
++
++struct xattr_check_param {
 +	const char *desc;
-+	unsigned char blocksize_bits;
-+	unsigned int cluster_bits;
-+	u32 blocks_per_group;
-+	u32 first_data_block;
-+	bool std_group_size;
-+	ext4_fsblk_t block;
-+	ext4_group_t expected_group;
-+	ext4_grpblk_t expected_offset;
++	enum xattr_check_case_id id;
++	int expected_err;
 +};
 +
-+static const struct group_offset_param group_offset_params[] = {
-+	{
-+		.desc = "std_1k_bg0_first_block",
-+		.blocksize_bits = 10,
-+		.cluster_bits = 0,
-+		.blocks_per_group = 8192,
-+		.first_data_block = 1,
-+		.std_group_size = true,
-+		.block = 1,
-+		.expected_group = 0,
-+		.expected_offset = 0,
-+	},
-+	{
-+		.desc = "std_1k_bg0_last_block",
-+		.blocksize_bits = 10,
-+		.cluster_bits = 0,
-+		.blocks_per_group = 8192,
-+		.first_data_block = 1,
-+		.std_group_size = true,
-+		.block = 8192,
-+		.expected_group = 0,
-+		.expected_offset = 8191,
-+	},
-+	{
-+		.desc = "std_1k_bg1_first_block",
-+		.blocksize_bits = 10,
-+		.cluster_bits = 0,
-+		.blocks_per_group = 8192,
-+		.first_data_block = 1,
-+		.std_group_size = true,
-+		.block = 8193,
-+		.expected_group = 1,
-+		.expected_offset = 0,
-+	},
-+	{
-+		.desc = "std_1k_bg3_interior_block",
-+		.blocksize_bits = 10,
-+		.cluster_bits = 0,
-+		.blocks_per_group = 8192,
-+		.first_data_block = 1,
-+		.std_group_size = true,
-+		.block = 25000,
-+		.expected_group = 3,
-+		.expected_offset = 423,
-+	},
-+	{
-+		.desc = "std_4k_bg0_last_block",
-+		.blocksize_bits = 12,
-+		.cluster_bits = 0,
-+		.blocks_per_group = 32768,
-+		.first_data_block = 0,
-+		.std_group_size = true,
-+		.block = 32767,
-+		.expected_group = 0,
-+		.expected_offset = 32767,
-+	},
-+	{
-+		.desc = "std_4k_bg1_first_block",
-+		.blocksize_bits = 12,
-+		.cluster_bits = 0,
-+		.blocks_per_group = 32768,
-+		.first_data_block = 0,
-+		.std_group_size = true,
-+		.block = 32768,
-+		.expected_group = 1,
-+		.expected_offset = 0,
-+	},
-+	{
-+		.desc = "std_4k_above_32bit_blocknr",
-+		.blocksize_bits = 12,
-+		.cluster_bits = 0,
-+		.blocks_per_group = 32768,
-+		.first_data_block = 0,
-+		.std_group_size = true,
-+		.block = 0x100008005ULL,
-+		.expected_group = 131073,
-+		.expected_offset = 5,
-+	},
-+	{
-+		.desc = "nonstd_bg0_last_block",
-+		.blocksize_bits = 10,
-+		.cluster_bits = 0,
-+		.blocks_per_group = 1000,
-+		.first_data_block = 1,
-+		.std_group_size = false,
-+		.block = 1000,
-+		.expected_group = 0,
-+		.expected_offset = 999,
-+	},
-+	{
-+		.desc = "nonstd_bg1_first_block",
-+		.blocksize_bits = 10,
-+		.cluster_bits = 0,
-+		.blocks_per_group = 1000,
-+		.first_data_block = 1,
-+		.std_group_size = false,
-+		.block = 1001,
-+		.expected_group = 1,
-+		.expected_offset = 0,
-+	},
-+	{
-+		.desc = "nonstd_bg2_interior_block",
-+		.blocksize_bits = 10,
-+		.cluster_bits = 0,
-+		.blocks_per_group = 1000,
-+		.first_data_block = 1,
-+		.std_group_size = false,
-+		.block = 2346,
-+		.expected_group = 2,
-+		.expected_offset = 345,
-+	},
-+	{
-+		.desc = "bigalloc_std_cluster_start",
-+		.blocksize_bits = 12,
-+		.cluster_bits = 3,
-+		.blocks_per_group = 262144,
-+		.first_data_block = 0,
-+		.std_group_size = true,
-+		.block = 16,
-+		.expected_group = 0,
-+		.expected_offset = 2,
-+	},
-+	{
-+		.desc = "bigalloc_std_cluster_end_same_offset",
-+		.blocksize_bits = 12,
-+		.cluster_bits = 3,
-+		.blocks_per_group = 262144,
-+		.first_data_block = 0,
-+		.std_group_size = true,
-+		.block = 23,
-+		.expected_group = 0,
-+		.expected_offset = 2,
-+	},
-+	{
-+		.desc = "bigalloc_std_next_cluster",
-+		.blocksize_bits = 12,
-+		.cluster_bits = 3,
-+		.blocks_per_group = 262144,
-+		.first_data_block = 0,
-+		.std_group_size = true,
-+		.block = 24,
-+		.expected_group = 0,
-+		.expected_offset = 3,
-+	},
-+	{
-+		.desc = "bigalloc_std_bg2_offset",
-+		.blocksize_bits = 12,
-+		.cluster_bits = 3,
-+		.blocks_per_group = 262144,
-+		.first_data_block = 0,
-+		.std_group_size = true,
-+		.block = 524303,
-+		.expected_group = 2,
-+		.expected_offset = 1,
-+	},
-+	{
-+		.desc = "bigalloc_nonstd_bg3_offset",
-+		.blocksize_bits = 10,
-+		.cluster_bits = 2,
-+		.blocks_per_group = 600,
-+		.first_data_block = 1,
-+		.std_group_size = false,
-+		.block = 1820,
-+		.expected_group = 3,
-+		.expected_offset = 4,
-+	},
++static const struct xattr_check_param xattr_check_params[] = {
++	{ "valid_empty_ibody", CHECK_VALID_EMPTY, 0 },
++	{ "valid_two_entries", CHECK_VALID_TWO_ENTRIES, 0 },
++	{ "bad_magic", CHECK_BAD_MAGIC, -EFSCORRUPTED },
++	{ "end_before_first_entry", CHECK_END_BEFORE_FIRST, -EFSCORRUPTED },
++	{ "entry_header_overflows_end", CHECK_ENTRY_HDR_OVERFLOW, -EFSCORRUPTED },
++	{ "entry_name_overflows_end", CHECK_ENTRY_NAME_OVERFLOW, -EFSCORRUPTED },
++	{ "unterminated_entry_list", CHECK_UNTERMINATED_LIST, -EFSCORRUPTED },
++	{ "ea_inode_without_feature", CHECK_EA_INODE_WITHOUT_FEATURE, -EFSCORRUPTED },
++	{ "value_size_gt_total_size", CHECK_VALUE_SIZE_GT_TOTAL, -EFSCORRUPTED },
++	{ "value_offset_overlaps_entries", CHECK_VALUE_OFFS_OVERLAPS_ENTRY, -EFSCORRUPTED },
++	{ "value_end_exceeds_total_size", CHECK_VALUE_END_EXCEEDS_TOTAL, -EFSCORRUPTED },
 +};
 +
-+static void group_offset_param_get_desc(const struct group_offset_param *p,
-+					char *desc)
++static void xattr_check_param_get_desc(const struct xattr_check_param *p,
++				       char *desc)
 +{
 +	strscpy(desc, p->desc, KUNIT_PARAM_DESC_SIZE);
 +}
 +
-+KUNIT_ARRAY_PARAM(group_offset, group_offset_params,
-+		  group_offset_param_get_desc);
++KUNIT_ARRAY_PARAM(xattr_check, xattr_check_params, xattr_check_param_get_desc);
 +
-+static void test_group_no_and_offset_matrix(struct kunit *test)
++static void test_xattr_check_inode(struct kunit *test)
 +{
-+	struct balloc_test_ctx *ctx = test->priv;
-+	struct super_block *sb = ctx->sb;
-+	struct ext4_sb_info *sbi = &ctx->sbi;
-+	const struct group_offset_param *p = test->param_value;
-+	ext4_group_t grp = 0xdeadbeefU;
-+	ext4_grpblk_t off = 0x7654321;
-+
-+	sb->s_blocksize_bits = p->blocksize_bits;
-+	sb->s_blocksize = 1UL << p->blocksize_bits;
-+	sbi->s_cluster_bits = p->cluster_bits;
-+	sbi->s_cluster_ratio = 1U << p->cluster_bits;
-+	sbi->s_blocks_per_group = p->blocks_per_group;
-+	sbi->s_clusters_per_group = p->blocks_per_group >> p->cluster_bits;
-+	ctx->es.s_first_data_block = cpu_to_le32(p->first_data_block);
-+	if (p->std_group_size)
-+		set_opt2(sb, STD_GROUP_SIZE);
-+	else
-+		clear_opt2(sb, STD_GROUP_SIZE);
-+
-+	KUNIT_EXPECT_EQ(test, ext4_get_group_number(sb, p->block),
-+			p->expected_group);
-+
-+	ext4_get_group_no_and_offset(sb, p->block, &grp, &off);
-+	KUNIT_EXPECT_EQ(test, grp, p->expected_group);
-+	KUNIT_EXPECT_EQ(test, off, p->expected_offset);
-+}
-+
-+static void test_group_no_and_offset_optional_out_ptrs(struct kunit *test)
-+{
-+	struct balloc_test_ctx *ctx = test->priv;
-+	struct super_block *sb = ctx->sb;
-+	ext4_group_t grp = 999;
-+	ext4_grpblk_t off = 999;
-+
-+	/* Block 2060 = first_data_block (1) + 2 * 1024 + 11 */
-+	ext4_get_group_no_and_offset(sb, 2060, &grp, NULL);
-+	KUNIT_EXPECT_EQ(test, grp, 2U);
-+
-+	ext4_get_group_no_and_offset(sb, 2060, NULL, &off);
-+	KUNIT_EXPECT_EQ(test, off, 11);
-+
-+	/* Both output pointers NULL must be a safe no-op */
-+	ext4_get_group_no_and_offset(sb, 2060, NULL, NULL);
-+}
-+
-+/* =========================================================================
-+ * 2. Backup Superblock Placement (ext4_bg_has_super)
-+ * =========================================================================
-+ */
-+
-+static void test_bg_has_super_dense_all_groups(struct kunit *test)
-+{
-+	struct balloc_test_ctx *ctx = test->priv;
-+	struct super_block *sb = ctx->sb;
-+	static const ext4_group_t groups[] = { 0, 1, 2, 3, 4, 6, 8, 15, 22 };
-+	unsigned int i;
-+
-+	ext4_clear_feature_sparse_super(sb);
-+	ext4_clear_feature_sparse_super2(sb);
-+
-+	for (i = 0; i < ARRAY_SIZE(groups); i++)
-+		KUNIT_EXPECT_EQ_MSG(test, ext4_bg_has_super(sb, groups[i]), 1,
-+				    "dense group %u should have super",
-+				    groups[i]);
-+}
-+
-+static void test_bg_has_super_sparse_super_powers(struct kunit *test)
-+{
-+	struct balloc_test_ctx *ctx = test->priv;
-+	struct super_block *sb = ctx->sb;
-+	static const ext4_group_t with_super[] = {
-+		0, 1, 3, 9, 27, 81, 5, 25, 125, 7, 49, 343
-+	};
-+	static const ext4_group_t without_super[] = {
-+		2, 4, 6, 8, 10, 11, 15, 21, 35, 45, 63, 77
-+	};
-+	unsigned int i;
-+
-+	ext4_set_feature_sparse_super(sb);
-+	ext4_clear_feature_sparse_super2(sb);
-+
-+	for (i = 0; i < ARRAY_SIZE(with_super); i++)
-+		KUNIT_EXPECT_EQ_MSG(test, ext4_bg_has_super(sb, with_super[i]),
-+				    1, "sparse_super group %u expected 1",
-+				    with_super[i]);
-+
-+	for (i = 0; i < ARRAY_SIZE(without_super); i++)
-+		KUNIT_EXPECT_EQ_MSG(test,
-+				    ext4_bg_has_super(sb, without_super[i]), 0,
-+				    "sparse_super group %u expected 0",
-+				    without_super[i]);
-+}
-+
-+static void test_bg_has_super_sparse_super2_explicit_backups(struct kunit *test)
-+{
-+	struct balloc_test_ctx *ctx = test->priv;
-+	struct super_block *sb = ctx->sb;
-+
-+	ext4_set_feature_sparse_super2(sb);
-+	ctx->es.s_backup_bgs[0] = cpu_to_le32(6);
-+	ctx->es.s_backup_bgs[1] = cpu_to_le32(42);
-+
-+	KUNIT_EXPECT_EQ(test, ext4_bg_has_super(sb, 0), 1);
-+	KUNIT_EXPECT_EQ(test, ext4_bg_has_super(sb, 6), 1);
-+	KUNIT_EXPECT_EQ(test, ext4_bg_has_super(sb, 42), 1);
-+	KUNIT_EXPECT_EQ(test, ext4_bg_has_super(sb, 1), 0);
-+	KUNIT_EXPECT_EQ(test, ext4_bg_has_super(sb, 3), 0);
-+	KUNIT_EXPECT_EQ(test, ext4_bg_has_super(sb, 5), 0);
-+	KUNIT_EXPECT_EQ(test, ext4_bg_has_super(sb, 7), 0);
-+
-+	/* Single backup group configured (s_backup_bgs[1] == 0) */
-+	ctx->es.s_backup_bgs[0] = cpu_to_le32(12);
-+	ctx->es.s_backup_bgs[1] = cpu_to_le32(0);
-+	KUNIT_EXPECT_EQ(test, ext4_bg_has_super(sb, 0), 1);
-+	KUNIT_EXPECT_EQ(test, ext4_bg_has_super(sb, 12), 1);
-+	KUNIT_EXPECT_EQ(test, ext4_bg_has_super(sb, 6), 0);
-+	KUNIT_EXPECT_EQ(test, ext4_bg_has_super(sb, 42), 0);
-+}
-+
-+/* =========================================================================
-+ * 3. GDT & Base Metadata Blocks (ext4_bg_num_gdb, ext4_num_base_meta_blocks)
-+ * =========================================================================
-+ */
-+
-+static void test_bg_num_gdb_and_base_meta_non_metabg(struct kunit *test)
-+{
-+	struct balloc_test_ctx *ctx = test->priv;
-+	struct super_block *sb = ctx->sb;
-+
-+	ext4_clear_feature_meta_bg(sb);
-+	ext4_set_feature_sparse_super(sb);
-+	ctx->sbi.s_gdb_count = 4;
-+	ctx->es.s_reserved_gdt_blocks = cpu_to_le16(7);
-+
-+	/* Groups with super: 1 super + 4 gdb + 7 reserved_gdt = 12 blocks */
-+	KUNIT_EXPECT_EQ(test, ext4_bg_num_gdb(sb, 0), 4UL);
-+	KUNIT_EXPECT_EQ(test, ext4_num_base_meta_blocks(sb, 0), 12U);
-+	KUNIT_EXPECT_EQ(test, ext4_bg_num_gdb(sb, 3), 4UL);
-+	KUNIT_EXPECT_EQ(test, ext4_num_base_meta_blocks(sb, 3), 12U);
-+
-+	/* Groups without super: 0 gdb and reserved_gdt is not present */
-+	KUNIT_EXPECT_EQ(test, ext4_bg_num_gdb(sb, 2), 0UL);
-+	KUNIT_EXPECT_EQ(test, ext4_num_base_meta_blocks(sb, 2), 0U);
-+	KUNIT_EXPECT_EQ(test, ext4_bg_num_gdb(sb, 15), 0UL);
-+	KUNIT_EXPECT_EQ(test, ext4_num_base_meta_blocks(sb, 15), 0U);
-+}
-+
-+static void test_bg_num_gdb_and_base_meta_hybrid_metabg(struct kunit *test)
-+{
-+	struct balloc_test_ctx *ctx = test->priv;
-+	struct super_block *sb = ctx->sb;
-+
-+	/*
-+	 * s_desc_per_block = 16, s_first_meta_bg = 2:
-+	 *  - Groups 0..31 (metagroups 0..1) use traditional GDT layout with
-+	 *    s_first_meta_bg (2) GDT blocks + s_reserved_gdt_blocks (9) when
-+	 *    backup super is present.
-+	 *  - Groups >= 32 (metagroups >= 2) place 1 descriptor block in the
-+	 *    1st, 2nd, and last group of each 16-group metagroup, with no
-+	 *    reserved GDT blocks.
-+	 */
-+	ext4_set_feature_meta_bg(sb);
-+	ext4_set_feature_sparse_super(sb);
-+	ctx->sbi.s_gdb_count = 5;
-+	ctx->es.s_first_meta_bg = cpu_to_le32(2);
-+	ctx->es.s_reserved_gdt_blocks = cpu_to_le16(9);
-+
-+	/* Pre-meta_bg groups with super: 1 + 2 + 9 = 12 */
-+	KUNIT_EXPECT_EQ(test, ext4_bg_num_gdb(sb, 0), 2UL);
-+	KUNIT_EXPECT_EQ(test, ext4_num_base_meta_blocks(sb, 0), 12U);
-+	KUNIT_EXPECT_EQ(test, ext4_bg_num_gdb(sb, 27), 2UL);
-+	KUNIT_EXPECT_EQ(test, ext4_num_base_meta_blocks(sb, 27), 12U);
-+
-+	/* Pre-meta_bg groups without super */
-+	KUNIT_EXPECT_EQ(test, ext4_bg_num_gdb(sb, 2), 0UL);
-+	KUNIT_EXPECT_EQ(test, ext4_num_base_meta_blocks(sb, 2), 0U);
-+	KUNIT_EXPECT_EQ(test, ext4_bg_num_gdb(sb, 31), 0UL);
-+	KUNIT_EXPECT_EQ(test, ext4_num_base_meta_blocks(sb, 31), 0U);
-+
-+	/* Metagroup 2 (groups 32..47): first=32, second=33, last=47 (no super) */
-+	KUNIT_EXPECT_EQ(test, ext4_bg_num_gdb(sb, 32), 1UL);
-+	KUNIT_EXPECT_EQ(test, ext4_num_base_meta_blocks(sb, 32), 1U);
-+	KUNIT_EXPECT_EQ(test, ext4_bg_num_gdb(sb, 33), 1UL);
-+	KUNIT_EXPECT_EQ(test, ext4_num_base_meta_blocks(sb, 33), 1U);
-+	KUNIT_EXPECT_EQ(test, ext4_bg_num_gdb(sb, 47), 1UL);
-+	KUNIT_EXPECT_EQ(test, ext4_num_base_meta_blocks(sb, 47), 1U);
-+
-+	/* Interior meta_bg group with neither super nor meta gdb */
-+	KUNIT_EXPECT_EQ(test, ext4_bg_num_gdb(sb, 34), 0UL);
-+	KUNIT_EXPECT_EQ(test, ext4_num_base_meta_blocks(sb, 34), 0U);
-+
-+	/* Group 125 (5^3 in metagroup 112..127): super=1, meta_gdb=0 -> 1 */
-+	KUNIT_EXPECT_EQ(test, ext4_bg_num_gdb(sb, 125), 0UL);
-+	KUNIT_EXPECT_EQ(test, ext4_num_base_meta_blocks(sb, 125), 1U);
-+
-+	/* Group 49 (7^2, second of 48..63): super=1, meta_gdb=1 -> 2 */
-+	KUNIT_EXPECT_EQ(test, ext4_bg_num_gdb(sb, 49), 1UL);
-+	KUNIT_EXPECT_EQ(test, ext4_num_base_meta_blocks(sb, 49), 2U);
-+}
-+
-+/* =========================================================================
-+ * 4. Overhead & Free Clusters After Init (ext4_free_clusters_after_init)
-+ * =========================================================================
-+ */
-+
-+static void
-+test_free_clusters_after_init_standard_and_partial_last(struct kunit *test)
-+{
-+	struct balloc_test_ctx *ctx = test->priv;
-+	struct super_block *sb = ctx->sb;
-+
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_free_clusters_after_init(sb, 0, &ctx->gdps[0]),
-+			1004U);
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_free_clusters_after_init(sb, 2, &ctx->gdps[2]),
-+			1006U);
-+
-+	/* Shrink total blocks so last group 3 has only 300 blocks (20 overhead) */
-+	ext4_blocks_count_set(&ctx->es, balloc_test_group_start(3) + 300);
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_free_clusters_after_init(sb, 3, &ctx->gdps[3]),
-+			280U);
-+	/* Non-last group 1 still uses full s_blocks_per_group (1024) */
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_free_clusters_after_init(sb, 1, &ctx->gdps[1]),
-+			1004U);
-+}
-+
-+static void
-+test_free_clusters_after_init_external_and_spanning_meta(struct kunit *test)
-+{
-+	struct balloc_test_ctx *ctx = test->priv;
-+	struct super_block *sb = ctx->sb;
-+	ext4_fsblk_t g2_start = balloc_test_group_start(2);
-+
-+	/*
-+	 * Group 2 has 0 base metadata blocks. Relocate its bitmaps and inode
-+	 * table into group 0 -> 0 overhead clusters in group 2 -> 1024 free.
-+	 */
-+	ext4_block_bitmap_set(sb, &ctx->gdps[2], balloc_test_group_start(0) + 50);
-+	ext4_inode_bitmap_set(sb, &ctx->gdps[2], balloc_test_group_start(0) + 51);
-+	ext4_inode_table_set(sb, &ctx->gdps[2], balloc_test_group_start(0) + 52);
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_free_clusters_after_init(sb, 2, &ctx->gdps[2]),
-+			1024U);
-+
-+	/*
-+	 * Inode table of 16 blocks starting 6 blocks before group 2 overlaps
-+	 * 10 blocks [g2_start .. g2_start + 9] inside group 2 -> 1014 free.
-+	 */
-+	ext4_inode_table_set(sb, &ctx->gdps[2], g2_start - 6);
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_free_clusters_after_init(sb, 2, &ctx->gdps[2]),
-+			1014U);
-+
-+	/*
-+	 * Inode table starting 5 blocks before end of group 2 overlaps 5
-+	 * blocks [g2_end - 4 .. g2_end] inside group 2 -> 1019 free.
-+	 */
-+	ext4_inode_table_set(sb, &ctx->gdps[2],
-+			     g2_start + BALLOC_TEST_BLOCKS_PER_GRP - 5);
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_free_clusters_after_init(sb, 2, &ctx->gdps[2]),
-+			1019U);
-+}
-+
-+static void
-+test_free_clusters_after_init_bigalloc_cluster_sharing(struct kunit *test)
-+{
-+	struct balloc_test_ctx *ctx = test->priv;
-+	struct super_block *sb = ctx->sb;
-+	struct ext4_sb_info *sbi = &ctx->sbi;
-+	ext4_fsblk_t g1_start = balloc_test_group_start(1);
-+	ext4_fsblk_t g2_start = balloc_test_group_start(2);
-+
-+	/* 4 blocks per cluster -> 1024 / 4 = 256 clusters per full group */
-+	sbi->s_cluster_bits = 2;
-+	sbi->s_cluster_ratio = 4;
-+	sbi->s_clusters_per_group = 256;
-+	sbi->s_itb_per_group = 8;
-+
-+	/*
-+	 * Case 1 (border overlap with base_clusters):
-+	 * Group 1 has 2 base blocks (offsets 0..1 -> base_clusters = 1, clu 0).
-+	 * Place 8-block itable at offsets 2..9 (clusters 0..2, overlapping
-+	 * border clu 0), bbitmap at offset 12 (clu 3), ibitmap at offset 16
-+	 * (clu 4) -> 5 unique overhead clusters (0..4) -> 251 free clusters.
-+	 */
-+	ext4_inode_table_set(sb, &ctx->gdps[1], g1_start + 2);
-+	ext4_block_bitmap_set(sb, &ctx->gdps[1], g1_start + 12);
-+	ext4_inode_bitmap_set(sb, &ctx->gdps[1], g1_start + 16);
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_free_clusters_after_init(sb, 1, &ctx->gdps[1]),
-+			251U);
-+
-+	/*
-+	 * Case 2 (bitmaps inside base_clusters):
-+	 * Base blocks at offsets 0..1 (clu 0), bbitmap at offset 2 (clu 0),
-+	 * ibitmap at offset 3 (clu 0), 8-block itable at offsets 4..11
-+	 * (clusters 1..2) -> 3 overhead clusters (0..2) -> 253 free clusters.
-+	 */
-+	ext4_block_bitmap_set(sb, &ctx->gdps[1], g1_start + 2);
-+	ext4_inode_bitmap_set(sb, &ctx->gdps[1], g1_start + 3);
-+	ext4_inode_table_set(sb, &ctx->gdps[1], g1_start + 4);
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_free_clusters_after_init(sb, 1, &ctx->gdps[1]),
-+			253U);
-+
-+	/*
-+	 * Case 3 (bbitmap and ibitmap sharing the same non-base cluster):
-+	 * Group 2 has 0 base clusters. bbitmap at offset 0 (clu 0), ibitmap at
-+	 * offset 1 (clu 0), 8-block itable at offsets 4..11 (clusters 1..2) ->
-+	 * 3 overhead clusters -> 253 free clusters.
-+	 */
-+	ext4_block_bitmap_set(sb, &ctx->gdps[2], g2_start + 0);
-+	ext4_inode_bitmap_set(sb, &ctx->gdps[2], g2_start + 1);
-+	ext4_inode_table_set(sb, &ctx->gdps[2], g2_start + 4);
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_free_clusters_after_init(sb, 2, &ctx->gdps[2]),
-+			253U);
-+
-+	/*
-+	 * Case 4 (bitmaps sharing tail cluster of inode table):
-+	 * Group 2 with 6-block itable at offsets 0..5 (clusters 0..1), bbitmap
-+	 * at offset 6 (clu 1), ibitmap at offset 7 (clu 1) -> 2 overhead
-+	 * clusters (0..1) -> 254 free clusters.
-+	 */
-+	sbi->s_itb_per_group = 6;
-+	ext4_inode_table_set(sb, &ctx->gdps[2], g2_start + 0);
-+	ext4_block_bitmap_set(sb, &ctx->gdps[2], g2_start + 6);
-+	ext4_inode_bitmap_set(sb, &ctx->gdps[2], g2_start + 7);
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_free_clusters_after_init(sb, 2, &ctx->gdps[2]),
-+			254U);
-+
-+	/*
-+	 * Case 5 (partial last group rounding up blocks to clusters):
-+	 * Group 3 with 301 blocks -> EXT4_NUM_B2C(4, 301) = 76 clusters;
-+	 * external metadata -> 0 overhead in group 3 -> 76 free clusters.
-+	 */
-+	ext4_blocks_count_set(&ctx->es, balloc_test_group_start(3) + 301);
-+	ext4_block_bitmap_set(sb, &ctx->gdps[3], balloc_test_group_start(0) + 40);
-+	ext4_inode_bitmap_set(sb, &ctx->gdps[3], balloc_test_group_start(0) + 44);
-+	ext4_inode_table_set(sb, &ctx->gdps[3], balloc_test_group_start(0) + 48);
-+	/* Group 3 has 2 base blocks = 1 base cluster -> 76 - 1 = 75 free */
-+	KUNIT_EXPECT_EQ(test,
-+			ext4_free_clusters_after_init(sb, 3, &ctx->gdps[3]),
-+			75U);
-+}
-+
-+/* =========================================================================
-+ * 5. Group Descriptor & Group Info Lookup
-+ * =========================================================================
-+ */
-+
-+static void test_get_group_desc_lookup_and_bounds(struct kunit *test)
-+{
-+	struct balloc_test_ctx *ctx = test->priv;
-+	struct super_block *sb = ctx->sb;
-+	struct buffer_head *bh = NULL;
-+	struct ext4_group_desc *desc;
-+
-+	/* Expand to 20 groups spanning gdesc_bh[0] (0..15) and gdesc_bh[1] (16..19) */
-+	ctx->sbi.s_groups_count = 20;
-+
-+	desc = ext4_get_group_desc(sb, 0, &bh);
-+	KUNIT_EXPECT_PTR_EQ(test, desc, &ctx->gdps[0]);
-+	KUNIT_EXPECT_PTR_EQ(test, bh, &ctx->gdesc_bh[0]);
-+
-+	desc = ext4_get_group_desc(sb, 15, &bh);
-+	KUNIT_EXPECT_PTR_EQ(test, desc, &ctx->gdps[15]);
-+	KUNIT_EXPECT_PTR_EQ(test, bh, &ctx->gdesc_bh[0]);
-+
-+	desc = ext4_get_group_desc(sb, 16, &bh);
-+	KUNIT_EXPECT_PTR_EQ(test, desc, &ctx->gdps[16]);
-+	KUNIT_EXPECT_PTR_EQ(test, bh, &ctx->gdesc_bh[1]);
-+
-+	desc = ext4_get_group_desc(sb, 19, NULL);
-+	KUNIT_EXPECT_PTR_EQ(test, desc, &ctx->gdps[19]);
-+
-+	/* Out-of-range block_group >= s_groups_count returns NULL */
-+	ctx->sbi.s_mount_state &= ~EXT4_ERROR_FS;
-+	KUNIT_EXPECT_NULL(test, ext4_get_group_desc(sb, 20, &bh));
-+	KUNIT_EXPECT_TRUE(test, !!(ctx->sbi.s_mount_state & EXT4_ERROR_FS));
-+
-+	/* Missing group descriptor buffer_head slot returns NULL */
-+	ctx->gdesc_bh_ptrs[1] = NULL;
-+	ctx->sbi.s_mount_state &= ~EXT4_ERROR_FS;
-+	KUNIT_EXPECT_NULL(test, ext4_get_group_desc(sb, 16, &bh));
-+	KUNIT_EXPECT_TRUE(test, !!(ctx->sbi.s_mount_state & EXT4_ERROR_FS));
-+}
-+
-+static void test_get_group_info_lookup_and_null_guards(struct kunit *test)
-+{
-+	struct balloc_test_ctx *ctx = test->priv;
-+	struct super_block *sb = ctx->sb;
-+
-+	ctx->sbi.s_groups_count = 20;
-+
-+	KUNIT_EXPECT_PTR_EQ(test, ext4_get_group_info(sb, 0),
-+			    ctx->grp_infos[0]);
-+	KUNIT_EXPECT_PTR_EQ(test, ext4_get_group_info(sb, 15),
-+			    ctx->grp_infos[15]);
-+	KUNIT_EXPECT_PTR_EQ(test, ext4_get_group_info(sb, 16),
-+			    ctx->grp_infos[16]);
-+	KUNIT_EXPECT_PTR_EQ(test, ext4_get_group_info(sb, 19),
-+			    ctx->grp_infos[19]);
-+
-+	/* Out-of-bounds group returns NULL */
-+	KUNIT_EXPECT_NULL(test, ext4_get_group_info(sb, 20));
-+
-+	/* NULL second-level slice returns NULL only for that slice */
-+	ctx->grp_info_slices[1] = NULL;
-+	KUNIT_EXPECT_PTR_EQ(test, ext4_get_group_info(sb, 15),
-+			    ctx->grp_infos[15]);
-+	KUNIT_EXPECT_NULL(test, ext4_get_group_info(sb, 16));
-+
-+	/* NULL s_group_info table returns NULL */
-+	rcu_assign_pointer(ctx->sbi.s_group_info, NULL);
-+	KUNIT_EXPECT_NULL(test, ext4_get_group_info(sb, 0));
-+}
-+
-+/* =========================================================================
-+ * 6. Block Bitmap Validation (CSUM, Metadata Self-Checks, Padding, Flags)
-+ * =========================================================================
-+ */
-+
-+static void test_read_block_bitmap_validates_csum(struct kunit *test)
-+{
-+	struct balloc_test_ctx *ctx = test->priv;
-+	struct super_block *sb = ctx->sb;
-+	struct balloc_test_blk *slot;
-+	struct buffer_head *bh;
-+	s64 free_before;
-+
-+	slot = balloc_test_find_blk(ctx, balloc_test_bbitmap_blk(1));
-+	KUNIT_ASSERT_NOT_NULL(test, slot);
-+
-+	/* 1. Unverified buffer with valid CRC32C verifies and sets BH_Verified */
-+	clear_buffer_verified(&slot->bh);
-+	bh = ext4_read_block_bitmap(sb, 1);
-+	KUNIT_ASSERT_FALSE(test, IS_ERR(bh));
-+	KUNIT_EXPECT_TRUE(test, buffer_verified(bh));
-+	KUNIT_EXPECT_FALSE(test, EXT4_MB_GRP_BBITMAP_CORRUPT(ctx->grp_infos[1]));
-+	put_bh(bh);
-+
-+#ifdef CONFIG_EXT4_DEBUG
-+	/* Simulated CRC failure triggers -EFSBADCRC and resets s_simulate_fail */
-+	clear_buffer_verified(&slot->bh);
-+	ctx->sbi.s_simulate_fail = EXT4_SIM_BBITMAP_CRC;
-+	bh = ext4_read_block_bitmap(sb, 1);
-+	KUNIT_EXPECT_EQ(test, PTR_ERR(bh), -EFSBADCRC);
-+	KUNIT_EXPECT_EQ(test, ctx->sbi.s_simulate_fail, 0UL);
-+	ctx->grp_infos[1]->bb_state = 0;
-+	percpu_counter_add(&ctx->sbi.s_freeclusters_counter,
-+			   ctx->grp_infos[1]->bb_free);
-+#endif
-+
-+	/* 2. Corrupting free-space bit without updating csum -> -EFSBADCRC */
-+	free_before = percpu_counter_sum(&ctx->sbi.s_freeclusters_counter);
-+	clear_buffer_verified(&slot->bh);
-+	slot->cache_buf[40] ^= 0x01;
-+
-+	bh = ext4_read_block_bitmap(sb, 1);
-+	KUNIT_EXPECT_TRUE(test, IS_ERR(bh));
-+	KUNIT_EXPECT_EQ(test, PTR_ERR(bh), -EFSBADCRC);
-+	KUNIT_EXPECT_TRUE(test, EXT4_MB_GRP_BBITMAP_CORRUPT(ctx->grp_infos[1]));
-+	KUNIT_EXPECT_EQ(test,
-+			percpu_counter_sum(&ctx->sbi.s_freeclusters_counter),
-+			free_before - ctx->grp_infos[1]->bb_free);
-+
-+	/*
-+	 * 3. Subsequent read on already-corrupt group returns -EFSCORRUPTED
-+	 *    immediately without subtracting bb_free a second time.
-+	 */
-+	slot->cache_buf[40] ^= 0x01;
-+	bh = ext4_read_block_bitmap(sb, 1);
-+	KUNIT_EXPECT_TRUE(test, IS_ERR(bh));
-+	KUNIT_EXPECT_EQ(test, PTR_ERR(bh), -EFSCORRUPTED);
-+	KUNIT_EXPECT_EQ(test,
-+			percpu_counter_sum(&ctx->sbi.s_freeclusters_counter),
-+			free_before - ctx->grp_infos[1]->bb_free);
-+}
-+
-+static void test_read_block_bitmap_validates_metadata_bits(struct kunit *test)
-+{
-+	struct balloc_test_ctx *ctx = test->priv;
-+	struct super_block *sb = ctx->sb;
-+	struct balloc_test_blk *slot;
-+	struct buffer_head *bh;
-+	static const unsigned int meta_bits[] = {
-+		0,	/* block bitmap in group 2 */
-+		1,	/* inode bitmap in group 2 */
-+		2,	/* first inode table block in group 2 */
-+		10,	/* middle inode table block in group 2 */
-+		17,	/* last inode table block in group 2 */
-+	};
-+	unsigned int i;
-+
-+	slot = balloc_test_find_blk(ctx, balloc_test_bbitmap_blk(2));
-+	KUNIT_ASSERT_NOT_NULL(test, slot);
-+
-+	/* Clearing any in-group metadata bit (with valid CRC) -> -EFSCORRUPTED */
-+	for (i = 0; i < ARRAY_SIZE(meta_bits); i++) {
-+		ctx->grp_infos[2]->bb_state = 0;
-+		clear_buffer_verified(&slot->bh);
-+		ext4_clear_bit(meta_bits[i], slot->cache_buf);
-+		balloc_test_sync_bbitmap_csum(ctx, 2, false);
-+
-+		bh = ext4_read_block_bitmap(sb, 2);
-+		KUNIT_EXPECT_EQ_MSG(test, PTR_ERR_OR_ZERO(bh), -EFSCORRUPTED,
-+				    "cleared bit %u should fail validation",
-+				    meta_bits[i]);
-+		KUNIT_EXPECT_TRUE_MSG(test,
-+				      EXT4_MB_GRP_BBITMAP_CORRUPT(ctx->grp_infos[2]),
-+				      "bit %u should mark BBITMAP_CORRUPT",
-+				      meta_bits[i]);
-+
-+		ext4_set_bit(meta_bits[i], slot->cache_buf);
++	const struct xattr_check_param *p = test->param_value;
++	struct xattr_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->primary.ei.vfs_inode;
++	struct ext4_inode *raw_inode = (struct ext4_inode *)ctx->primary.raw_buf;
++	struct ext4_xattr_ibody_header *hdr = IHDR(inode, raw_inode);
++	struct ext4_xattr_entry *e1, *e2;
++	void *end = ITAIL(inode, raw_inode);
++	size_t total_size = (char *)end - (char *)IFIRST(hdr);
++	int ret;
++
++	memset(hdr, 0, (char *)end - (char *)hdr);
++	hdr->h_magic = cpu_to_le32(EXT4_XATTR_MAGIC);
++	e1 = IFIRST(hdr);
++
++	switch (p->id) {
++	case CHECK_VALID_EMPTY:
++		break;
++	case CHECK_VALID_TWO_ENTRIES:
++		e1->e_name_len = 1;
++		e1->e_name_index = EXT4_XATTR_INDEX_USER;
++		e1->e_name[0] = 'a';
++		e1->e_value_size = cpu_to_le32(4);
++		e1->e_value_offs = cpu_to_le16(total_size - 4);
++
++		e2 = EXT4_XATTR_NEXT(e1);
++		e2->e_name_len = 1;
++		e2->e_name_index = EXT4_XATTR_INDEX_USER;
++		e2->e_name[0] = 'b';
++		e2->e_value_size = cpu_to_le32(4);
++		e2->e_value_offs = cpu_to_le16(total_size - 8);
++		break;
++	case CHECK_BAD_MAGIC:
++		hdr->h_magic = cpu_to_le32(0xdeadbeef);
++		break;
++	case CHECK_END_BEFORE_FIRST:
++		end = (char *)IFIRST(hdr) + 2;
++		break;
++	case CHECK_ENTRY_HDR_OVERFLOW:
++		e1->e_name_len = 1;
++		e1->e_name[0] = 'a';
++		end = (char *)IFIRST(hdr) + EXT4_XATTR_LEN(1) + 8;
++		e2 = EXT4_XATTR_NEXT(e1);
++		e2->e_name_len = 1;
++		break;
++	case CHECK_ENTRY_NAME_OVERFLOW:
++		e1->e_name_len = 100;
++		break;
++	case CHECK_UNTERMINATED_LIST:
++		e1->e_name_len = 1;
++		e1->e_name[0] = 'a';
++		end = (char *)IFIRST(hdr) + EXT4_XATTR_LEN(1);
++		break;
++	case CHECK_EA_INODE_WITHOUT_FEATURE:
++		ext4_clear_feature_ea_inode(&ctx->sb);
++		e1->e_name_len = 1;
++		e1->e_name[0] = 'a';
++		e1->e_value_inum = cpu_to_le32(20);
++		e1->e_value_size = cpu_to_le32(4);
++		break;
++	case CHECK_VALUE_SIZE_GT_TOTAL:
++		e1->e_name_len = 1;
++		e1->e_name[0] = 'a';
++		e1->e_value_size = cpu_to_le32(total_size + 4);
++		e1->e_value_offs = cpu_to_le16(total_size - 4);
++		break;
++	case CHECK_VALUE_OFFS_OVERLAPS_ENTRY:
++		e1->e_name_len = 1;
++		e1->e_name[0] = 'a';
++		e1->e_value_size = cpu_to_le32(4);
++		/* Offset points inside e1 + 4-byte terminator */
++		e1->e_value_offs = cpu_to_le16(EXT4_XATTR_LEN(1));
++		break;
++	case CHECK_VALUE_END_EXCEEDS_TOTAL:
++		e1->e_name_len = 1;
++		e1->e_name[0] = 'a';
++		e1->e_value_size = cpu_to_le32(8);
++		e1->e_value_offs = cpu_to_le16(total_size - 4);
++		break;
 +	}
 +
-+	/* Out-of-group block bitmap (< start and >= end) without FLEX_BG */
-+	{
-+		struct balloc_test_blk *slot1, *slot3;
-+
-+		slot1 = balloc_test_find_blk(ctx, balloc_test_bbitmap_blk(1));
-+		slot3 = balloc_test_find_blk(ctx, balloc_test_bbitmap_blk(3));
-+		KUNIT_ASSERT_NOT_NULL(test, slot1);
-+		KUNIT_ASSERT_NOT_NULL(test, slot3);
-+
-+		ctx->grp_infos[2]->bb_state = 0;
-+		clear_buffer_verified(&slot1->bh);
-+		ext4_block_bitmap_set(sb, &ctx->gdps[2],
-+				      balloc_test_bbitmap_blk(1));
-+		balloc_test_sync_bbitmap_csum(ctx, 2, false);
-+		bh = ext4_read_block_bitmap(sb, 2);
-+		KUNIT_EXPECT_EQ(test, PTR_ERR_OR_ZERO(bh), -EFSCORRUPTED);
-+
-+		ctx->grp_infos[2]->bb_state = 0;
-+		clear_buffer_verified(&slot3->bh);
-+		ext4_block_bitmap_set(sb, &ctx->gdps[2],
-+				      balloc_test_bbitmap_blk(3));
-+		balloc_test_sync_bbitmap_csum(ctx, 2, false);
-+		bh = ext4_read_block_bitmap(sb, 2);
-+		KUNIT_EXPECT_EQ(test, PTR_ERR_OR_ZERO(bh), -EFSCORRUPTED);
-+
-+		ext4_block_bitmap_set(sb, &ctx->gdps[2],
-+				      balloc_test_bbitmap_blk(2));
-+		balloc_test_sync_bbitmap_csum(ctx, 1, false);
-+		balloc_test_sync_bbitmap_csum(ctx, 3, false);
-+	}
-+
-+	/* Out-of-group inode bitmap without FLEX_BG -> -EFSCORRUPTED */
-+	ctx->grp_infos[2]->bb_state = 0;
-+	clear_buffer_verified(&slot->bh);
-+	ext4_inode_bitmap_set(sb, &ctx->gdps[2], balloc_test_group_start(0) + 5);
-+	balloc_test_sync_bbitmap_csum(ctx, 2, false);
-+	bh = ext4_read_block_bitmap(sb, 2);
-+	KUNIT_EXPECT_EQ(test, PTR_ERR_OR_ZERO(bh), -EFSCORRUPTED);
-+	ext4_inode_bitmap_set(sb, &ctx->gdps[2], balloc_test_ibitmap_blk(2));
-+
-+	/* Inode table before start or past end of group without FLEX_BG */
-+	ctx->grp_infos[2]->bb_state = 0;
-+	clear_buffer_verified(&slot->bh);
-+	ext4_inode_table_set(sb, &ctx->gdps[2], balloc_test_group_start(1) + 50);
-+	balloc_test_sync_bbitmap_csum(ctx, 2, false);
-+	bh = ext4_read_block_bitmap(sb, 2);
-+	KUNIT_EXPECT_EQ(test, PTR_ERR_OR_ZERO(bh), -EFSCORRUPTED);
-+
-+	ctx->grp_infos[2]->bb_state = 0;
-+	clear_buffer_verified(&slot->bh);
-+	ext4_inode_table_set(sb, &ctx->gdps[2],
-+			     balloc_test_group_start(2) +
-+			     BALLOC_TEST_BLOCKS_PER_GRP - 8);
-+	balloc_test_sync_bbitmap_csum(ctx, 2, false);
-+	bh = ext4_read_block_bitmap(sb, 2);
-+	KUNIT_EXPECT_EQ(test, PTR_ERR_OR_ZERO(bh), -EFSCORRUPTED);
-+
-+	/* With FLEX_BG enabled, out-of-group metadata skips per-group bit check */
-+	ext4_set_feature_flex_bg(sb);
-+	ctx->grp_infos[2]->bb_state = 0;
-+	clear_buffer_verified(&slot->bh);
-+	ext4_inode_bitmap_set(sb, &ctx->gdps[2], balloc_test_group_start(0) + 5);
-+	ext4_inode_table_set(sb, &ctx->gdps[2], balloc_test_group_start(0) + 20);
-+	ext4_clear_bit(1, slot->cache_buf);
-+	ext4_clear_bit(2, slot->cache_buf);
-+	balloc_test_sync_bbitmap_csum(ctx, 2, false);
-+
-+	bh = ext4_read_block_bitmap(sb, 2);
-+	KUNIT_ASSERT_FALSE(test, IS_ERR(bh));
-+	KUNIT_EXPECT_TRUE(test, buffer_verified(bh));
-+	put_bh(bh);
++	ret = xattr_check_inode(inode, hdr, end);
++	KUNIT_EXPECT_EQ_MSG(test, ret, p->expected_err, "case: %s", p->desc);
 +}
 +
-+static void test_read_block_bitmap_validates_padding(struct kunit *test)
-+{
-+	struct balloc_test_ctx *ctx = test->priv;
-+	struct super_block *sb = ctx->sb;
-+	struct balloc_test_blk *slot;
-+	struct buffer_head *bh;
-+
-+	slot = balloc_test_find_blk(ctx, balloc_test_bbitmap_blk(3));
-+	KUNIT_ASSERT_NOT_NULL(test, slot);
-+
-+	/* 1. Zero bit at first padding bit (1024) -> -EFSCORRUPTED */
-+	clear_buffer_verified(&slot->bh);
-+	ext4_clear_bit(1024, slot->cache_buf);
-+	balloc_test_sync_bbitmap_csum(ctx, 3, false);
-+	bh = ext4_read_block_bitmap(sb, 3);
-+	KUNIT_EXPECT_EQ(test, PTR_ERR_OR_ZERO(bh), -EFSCORRUPTED);
-+	KUNIT_EXPECT_TRUE(test, EXT4_MB_GRP_BBITMAP_CORRUPT(ctx->grp_infos[3]));
-+	ext4_set_bit(1024, slot->cache_buf);
-+
-+	/* 2. Zero bit at very last bit of bitmap block (8191) -> -EFSCORRUPTED */
-+	ctx->grp_infos[3]->bb_state = 0;
-+	clear_buffer_verified(&slot->bh);
-+	ext4_clear_bit(8191, slot->cache_buf);
-+	balloc_test_sync_bbitmap_csum(ctx, 3, false);
-+	bh = ext4_read_block_bitmap(sb, 3);
-+	KUNIT_EXPECT_EQ(test, PTR_ERR_OR_ZERO(bh), -EFSCORRUPTED);
-+	ext4_set_bit(8191, slot->cache_buf);
-+
-+	/* 3. Partial last group (300 blocks): unset bit 300 in padding fails */
-+	ctx->grp_infos[3]->bb_state = 0;
-+	clear_buffer_verified(&slot->bh);
-+	ext4_blocks_count_set(&ctx->es, balloc_test_group_start(3) + 300);
-+	balloc_test_sync_bbitmap_csum(ctx, 3, false);
-+	bh = ext4_read_block_bitmap(sb, 3);
-+	KUNIT_EXPECT_EQ(test, PTR_ERR_OR_ZERO(bh), -EFSCORRUPTED);
-+
-+	/* Setting padding bits 300..1023 makes the partial last group valid */
-+	ctx->grp_infos[3]->bb_state = 0;
-+	clear_buffer_verified(&slot->bh);
-+	ext4_mark_bitmap_end(300, BALLOC_TEST_BLK_SIZE * 8, slot->cache_buf);
-+	balloc_test_sync_bbitmap_csum(ctx, 3, false);
-+	bh = ext4_read_block_bitmap(sb, 3);
-+	KUNIT_ASSERT_FALSE(test, IS_ERR(bh));
-+	KUNIT_EXPECT_TRUE(test, buffer_verified(bh));
-+	put_bh(bh);
-+
-+	/* 4. Full 8192-cluster group (bitmap_size == offset) has no padding */
-+	ctx->sbi.s_blocks_per_group = 8192;
-+	ctx->sbi.s_clusters_per_group = 8192;
-+	ctx->es.s_blocks_per_group = cpu_to_le32(8192);
-+	ctx->es.s_clusters_per_group = cpu_to_le32(8192);
-+	ext4_blocks_count_set(&ctx->es, 1 + 4 * 8192);
-+
-+	slot = balloc_test_find_blk(ctx, balloc_test_bbitmap_blk(0));
-+	KUNIT_ASSERT_NOT_NULL(test, slot);
-+	clear_buffer_verified(&slot->bh);
-+	ext4_clear_bit(8191, slot->cache_buf);
-+	balloc_test_sync_bbitmap_csum(ctx, 0, false);
-+
-+	bh = ext4_read_block_bitmap(sb, 0);
-+	KUNIT_ASSERT_FALSE(test, IS_ERR(bh));
-+	KUNIT_EXPECT_TRUE(test, buffer_verified(bh));
-+	put_bh(bh);
-+}
-+
-+static void test_read_block_bitmap_validation_short_circuits(struct kunit *test)
-+{
-+	struct balloc_test_ctx *ctx = test->priv;
-+	struct super_block *sb = ctx->sb;
-+	struct balloc_test_blk *slot;
-+	struct buffer_head *bh;
-+
-+	slot = balloc_test_find_blk(ctx, balloc_test_bbitmap_blk(1));
-+	KUNIT_ASSERT_NOT_NULL(test, slot);
-+
-+	/*
-+	 * 1. EXT4_FC_REPLAY skips csum and corrupt-flag checks without setting
-+	 *    BH_Verified.
-+	 */
-+	clear_buffer_verified(&slot->bh);
-+	slot->cache_buf[50] ^= 0xff;
-+	set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT,
-+		&ctx->grp_infos[1]->bb_state);
-+	ctx->sbi.s_mount_state |= EXT4_FC_REPLAY;
-+
-+	bh = ext4_read_block_bitmap(sb, 1);
-+	KUNIT_ASSERT_FALSE(test, IS_ERR(bh));
-+	KUNIT_EXPECT_FALSE(test, buffer_verified(bh));
-+	put_bh(bh);
-+
-+	ctx->sbi.s_mount_state &= ~EXT4_FC_REPLAY;
-+	slot->cache_buf[50] ^= 0xff;
-+
-+	/* 2. Already buffer_verified(bh) short-circuits before checking grp */
-+	set_buffer_verified(&slot->bh);
-+	bh = ext4_read_block_bitmap(sb, 1);
-+	KUNIT_ASSERT_FALSE(test, IS_ERR(bh));
-+	put_bh(bh);
-+
-+	/* 3. NULL ext4_group_info when !buffer_verified returns -EFSCORRUPTED */
-+	clear_buffer_verified(&slot->bh);
-+	ctx->grp_infos[1]->bb_state = 0;
-+	rcu_assign_pointer(ctx->sbi.s_group_info, NULL);
-+	bh = ext4_read_block_bitmap(sb, 1);
-+	KUNIT_EXPECT_EQ(test, PTR_ERR_OR_ZERO(bh), -EFSCORRUPTED);
-+}
-+
-+/* =========================================================================
-+ * 7. Block Bitmap Reading, Prefetching, and Lazy Initialization
-+ * =========================================================================
++/*
++ * Test 3: In-inode (ibody) get/set, flags validation, EXT4_STATE_NEW handling,
++ * superblock feature update, and identical-value fastpath.
 + */
-+
-+static void test_read_block_bitmap_disk_and_cache_paths(struct kunit *test)
++static void test_xattr_ibody_basic_and_flags(struct kunit *test)
 +{
-+	struct balloc_test_ctx *ctx = test->priv;
-+	struct super_block *sb = ctx->sb;
-+	struct balloc_test_blk *slot;
-+	struct buffer_head *bh;
++	struct xattr_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->primary.ei.vfs_inode;
++	struct ext4_inode *raw_inode = (struct ext4_inode *)ctx->primary.raw_buf;
++	char long_name[260];
++	char buf[32];
++	unsigned int prev_dirty;
++	int ret;
 +
-+	slot = balloc_test_find_blk(ctx, balloc_test_bbitmap_blk(1));
-+	KUNIT_ASSERT_NOT_NULL(test, slot);
++	/* Fresh inode without EXT4_STATE_XATTR returns -ENODATA */
++	ret = ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, "missing",
++			     buf, sizeof(buf));
++	KUNIT_EXPECT_EQ(test, ret, -ENODATA);
 +
-+	/* 1. Cold read from disk populates cache, runs end_io, and validates */
-+	memset(slot->cache_buf, 0, sizeof(slot->cache_buf));
-+	clear_buffer_uptodate(&slot->bh);
-+	clear_bitmap_uptodate(&slot->bh);
-+	clear_buffer_verified(&slot->bh);
++	/* Parameter validation: NULL name -> -EINVAL, >255 name -> -ERANGE */
++	ret = ext4_xattr_set_handle(NULL, inode, EXT4_XATTR_INDEX_USER,
++				    NULL, "v", 1, 0);
++	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
 +
-+	bh = ext4_read_block_bitmap(sb, 1);
-+	KUNIT_ASSERT_FALSE(test, IS_ERR(bh));
-+	KUNIT_EXPECT_EQ(test, ctx->read_nowait_calls, 1U);
-+	KUNIT_EXPECT_TRUE(test, ctx->last_read_op_flags ==
-+				(blk_opf_t)(REQ_META | REQ_PRIO));
-+	KUNIT_EXPECT_TRUE(test, buffer_uptodate(bh));
-+	KUNIT_EXPECT_TRUE(test, (bool)bitmap_uptodate(bh));
-+	KUNIT_EXPECT_TRUE(test, buffer_verified(bh));
-+	KUNIT_EXPECT_FALSE(test, buffer_new(bh));
-+	put_bh(bh);
++	memset(long_name, 'x', sizeof(long_name) - 1);
++	long_name[sizeof(long_name) - 1] = '\0';
++	ret = ext4_xattr_set_handle(NULL, inode, EXT4_XATTR_INDEX_USER,
++				    long_name, "v", 1, 0);
++	KUNIT_EXPECT_EQ(test, ret, -ERANGE);
 +
-+	/* 2. Warm read hits bitmap_uptodate(bh) without issuing I/O */
-+	bh = ext4_read_block_bitmap(sb, 1);
-+	KUNIT_ASSERT_FALSE(test, IS_ERR(bh));
-+	KUNIT_EXPECT_EQ(test, ctx->read_nowait_calls, 1U);
-+	put_bh(bh);
-+
-+	/*
-+	 * 3. Initialized group with BH_Uptodate set and BH_BITMAP_UPTODATE
-+	 *    clear promotes BH_BITMAP_UPTODATE and validates without disk I/O.
-+	 */
-+	clear_bitmap_uptodate(&slot->bh);
-+	clear_buffer_verified(&slot->bh);
-+	bh = ext4_read_block_bitmap(sb, 1);
-+	KUNIT_ASSERT_FALSE(test, IS_ERR(bh));
-+	KUNIT_EXPECT_EQ(test, ctx->read_nowait_calls, 1U);
-+	KUNIT_EXPECT_TRUE(test, (bool)bitmap_uptodate(bh));
-+	KUNIT_EXPECT_TRUE(test, buffer_verified(bh));
-+	put_bh(bh);
-+}
-+
-+static void test_read_block_bitmap_nowait_prefetch_locked(struct kunit *test)
-+{
-+	struct balloc_test_ctx *ctx = test->priv;
-+	struct super_block *sb = ctx->sb;
-+	struct balloc_test_blk *slot;
-+	struct buffer_head *bh;
-+	int ref_before;
-+
-+	slot = balloc_test_find_blk(ctx, balloc_test_bbitmap_blk(2));
-+	KUNIT_ASSERT_NOT_NULL(test, slot);
-+
-+	/* 1. Locked buffer with ignore_locked=true returns NULL without leaking ref */
-+	ref_before = atomic_read(&slot->bh.b_count);
-+	lock_buffer(&slot->bh);
-+	bh = ext4_read_block_bitmap_nowait(sb, 2, true);
-+	unlock_buffer(&slot->bh);
-+
-+	KUNIT_EXPECT_NULL(test, bh);
-+	KUNIT_EXPECT_EQ(test, atomic_read(&slot->bh.b_count), ref_before);
-+	KUNIT_EXPECT_EQ(test, ctx->read_nowait_calls, 0U);
-+
-+	/* 2. Uncached unlocked buffer with ignore_locked=true sets REQ_RAHEAD */
-+	clear_buffer_uptodate(&slot->bh);
-+	clear_bitmap_uptodate(&slot->bh);
-+	clear_buffer_verified(&slot->bh);
-+
-+	bh = ext4_read_block_bitmap_nowait(sb, 2, true);
-+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, bh);
-+	KUNIT_EXPECT_EQ(test, ctx->read_nowait_calls, 1U);
-+	KUNIT_EXPECT_TRUE(test, ctx->last_read_op_flags ==
-+				(blk_opf_t)(REQ_META | REQ_PRIO | REQ_RAHEAD));
-+	KUNIT_EXPECT_EQ(test, ext4_wait_block_bitmap(sb, 2, bh), 0);
-+	put_bh(bh);
-+}
-+
-+static void test_read_block_bitmap_uninit_group(struct kunit *test)
-+{
-+	struct balloc_test_ctx *ctx = test->priv;
-+	struct super_block *sb = ctx->sb;
-+	struct balloc_test_blk *slot;
-+	struct buffer_head *bh;
-+	unsigned int bit;
-+
-+	slot = balloc_test_find_blk(ctx, balloc_test_bbitmap_blk(1));
-+	KUNIT_ASSERT_NOT_NULL(test, slot);
-+
-+	/*
-+	 * Mark group 1 EXT4_BG_BLOCK_UNINIT and poison cache_buf with 0xa5.
-+	 * Lazy init must zero the bitmap, set metadata bits 0..19, leave
-+	 * data bits 20..1023 free, set padding bits 1024..8191, and skip I/O.
-+	 */
-+	memset(slot->cache_buf, 0xa5, sizeof(slot->cache_buf));
-+	clear_buffer_uptodate(&slot->bh);
-+	clear_bitmap_uptodate(&slot->bh);
-+	clear_buffer_verified(&slot->bh);
-+	ctx->gdps[1].bg_flags = cpu_to_le16(EXT4_BG_BLOCK_UNINIT);
-+	ext4_group_desc_csum_set(sb, 1, &ctx->gdps[1]);
-+
-+	bh = ext4_read_block_bitmap(sb, 1);
-+	KUNIT_ASSERT_FALSE(test, IS_ERR(bh));
-+	KUNIT_EXPECT_EQ(test, ctx->read_nowait_calls, 0U);
-+	KUNIT_EXPECT_TRUE(test, buffer_uptodate(bh));
-+	KUNIT_EXPECT_TRUE(test, (bool)bitmap_uptodate(bh));
-+	KUNIT_EXPECT_TRUE(test, buffer_verified(bh));
-+
-+	for (bit = 0; bit < 20; bit++)
-+		KUNIT_EXPECT_TRUE_MSG(test,
-+				      (bool)ext4_test_bit(bit, bh->b_data),
-+				      "metadata bit %u must be set", bit);
-+	KUNIT_EXPECT_FALSE(test, (bool)ext4_test_bit(20, bh->b_data));
-+	KUNIT_EXPECT_FALSE(test, (bool)ext4_test_bit(1023, bh->b_data));
-+	KUNIT_EXPECT_TRUE(test, (bool)ext4_test_bit(1024, bh->b_data));
-+	KUNIT_EXPECT_TRUE(test, (bool)ext4_test_bit(8191, bh->b_data));
-+
-+	KUNIT_EXPECT_EQ(test, ext4_count_free(bh->b_data, 1024 / 8),
-+			ext4_free_clusters_after_init(sb, 1, &ctx->gdps[1]));
-+	put_bh(bh);
-+
-+	/*
-+	 * Legacy GDT_CSUM (CRC16 without metadata_csum) with FLEX_BG external
-+	 * metadata on group 2 (0 base blocks, bitmaps & itable in group 3)
-+	 * initializes all 1024 data bits in group 2 to free without I/O.
-+	 */
-+	{
-+		struct balloc_test_blk *ext_slot;
-+		ext4_fsblk_t ext_bbitmap = balloc_test_group_start(3) + 50;
-+
-+		ext4_clear_feature_metadata_csum(sb);
-+		ext4_set_feature_gdt_csum(sb);
-+		ext4_set_feature_flex_bg(sb);
-+
-+		ext_slot = balloc_test_setup_blk(ctx, ext_bbitmap, false);
-+		KUNIT_ASSERT_NOT_NULL(test, ext_slot);
-+		memset(ext_slot->cache_buf, 0x5a, sizeof(ext_slot->cache_buf));
-+
-+		ext4_block_bitmap_set(sb, &ctx->gdps[2], ext_bbitmap);
-+		ext4_inode_bitmap_set(sb, &ctx->gdps[2], ext_bbitmap + 1);
-+		ext4_inode_table_set(sb, &ctx->gdps[2], ext_bbitmap + 2);
-+		ctx->gdps[2].bg_flags = cpu_to_le16(EXT4_BG_BLOCK_UNINIT);
-+		ext4_group_desc_csum_set(sb, 2, &ctx->gdps[2]);
-+
-+		bh = ext4_read_block_bitmap(sb, 2);
-+		KUNIT_ASSERT_FALSE(test, IS_ERR(bh));
-+		KUNIT_EXPECT_EQ(test, ctx->read_nowait_calls, 0U);
-+		KUNIT_EXPECT_EQ(test, ext4_count_free(bh->b_data, 1024 / 8),
-+				1024U);
-+		KUNIT_EXPECT_TRUE(test, (bool)ext4_test_bit(1024, bh->b_data));
-+		put_bh(bh);
-+
-+		ext4_clear_feature_flex_bg(sb);
-+	}
-+
-+	/*
-+	 * Without GDT checksums (neither metadata_csum nor gdt_csum),
-+	 * EXT4_BG_BLOCK_UNINIT is ignored and bitmap is read from disk.
-+	 */
-+	ext4_clear_feature_metadata_csum(sb);
-+	ext4_clear_feature_gdt_csum(sb);
-+	clear_buffer_uptodate(&slot->bh);
-+	clear_bitmap_uptodate(&slot->bh);
-+	clear_buffer_verified(&slot->bh);
-+
-+	bh = ext4_read_block_bitmap(sb, 1);
-+	KUNIT_ASSERT_FALSE(test, IS_ERR(bh));
-+	KUNIT_EXPECT_EQ(test, ctx->read_nowait_calls, 1U);
-+	put_bh(bh);
-+}
-+
-+static void test_read_block_bitmap_uninit_errors(struct kunit *test)
-+{
-+	struct balloc_test_ctx *ctx = test->priv;
-+	struct super_block *sb = ctx->sb;
-+	struct balloc_test_blk *slot0, *slot1;
-+	struct buffer_head *bh;
-+	s64 free_clu_before, free_ino_before;
-+
-+	slot0 = balloc_test_find_blk(ctx, balloc_test_bbitmap_blk(0));
-+	slot1 = balloc_test_find_blk(ctx, balloc_test_bbitmap_blk(1));
-+	KUNIT_ASSERT_NOT_NULL(test, slot0);
-+	KUNIT_ASSERT_NOT_NULL(test, slot1);
-+
-+	/* 1. Group 0 marked EXT4_BG_BLOCK_UNINIT is rejected -> -EFSCORRUPTED */
-+	clear_buffer_uptodate(&slot0->bh);
-+	clear_bitmap_uptodate(&slot0->bh);
-+	ctx->gdps[0].bg_flags = cpu_to_le16(EXT4_BG_BLOCK_UNINIT);
-+	ext4_group_desc_csum_set(sb, 0, &ctx->gdps[0]);
-+
-+	bh = ext4_read_block_bitmap(sb, 0);
-+	KUNIT_EXPECT_EQ(test, PTR_ERR_OR_ZERO(bh), -EFSCORRUPTED);
-+
-+	/*
-+	 * 2. Group 1 marked EXT4_BG_BLOCK_UNINIT with bad GDT checksum fails
-+	 *    with -EFSBADCRC and marks BOTH block and inode bitmaps corrupt.
-+	 */
-+	free_clu_before = percpu_counter_sum(&ctx->sbi.s_freeclusters_counter);
-+	free_ino_before = percpu_counter_sum(&ctx->sbi.s_freeinodes_counter);
-+	clear_buffer_uptodate(&slot1->bh);
-+	clear_bitmap_uptodate(&slot1->bh);
-+	ctx->gdps[1].bg_flags = cpu_to_le16(EXT4_BG_BLOCK_UNINIT);
-+	ctx->gdps[1].bg_checksum = cpu_to_le16(0xdead);
-+
-+	bh = ext4_read_block_bitmap(sb, 1);
-+	KUNIT_EXPECT_EQ(test, PTR_ERR_OR_ZERO(bh), -EFSBADCRC);
-+	KUNIT_EXPECT_TRUE(test, EXT4_MB_GRP_BBITMAP_CORRUPT(ctx->grp_infos[1]));
-+	KUNIT_EXPECT_TRUE(test, EXT4_MB_GRP_IBITMAP_CORRUPT(ctx->grp_infos[1]));
++	/* Forced shutdown check on get and set */
++	set_bit(EXT4_FLAGS_SHUTDOWN, &ctx->sbi.s_ext4_flags);
 +	KUNIT_EXPECT_EQ(test,
-+			percpu_counter_sum(&ctx->sbi.s_freeclusters_counter),
-+			free_clu_before - ctx->grp_infos[1]->bb_free);
++			ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, "k",
++				       buf, sizeof(buf)),
++			-EIO);
 +	KUNIT_EXPECT_EQ(test,
-+			percpu_counter_sum(&ctx->sbi.s_freeinodes_counter),
-+			free_ino_before - BALLOC_TEST_INODES_PER_GRP);
++			ext4_xattr_set_handle(NULL, inode,
++					      EXT4_XATTR_INDEX_USER, "k",
++					      "v", 1, 0),
++			-EIO);
++	clear_bit(EXT4_FLAGS_SHUTDOWN, &ctx->sbi.s_ext4_flags);
++
++	/* XATTR_REPLACE on non-existent attribute returns -ENODATA */
++	ret = ext4_xattr_set_handle(NULL, inode, EXT4_XATTR_INDEX_USER,
++				    "no_such", "val", 3, XATTR_REPLACE);
++	KUNIT_EXPECT_EQ(test, ret, -ENODATA);
++
++	/* Deleting non-existent attribute without XATTR_REPLACE succeeds (0) */
++	ret = ext4_xattr_set_handle(NULL, inode, EXT4_XATTR_INDEX_USER,
++				    "no_such", NULL, 0, 0);
++	KUNIT_EXPECT_EQ(test, ret, 0);
 +
 +	/*
-+	 * 3. Base metadata clusters exceeding bitmap block size ((bit_max >> 3)
-+	 *    >= bh->b_size) returns -EFSCORRUPTED instead of overflowing bh.
++	 * Verify EXT4_STATE_NEW causes ext4_xattr_set_handle() to zero the raw
++	 * inode and clear EXT4_STATE_NEW.
 +	 */
-+	ctx->grp_infos[1]->bb_state = 0;
-+	clear_buffer_uptodate(&slot1->bh);
-+	clear_bitmap_uptodate(&slot1->bh);
-+	ctx->sbi.s_gdb_count = BALLOC_TEST_BLK_SIZE * 8;
-+	ext4_group_desc_csum_set(sb, 1, &ctx->gdps[1]);
++	memset(raw_inode, 0x5a, TEST_INODE_SIZE);
++	ext4_set_inode_state(inode, EXT4_STATE_NEW);
++	KUNIT_EXPECT_FALSE(test,
++			   ext4_has_feature_xattr(&ctx->sb));
 +
-+	bh = ext4_read_block_bitmap(sb, 1);
-+	KUNIT_EXPECT_EQ(test, PTR_ERR_OR_ZERO(bh), -EFSCORRUPTED);
++	ret = ext4_xattr_set_handle(NULL, inode, EXT4_XATTR_INDEX_USER,
++				    "key1", "hello", 5, XATTR_CREATE);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test,
++			ext4_test_inode_state(inode, EXT4_STATE_NEW), 0);
++	KUNIT_EXPECT_NE(test,
++			ext4_test_inode_state(inode, EXT4_STATE_XATTR), 0);
++	KUNIT_EXPECT_EQ(test, le32_to_cpu(IHDR(inode, raw_inode)->h_magic),
++			(u32)EXT4_XATTR_MAGIC);
++	/* Setting first xattr enables EXT4_FEATURE_COMPAT_EXT_ATTR on sb */
++	KUNIT_EXPECT_TRUE(test, ext4_has_feature_xattr(&ctx->sb));
++
++	/* XATTR_CREATE on existing attribute returns -EEXIST */
++	ret = ext4_xattr_set_handle(NULL, inode, EXT4_XATTR_INDEX_USER,
++				    "key1", "other", 5, XATTR_CREATE);
++	KUNIT_EXPECT_EQ(test, ret, -EEXIST);
++
++	/* Query length (NULL buffer), too small buffer (-ERANGE), and read */
++	ret = ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, "key1", NULL, 0);
++	KUNIT_EXPECT_EQ(test, ret, 5);
++
++	ret = ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, "key1", buf, 4);
++	KUNIT_EXPECT_EQ(test, ret, -ERANGE);
++
++	memset(buf, 0, sizeof(buf));
++	ret = ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, "key1",
++			     buf, sizeof(buf));
++	KUNIT_EXPECT_EQ(test, ret, 5);
++	KUNIT_EXPECT_MEMEQ(test, buf, "hello", 5);
++
++	/* Direct ext4_xattr_ibody_get() check */
++	memset(buf, 0, sizeof(buf));
++	ret = ext4_xattr_ibody_get(inode, EXT4_XATTR_INDEX_USER, "key1",
++				   buf, sizeof(buf));
++	KUNIT_EXPECT_EQ(test, ret, 5);
++	KUNIT_EXPECT_MEMEQ(test, buf, "hello", 5);
++
++	/*
++	 * Setting the exact same value triggers the ext4_xattr_value_same()
++	 * fastpath and skips dirtying the inode location.
++	 */
++	prev_dirty = ctx->mark_iloc_dirty_calls;
++	ret = ext4_xattr_set_handle(NULL, inode, EXT4_XATTR_INDEX_USER,
++				    "key1", "hello", 5, XATTR_REPLACE);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, ctx->mark_iloc_dirty_calls, prev_dirty);
 +}
 +
-+static void test_read_and_wait_block_bitmap_errors(struct kunit *test)
-+{
-+	struct balloc_test_ctx *ctx = test->priv;
-+	struct super_block *sb = ctx->sb;
-+	struct balloc_test_blk *slot;
-+	struct buffer_head *bh;
-+	int ref_before;
-+
-+	/* 1. Out-of-range block group -> -EFSCORRUPTED */
-+	bh = ext4_read_block_bitmap(sb, 99);
-+	KUNIT_EXPECT_EQ(test, PTR_ERR_OR_ZERO(bh), -EFSCORRUPTED);
-+
-+	/* 2. Block bitmap <= s_first_data_block (1) -> -EFSCORRUPTED + corrupt */
-+	ext4_block_bitmap_set(sb, &ctx->gdps[2], BALLOC_TEST_FIRST_DATA_BLK);
-+	bh = ext4_read_block_bitmap(sb, 2);
-+	KUNIT_EXPECT_EQ(test, PTR_ERR_OR_ZERO(bh), -EFSCORRUPTED);
-+	KUNIT_EXPECT_TRUE(test, EXT4_MB_GRP_BBITMAP_CORRUPT(ctx->grp_infos[2]));
-+
-+	/* 3. Block bitmap >= ext4_blocks_count(es) -> -EFSCORRUPTED + corrupt */
-+	ctx->grp_infos[2]->bb_state = 0;
-+	ext4_block_bitmap_set(sb, &ctx->gdps[2], BALLOC_TEST_TOTAL_BLKS);
-+	bh = ext4_read_block_bitmap(sb, 2);
-+	KUNIT_EXPECT_EQ(test, PTR_ERR_OR_ZERO(bh), -EFSCORRUPTED);
-+	KUNIT_EXPECT_TRUE(test, EXT4_MB_GRP_BBITMAP_CORRUPT(ctx->grp_infos[2]));
-+	ext4_block_bitmap_set(sb, &ctx->gdps[2], balloc_test_bbitmap_blk(2));
-+
-+	/* 4. ext4_sb_getblk allocation failure -> -ENOMEM without corrupt flag */
-+	ctx->grp_infos[2]->bb_state = 0;
-+	ctx->fail_getblk = true;
-+	bh = ext4_read_block_bitmap(sb, 2);
-+	ctx->fail_getblk = false;
-+	KUNIT_EXPECT_EQ(test, PTR_ERR_OR_ZERO(bh), -ENOMEM);
-+	KUNIT_EXPECT_FALSE(test, EXT4_MB_GRP_BBITMAP_CORRUPT(ctx->grp_infos[2]));
-+
-+	/* 5. Async read I/O failure -> -EIO, marks corrupt, releases bh ref */
-+	slot = balloc_test_find_blk(ctx, balloc_test_bbitmap_blk(2));
-+	KUNIT_ASSERT_NOT_NULL(test, slot);
-+	ref_before = atomic_read(&slot->bh.b_count);
-+	clear_buffer_uptodate(&slot->bh);
-+	clear_bitmap_uptodate(&slot->bh);
-+	clear_buffer_verified(&slot->bh);
-+	ctx->fail_read_eio = true;
-+
-+	bh = ext4_read_block_bitmap(sb, 2);
-+	ctx->fail_read_eio = false;
-+	KUNIT_EXPECT_EQ(test, PTR_ERR_OR_ZERO(bh), -EIO);
-+	KUNIT_EXPECT_TRUE(test, EXT4_MB_GRP_BBITMAP_CORRUPT(ctx->grp_infos[2]));
-+	KUNIT_EXPECT_EQ(test, atomic_read(&slot->bh.b_count), ref_before);
-+
-+#ifdef CONFIG_EXT4_DEBUG
-+	ctx->grp_infos[2]->bb_state = 0;
-+	clear_buffer_uptodate(&slot->bh);
-+	clear_bitmap_uptodate(&slot->bh);
-+	ctx->sbi.s_simulate_fail = EXT4_SIM_BBITMAP_EIO;
-+	bh = ext4_read_block_bitmap(sb, 2);
-+	KUNIT_EXPECT_EQ(test, PTR_ERR_OR_ZERO(bh), -EIO);
-+	KUNIT_EXPECT_EQ(test, ctx->sbi.s_simulate_fail, 0UL);
-+#endif
-+
-+	/* 6. ext4_wait_block_bitmap guards on BH_New and group descriptor */
-+	clear_buffer_new(&slot->bh);
-+	KUNIT_EXPECT_EQ(test, ext4_wait_block_bitmap(sb, 99, &slot->bh), 0);
-+	set_buffer_new(&slot->bh);
-+	KUNIT_EXPECT_EQ(test, ext4_wait_block_bitmap(sb, 99, &slot->bh),
-+			-EFSCORRUPTED);
-+	clear_buffer_new(&slot->bh);
-+}
-+
-+/* =========================================================================
-+ * 8. Free Cluster Reservation & Pool Accounting (ext4_claim_free_clusters)
-+ * =========================================================================
++/*
++ * Test 4: In-inode (ibody) replacement (same padded size vs different size),
++ * zero-length values, entry removal, and i_inline_off adjustment.
 + */
-+
-+static void balloc_test_set_cluster_pools(struct balloc_test_ctx *ctx,
-+					  s64 free_clu, s64 dirty_clu,
-+					  u64 r_blocks, s64 resv_clu)
++static void test_xattr_ibody_replace_and_remove(struct kunit *test)
 +{
-+	percpu_counter_set(&ctx->sbi.s_freeclusters_counter, free_clu);
-+	percpu_counter_set(&ctx->sbi.s_dirtyclusters_counter, dirty_clu);
-+	ctx->es.s_r_blocks_count_lo = cpu_to_le32(lower_32_bits(r_blocks));
-+	ctx->es.s_r_blocks_count_hi = cpu_to_le32(upper_32_bits(r_blocks));
-+	atomic64_set(&ctx->sbi.s_resv_clusters, resv_clu);
-+}
++	struct xattr_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->primary.ei.vfs_inode;
++	struct ext4_inode *raw_inode = (struct ext4_inode *)ctx->primary.raw_buf;
++	struct ext4_xattr_ibody_header *hdr = IHDR(inode, raw_inode);
++	struct ext4_xattr_entry *e;
++	char buf[32];
++	u16 offs_before, offs_after;
++	int ret;
 +
-+static void
-+test_claim_free_clusters_unprivileged_and_bigalloc(struct kunit *test)
-+{
-+	struct balloc_test_ctx *ctx = test->priv;
-+	struct ext4_sb_info *sbi = &ctx->sbi;
++	/* Create two entries in ibody: "a" (7 bytes -> 8 padded) and "b" (4 bytes) */
++	ret = ext4_xattr_set_handle(NULL, inode, EXT4_XATTR_INDEX_USER,
++				    "a", "1234567", 7, XATTR_CREATE);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	ret = ext4_xattr_set_handle(NULL, inode, EXT4_XATTR_INDEX_USER,
++				    "b", "wxyz", 4, XATTR_CREATE);
++	KUNIT_ASSERT_EQ(test, ret, 0);
 +
-+	sbi->s_resuid = KUIDT_INIT(500);
-+	sbi->s_resgid = GLOBAL_ROOT_GID;
-+	balloc_test_override_creds(test, ctx, 1000, 1000, false, -1);
-+
-+	/* Above-watermark fast path */
-+	balloc_test_set_cluster_pools(ctx, 100000, 10, 30, 15);
-+	KUNIT_EXPECT_EQ(test, ext4_claim_free_clusters(sbi, 25, 0), 0);
-+	KUNIT_EXPECT_EQ(test, percpu_counter_sum(&sbi->s_dirtyclusters_counter),
-+			35LL);
++	e = IFIRST(hdr);
++	offs_before = le16_to_cpu(e->e_value_offs);
 +
 +	/*
-+	 * Exact unprivileged limit:
-+	 * free=100, dirty=20, r_blocks=30, resv=15 -> usable = 100 - 20 - 45 = 35
++	 * Replace "a" with a 5-byte value (still 8 bytes padded): hits the
++	 * in-place overwrite fastpath without shifting offsets, and zeroes
++	 * the last 3 padding bytes.
 +	 */
-+	balloc_test_set_cluster_pools(ctx, 100, 20, 30, 15);
-+	KUNIT_EXPECT_EQ(test, ext4_claim_free_clusters(sbi, 36, 0), -ENOSPC);
-+	KUNIT_EXPECT_EQ(test, percpu_counter_sum(&sbi->s_dirtyclusters_counter),
-+			20LL);
++	ret = ext4_xattr_set_handle(NULL, inode, EXT4_XATTR_INDEX_USER,
++				    "a", "ABCDE", 5, XATTR_REPLACE);
++	KUNIT_ASSERT_EQ(test, ret, 0);
 +
-+	KUNIT_EXPECT_EQ(test, ext4_claim_free_clusters(sbi, 35, 0), 0);
-+	KUNIT_EXPECT_EQ(test, percpu_counter_sum(&sbi->s_dirtyclusters_counter),
-+			55LL);
++	offs_after = le16_to_cpu(e->e_value_offs);
++	KUNIT_EXPECT_EQ(test, offs_after, offs_before);
++	KUNIT_EXPECT_MEMEQ(test, (char *)IFIRST(hdr) + offs_after,
++			   "ABCDE\0\0\0", 8);
 +
 +	/*
-+	 * Bigalloc (cluster_bits = 2 -> 4 blocks/cluster):
-+	 * r_blocks_count = 120 blocks -> 30 reserved clusters -> usable = 35.
++	 * Replace "a" with a 12-byte value (different padded size): shifts
++	 * "b"'s value and updates offsets while preserving "b"'s content.
 +	 */
-+	sbi->s_cluster_bits = 2;
-+	sbi->s_cluster_ratio = 4;
-+	balloc_test_set_cluster_pools(ctx, 100, 20, 120, 15);
-+	KUNIT_EXPECT_EQ(test, ext4_claim_free_clusters(sbi, 36, 0), -ENOSPC);
-+	KUNIT_EXPECT_EQ(test, ext4_claim_free_clusters(sbi, 35, 0), 0);
-+	KUNIT_EXPECT_EQ(test, percpu_counter_sum(&sbi->s_dirtyclusters_counter),
-+			55LL);
++	ret = ext4_xattr_set_handle(NULL, inode, EXT4_XATTR_INDEX_USER,
++				    "a", "0123456789ab", 12, XATTR_REPLACE);
++	KUNIT_ASSERT_EQ(test, ret, 0);
 +
-+	balloc_test_restore_creds(ctx);
-+}
-+
-+static void test_claim_free_clusters_root_and_reserved_pools(struct kunit *test)
-+{
-+	struct balloc_test_ctx *ctx = test->priv;
-+	struct ext4_sb_info *sbi = &ctx->sbi;
-+
-+	/*
-+	 * Pool layout: free=100, dirty=20, r_blocks=30, resv=15:
-+	 *  - Unprivileged limit:   35 clusters (100 - 20 - 30 - 15)
-+	 *  - Root-pool limit:      65 clusters (100 - 20 - 15; resv protected)
-+	 *  - Internal resv limit:  80 clusters (100 - 20; EXT4_MB_USE_RESERVED)
-+	 */
-+	sbi->s_resuid = KUIDT_INIT(500);
-+	sbi->s_resgid = GLOBAL_ROOT_GID;
-+
-+	/* 1. Matching s_resuid grants root pool (65), still protects resv (66) */
-+	balloc_test_override_creds(test, ctx, 500, 1000, false, -1);
-+	balloc_test_set_cluster_pools(ctx, 100, 20, 30, 15);
-+	KUNIT_EXPECT_EQ(test, ext4_claim_free_clusters(sbi, 66, 0), -ENOSPC);
-+	KUNIT_EXPECT_EQ(test, ext4_claim_free_clusters(sbi, 65, 0), 0);
-+
-+	/*
-+	 * 2. s_resgid == GLOBAL_ROOT_GID (0) does NOT grant root blocks via
-+	 *    group membership even when caller's fsgid is 0.
-+	 */
-+	balloc_test_override_creds(test, ctx, 1000, 0, false, -1);
-+	balloc_test_set_cluster_pools(ctx, 100, 20, 30, 15);
-+	KUNIT_EXPECT_EQ(test, ext4_claim_free_clusters(sbi, 36, 0), -ENOSPC);
-+
-+#ifdef CONFIG_MULTIUSER
-+	/* 3. Non-root s_resgid grants root pool only when caller is in group */
-+	sbi->s_resgid = KGIDT_INIT(2000);
-+	balloc_test_override_creds(test, ctx, 1000, 1000, false, -1);
-+	balloc_test_set_cluster_pools(ctx, 100, 20, 30, 15);
-+	KUNIT_EXPECT_EQ(test, ext4_claim_free_clusters(sbi, 36, 0), -ENOSPC);
-+
-+	balloc_test_override_creds(test, ctx, 1000, 1000, false, 2000);
-+	balloc_test_set_cluster_pools(ctx, 100, 20, 30, 15);
-+	KUNIT_EXPECT_EQ(test, ext4_claim_free_clusters(sbi, 66, 0), -ENOSPC);
-+	KUNIT_EXPECT_EQ(test, ext4_claim_free_clusters(sbi, 65, 0), 0);
-+	sbi->s_resgid = GLOBAL_ROOT_GID;
-+#endif
-+
-+	/* 4. EXT4_MB_USE_ROOT_BLOCKS grants root pool to unprivileged caller */
-+	balloc_test_override_creds(test, ctx, 1000, 1000, false, -1);
-+	balloc_test_set_cluster_pools(ctx, 100, 20, 30, 15);
 +	KUNIT_EXPECT_EQ(test,
-+			ext4_claim_free_clusters(sbi, 66,
-+						 EXT4_MB_USE_ROOT_BLOCKS),
-+			-ENOSPC);
++			ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, "a",
++				       buf, sizeof(buf)),
++			12);
++	KUNIT_EXPECT_MEMEQ(test, buf, "0123456789ab", 12);
 +	KUNIT_EXPECT_EQ(test,
-+			ext4_claim_free_clusters(sbi, 65,
-+						 EXT4_MB_USE_ROOT_BLOCKS),
++			ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, "b",
++				       buf, sizeof(buf)),
++			4);
++	KUNIT_EXPECT_MEMEQ(test, buf, "wxyz", 4);
++
++	/* Replace "a" with a zero-length value ("", size = 0) */
++	ret = ext4_xattr_set_handle(NULL, inode, EXT4_XATTR_INDEX_USER,
++				    "a", "", 0, XATTR_REPLACE);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test,
++			ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, "a",
++				       buf, sizeof(buf)),
 +			0);
 +
-+	/* 5. CAP_SYS_RESOURCE grants root pool regardless of uid/gid/flags */
-+	balloc_test_override_creds(test, ctx, 1000, 1000, true, -1);
-+	balloc_test_set_cluster_pools(ctx, 100, 20, 30, 15);
-+	KUNIT_EXPECT_EQ(test, ext4_claim_free_clusters(sbi, 66, 0), -ENOSPC);
-+	KUNIT_EXPECT_EQ(test, ext4_claim_free_clusters(sbi, 65, 0), 0);
++	/*
++	 * Add system.data (inline data entry) and verify removing an earlier
++	 * entry ("a") shifts system.data's entry header left and updates
++	 * EXT4_I(inode)->i_inline_off.
++	 */
++	ret = ext4_xattr_set_handle(NULL, inode, EXT4_XATTR_INDEX_SYSTEM,
++				    "data", "inlinedata", 10,
++				    XATTR_CREATE);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	ret = ext4_find_inline_data_nolock(inode);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	ext4_set_inode_flag(inode, EXT4_INODE_INLINE_DATA);
++	ext4_set_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
++	offs_before = EXT4_I(inode)->i_inline_off;
++	KUNIT_EXPECT_GT(test, offs_before, (u16)0);
 +
-+	/* 6. EXT4_MB_USE_RESERVED dips into s_resv_clusters up to 80 clusters */
-+	balloc_test_override_creds(test, ctx, 1000, 1000, false, -1);
-+	balloc_test_set_cluster_pools(ctx, 100, 20, 30, 15);
++	/* Remove "a": system.data entry header moves left by EXT4_XATTR_LEN(1) */
++	ret = ext4_xattr_set_handle(NULL, inode, EXT4_XATTR_INDEX_USER,
++				    "a", NULL, 0, XATTR_REPLACE);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, EXT4_I(inode)->i_inline_off,
++			(u16)(offs_before - EXT4_XATTR_LEN(1)));
++
++	/* Remove "b" and "system.data": emptying ibody clears h_magic and state */
++	ext4_clear_inode_flag(inode, EXT4_INODE_INLINE_DATA);
++	ext4_clear_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
++	ret = ext4_xattr_set_handle(NULL, inode, EXT4_XATTR_INDEX_USER,
++				    "b", NULL, 0, XATTR_REPLACE);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	KUNIT_EXPECT_NE(test,
++			ext4_test_inode_state(inode, EXT4_STATE_XATTR), 0);
++
++	ret = ext4_xattr_set_handle(NULL, inode, EXT4_XATTR_INDEX_SYSTEM,
++				    "data", NULL, 0,
++				    XATTR_REPLACE);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, le32_to_cpu(hdr->h_magic), 0U);
 +	KUNIT_EXPECT_EQ(test,
-+			ext4_claim_free_clusters(sbi, 81, EXT4_MB_USE_RESERVED),
-+			-ENOSPC);
++			ext4_test_inode_state(inode, EXT4_STATE_XATTR), 0);
++}
++
++/*
++ * Test 5: External xattr block allocation, entry sorting, migration between
++ * ibody and external block, EXT4_XATTR_BLOCK_RESERVE enforcement, and external
++ * block header/CRC32C checksum validation.
++ */
++static void test_xattr_external_block_and_check(struct kunit *test)
++{
++	struct xattr_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->primary.ei.vfs_inode;
++	struct mock_block *blk;
++	struct ext4_xattr_header *bhdr;
++	struct ext4_xattr_entry *e1, *e2, *e3;
++	char val100[100];
++	char *val796;
++	char buf[128];
++	int ret;
++
++	ext4_set_feature_metadata_csum(&ctx->sb);
++	memset(val100, 'V', sizeof(val100));
++
++	/*
++	 * Start with a small attribute in ibody ("migr", 4 bytes), then grow
++	 * it to 100 bytes (> 88-byte ibody space) so it migrates from ibody
++	 * to a newly allocated external block.
++	 */
++	ret = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, "migr",
++			     "tiny", 4, XATTR_CREATE);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, EXT4_I(inode)->i_file_acl, 0ULL);
++
++	ret = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, "migr",
++			     val100, sizeof(val100), XATTR_REPLACE);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	KUNIT_EXPECT_NE(test, EXT4_I(inode)->i_file_acl, 0ULL);
 +	KUNIT_EXPECT_EQ(test,
-+			ext4_claim_free_clusters(sbi, 80, EXT4_MB_USE_RESERVED),
++			ext4_test_inode_state(inode, EXT4_STATE_XATTR), 0);
++
++	/*
++	 * Add two more entries into the external block (by temporarily setting
++	 * s_inode_size = 128 so ibody is bypassed) and verify external block
++	 * entries are kept sorted by (e_name_index, e_name_len, e_name).
++	 */
++	ctx->sbi.s_inode_size = EXT4_GOOD_OLD_INODE_SIZE;
++	ret = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, "z",
++			     "1", 1, XATTR_CREATE);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	ret = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, "a",
++			     "2", 1, XATTR_CREATE);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	ctx->sbi.s_inode_size = TEST_INODE_SIZE;
++
++	blk = find_mock_block(ctx, EXT4_I(inode)->i_file_acl);
++	KUNIT_ASSERT_NOT_NULL(test, blk);
++	bhdr = BHDR(&blk->bh);
++	e1 = BFIRST(&blk->bh);
++	e2 = EXT4_XATTR_NEXT(e1);
++	e3 = EXT4_XATTR_NEXT(e2);
++
++	/* Length 1 ("a", "z") precede length 4 ("migr") */
++	KUNIT_EXPECT_EQ(test, e1->e_name_len, 1);
++	KUNIT_EXPECT_EQ(test, e1->e_name[0], 'a');
++	KUNIT_EXPECT_EQ(test, e2->e_name_len, 1);
++	KUNIT_EXPECT_EQ(test, e2->e_name[0], 'z');
++	KUNIT_EXPECT_EQ(test, e3->e_name_len, 4);
++	KUNIT_EXPECT_MEMEQ(test, e3->e_name, "migr", 4);
++
++	/*
++	 * Verify external block validation and buffer_verified caching:
++	 * 1) Reading sets buffer_verified.
++	 * 2) Corrupting h_checksum while buffer_verified is set still succeeds
++	 *    because ext4_xattr_check_block() trusts buffer_verified.
++	 * 3) Clearing buffer_verified exposes the bad checksum (-EFSBADCRC).
++	 * 4) Corrupting h_blocks or h_magic returns -EFSCORRUPTED.
++	 */
++	clear_buffer_verified(&blk->bh);
++	ret = ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, "migr",
++			     buf, sizeof(buf));
++	KUNIT_EXPECT_EQ(test, ret, 100);
++	KUNIT_EXPECT_NE(test, buffer_verified(&blk->bh), 0);
++
++	bhdr->h_checksum ^= cpu_to_le32(1);
++	ret = ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, "a",
++			     buf, sizeof(buf));
++	KUNIT_EXPECT_EQ(test, ret, 1);
++
++	clear_buffer_verified(&blk->bh);
++	ret = ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, "a",
++			     buf, sizeof(buf));
++	KUNIT_EXPECT_EQ(test, ret, -EFSBADCRC);
++	bhdr->h_checksum ^= cpu_to_le32(1);
++
++	bhdr->h_blocks = cpu_to_le32(2);
++	clear_buffer_verified(&blk->bh);
++	ret = ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, "a",
++			     buf, sizeof(buf));
++	KUNIT_EXPECT_EQ(test, ret, -EFSCORRUPTED);
++	bhdr->h_blocks = cpu_to_le32(1);
++
++	/*
++	 * Verify EXT4_XATTR_BLOCK_RESERVE (128 bytes on 1024B block) when
++	 * EXT4_FEATURE_INCOMPAT_EA_INODE is enabled:
++	 * With "migr" (100B), "a" (4B), and "z" (4B) in the block, min_offs is
++	 * 1024 - 108 = 916 and free space is 820 bytes. Adding "r1" with a
++	 * 796-byte value (816B total <= 820B free) leaves min_offs - new_size
++	 * = 916 - 796 = 120 < 128 (EXT4_XATTR_BLOCK_RESERVE), so with ea_inode
++	 * enabled and EA inode creation disabled it fails with -ENOSPC,
++	 * whereas with ea_inode disabled it fits inline in the block.
++	 */
++	val796 = kunit_kmalloc(test, 796, GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, val796);
++	memset(val796, 'R', 796);
++	ctx->sbi.s_inode_size = EXT4_GOOD_OLD_INODE_SIZE;
++	ext4_set_feature_ea_inode(&ctx->sb);
++	ctx->fail_new_inode = -ENOSPC;
++	ret = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, "r1",
++			     val796, 796, XATTR_CREATE);
++	ctx->fail_new_inode = 0;
++	KUNIT_EXPECT_EQ(test, ret, -ENOSPC);
++
++	ext4_clear_feature_ea_inode(&ctx->sb);
++	ret = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, "r1",
++			     val796, 796, XATTR_CREATE);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_ASSERT_EQ(test,
++			ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, "r1",
++				       NULL, 0, XATTR_REPLACE),
 +			0);
-+	KUNIT_EXPECT_EQ(test, percpu_counter_sum(&sbi->s_dirtyclusters_counter),
-+			100LL);
++	ctx->sbi.s_inode_size = TEST_INODE_SIZE;
 +
-+	balloc_test_restore_creds(ctx);
++	ret = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, "a",
++			      NULL, 0, XATTR_REPLACE);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	ret = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, "z",
++			     NULL, 0, XATTR_REPLACE);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++
++	/*
++	 * Removing the last entry ("migr") from the external block frees the
++	 * external xattr block and clears i_file_acl to 0.
++	 */
++	ret = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, "migr",
++			     NULL, 0, XATTR_REPLACE);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, EXT4_I(inode)->i_file_acl, 0ULL);
 +}
 +
-+/* =========================================================================
-+ * 9. Allocation Retry Policy (ext4_should_retry_alloc)
-+ * =========================================================================
++/*
++ * Test 6: External xattr block mb_cache deduplication, copy-on-write cloning
++ * when modifying a shared block, and EXT4_XATTR_REFCOUNT_MAX handling.
 + */
-+
-+static void
-+test_should_retry_alloc_no_journal_and_retry_limit(struct kunit *test)
++static void test_xattr_block_dedup_and_cow(struct kunit *test)
 +{
-+	struct balloc_test_ctx *ctx = test->priv;
-+	struct super_block *sb = ctx->sb;
-+	struct ext4_sb_info *sbi = &ctx->sbi;
-+	int retries = 1;
++	struct xattr_test_ctx *ctx = test->priv;
++	struct inode *inode1 = &ctx->primary.ei.vfs_inode;
++	struct inode *inode2 = &ctx->secondary.ei.vfs_inode;
++	struct mock_block *blk;
++	struct mb_cache_entry *ce;
++	char val100[100];
++	ext4_fsblk_t shared_blk;
++	u32 hash;
++	int ret;
 +
-+	/* Without a journal, returns 0 without incrementing *retries */
-+	sbi->s_journal = NULL;
-+	KUNIT_EXPECT_EQ(test, ext4_should_retry_alloc(sb, &retries), 0);
-+	KUNIT_EXPECT_EQ(test, retries, 1);
++	ctx->sbi.s_ea_block_cache = ext4_xattr_create_cache();
++	KUNIT_ASSERT_NOT_NULL(test, ctx->sbi.s_ea_block_cache);
 +
-+	/* With journal and pending mb frees, retries 1..3 succeed, 4th stops */
-+	sbi->s_journal = &ctx->journal;
-+	atomic_set(&sbi->s_mb_free_pending, 4);
-+	retries = 0;
++	memset(val100, 'D', sizeof(val100));
++	ret = ext4_xattr_set(inode1, EXT4_XATTR_INDEX_USER, "shared",
++			     val100, sizeof(val100), XATTR_CREATE);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	shared_blk = EXT4_I(inode1)->i_file_acl;
++	KUNIT_ASSERT_NE(test, shared_blk, 0ULL);
 +
-+	KUNIT_EXPECT_EQ(test, ext4_should_retry_alloc(sb, &retries), 1);
-+	KUNIT_EXPECT_EQ(test, retries, 1);
-+	KUNIT_EXPECT_EQ(test, ext4_should_retry_alloc(sb, &retries), 1);
-+	KUNIT_EXPECT_EQ(test, retries, 2);
-+	KUNIT_EXPECT_EQ(test, ext4_should_retry_alloc(sb, &retries), 1);
-+	KUNIT_EXPECT_EQ(test, retries, 3);
++	/* Setting identical xattr on inode2 reuses shared_blk from mb_cache */
++	ret = ext4_xattr_set(inode2, EXT4_XATTR_INDEX_USER, "shared",
++			     val100, sizeof(val100), XATTR_CREATE);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, EXT4_I(inode2)->i_file_acl, shared_blk);
++
++	blk = find_mock_block(ctx, shared_blk);
++	KUNIT_ASSERT_NOT_NULL(test, blk);
++	KUNIT_EXPECT_EQ(test, le32_to_cpu(BHDR(&blk->bh)->h_refcount), 2U);
++
++	/*
++	 * Modifying the xattr on inode2 triggers copy-on-write: inode2 gets a
++	 * new block and shared_blk's refcount drops back to 1.
++	 */
++	val100[0] = 'M';
++	ret = ext4_xattr_set(inode2, EXT4_XATTR_INDEX_USER, "shared",
++			     val100, sizeof(val100), XATTR_REPLACE);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	KUNIT_EXPECT_NE(test, EXT4_I(inode2)->i_file_acl, shared_blk);
++	KUNIT_EXPECT_EQ(test, le32_to_cpu(BHDR(&blk->bh)->h_refcount), 1U);
++
++	/*
++	 * Test EXT4_XATTR_REFCOUNT_MAX (1024) limit:
++	 * Bump shared_blk's h_refcount to EXT4_XATTR_REFCOUNT_MAX (1024),
++	 * then set the same xattr on inode2. Cache lookup must see
++	 * ref >= EXT4_XATTR_REFCOUNT_MAX, clear MBE_REUSABLE_B, and allocate
++	 * a separate block instead of exceeding 1024.
++	 */
++	val100[0] = 'D';
++	BHDR(&blk->bh)->h_refcount = cpu_to_le32(EXT4_XATTR_REFCOUNT_MAX);
++	hash = le32_to_cpu(BHDR(&blk->bh)->h_hash);
++
++	ret = ext4_xattr_set(inode2, EXT4_XATTR_INDEX_USER, "shared",
++			     val100, sizeof(val100), XATTR_REPLACE);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	KUNIT_EXPECT_NE(test, EXT4_I(inode2)->i_file_acl, shared_blk);
++
++	ce = mb_cache_entry_get(ctx->sbi.s_ea_block_cache, hash, shared_blk);
++	KUNIT_ASSERT_NOT_NULL(test, ce);
++	KUNIT_EXPECT_FALSE(test, test_bit(MBE_REUSABLE_B, &ce->e_flags));
++	mb_cache_entry_put(ctx->sbi.s_ea_block_cache, ce);
++
++	/*
++	 * Removing the attribute on inode1 releases one reference on
++	 * shared_blk (1024 -> 1023 = EXT4_XATTR_REFCOUNT_MAX - 1), which
++	 * re-enables MBE_REUSABLE_B on the mb_cache entry.
++	 */
++	ret = ext4_xattr_set(inode1, EXT4_XATTR_INDEX_USER, "shared",
++			     NULL, 0, XATTR_REPLACE);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, le32_to_cpu(BHDR(&blk->bh)->h_refcount),
++			EXT4_XATTR_REFCOUNT_MAX - 1);
++
++	ce = mb_cache_entry_get(ctx->sbi.s_ea_block_cache, hash, shared_blk);
++	KUNIT_ASSERT_NOT_NULL(test, ce);
++	KUNIT_EXPECT_TRUE(test, test_bit(MBE_REUSABLE_B, &ce->e_flags));
++	mb_cache_entry_put(ctx->sbi.s_ea_block_cache, ce);
++}
++
++/*
++ * Test 7: ext4_listxattr() across ibody and external block, and user/hurd/
++ * trusted handler prefix and mount-option filtering.
++ */
++static void test_xattr_list_and_handlers(struct kunit *test)
++{
++	struct xattr_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->primary.ei.vfs_inode;
++	struct dentry *dentry = &ctx->root_dentry;
++	char val100[100];
++	char list_buf[128];
++	char val_buf[16];
++	ssize_t list_len;
++	int ret;
++
++	/* Handler get/set/list via user, hurd, and trusted handlers */
++	ret = ext4_xattr_user_handler.set(&ext4_xattr_user_handler,
++					  &nop_mnt_idmap, dentry, inode,
++					  "ukey", "uval", 4, XATTR_CREATE);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	ret = ext4_xattr_user_handler.get(&ext4_xattr_user_handler,
++					  dentry, inode, "ukey",
++					  val_buf, sizeof(val_buf));
++	KUNIT_EXPECT_EQ(test, ret, 4);
++
++	ret = ext4_xattr_hurd_handler.set(&ext4_xattr_hurd_handler,
++					  &nop_mnt_idmap, dentry, inode,
++					  "hkey", "hval", 4, XATTR_CREATE);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	ret = ext4_xattr_hurd_handler.get(&ext4_xattr_hurd_handler,
++					  dentry, inode, "hkey",
++					  val_buf, sizeof(val_buf));
++	KUNIT_EXPECT_EQ(test, ret, 4);
++
++	/* Add a large attribute in external block via trusted handler */
++	memset(val100, 'T', sizeof(val100));
++	ret = ext4_xattr_trusted_handler.set(&ext4_xattr_trusted_handler,
++					     &nop_mnt_idmap, dentry, inode,
++					     "tkey", val100, sizeof(val100),
++					     XATTR_CREATE);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++
++	/*
++	 * With XATTR_USER set: "user.ukey\0" (10) + "gnu.hkey\0" (9) +
++	 * (if CAP_SYS_ADMIN) "trusted.tkey\0" (13).
++	 */
++	list_len = ext4_listxattr(dentry, NULL, 0);
++	KUNIT_EXPECT_GE(test, list_len, (ssize_t)19);
++
++	/* Buffer too small by 1 byte returns -ERANGE */
 +	KUNIT_EXPECT_EQ(test,
-+			percpu_counter_sum(&sbi->s_sra_exceeded_retry_limit),
-+			0LL);
++			ext4_listxattr(dentry, list_buf, list_len - 1),
++			(ssize_t)-ERANGE);
 +
-+	KUNIT_EXPECT_EQ(test, ext4_should_retry_alloc(sb, &retries), 0);
-+	KUNIT_EXPECT_EQ(test, retries, 4);
++	memset(list_buf, 0, sizeof(list_buf));
 +	KUNIT_EXPECT_EQ(test,
-+			percpu_counter_sum(&sbi->s_sra_exceeded_retry_limit),
-+			1LL);
-+}
-+
-+static void
-+test_should_retry_alloc_free_space_and_discard_flush(struct kunit *test)
-+{
-+	struct balloc_test_ctx *ctx = test->priv;
-+	struct super_block *sb = ctx->sb;
-+	struct ext4_sb_info *sbi = &ctx->sbi;
-+	int retries;
-+
-+	sbi->s_journal = &ctx->journal;
-+	atomic_set(&sbi->s_mb_free_pending, 0);
-+	clear_opt(sb, DISCARD);
-+	balloc_test_override_creds(test, ctx, 1000, 1000, false, -1);
-+
-+	/* 1. No pending frees, no discard, 0 free clusters -> returns 0 */
-+	balloc_test_set_cluster_pools(ctx, 10, 10, 0, 0);
-+	retries = 0;
-+	KUNIT_EXPECT_EQ(test, ext4_should_retry_alloc(sb, &retries), 0);
-+	KUNIT_EXPECT_EQ(test, retries, 1);
-+	KUNIT_EXPECT_EQ(test, ctx->discard_work_runs, 0U);
-+
-+	/* 2. Free cluster available -> returns 1 */
-+	balloc_test_set_cluster_pools(ctx, 11, 10, 0, 0);
-+	retries = 0;
-+	KUNIT_EXPECT_EQ(test, ext4_should_retry_alloc(sb, &retries), 1);
++			ext4_listxattr(dentry, list_buf, sizeof(list_buf)),
++			list_len);
++	KUNIT_EXPECT_MEMEQ(test, list_buf, "user.ukey\0gnu.hkey\0", 19);
 +
 +	/*
-+	 * 3. With DISCARD enabled, flushes s_discard_work while holding
-+	 *    s_retry_alloc_pending == 1 and rechecks free clusters afterward.
++	 * Clearing XATTR_USER mount option disables user and hurd handlers
++	 * (-EOPNOTSUPP on get/set and filtered out of ext4_listxattr).
 +	 */
-+	set_opt(sb, DISCARD);
-+	balloc_test_set_cluster_pools(ctx, 10, 10, 0, 0);
-+	ctx->discard_release_clusters = 8;
-+	ctx->discard_wait_retry_pending = true;
-+	schedule_work(&sbi->s_discard_work);
-+
-+	retries = 0;
-+	KUNIT_EXPECT_EQ(test, ext4_should_retry_alloc(sb, &retries), 1);
-+	ctx->discard_wait_retry_pending = false;
-+	KUNIT_EXPECT_EQ(test, ctx->discard_work_runs, 1U);
-+	KUNIT_EXPECT_EQ(test, ctx->discard_saw_retry_pending, 1);
-+	KUNIT_EXPECT_EQ(test, atomic_read(&sbi->s_retry_alloc_pending), 0);
-+
-+	balloc_test_restore_creds(ctx);
++	clear_opt(&ctx->sb, XATTR_USER);
++	KUNIT_EXPECT_FALSE(test, ext4_xattr_user_handler.list(dentry));
++	KUNIT_EXPECT_FALSE(test, ext4_xattr_hurd_handler.list(dentry));
++	KUNIT_EXPECT_EQ(test,
++			ext4_xattr_user_handler.get(&ext4_xattr_user_handler,
++						    dentry, inode, "ukey",
++						    val_buf, sizeof(val_buf)),
++			-EOPNOTSUPP);
++	KUNIT_EXPECT_EQ(test,
++			ext4_xattr_user_handler.set(&ext4_xattr_user_handler,
++						    &nop_mnt_idmap, dentry,
++						    inode, "ukey", "x", 1, 0),
++			-EOPNOTSUPP);
++	KUNIT_EXPECT_EQ(test,
++			ext4_xattr_hurd_handler.get(&ext4_xattr_hurd_handler,
++						    dentry, inode, "hkey",
++						    val_buf, sizeof(val_buf)),
++			-EOPNOTSUPP);
++	KUNIT_EXPECT_EQ(test,
++			ext4_xattr_hurd_handler.set(&ext4_xattr_hurd_handler,
++						    &nop_mnt_idmap, dentry,
++						    inode, "hkey", "x", 1, 0),
++			-EOPNOTSUPP);
++	KUNIT_EXPECT_EQ(test, ext4_listxattr(dentry, NULL, 0),
++			capable(CAP_SYS_ADMIN) ? (ssize_t)13 : (ssize_t)0);
++	set_opt(&ctx->sb, XATTR_USER);
 +}
 +
-+/* =========================================================================
-+ * 10. Metadata Block Allocation (ext4_new_meta_blocks)
-+ * =========================================================================
++/*
++ * Test 8: Large xattr inodes (ea_inode feature) multi-block write/read,
++ * 64-bit refcount & hash encoding, mb_cache deduplication across inodes,
++ * reference decrement to 0, and ext4_evict_ea_inode().
 + */
-+
-+static void test_new_meta_blocks_alloc_and_delalloc_quota(struct kunit *test)
++static void test_xattr_ea_inode_lifecycle_and_dedup(struct kunit *test)
 +{
-+	struct balloc_test_ctx *ctx = test->priv;
-+	struct inode *inode = ctx->test_inode;
-+	unsigned long count;
-+	ext4_fsblk_t blk;
-+	int err = -EINVAL;
++	struct xattr_test_ctx *ctx = test->priv;
++	struct inode *inode1 = &ctx->primary.ei.vfs_inode;
++	struct inode *inode2 = &ctx->secondary.ei.vfs_inode;
++	struct inode *ea_inode;
++	struct ext4_inode *raw1 = (struct ext4_inode *)ctx->primary.raw_buf;
++	struct ext4_xattr_entry *e1;
++	char *large_val, *read_buf;
++	const size_t large_len = 1500; /* Spans 2 1024-byte blocks */
++	unsigned int ea_ino;
++	u64 refcount;
++	int i, ret;
 +
-+	/* 1. count == NULL defaults ar.len to 1; non-delalloc skips quota */
-+	ctx->mock_alloc_blk = 1234ULL;
-+	ctx->mock_alloc_len = 0;
-+	ctx->mock_alloc_err = 0;
-+	inode_set_bytes(inode, 0);
++	ext4_set_feature_ea_inode(&ctx->sb);
++	ctx->sbi.s_ea_inode_cache = ext4_xattr_create_cache();
++	KUNIT_ASSERT_NOT_NULL(test, ctx->sbi.s_ea_inode_cache);
++	ext4_init_ea_inode_work(&ctx->sbi);
 +
-+	blk = ext4_new_meta_blocks(NULL, inode, 500ULL, EXT4_MB_USE_ROOT_BLOCKS,
-+				   NULL, &err);
-+	KUNIT_EXPECT_EQ(test, err, 0);
-+	KUNIT_EXPECT_EQ(test, blk, 1234ULL);
-+	KUNIT_EXPECT_PTR_EQ(test, ctx->last_ar.inode, inode);
-+	KUNIT_EXPECT_EQ(test, ctx->last_ar.goal, 500ULL);
-+	KUNIT_EXPECT_EQ(test, ctx->last_ar.len, 1U);
-+	KUNIT_EXPECT_EQ(test, ctx->last_ar.flags,
-+			(unsigned int)EXT4_MB_USE_ROOT_BLOCKS);
-+	KUNIT_EXPECT_EQ(test, inode_get_bytes(inode), 0LL);
++	large_val = kunit_kmalloc(test, large_len, GFP_KERNEL);
++	read_buf = kunit_kzalloc(test, large_len, GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, large_val);
++	KUNIT_ASSERT_NOT_NULL(test, read_buf);
++	for (i = 0; i < large_len; i++)
++		large_val[i] = (char)('A' + (i % 26));
++
++	/* Create 1500-byte xattr on inode1: stored in a new EA inode */
++	ret = ext4_xattr_set(inode1, EXT4_XATTR_INDEX_USER, "big",
++			     large_val, large_len, XATTR_CREATE);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++
++	e1 = IFIRST(IHDR(inode1, raw1));
++	ea_ino = le32_to_cpu(e1->e_value_inum);
++	KUNIT_ASSERT_EQ(test, ea_ino, (unsigned int)TEST_FIRST_EA_INO);
++	KUNIT_EXPECT_EQ(test, le16_to_cpu(e1->e_value_offs), 0U);
++	KUNIT_EXPECT_EQ(test, le32_to_cpu(e1->e_value_size),
++			(u32)large_len);
++
++	ea_inode = &ctx->ea_inodes[0].ei.vfs_inode;
++	refcount = ((u64)inode_get_ctime_sec(ea_inode) << 32) |
++		   (u32)inode_peek_iversion_raw(ea_inode);
++	KUNIT_EXPECT_EQ(test, refcount, 1ULL);
++	KUNIT_EXPECT_EQ(test, ea_inode->i_nlink, 1U);
++
++	/* Read back multi-block EA inode value via ext4_xattr_get() */
++	ret = ext4_xattr_get(inode1, EXT4_XATTR_INDEX_USER, "big",
++			     read_buf, large_len);
++	KUNIT_ASSERT_EQ(test, ret, (int)large_len);
++	KUNIT_EXPECT_MEMEQ(test, read_buf, large_val, large_len);
 +
 +	/*
-+	 * 2. Partial allocation (requested 8 clusters, granted 3) with
-+	 *    EXT4_MB_DELALLOC_RESERVED and bigalloc (4 blocks/cluster = 4096B
-+	 *    per cluster) updates *count to 3 and charges 12288 quota bytes.
++	 * Setting the identical 1500-byte value on inode2 deduplicates via
++	 * s_ea_inode_cache and increments ea_inode's refcount to 2.
 +	 */
-+	ctx->sbi.s_cluster_bits = 2;
-+	ctx->sbi.s_cluster_ratio = 4;
-+	ctx->mock_alloc_blk = 2400ULL;
-+	ctx->mock_alloc_len = 3;
-+	ctx->mock_alloc_err = 0;
-+	count = 8;
++	ret = ext4_xattr_set(inode2, EXT4_XATTR_INDEX_USER, "big2",
++			     large_val, large_len, XATTR_CREATE);
++	KUNIT_ASSERT_EQ(test, ret, 0);
 +
-+	blk = ext4_new_meta_blocks(NULL, inode, 2048ULL,
-+				   EXT4_MB_DELALLOC_RESERVED, &count, &err);
-+	KUNIT_EXPECT_EQ(test, err, 0);
-+	KUNIT_EXPECT_EQ(test, blk, 2400ULL);
-+	KUNIT_EXPECT_EQ(test, count, 3UL);
-+	KUNIT_EXPECT_EQ(test, inode_get_bytes(inode), 12288LL);
++	refcount = ((u64)inode_get_ctime_sec(ea_inode) << 32) |
++		   (u32)inode_peek_iversion_raw(ea_inode);
++	KUNIT_EXPECT_EQ(test, refcount, 2ULL);
 +
-+	/* 3. Error from ext4_mb_new_blocks does not charge quota bytes */
-+	ctx->mock_alloc_err = -ENOSPC;
-+	count = 4;
-+	blk = ext4_new_meta_blocks(NULL, inode, 2048ULL,
-+				   EXT4_MB_DELALLOC_RESERVED, &count, &err);
-+	KUNIT_EXPECT_EQ(test, err, -ENOSPC);
-+	KUNIT_EXPECT_EQ(test, blk, 0ULL);
-+	KUNIT_EXPECT_EQ(test, inode_get_bytes(inode), 12288LL);
++	/* Removing from inode1 drops refcount to 1; i_nlink remains 1 */
++	ret = ext4_xattr_set(inode1, EXT4_XATTR_INDEX_USER, "big",
++			     NULL, 0, XATTR_REPLACE);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	refcount = ((u64)inode_get_ctime_sec(ea_inode) << 32) |
++		   (u32)inode_peek_iversion_raw(ea_inode);
++	KUNIT_EXPECT_EQ(test, refcount, 1ULL);
++	KUNIT_EXPECT_EQ(test, ea_inode->i_nlink, 1U);
++
++	/*
++	 * Removing from inode2 drops refcount to 0 and clears i_nlink to 0.
++	 * Also verify ext4_evict_ea_inode() removes it from s_ea_inode_cache.
++	 */
++	ret = ext4_xattr_set(inode2, EXT4_XATTR_INDEX_USER, "big2",
++			     NULL, 0, XATTR_REPLACE);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	refcount = ((u64)inode_get_ctime_sec(ea_inode) << 32) |
++		   (u32)inode_peek_iversion_raw(ea_inode);
++	KUNIT_EXPECT_EQ(test, refcount, 0ULL);
++	KUNIT_EXPECT_EQ(test, ea_inode->i_nlink, 0U);
++
++	ext4_evict_ea_inode(ea_inode);
 +}
 +
-+/* =========================================================================
-+ * 11. Free Cluster Summation (ext4_count_free_clusters)
-+ * =========================================================================
++/*
++ * Test 9: EA inode hash verification (including legacy signed-char name hash
++ * fallback), ext4_xattr_inode_iget() corruption checks, and Lustre-style
++ * EA inode compatibility.
 + */
-+
-+static void
-+test_count_free_clusters_corrupt_and_64bit_groups(struct kunit *test)
++static void test_xattr_ea_inode_validation_and_compat(struct kunit *test)
 +{
-+	struct balloc_test_ctx *ctx = test->priv;
-+	struct super_block *sb = ctx->sb;
-+	struct balloc_test_blk *slot2;
++	struct xattr_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->primary.ei.vfs_inode;
++	struct inode *ea_inode;
++	struct ext4_inode *raw = (struct ext4_inode *)ctx->primary.raw_buf;
++	struct ext4_xattr_entry *e;
++	static const char signed_name[] = "\x80\xfe";
++	const size_t val_len = 1000;
++	char *val, *buf;
++	u32 val_hash, signed_e_hash = 0;
++	__le32 orig_e_hash;
++	int i, ret;
 +
-+	slot2 = balloc_test_find_blk(ctx, balloc_test_bbitmap_blk(2));
-+	KUNIT_ASSERT_NOT_NULL(test, slot2);
++	ext4_set_feature_ea_inode(&ctx->sb);
++	val = kunit_kmalloc(test, val_len, GFP_KERNEL);
++	buf = kunit_kzalloc(test, val_len, GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, val);
++	KUNIT_ASSERT_NOT_NULL(test, buf);
++	memset(val, 'S', val_len);
 +
-+	/* Default 4 groups: 1004 + 1004 + 1006 + 1004 = 4018 free clusters */
-+	KUNIT_EXPECT_EQ(test, ext4_count_free_clusters(sb), 4018ULL);
++	ret = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, signed_name,
++			     val, val_len, XATTR_CREATE);
++	KUNIT_ASSERT_EQ(test, ret, 0);
 +
-+	/* Corrupt bitmap flag on group 2 excludes its 1006 clusters -> 3012 */
-+	clear_buffer_verified(&slot2->bh);
-+	set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT,
-+		&ctx->grp_infos[2]->bb_state);
-+	KUNIT_EXPECT_EQ(test, ext4_count_free_clusters(sb), 3012ULL);
++	e = IFIRST(IHDR(inode, raw));
++	ea_inode = &ctx->ea_inodes[0].ei.vfs_inode;
++	orig_e_hash = e->e_hash;
 +
-+	/* NULL s_group_info still sums all valid group descriptors -> 4018 */
-+	set_buffer_verified(&slot2->bh);
-+	rcu_assign_pointer(ctx->sbi.s_group_info, NULL);
-+	KUNIT_EXPECT_EQ(test, ext4_count_free_clusters(sb), 4018ULL);
-+	rcu_assign_pointer(ctx->sbi.s_group_info, ctx->grp_info_slices);
-+	ctx->grp_infos[2]->bb_state = 0;
++	/*
++	 * Compute the legacy signed-char entry hash for "\x80\xfe" and verify
++	 * ext4_xattr_inode_verify_hashes() accepts it as a valid fallback.
++	 */
++	val_hash = (u32)inode_get_atime_sec(ea_inode);
++	for (i = 0; i < (int)strlen(signed_name); i++) {
++		signed_e_hash = (signed_e_hash << 5) ^
++				(signed_e_hash >> 27) ^
++				(signed char)signed_name[i];
++	}
++	signed_e_hash = (signed_e_hash << 16) ^
++			(signed_e_hash >> 16) ^ val_hash;
++	e->e_hash = cpu_to_le32(signed_e_hash);
 +
-+#ifndef EXT4FS_DEBUG
-+	/* 64-bit group descriptors with bg_free_blocks_count_hi > 0 */
-+	ctx->sbi.s_groups_count = 2;
-+	ext4_free_group_clusters_set(sb, &ctx->gdps[0], 0x10005U);
-+	ext4_free_group_clusters_set(sb, &ctx->gdps[1], 0x20003U);
-+	KUNIT_EXPECT_EQ(test, ext4_count_free_clusters(sb), 0x30008ULL);
++	ret = ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, signed_name,
++			     buf, val_len);
++	KUNIT_EXPECT_EQ(test, ret, (int)val_len);
 +
-+	/* Unloaded group descriptor block is skipped cleanly */
-+	ctx->sbi.s_groups_count = 20;
-+	ctx->gdesc_bh_ptrs[1] = NULL;
-+	KUNIT_EXPECT_EQ(test, ext4_count_free_clusters(sb),
-+			0x30008ULL + 1006ULL + 1004ULL);
-+#endif
++	/* Truly corrupted entry hash is rejected with -EFSCORRUPTED */
++	e->e_hash = cpu_to_le32(signed_e_hash ^ 0x12345678U);
++	ret = ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, signed_name,
++			     buf, val_len);
++	KUNIT_EXPECT_EQ(test, ret, -EFSCORRUPTED);
++	e->e_hash = orig_e_hash;
++
++	/* Corrupted value hash stored in ea_inode->i_atime is rejected */
++	inode_set_atime(ea_inode, val_hash ^ 1, 0);
++	ret = ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, signed_name,
++			     buf, val_len);
++	KUNIT_EXPECT_EQ(test, ret, -EFSCORRUPTED);
++	inode_set_atime(ea_inode, val_hash, 0);
++
++	/* Size mismatch between ea_inode->i_size and entry->e_value_size */
++	i_size_write(ea_inode, val_len - 1);
++	ret = ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, signed_name,
++			     buf, val_len);
++	KUNIT_EXPECT_EQ(test, ret, -EFSCORRUPTED);
++	i_size_write(ea_inode, val_len);
++
++	/* Invalid i_nlink (0 or 2) on active EA inode returns -EFSCORRUPTED */
++	set_nlink(ea_inode, 2);
++	ret = ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, signed_name,
++			     buf, val_len);
++	KUNIT_EXPECT_EQ(test, ret, -EFSCORRUPTED);
++	set_nlink(ea_inode, 1);
++
++	/* Self-referencing e_value_inum == parent->i_ino returns -EFSCORRUPTED */
++	e->e_value_inum = cpu_to_le32(inode->i_ino);
++	ret = ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, signed_name,
++			     buf, val_len);
++	KUNIT_EXPECT_EQ(test, ret, -EFSCORRUPTED);
++	e->e_value_inum = cpu_to_le32(ea_inode->i_ino);
++
++	/*
++	 * Lustre-style old EA inode compatibility: when e_hash != ea_inode
++	 * hash, but parent ino (stored in i_mtime) and generation (stored in
++	 * i_generation) match parent, ext4_xattr_inode_iget() sets
++	 * EXT4_STATE_LUSTRE_EA_INODE and forces ref_count = 1.
++	 */
++	e->e_hash = 0;
++	inode->i_generation = 42;
++	ea_inode->i_generation = 42;
++	inode_set_mtime(ea_inode, inode->i_ino, 0);
++	inode_set_ctime(ea_inode, 0, 0);
++	inode_set_iversion_raw(ea_inode, 0);
++	/* Even with initial ref_count = 0, Lustre compat sets ref = 1 */
++	ret = ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, signed_name,
++			     buf, val_len);
++	KUNIT_EXPECT_EQ(test, ret, (int)val_len);
++	KUNIT_EXPECT_NE(test,
++			ext4_test_inode_state(ea_inode,
++					      EXT4_STATE_LUSTRE_EA_INODE),
++			0);
 +}
 +
-+/* =========================================================================
-+ * 12. Inode Goal Block Selection (ext4_inode_to_goal_block)
-+ * =========================================================================
++/*
++ * Test 10: ext4_get_inode_usage(), credit calculation, handle credit check,
++ * ext4_expand_extra_isize_ea(), and ext4_xattr_delete_inode().
 + */
-+
-+static void test_inode_to_goal_block_flex_bg_and_delalloc(struct kunit *test)
++static void test_xattr_credits_usage_expand_and_delete(struct kunit *test)
 +{
-+	struct balloc_test_ctx *ctx = test->priv;
-+	struct super_block *sb = ctx->sb;
-+	struct inode *inode = ctx->test_inode;
++	struct xattr_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->primary.ei.vfs_inode;
++	struct ext4_inode *raw = (struct ext4_inode *)ctx->primary.raw_buf;
++	journal_t *fake_journal;
++	handle_t fake_handle = {
++		.h_reserved = 1,
++		.h_total_credits = 1,
++	};
++	const size_t large_len = 1000;
++	char *large_val;
++	char val28[28];
++	char buf[64];
++	qsize_t usage = 0;
++	int credits_create, credits_replace, credits_out = -1;
++	int ret;
 +
-+	ctx->sbi.s_groups_count = 8;
-+	ext4_blocks_count_set(&ctx->es, 1 + 8 * BALLOC_TEST_BLOCKS_PER_GRP);
-+	set_opt(sb, DELALLOC);
++	fake_journal = kunit_kzalloc(test, sizeof(*fake_journal), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, fake_journal);
++	fake_journal->j_revoke_records_per_block = 64;
++	fake_handle.h_journal = fake_journal;
 +
-+	/* flex_size = 2 (< EXT4_FLEX_SIZE_DIR_ALLOC_SCHEME = 4): stays in bg 3 */
-+	ctx->sbi.s_log_groups_per_flex = 1;
-+	EXT4_I(inode)->i_block_group = 3;
-+	inode->i_mode = S_IFDIR | 0755;
-+	KUNIT_EXPECT_EQ(test, ext4_inode_to_goal_block(inode),
-+			balloc_test_group_start(3));
-+	inode->i_mode = S_IFREG | 0644;
-+	KUNIT_EXPECT_EQ(test, ext4_inode_to_goal_block(inode),
-+			balloc_test_group_start(3));
++	large_val = kunit_kmalloc(test, large_len, GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, large_val);
++	memset(large_val, 'L', large_len);
 +
 +	/*
-+	 * flex_size = 4 (== EXT4_FLEX_SIZE_DIR_ALLOC_SCHEME):
-+	 *  - Directories and special/symlink inodes map to 1st group of flex_bg
-+	 *  - Regular files map to 2nd group of flex_bg (flex_start + 1)
++	 * 1. Credit calculation and insufficient handle credits check
 +	 */
-+	ctx->sbi.s_log_groups_per_flex = 2;
++	credits_create = __ext4_xattr_set_credits(&ctx->sb, inode, NULL,
++						  100, true);
++	KUNIT_EXPECT_GT(test, credits_create, 0);
 +
-+	EXT4_I(inode)->i_block_group = 3;
-+	inode->i_mode = S_IFDIR | 0755;
-+	KUNIT_EXPECT_EQ(test, ext4_inode_to_goal_block(inode),
-+			balloc_test_group_start(0));
-+	inode->i_mode = S_IFLNK | 0777;
-+	KUNIT_EXPECT_EQ(test, ext4_inode_to_goal_block(inode),
-+			balloc_test_group_start(0));
-+	inode->i_mode = S_IFREG | 0644;
-+	KUNIT_EXPECT_EQ(test, ext4_inode_to_goal_block(inode),
-+			balloc_test_group_start(1));
++	ext4_set_feature_ea_inode(&ctx->sb);
++	credits_create = __ext4_xattr_set_credits(&ctx->sb, inode, NULL,
++						  1500, true);
++	credits_replace = __ext4_xattr_set_credits(&ctx->sb, inode, NULL,
++						   1500, false);
++	KUNIT_EXPECT_GT(test, credits_replace, credits_create);
 +
-+	EXT4_I(inode)->i_block_group = 6;
-+	inode->i_mode = S_IFDIR | 0755;
-+	KUNIT_EXPECT_EQ(test, ext4_inode_to_goal_block(inode),
-+			balloc_test_group_start(4));
-+	inode->i_mode = S_IFREG | 0644;
-+	KUNIT_EXPECT_EQ(test, ext4_inode_to_goal_block(inode),
-+			balloc_test_group_start(5));
-+}
++	/* Without a journal (s_journal == NULL), credits_out is 0 */
++	ret = ext4_xattr_set_credits(inode, 1500, true, &credits_out);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, credits_out, 0);
 +
-+static void test_inode_to_goal_block_nodelalloc_colour(struct kunit *test)
-+{
-+	struct balloc_test_ctx *ctx = test->priv;
-+	struct super_block *sb = ctx->sb;
-+	struct inode *inode = ctx->test_inode;
-+	ext4_fsblk_t g0_start = balloc_test_group_start(0);
-+	ext4_fsblk_t g3_start = balloc_test_group_start(3);
-+	ext4_fsblk_t goal_full, goal_partial;
-+	u32 rem;
++	/* With s_journal set, ext4_xattr_set_credits() returns credits_create */
++	ctx->sbi.s_journal = fake_journal;
++	ret = ext4_xattr_set_credits(inode, 1500, true, &credits_out);
++	ctx->sbi.s_journal = NULL;
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, credits_out, credits_create);
 +
-+	clear_opt(sb, DELALLOC);
-+	ctx->sbi.s_log_groups_per_flex = 0;
-+	inode->i_mode = S_IFREG | 0644;
++	/* Handle with only 1 buffer credit (< credits) fails with -ENOSPC */
++	ret = ext4_xattr_set_handle(&fake_handle, inode, EXT4_XATTR_INDEX_USER,
++				    "k", "v", 1, XATTR_CREATE);
++	KUNIT_EXPECT_EQ(test, ret, -ENOSPC);
 +
 +	/*
-+	 * Full group 0 (1024 blocks -> step = 64) vs partial last group 3 with
-+	 * last_block - g3_start == 320 (321 blocks -> step = 20). Both calls
-+	 * execute in the same kthread, so (task_pid_nr(current) % 16) is fixed.
++	 * 2. ext4_expand_extra_isize_ea():
++	 * Put "keep" (4B -> 24B total) and "evict" (28B -> 52B total) in
++	 * ibody (88B usable, leaving 12B free).
++	 * First expand i_extra_isize from 32 -> 40 (8 bytes <= 12B free):
++	 * shifts ibody entries in-place without allocating an external block.
++	 * Then expand i_extra_isize from 40 -> 72 (32 bytes > 4B free):
++	 * "keep" (24 + 4 = 28 < 32) is too small alone, so "evict" (52 + 4 >= 32)
++	 * is moved to an external xattr block while "keep" stays in ibody!
 +	 */
-+	ext4_blocks_count_set(&ctx->es, g3_start + 321);
++	ext4_clear_feature_ea_inode(&ctx->sb);
++	ret = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, "keep",
++			     "1234", 4, XATTR_CREATE);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	memset(val28, 'E', sizeof(val28));
++	ret = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, "evict",
++			     val28, sizeof(val28), XATTR_CREATE);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, EXT4_I(inode)->i_file_acl, 0ULL);
 +
-+	EXT4_I(inode)->i_block_group = 0;
-+	goal_full = ext4_inode_to_goal_block(inode);
-+	KUNIT_EXPECT_GE(test, goal_full, g0_start);
-+	KUNIT_EXPECT_LE(test, goal_full, g0_start + 15 * 64);
-+	div_u64_rem(goal_full - g0_start, 64, &rem);
-+	KUNIT_EXPECT_EQ(test, rem, 0U);
++	/* In-place ibody shift (32 -> 40) */
++	ret = ext4_expand_extra_isize_ea(inode, 40, raw, NULL);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, EXT4_I(inode)->i_extra_isize, (u16)40);
++	KUNIT_EXPECT_EQ(test, EXT4_I(inode)->i_file_acl, 0ULL);
 +
-+	EXT4_I(inode)->i_block_group = 3;
-+	goal_partial = ext4_inode_to_goal_block(inode);
-+	KUNIT_EXPECT_GE(test, goal_partial, g3_start);
-+	KUNIT_EXPECT_LE(test, goal_partial, g3_start + 15 * 20);
-+	div_u64_rem(goal_partial - g3_start, 20, &rem);
-+	KUNIT_EXPECT_EQ(test, rem, 0U);
-+	KUNIT_EXPECT_EQ(test, (goal_full - g0_start) * 20,
-+			(goal_partial - g3_start) * 64);
++	/* Eviction of "evict" to external block (40 -> 72) */
++	ret = ext4_expand_extra_isize_ea(inode, 72, raw, NULL);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, EXT4_I(inode)->i_extra_isize, (u16)72);
++	KUNIT_EXPECT_NE(test, EXT4_I(inode)->i_file_acl, 0ULL);
 +
-+	/* Partial last group with < 16 blocks yields colour step 0 -> g3_start */
-+	ext4_blocks_count_set(&ctx->es, g3_start + 16);
-+	KUNIT_EXPECT_EQ(test, ext4_inode_to_goal_block(inode), g3_start);
++	/* Both "keep" (in ibody) and "evict" (in external block) remain readable */
++	KUNIT_EXPECT_EQ(test,
++			ext4_xattr_ibody_get(inode, EXT4_XATTR_INDEX_USER,
++					     "keep", buf, sizeof(buf)),
++			4);
++	KUNIT_EXPECT_EQ(test,
++			ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER,
++				       "evict", buf, sizeof(buf)),
++			28);
++
++	/*
++	 * 3. ext4_get_inode_usage() and ext4_xattr_delete_inode():
++	 * Add a 1000-byte EA inode attribute ("large_ea") and check that
++	 * ext4_get_inode_usage() accounts for 1 (parent inode) + 1 (EA inode)
++	 * = 2 inodes, and ext4_xattr_delete_inode() frees the external block
++	 * and drops the EA inode reference to 0.
++	 */
++	ext4_set_feature_ea_inode(&ctx->sb);
++	ret = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, "large_ea",
++			     large_val, large_len, XATTR_CREATE);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++
++	down_read(&EXT4_I(inode)->xattr_sem);
++	ret = ext4_get_inode_usage(inode, &usage);
++	up_read(&EXT4_I(inode)->xattr_sem);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, usage, (qsize_t)2);
++
++	ret = ext4_xattr_delete_inode(NULL, inode, 0);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, EXT4_I(inode)->i_file_acl, 0ULL);
++	KUNIT_EXPECT_EQ(test, ctx->ea_inodes[0].ei.vfs_inode.i_nlink, 0U);
 +}
 +
-+static struct kunit_case balloc_test_cases[] = {
-+	KUNIT_CASE_PARAM(test_group_no_and_offset_matrix,
-+			 group_offset_gen_params),
-+	KUNIT_CASE(test_group_no_and_offset_optional_out_ptrs),
-+	KUNIT_CASE(test_bg_has_super_dense_all_groups),
-+	KUNIT_CASE(test_bg_has_super_sparse_super_powers),
-+	KUNIT_CASE(test_bg_has_super_sparse_super2_explicit_backups),
-+	KUNIT_CASE(test_bg_num_gdb_and_base_meta_non_metabg),
-+	KUNIT_CASE(test_bg_num_gdb_and_base_meta_hybrid_metabg),
-+	KUNIT_CASE(test_free_clusters_after_init_standard_and_partial_last),
-+	KUNIT_CASE(test_free_clusters_after_init_external_and_spanning_meta),
-+	KUNIT_CASE(test_free_clusters_after_init_bigalloc_cluster_sharing),
-+	KUNIT_CASE(test_get_group_desc_lookup_and_bounds),
-+	KUNIT_CASE(test_get_group_info_lookup_and_null_guards),
-+	KUNIT_CASE(test_read_block_bitmap_validates_csum),
-+	KUNIT_CASE(test_read_block_bitmap_validates_metadata_bits),
-+	KUNIT_CASE(test_read_block_bitmap_validates_padding),
-+	KUNIT_CASE(test_read_block_bitmap_validation_short_circuits),
-+	KUNIT_CASE(test_read_block_bitmap_disk_and_cache_paths),
-+	KUNIT_CASE(test_read_block_bitmap_nowait_prefetch_locked),
-+	KUNIT_CASE(test_read_block_bitmap_uninit_group),
-+	KUNIT_CASE(test_read_block_bitmap_uninit_errors),
-+	KUNIT_CASE(test_read_and_wait_block_bitmap_errors),
-+	KUNIT_CASE(test_claim_free_clusters_unprivileged_and_bigalloc),
-+	KUNIT_CASE(test_claim_free_clusters_root_and_reserved_pools),
-+	KUNIT_CASE(test_should_retry_alloc_no_journal_and_retry_limit),
-+	KUNIT_CASE(test_should_retry_alloc_free_space_and_discard_flush),
-+	KUNIT_CASE(test_new_meta_blocks_alloc_and_delalloc_quota),
-+	KUNIT_CASE(test_count_free_clusters_corrupt_and_64bit_groups),
-+	KUNIT_CASE(test_inode_to_goal_block_flex_bg_and_delalloc),
-+	KUNIT_CASE(test_inode_to_goal_block_nodelalloc_colour),
++/*
++ * Test 11: Error injection and rollback paths across inode location lookup,
++ * external block allocation/getblk/bread/dirty_metadata, and EA inode
++ * creation/write/lookup.
++ */
++static void test_xattr_error_injection(struct kunit *test)
++{
++	struct xattr_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->primary.ei.vfs_inode;
++	const size_t large_len = 1000;
++	char *large_val;
++	char val100[100];
++	char buf[128];
++	unsigned int prev_free;
++	int ret;
++
++	large_val = kunit_kmalloc(test, large_len, GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, large_val);
++	memset(large_val, 'F', large_len);
++	memset(val100, 'B', sizeof(val100));
++
++	/* 1. ext4_get_inode_loc() failure on set and get */
++	ctx->fail_get_inode_loc = -EIO;
++	ret = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, "k",
++			     "v", 1, XATTR_CREATE);
++	KUNIT_EXPECT_EQ(test, ret, -EIO);
++
++	ext4_set_inode_state(inode, EXT4_STATE_XATTR);
++	ret = ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, "k",
++			     buf, sizeof(buf));
++	KUNIT_EXPECT_EQ(test, ret, -EIO);
++	ext4_clear_inode_state(inode, EXT4_STATE_XATTR);
++	ctx->fail_get_inode_loc = 0;
++
++	/* 2. ext4_mark_iloc_dirty() failure on set */
++	ctx->fail_mark_iloc_dirty = -EIO;
++	ret = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, "k",
++			     "v", 1, XATTR_CREATE);
++	ctx->fail_mark_iloc_dirty = 0;
++	KUNIT_EXPECT_EQ(test, ret, -EIO);
++	/* Clean up the entry written to raw_buf before mark_iloc_dirty */
++	KUNIT_ASSERT_EQ(test,
++			ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, "k",
++				       NULL, 0, XATTR_REPLACE),
++			0);
++
++	/* 3. External block allocation failure (-ENOSPC) */
++	ctx->fail_alloc_block = -ENOSPC;
++	ret = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, "blk",
++			     val100, sizeof(val100), XATTR_CREATE);
++	ctx->fail_alloc_block = 0;
++	KUNIT_EXPECT_EQ(test, ret, -ENOSPC);
++	KUNIT_EXPECT_EQ(test, EXT4_I(inode)->i_file_acl, 0ULL);
++
++	/*
++	 * 4. ext4_xattr_getblk() failure (-ENOMEM) after block allocation must
++	 * free the newly allocated block via ext4_free_blocks().
++	 */
++	prev_free = ctx->free_block_calls;
++	ctx->fail_xattr_getblk = true;
++	ret = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, "blk",
++			     val100, sizeof(val100), XATTR_CREATE);
++	ctx->fail_xattr_getblk = false;
++	KUNIT_EXPECT_EQ(test, ret, -ENOMEM);
++	KUNIT_EXPECT_EQ(test, ctx->free_block_calls, prev_free + 1);
++	KUNIT_EXPECT_EQ(test, EXT4_I(inode)->i_file_acl, 0ULL);
++
++	/* 5. ext4_handle_dirty_metadata() failure when creating external block */
++	ctx->fail_dirty_metadata = -EIO;
++	ret = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, "blk",
++			     val100, sizeof(val100), XATTR_CREATE);
++	ctx->fail_dirty_metadata = 0;
++	KUNIT_EXPECT_EQ(test, ret, -EIO);
++	KUNIT_EXPECT_EQ(test, EXT4_I(inode)->i_file_acl, 0ULL);
++
++	/* Successfully create external block, then test ext4_sb_bread() failure */
++	ret = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, "blk",
++			     val100, sizeof(val100), XATTR_CREATE);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++
++	ctx->fail_sb_bread = -EIO;
++	KUNIT_EXPECT_EQ(test,
++			ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, "blk",
++				       buf, sizeof(buf)),
++			-EIO);
++	KUNIT_EXPECT_EQ(test,
++			ext4_listxattr(&ctx->root_dentry, buf, sizeof(buf)),
++			(ssize_t)-EIO);
++	KUNIT_EXPECT_EQ(test, ext4_xattr_delete_inode(NULL, inode, 0), -EIO);
++	ctx->fail_sb_bread = 0;
++
++	/*
++	 * 6. EA inode block allocation failure in ext4_xattr_inode_write()
++	 * must clean up the newly created EA inode (dropping its i_nlink to 0).
++	 */
++	ext4_set_feature_ea_inode(&ctx->sb);
++	ctx->fail_alloc_block = -ENOSPC;
++	ret = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, "big_err",
++			     large_val, large_len, XATTR_CREATE);
++	ctx->fail_alloc_block = 0;
++	KUNIT_EXPECT_EQ(test, ret, -ENOSPC);
++	KUNIT_EXPECT_TRUE(test, ctx->ea_inodes[0].allocated);
++	KUNIT_EXPECT_EQ(test, ctx->ea_inodes[0].ei.vfs_inode.i_nlink, 0U);
++
++	/* 7. Successfully create EA inode, then test __ext4_iget() and ext4_getblk() failure */
++	ret = ext4_xattr_set(inode, EXT4_XATTR_INDEX_USER, "big_ok",
++			     large_val, large_len, XATTR_CREATE);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++
++	ctx->fail_iget = -EIO;
++	KUNIT_EXPECT_EQ(test,
++			ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, "big_ok",
++				       large_val, large_len),
++			-EIO);
++	ctx->fail_iget = 0;
++
++	ctx->fail_getblk = -EIO;
++	KUNIT_EXPECT_EQ(test,
++			ext4_xattr_get(inode, EXT4_XATTR_INDEX_USER, "big_ok",
++				       large_val, large_len),
++			-EIO);
++	ctx->fail_getblk = 0;
++}
++
++static struct kunit_case xattr_test_cases[] = {
++	KUNIT_CASE(test_xattr_macros_and_locking),
++	KUNIT_CASE_PARAM(test_xattr_check_inode, xattr_check_gen_params),
++	KUNIT_CASE(test_xattr_ibody_basic_and_flags),
++	KUNIT_CASE(test_xattr_ibody_replace_and_remove),
++	KUNIT_CASE(test_xattr_external_block_and_check),
++	KUNIT_CASE(test_xattr_block_dedup_and_cow),
++	KUNIT_CASE(test_xattr_list_and_handlers),
++	KUNIT_CASE(test_xattr_ea_inode_lifecycle_and_dedup),
++	KUNIT_CASE(test_xattr_ea_inode_validation_and_compat),
++	KUNIT_CASE(test_xattr_credits_usage_expand_and_delete),
++	KUNIT_CASE(test_xattr_error_injection),
 +	{}
 +};
 +
-+static struct kunit_suite balloc_test_suite = {
-+	.name = "ext4_balloc_test",
-+	.init = balloc_test_init,
-+	.test_cases = balloc_test_cases,
++static struct kunit_suite xattr_test_suite = {
++	.name = "ext4_xattr_test",
++	.init = xattr_test_init,
++	.exit = xattr_test_exit,
++	.test_cases = xattr_test_cases,
 +};
 +
-+kunit_test_suites(&balloc_test_suite);
++kunit_test_suites(&xattr_test_suite);
 +
-+MODULE_DESCRIPTION("KUnit tests for ext4 block allocation helpers in balloc.c");
 +MODULE_LICENSE("GPL");
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 778fe8788f06..d2f0f27bbc9a 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -243,6 +243,7 @@ unsigned ext4_free_clusters_after_init(struct super_block *sb,
- 	return num_clusters_in_group(sb, block_group) -
- 		ext4_num_overhead_clusters(sb, block_group, gdp);
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 062786fa3646..277731c424a0 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -57,6 +57,7 @@
+ #include <linux/mbcache.h>
+ #include <linux/quotaops.h>
+ #include <linux/iversion.h>
++#include <kunit/static_stub.h>
+ #include "ext4_jbd2.h"
+ #include "ext4.h"
+ #include "xattr.h"
+@@ -107,6 +108,7 @@ const struct xattr_handler * const ext4_xattr_handlers[] = {
+ 	&ext4_xattr_hurd_handler,
+ 	NULL
+ };
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_xattr_handlers);
+ 
+ #define EA_BLOCK_CACHE(inode)	(((struct ext4_sb_info *) \
+ 				inode->i_sb->s_fs_info)->s_ea_block_cache)
+@@ -169,6 +171,14 @@ static void ext4_xattr_block_csum_set(struct inode *inode,
+ 						bh->b_blocknr, BHDR(bh));
  }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_free_clusters_after_init);
+ 
++struct buffer_head *ext4_xattr_getblk(struct super_block *sb,
++				      ext4_fsblk_t block)
++{
++	KUNIT_STATIC_STUB_REDIRECT(ext4_xattr_getblk, sb, block);
++	return sb_getblk(sb, block);
++}
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_xattr_getblk);
++
+ static inline const char *ext4_xattr_prefix(int name_index,
+ 					    struct dentry *dentry)
+ {
+@@ -315,6 +325,7 @@ __xattr_check_inode(struct inode *inode, struct ext4_xattr_ibody_header *header,
+ 	return check_xattrs(inode, NULL, IFIRST(header), end, IFIRST(header),
+ 			    function, line);
+ }
++EXPORT_SYMBOL_FOR_EXT4_TEST(__xattr_check_inode);
+ 
+ static int
+ xattr_find_entry(struct inode *inode, struct ext4_xattr_entry **pentry,
+@@ -493,6 +504,7 @@ void ext4_evict_ea_inode(struct inode *inode)
+ 		mb_cache_entry_put(EA_INODE_CACHE(inode), oe);
+ 	}
+ }
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_evict_ea_inode);
+ 
+ static int
+ ext4_xattr_inode_verify_hashes(struct inode *ea_inode,
+@@ -693,6 +705,7 @@ ext4_xattr_ibody_get(struct inode *inode, int name_index, const char *name,
+ 	brelse(iloc.bh);
+ 	return error;
+ }
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_xattr_ibody_get);
  
  /*
-  * The free blocks are managed by bitmaps.  A file system contains several
-@@ -489,7 +490,7 @@ ext4_read_block_bitmap_nowait(struct super_block *sb, ext4_group_t block_group,
- 					EXT4_GROUP_INFO_BBITMAP_CORRUPT);
- 		return ERR_PTR(-EFSCORRUPTED);
- 	}
--	bh = sb_getblk(sb, bitmap_blk);
-+	bh = ext4_sb_getblk(sb, bitmap_blk);
- 	if (unlikely(!bh)) {
- 		ext4_warning(sb, "Cannot get buffer for block bitmap - "
- 			     "block_group = %u, block_bitmap = %llu",
-@@ -611,6 +612,7 @@ ext4_read_block_bitmap(struct super_block *sb, ext4_group_t block_group)
- 	}
- 	return bh;
+  * ext4_xattr_get()
+@@ -725,6 +738,7 @@ ext4_xattr_get(struct inode *inode, int name_index, const char *name,
+ 	up_read(&EXT4_I(inode)->xattr_sem);
+ 	return error;
  }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_read_block_bitmap);
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_xattr_get);
  
- /**
-  * ext4_has_free_clusters()
-@@ -678,6 +680,7 @@ int ext4_claim_free_clusters(struct ext4_sb_info *sbi,
- 	} else
- 		return -ENOSPC;
- }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_claim_free_clusters);
- 
- /**
-  * ext4_should_retry_alloc() - check if a block allocation should be retried
-@@ -724,6 +727,7 @@ int ext4_should_retry_alloc(struct super_block *sb, int *retries)
- 	(void) jbd2_journal_force_commit_nested(sbi->s_journal);
- 	return 1;
- }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_should_retry_alloc);
- 
- /*
-  * ext4_new_meta_blocks() -- allocate block for meta data (indexing) blocks
-@@ -764,6 +768,7 @@ ext4_fsblk_t ext4_new_meta_blocks(handle_t *handle, struct inode *inode,
- 	}
+ static int
+ ext4_xattr_list_entries(struct dentry *dentry, struct ext4_xattr_entry *entry,
+@@ -841,6 +855,7 @@ ext4_listxattr(struct dentry *dentry, char *buffer, size_t buffer_size)
+ 	up_read(&EXT4_I(d_inode(dentry))->xattr_sem);
  	return ret;
  }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_new_meta_blocks);
- 
- /**
-  * ext4_count_free_clusters() -- count filesystem free clusters
-@@ -877,6 +882,7 @@ int ext4_bg_has_super(struct super_block *sb, ext4_group_t group)
- 
- 	return 0;
- }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_bg_has_super);
- 
- static unsigned long ext4_bg_num_gdb_meta(struct super_block *sb,
- 					ext4_group_t group)
-@@ -923,6 +929,7 @@ unsigned long ext4_bg_num_gdb(struct super_block *sb, ext4_group_t group)
- 	return ext4_bg_num_gdb_meta(sb,group);
- 
- }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_bg_num_gdb);
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_listxattr);
  
  /*
-  * This function returns the number of file system metadata blocks at
-@@ -949,6 +956,7 @@ unsigned int ext4_num_base_meta_blocks(struct super_block *sb,
+  * If the EXT4_FEATURE_COMPAT_EXT_ATTR feature of this file system is
+@@ -912,6 +927,7 @@ int ext4_get_inode_usage(struct inode *inode, qsize_t *usage)
+ 	brelse(bh);
+ 	return ret;
+ }
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_get_inode_usage);
+ 
+ static inline size_t round_up_cluster(struct inode *inode, size_t length)
+ {
+@@ -1029,6 +1045,7 @@ int __ext4_xattr_set_credits(struct super_block *sb, struct inode *inode,
  	}
- 	return num;
+ 	return credits;
  }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_num_base_meta_blocks);
++EXPORT_SYMBOL_FOR_EXT4_TEST(__ext4_xattr_set_credits);
  
- static unsigned int ext4_num_base_meta_clusters(struct super_block *sb,
- 						ext4_group_t block_group)
-@@ -1004,4 +1012,5 @@ ext4_fsblk_t ext4_inode_to_goal_block(struct inode *inode)
- 			((last_block - bg_start) / 16);
- 	return bg_start + colour;
+ static int ext4_xattr_inode_update_ref(handle_t *handle, struct inode *ea_inode,
+ 				       int ref_change)
+@@ -2166,7 +2183,7 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
+ 			ea_idebug(inode, "creating block %llu",
+ 				  (unsigned long long)block);
+ 
+-			new_bh = sb_getblk(sb, block);
++			new_bh = ext4_xattr_getblk(sb, block);
+ 			if (unlikely(!new_bh)) {
+ 				error = -ENOMEM;
+ getblk_failed:
+@@ -2282,6 +2299,7 @@ int ext4_xattr_ibody_find(struct inode *inode, struct ext4_xattr_info *i,
+ 	}
+ 	return 0;
  }
-+EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_inode_to_goal_block);
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_xattr_ibody_find);
  
+ int ext4_xattr_ibody_set(handle_t *handle, struct inode *inode,
+ 				struct ext4_xattr_info *i,
+@@ -2340,6 +2358,7 @@ int ext4_xattr_ibody_set(handle_t *handle, struct inode *inode,
+ 	ext4_put_ea_inode(ea_inode);
+ 	return 0;
+ }
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_xattr_ibody_set);
+ 
+ static int ext4_xattr_value_same(struct ext4_xattr_search *s,
+ 				 struct ext4_xattr_info *i)
+@@ -2537,6 +2556,7 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
+ 	ext4_write_unlock_xattr(inode, &no_expand);
+ 	return error;
+ }
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_xattr_set_handle);
+ 
+ int ext4_xattr_set_credits(struct inode *inode, size_t value_len,
+ 			   bool is_create, int *credits)
+@@ -2564,6 +2584,7 @@ int ext4_xattr_set_credits(struct inode *inode, size_t value_len,
+ 	up_read(&EXT4_I(inode)->xattr_sem);
+ 	return err;
+ }
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_xattr_set_credits);
+ 
+ /*
+  * ext4_xattr_set()
+@@ -2612,6 +2633,7 @@ ext4_xattr_set(struct inode *inode, int name_index, const char *name,
+ 
+ 	return error;
+ }
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_xattr_set);
+ 
+ /*
+  * Shift the EA entries in the inode to create space for the increased
+@@ -2903,6 +2925,7 @@ int ext4_expand_extra_isize_ea(struct inode *inode, int new_extra_isize,
+ 	}
+ 	return error;
+ }
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_expand_extra_isize_ea);
+ 
+ /*
+  * ext4_xattr_delete_inode()
+@@ -3011,6 +3034,7 @@ int ext4_xattr_delete_inode(handle_t *handle, struct inode *inode,
+ 	brelse(bh);
+ 	return error;
+ }
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_xattr_delete_inode);
+ 
+ /*
+  * Worker function for deferred EA inode iput.  Processes all inodes queued
+@@ -3064,12 +3088,14 @@ void ext4_put_ea_inode(struct inode *inode)
+ 	 */
+ 	schedule_delayed_work(&EXT4_SB(inode->i_sb)->s_ea_inode_work, 1);
+ }
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_put_ea_inode);
+ 
+ void ext4_init_ea_inode_work(struct ext4_sb_info *sbi)
+ {
+ 	init_llist_head(&sbi->s_ea_inode_to_free);
+ 	INIT_DELAYED_WORK(&sbi->s_ea_inode_work, ext4_ea_inode_work);
+ }
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_init_ea_inode_work);
+ 
+ /*
+  * ext4_xattr_block_cache_insert()
+@@ -3267,10 +3293,12 @@ ext4_xattr_create_cache(void)
+ {
+ 	return mb_cache_create(HASH_BUCKET_BITS);
+ }
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_xattr_create_cache);
+ 
+ void ext4_xattr_destroy_cache(struct mb_cache *cache)
+ {
+ 	if (cache)
+ 		mb_cache_destroy(cache);
+ }
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_xattr_destroy_cache);
+ 
+diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
+index 821dc6a50e51..1a72e68cea0c 100644
+--- a/fs/ext4/xattr.h
++++ b/fs/ext4/xattr.h
+@@ -229,3 +229,5 @@ static inline void ext4_xattr_inode_set_class(struct inode *ea_inode) { }
+ #endif
+ 
+ extern int ext4_get_inode_usage(struct inode *inode, qsize_t *usage);
++extern struct buffer_head *ext4_xattr_getblk(struct super_block *sb,
++					     ext4_fsblk_t block);
+diff --git a/fs/ext4/xattr_hurd.c b/fs/ext4/xattr_hurd.c
+index a3ecbff72b10..9cd42f6546b5 100644
+--- a/fs/ext4/xattr_hurd.c
++++ b/fs/ext4/xattr_hurd.c
+@@ -50,3 +50,7 @@ const struct xattr_handler ext4_xattr_hurd_handler = {
+ 	.get	= ext4_xattr_hurd_get,
+ 	.set	= ext4_xattr_hurd_set,
+ };
++
++#if IS_ENABLED(CONFIG_EXT4_KUNIT_TESTS)
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_xattr_hurd_handler);
++#endif
+diff --git a/fs/ext4/xattr_trusted.c b/fs/ext4/xattr_trusted.c
+index 458e1982ef83..d5d033ba7594 100644
+--- a/fs/ext4/xattr_trusted.c
++++ b/fs/ext4/xattr_trusted.c
+@@ -45,3 +45,7 @@ const struct xattr_handler ext4_xattr_trusted_handler = {
+ 	.get	= ext4_xattr_trusted_get,
+ 	.set	= ext4_xattr_trusted_set,
+ };
++
++#if IS_ENABLED(CONFIG_EXT4_KUNIT_TESTS)
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_xattr_trusted_handler);
++#endif
+diff --git a/fs/ext4/xattr_user.c b/fs/ext4/xattr_user.c
+index ad35215f6610..26087e98677b 100644
+--- a/fs/ext4/xattr_user.c
++++ b/fs/ext4/xattr_user.c
+@@ -48,3 +48,7 @@ const struct xattr_handler ext4_xattr_user_handler = {
+ 	.get	= ext4_xattr_user_get,
+ 	.set	= ext4_xattr_user_set,
+ };
++
++#if IS_ENABLED(CONFIG_EXT4_KUNIT_TESTS)
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_xattr_user_handler);
++#endif
 -- 
 2.56.1.708.g77570a6a1d-goog
 
