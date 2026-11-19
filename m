@@ -1,60 +1,60 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=18.9.28.11
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
 	t=1795115863;
-	b=QVFL6cG+w2nFGOhpZNf+rFz7Ziz2oRPYa1BbSrTJQBGm0Ak/9ygI++2GeNZ16wZ6NI+5
-	 PbkBvHoDuAc9ji6A+noWQW6oABBZw+NNQaV7cUNDy/nbQn3sugogbZ8ZyX9ytga9gLZN/
-	 bAGwuqJwrRfj0uY9VzP437qJmayII+UxS4SGwIMEEqcVcmgoZgKnBceLiwRa2HBWhEraZ
-	 3WnewKKie3xfvTD5LucAyJG+erfF8GuavouBYTftu8LOj/TZebG4vIDeiLQoM6cRzT11H
-	 ovpzF0gvVx4QPDO+/SIZsw8VCbe3rTp5wyCTBH+fe3Ef3NKKd97dr0k+/8w6kAFL82A==
+	b=4DqsryJGy7K+VW5cV4VdWNB4kAPF1y2eLxs56dUBN4khTahk+AfCkhY27xHL5e+3wfuL
+	 QnNedAYgFH3QjIEUap3Bs1tmOcPCM1Xz6DTo1haW9t7giPkTfIJ/Gtma71wTKbYuFFxJI
+	 Bw8Ev0zyIu41TFdIFdMfxP73cTx6LdOqBeelE/h1BVGxRuUk+jcimQNdF8QmlM4zlbPmU
+	 G0B3syLzxdi3v2Q31z3y4/Ro2Ct1tnz5Q6x7rnYgpEO3FnAFG0qqZRSa8BDKcSB62y8Bo
+	 Yepn4ceZZMmG8GMAJIqGSrxE9+mRk/E2Zd9ratjxPdS4b9wq74PpX6YCv4W3F6pmH0g==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
 	a=rsa-sha256; c=relaxed/relaxed; t=1795115863;
 	h=DMARC-Filter:Received:DKIM-Signature:Received:From:To:Cc:Subject:
 	 Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
 	 Content-Transfer-Encoding;
-	bh=X0Wu9FKYYJo2u044+VhXSMGUQItygBYZoeRhkgWHVho=;
-	b=5DafEk9PZ5rQ8sleLG0tc6Vb3iww8QifgHJ2ekxZbojO2yQnrjP1ChDSKfRZjmmpiHth
-	 IMR1S84hHMJ51kFwK44jM6miRfMyOKrg6RvJE/QLGDKOmSYxKlm/hBCS3zHQW7T5k4lKy
-	 doETzXKsPKJQi0TbcwkHLKIUxotDWSzvbFh0JfZnWFT1xewa4WEgn/AlirWyNVAO/y5GW
-	 VFokKyI1qZxv5TEXzPSiBF202jjN1lCreRycbfmWu61LaW3gzfhq2l/yGy5/6VK0SbBuN
-	 Ru+iVy1ELaWdSNe+cRO38uIVe4xM94QOrQpvUMw4WUed44xm5kLaz1YUJIjBydRaCVQ==
+	bh=Jz9rszTLzhWPmROxLJCIwlTIYzff+l7u7mPH84e4rUk=;
+	b=evegs4ORJQ+Ulxgu3x+AJ7XXBPfOA5H7nc78GHYqgHChBdBNGp3tjZhHGMkmZyLliXos
+	 FiT01e2IodPP65Ju3qxHzWwYhxOx9GJ9FfXm/090ASChParrlKRTvViFZyAxecUlTISCP
+	 Gx5Jjz9mPAFoNbX1um+3IXguI/SaRXgxrk/W2tPrwyym9VGV/MYx/dfbtHMT5pevemhoy
+	 T+GBPM4XHZ70I3q0yVZwAPE4UqnroGFtWLBCgJ7ygQnMrIjFqceyiwfBuRNET96y4mxtr
+	 LgX+10ALW60CVbkFgu1a6YvbK9rE9WJU1W9OlqLes7a/jGr8FwaxqkgPpyWiTPoWOmw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=mit.edu;
 	spf=pass smtp.mailfrom=mit.edu;
-	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=haqqE8cj;
+	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=VeRdYFSv;
 	arc=none smtp.remote-ip=18.9.28.11
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1B214606A33F
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3A06B606A325
 	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2026 19:17:43 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 1B214606A33F
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 3A06B606A325
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=haqqE8cj
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=VeRdYFSv
 Received: from trampoline.thunk.org (pool-173-48-114-214.bstnma.fios.verizon.net [173.48.114.214])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AJJHYCt029960
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AJJHYeJ030003
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 19 Nov 2026 14:17:34 -0500
+	Thu, 19 Nov 2026 14:17:35 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1795115855; bh=X0Wu9FKYYJo2u044+VhXSMGUQItygBYZoeRhkgWHVho=;
+	t=1795115855; bh=Jz9rszTLzhWPmROxLJCIwlTIYzff+l7u7mPH84e4rUk=;
 	h=From:Subject:Date:Message-ID:MIME-Version;
-	b=haqqE8cjmGTzWDPl0d1/MP7bf2cMwozm3wkSna2s1gaphIRw7sIQGGv4hrpcEZFL+
-	 I/UFqdE3r1LC6kGXBD3STpYtLBtQhHKJxw7CjSYyVD7J7hMgK2W+5HuRn0BqHzPJ99
-	 fi+rUYUH2rJn62p8tjQxLm/p3j8CnHcZT60SGn7arMlHnfhfqM6IvInK4Z0lftEJ5E
-	 BzSEomw1Ey6TiNTxse/cZAqTk2+QY6AFGT9FHe9EUZ1VpTax/mN6LMYd9SLyI/oP3w
-	 rlad9zy+R7wHUkrqPy8EQkCjX/dTbPyVcbXA5lm2c19h6U5Yv22SnPBv4v9P/AgjD3
-	 5/p3+rplIBetQ==
+	b=VeRdYFSv9/wzyJKh14qRrMKULFYZV8EA7uZMW+CTP30QVBLr1yWZOIWIupq2KFyrZ
+	 0pnfCJvsOhgCkoxIy4cr819W14F1lEu90IcoGMEFlkmA2dpBjtLa6uGlvXOEx/orVC
+	 OyfP2f9mE2vnYczgGaFLk7gwbXl+mvtDNO3hBI5DHwLhvgFvPg8t0rw3aqLSkLyusa
+	 4289kIgBh+EMrAgruSMikWc/8Y+m2O9AbZtDKJXvDbfionFjRHnlZy+zTPiuyTgvip
+	 ppgFxR6rB4/tU9kZorHy12F8To6D/yHFZtS5Ck4Gw0f+p2EJgyxP2pc0TU7tSGgbtt
+	 bNRbIRudUBx7g==
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id 5AAD32E015C; Thu, 19 Nov 2026 14:17:31 -0500 (EST)
+	id 6ED672E0162; Thu, 19 Nov 2026 14:17:31 -0500 (EST)
 From: "Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Cc: "Theodore Ts'o" <tytso@mit.edu>, stable@kernel.org
-Subject: [PATCH -v2 23/32] ext4: initialize inline dir block under buffer lock before raising i_size
-Date: Thu, 19 Nov 2026 14:17:10 -0500
-Message-ID: <20261119191719.1943298-24-tytso@mit.edu>
+Subject: [PATCH -v2 29/32] ext4: reject atomic writes split by fscrypt without warning
+Date: Thu, 19 Nov 2026 14:17:16 -0500
+Message-ID: <20261119191719.1943298-30-tytso@mit.edu>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <20261119191719.1943298-1-tytso@mit.edu>
 References: <20261119191719.1943298-1-tytso@mit.edu>
@@ -69,229 +69,203 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-When ext4_convert_inline_data_nolock() converts an inline directory to a
-normal directory block, it unlocked data_bh and raised inode->i_size
-(with both a redundant bare store and i_size_write()) BEFORE calling
-ext4_init_dirblock() to populate ".", "..", copied entries, checksum,
-and buffer uptodate/verified flags.  Furthermore, ext4_init_dirblock()
-set buffer_uptodate and buffer_verified before calling
-ext4_dirblock_csum_set().
+In ext4_iomap_begin(), map.m_len is clamped by fscrypt_limit_io_blocks()
+before the IOMAP_ATOMIC length check.  For an encrypted inode using
+IV_INO_LBLK_32, an unprivileged user issuing a multi-block atomic write
+across a 32-bit DUN wraparound causes fscrypt_limit_io_blocks() to shorten
+map.m_len below length >> blkbits, triggering WARN_ON_ONCE(1).
 
-This opened a race window where concurrent lookups or readers could
-observe an unlocked, uninitialized, or unchecksummed directory block
-after i_size was already increased, and also left i_size/i_disksize
-bumped if ext4_handle_dirty_metadata() failed and fell back to
-ext4_restore_inline_data().
+Check fscrypt_limit_io_blocks() for IOMAP_ATOMIC before allocating blocks
+and return -EINVAL cleanly without warning if the write would have to be
+split.  Also move the existing WARN_ON_ONCE(1) check on ext4's own mapping
+length ahead of fscrypt_limit_io_blocks() and handle any post-mapping
+truncation cleanly with -EINVAL.
 
-Factor out ext4_init_dirblock_bh() which writes the directory entries,
-initializes the dirent tail, computes the metadata checksum, and only
-then marks the buffer uptodate and verified.  Call it while holding
-lock_buffer(data_bh), unlock data_bh before calling
-ext4_handle_dirty_metadata() (avoiding any lock_buffer() recursion in
-no-journal sync_dirty_buffer() paths), and only update i_size/i_disksize
-(rolling them back if ext4_mark_inode_dirty() fails) after the block is
-fully initialized and dirtied.
+Add an ext4_fscrypt_limit_io_blocks() wrapper with a KUnit static stub
+redirect and extend inode_test_iomap_and_atomic_writes() in
+fs/ext4/inode-test.c to cover both checks and non-atomic truncation.
 
-Extend test_inline_dir_conversion_and_corruptions() in ext4_inline_test
-to verify the buffer flags, valid metadata checksum, deferred i_size
-update, and rollback on dirty-metadata failure.
-
-Fixes: 90f097b1403f ("ext4: refactor the inline directory conversion and new directory codepaths")
+Fixes: b86629c2b299 ("ext4: Add multi-fsblock atomic write support with bigalloc")
 Cc: stable@kernel.org
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/ext4.h        |  3 ++
- fs/ext4/inline-test.c | 73 ++++++++++++++++++++++++++++++++++++++-----
- fs/ext4/inline.c      | 19 +++++++----
- fs/ext4/namei.c       | 18 ++++++++---
- 4 files changed, 94 insertions(+), 19 deletions(-)
+ fs/ext4/ext4.h       |  2 ++
+ fs/ext4/inode-test.c | 66 ++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/inode.c      | 36 +++++++++++++++++++-----
+ 3 files changed, 97 insertions(+), 7 deletions(-)
 
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index eb0ba9edfc99..22500ade662b 100644
+index 22500ade662b..ab94c7aea691 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -4132,6 +4132,9 @@ static inline int ext4_has_inline_data(struct inode *inode)
- extern const struct inode_operations ext4_dir_inode_operations;
- extern const struct inode_operations ext4_special_inode_operations;
- extern struct dentry *ext4_get_parent(struct dentry *child);
-+extern void ext4_init_dirblock_bh(struct inode *inode, struct buffer_head *bh,
-+				  unsigned int parent_ino, void *inline_buf,
-+				  int inline_size);
- extern int ext4_init_dirblock(handle_t *handle, struct inode *inode,
- 			      struct buffer_head *dir_block,
- 			      unsigned int parent_ino, void *inline_buf,
-diff --git a/fs/ext4/inline-test.c b/fs/ext4/inline-test.c
-index 2c57e1a79754..d8f3c40198a3 100644
---- a/fs/ext4/inline-test.c
-+++ b/fs/ext4/inline-test.c
-@@ -63,6 +63,12 @@ struct inline_test_ctx {
- 	int da_get_block_prep_err;
- 	int journal_mode;
- 	bool es_stats_inited;
-+	bool dirty_data_bh_seen;
-+	bool dirty_data_bh_locked;
-+	bool dirty_data_bh_uptodate;
-+	bool dirty_data_bh_verified;
-+	int dirty_data_bh_csum_ok;
-+	loff_t dirty_data_bh_isize;
+@@ -3361,6 +3361,8 @@ struct buffer_head *ext4_sb_find_get_block(struct super_block *sb,
+ 					   ext4_fsblk_t block);
+ struct buffer_head *ext4_sb_getblk_unmovable(struct super_block *sb,
+ 					     ext4_fsblk_t block);
++u64 ext4_fscrypt_limit_io_blocks(const struct inode *inode, u64 lblk,
++				 u64 nr_blocks);
+ #if IS_ENABLED(CONFIG_EXT4_KUNIT_TESTS)
+ int ext4_inode_csum_verify_test(struct inode *inode, struct ext4_inode *raw,
+ 				struct ext4_inode_info *ei);
+diff --git a/fs/ext4/inode-test.c b/fs/ext4/inode-test.c
+index 5671e674cffa..cf0c3859517f 100644
+--- a/fs/ext4/inode-test.c
++++ b/fs/ext4/inode-test.c
+@@ -366,6 +366,9 @@ struct inode_test_ctx {
+ 	unsigned int orphan_add_calls;
+ 	unsigned int orphan_del_calls;
+ 	unsigned int free_inode_calls;
++	u64 fscrypt_io_limit;
++	unsigned int fscrypt_limit_skip;
++	unsigned int fscrypt_limit_calls;
  };
  
- static struct inline_test_ctx *t_ctx;
-@@ -110,6 +116,15 @@ static int stub_handle_dirty_metadata(const char *where, unsigned int line,
- 				      handle_t *handle, struct inode *inode,
- 				      struct buffer_head *bh)
- {
-+	if (bh == &t_ctx->data_bh && inode && S_ISDIR(inode->i_mode)) {
-+		t_ctx->dirty_data_bh_seen = true;
-+		t_ctx->dirty_data_bh_locked = buffer_locked(bh);
-+		t_ctx->dirty_data_bh_uptodate = buffer_uptodate(bh);
-+		t_ctx->dirty_data_bh_verified = buffer_verified(bh);
-+		t_ctx->dirty_data_bh_csum_ok =
-+			ext4_dirblock_csum_verify(inode, bh);
-+		t_ctx->dirty_data_bh_isize = i_size_read(inode);
+ static unsigned long inode_test_shrinker_count(struct shrinker *shrink,
+@@ -2897,6 +2900,24 @@ static void inode_test_get_block_bread_and_walk_buffers(struct kunit *test)
+  * -------------------------------------------------------------------------
+  */
+ 
++static u64 inode_test_fscrypt_limit_stub(const struct inode *inode, u64 lblk,
++					 u64 nr_blocks)
++{
++	struct kunit *test = kunit_get_current_test();
++	struct inode_test_ctx *ctx = test ? test->priv : NULL;
++
++	if (!ctx)
++		return nr_blocks;
++	ctx->fscrypt_limit_calls++;
++	if (ctx->fscrypt_limit_skip) {
++		ctx->fscrypt_limit_skip--;
++		return nr_blocks;
 +	}
- 	t_ctx->dirty_metadata_calls++;
- 	if (t_ctx->dirty_metadata_fail_on_call > 0 &&
- 	    t_ctx->dirty_metadata_calls == t_ctx->dirty_metadata_fail_on_call)
-@@ -1858,15 +1873,57 @@ static void test_inline_dir_conversion_and_corruptions(struct kunit *test)
- 	 * 2. Successful conversion of full inline directory to a normal
- 	 * 1024-byte directory block -> ext4_try_add_inline_entry returns 0
- 	 * and data_block_buf starts with "." and ".." followed by copied entries.
-+	 * Verify checksum, uptodate, and verified flags are already set while
-+	 * data_bh is unlocked and before i_size is raised to blocksize, and
-+	 * that a dirty-metadata error does not leave i_size bumped.
- 	 */
--	memset(ctx->data_block_buf, 0, sizeof(ctx->data_block_buf));
--	handle = ext4_journal_start(dir, EXT4_HT_DIR, 1);
--	KUNIT_ASSERT_FALSE(test, IS_ERR(handle));
--	ret = ext4_try_add_inline_entry(handle, &env->fname, dir, &env->child);
--	ext4_journal_stop(handle);
--	KUNIT_EXPECT_EQ(test, ret, 0);
--	KUNIT_EXPECT_FALSE(test, ext4_has_inline_data(dir));
--	KUNIT_EXPECT_EQ(test, i_size_read(dir), (loff_t)TEST_BLOCK_SIZE);
-+	{
-+		loff_t old_isize = i_size_read(dir);
-+
-+		ctx->es.s_feature_ro_compat |=
-+			cpu_to_le32(EXT4_FEATURE_RO_COMPAT_METADATA_CSUM);
-+
-+		clear_buffer_uptodate(&ctx->data_bh);
-+		clear_buffer_verified(&ctx->data_bh);
-+		ctx->dirty_data_bh_seen = false;
-+		ctx->dirty_metadata_err = -EIO;
-+		ctx->dirty_metadata_fail_on_call = 0;
-+		handle = ext4_journal_start(dir, EXT4_HT_DIR, 1);
-+		KUNIT_ASSERT_FALSE(test, IS_ERR(handle));
-+		ret = ext4_try_add_inline_entry(handle, &env->fname, dir,
-+						&env->child);
-+		ext4_journal_stop(handle);
-+		ctx->dirty_metadata_err = 0;
-+		KUNIT_EXPECT_EQ(test, ret, -EIO);
-+		KUNIT_EXPECT_TRUE(test, ext4_has_inline_data(dir));
-+		KUNIT_EXPECT_EQ(test, i_size_read(dir), old_isize);
-+		KUNIT_EXPECT_EQ(test, ctx->ei.i_disksize, old_isize);
-+
-+		memset(ctx->data_block_buf, 0, sizeof(ctx->data_block_buf));
-+		clear_buffer_uptodate(&ctx->data_bh);
-+		clear_buffer_verified(&ctx->data_bh);
-+		ctx->dirty_data_bh_seen = false;
-+		handle = ext4_journal_start(dir, EXT4_HT_DIR, 1);
-+		KUNIT_ASSERT_FALSE(test, IS_ERR(handle));
-+		ret = ext4_try_add_inline_entry(handle, &env->fname, dir,
-+						&env->child);
-+		ext4_journal_stop(handle);
-+		KUNIT_EXPECT_EQ(test, ret, 0);
-+		KUNIT_EXPECT_FALSE(test, ext4_has_inline_data(dir));
-+		KUNIT_EXPECT_TRUE(test, ctx->dirty_data_bh_seen);
-+		KUNIT_EXPECT_FALSE(test, ctx->dirty_data_bh_locked);
-+		KUNIT_EXPECT_TRUE(test, ctx->dirty_data_bh_uptodate);
-+		KUNIT_EXPECT_TRUE(test, ctx->dirty_data_bh_verified);
-+		KUNIT_EXPECT_EQ(test, ctx->dirty_data_bh_csum_ok, 1);
-+		KUNIT_EXPECT_EQ(test, ctx->dirty_data_bh_isize, old_isize);
-+		KUNIT_EXPECT_EQ(test, i_size_read(dir),
-+				(loff_t)TEST_BLOCK_SIZE);
-+		KUNIT_EXPECT_EQ(test, ctx->ei.i_disksize,
-+				(loff_t)TEST_BLOCK_SIZE);
-+
-+		ctx->es.s_feature_ro_compat &=
-+			~cpu_to_le32(EXT4_FEATURE_RO_COMPAT_METADATA_CSUM);
-+	}
- 
- 	/* Verify "." and ".." headers in converted block */
- 	de = (struct ext4_dir_entry_2 *)ctx->data_block_buf;
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index 3e77f46f7774..00411808ed01 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -1191,17 +1191,24 @@ static int ext4_convert_inline_data_nolock(handle_t *handle,
- 		error = ext4_handle_dirty_metadata(handle,
- 						   inode, data_bh);
- 	} else {
--		unlock_buffer(data_bh);
--		inode->i_size = inode->i_sb->s_blocksize;
--		i_size_write(inode, inode->i_sb->s_blocksize);
--		EXT4_I(inode)->i_disksize = inode->i_sb->s_blocksize;
-+		loff_t old_size = i_size_read(inode);
-+		loff_t old_disksize = EXT4_I(inode)->i_disksize;
- 
--		error = ext4_init_dirblock(handle, inode, data_bh,
-+		ext4_init_dirblock_bh(inode, data_bh,
- 			  le32_to_cpu(((struct ext4_dir_entry_2 *)buf)->inode),
- 			  buf + EXT4_INLINE_DOTDOT_SIZE,
- 			  inline_size - EXT4_INLINE_DOTDOT_SIZE);
--		if (!error)
-+		unlock_buffer(data_bh);
-+		error = ext4_handle_dirty_metadata(handle, inode, data_bh);
-+		if (!error) {
-+			i_size_write(inode, inode->i_sb->s_blocksize);
-+			EXT4_I(inode)->i_disksize = inode->i_sb->s_blocksize;
- 			error = ext4_mark_inode_dirty(handle, inode);
-+			if (error) {
-+				i_size_write(inode, old_size);
-+				EXT4_I(inode)->i_disksize = old_disksize;
-+			}
-+		}
- 	}
- 
- out_restore:
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index f1d4a99af1a8..863a30d50535 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -2779,9 +2779,9 @@ static int ext4_tmpfile(const struct mnt_idmap *idmap, struct inode *dir,
- 	return err;
- }
- 
--int ext4_init_dirblock(handle_t *handle, struct inode *inode,
--		       struct buffer_head *bh, unsigned int parent_ino,
--		       void *inline_buf, int inline_size)
-+void ext4_init_dirblock_bh(struct inode *inode, struct buffer_head *bh,
-+			   unsigned int parent_ino, void *inline_buf,
-+			   int inline_size)
- {
- 	struct ext4_dir_entry_2 *de = (struct ext4_dir_entry_2 *) bh->b_data;
- 	size_t			blocksize = bh->b_size;
-@@ -2819,10 +2819,18 @@ int ext4_init_dirblock(handle_t *handle, struct inode *inode,
- 
- 	if (csum_size)
- 		ext4_initialize_dirent_tail(bh, blocksize);
--	BUFFER_TRACE(dir_block, "call ext4_handle_dirty_metadata");
-+	ext4_dirblock_csum_set(inode, bh);
- 	set_buffer_uptodate(bh);
- 	set_buffer_verified(bh);
--	return ext4_handle_dirty_dirblock(handle, inode, bh);
++	if (ctx->fscrypt_io_limit && nr_blocks > ctx->fscrypt_io_limit)
++		return ctx->fscrypt_io_limit;
++	return nr_blocks;
 +}
 +
-+int ext4_init_dirblock(handle_t *handle, struct inode *inode,
-+		       struct buffer_head *bh, unsigned int parent_ino,
-+		       void *inline_buf, int inline_size)
-+{
-+	ext4_init_dirblock_bh(inode, bh, parent_ino, inline_buf, inline_size);
-+	BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
-+	return ext4_handle_dirty_metadata(handle, inode, bh);
+ static void inode_test_iomap_and_atomic_writes(struct kunit *test)
+ {
+ 	struct inode_test_ctx *ctx = inode_test_setup(test);
+@@ -3040,6 +3061,51 @@ static void inode_test_iomap_and_atomic_writes(struct kunit *test)
+ 	KUNIT_EXPECT_EQ(test, iomap.addr, (u64)INODE_TEST_DATA_BLK0 << 12);
+ 	KUNIT_EXPECT_TRUE(test, !!(iomap.flags & IOMAP_F_ATOMIC_BIO));
+ 	KUNIT_EXPECT_GT(test, ctx->zeroout_calls, 0U);
++
++	/*
++	 * 7. Atomic write truncated by fscrypt DUN wraparound returns -EINVAL
++	 * without triggering WARN_ON_ONCE(), both on the pre-allocation check
++	 * and on the post-mapping fallback check, while non-atomic I/O is
++	 * cleanly truncated to the limited block count.
++	 */
++	kunit_activate_static_stub(test, ext4_fscrypt_limit_io_blocks,
++				   inode_test_fscrypt_limit_stub);
++	inode_test_reset_mock_inode(ctx, S_IFREG | 0644);
++	inode->i_size = 16384;
++	inode_test_insert_leaf_extent(inode, 0, 2, INODE_TEST_DATA_BLK0, false);
++	ctx->next_alloc_pblk = INODE_TEST_DATA_BLK0 + 2;
++	ctx->alloc_calls = 0;
++	ctx->zeroout_calls = 0;
++	ctx->fscrypt_io_limit = 2;
++	ctx->fscrypt_limit_skip = 0;
++	ctx->fscrypt_limit_calls = 0;
++
++	err = ext4_iomap_begin(inode, 0, 16384,
++			       IOMAP_WRITE | IOMAP_DIRECT | IOMAP_ATOMIC,
++			       &iomap, &srcmap);
++	KUNIT_EXPECT_EQ(test, err, -EINVAL);
++	KUNIT_EXPECT_EQ(test, ctx->alloc_calls, 0U);
++	KUNIT_EXPECT_EQ(test, ctx->zeroout_calls, 0U);
++	KUNIT_EXPECT_EQ(test, ctx->fscrypt_limit_calls, 1U);
++
++	/* Skip the pre-alloc check to exercise the post-mapping check too */
++	ctx->fscrypt_limit_skip = 1;
++	ctx->fscrypt_limit_calls = 0;
++	err = ext4_iomap_begin(inode, 0, 16384,
++			       IOMAP_WRITE | IOMAP_DIRECT | IOMAP_ATOMIC,
++			       &iomap, &srcmap);
++	KUNIT_EXPECT_EQ(test, err, -EINVAL);
++	KUNIT_EXPECT_EQ(test, ctx->fscrypt_limit_calls, 2U);
++
++	/* Non-atomic mapping is truncated cleanly without error */
++	ctx->fscrypt_limit_skip = 0;
++	memset(&iomap, 0, sizeof(iomap));
++	err = ext4_iomap_begin(inode, 0, 16384, IOMAP_WRITE | IOMAP_DIRECT,
++			       &iomap, &srcmap);
++	KUNIT_EXPECT_EQ(test, err, 0);
++	KUNIT_EXPECT_EQ(test, iomap.length, 8192ULL);
++
++	kunit_deactivate_static_stub(test, ext4_fscrypt_limit_io_blocks);
  }
- EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_init_dirblock);
  
+ /* -------------------------------------------------------------------------
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index d4371e94503b..3c2be0da5e2c 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1140,6 +1140,15 @@ struct buffer_head *ext4_sb_getblk_unmovable(struct super_block *sb,
+ }
+ EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_sb_getblk_unmovable);
+ 
++u64 ext4_fscrypt_limit_io_blocks(const struct inode *inode, u64 lblk,
++				 u64 nr_blocks)
++{
++	KUNIT_STATIC_STUB_REDIRECT(ext4_fscrypt_limit_io_blocks, inode, lblk,
++				   nr_blocks);
++	return fscrypt_limit_io_blocks(inode, lblk, nr_blocks);
++}
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_fscrypt_limit_io_blocks);
++
+ /*
+  * `handle' can be NULL if create is zero
+  */
+@@ -4032,6 +4041,16 @@ int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+ 			  EXT4_MAX_LOGICAL_BLOCK) - map.m_lblk + 1;
+ 	orig_mlen = map.m_len;
+ 
++	/*
++	 * Atomic writes must be issued as a single contiguous bio, so reject
++	 * requests that fscrypt would have to split across a DUN wraparound
++	 * before allocating blocks.
++	 */
++	if ((flags & IOMAP_ATOMIC) &&
++	    ext4_fscrypt_limit_io_blocks(inode, map.m_lblk, map.m_len) <
++	    map.m_len)
++		return -EINVAL;
++
+ 	if (flags & IOMAP_WRITE) {
+ 		/*
+ 		 * We check here if the blocks are already allocated, then we
+@@ -4067,13 +4086,6 @@ int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+ 	if (ret < 0)
+ 		return ret;
+ out:
+-	/*
+-	 * Sometimes I/O to an encrypted file has to be broken up to guarantee
+-	 * DUN contiguity.  Handle this by limiting the length of the mapping
+-	 * returned.
+-	 */
+-	map.m_len = fscrypt_limit_io_blocks(inode, map.m_lblk, map.m_len);
+-
+ 	/*
+ 	 * Before returning to iomap, let's ensure the allocated mapping
+ 	 * covers the entire requested length for atomic writes.
+@@ -4084,6 +4096,16 @@ int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+ 			return -EINVAL;
+ 		}
+ 	}
++
++	/*
++	 * Sometimes I/O to an encrypted file has to be broken up to guarantee
++	 * DUN contiguity.  Handle this by limiting the length of the mapping
++	 * returned.
++	 */
++	map.m_len = ext4_fscrypt_limit_io_blocks(inode, map.m_lblk, map.m_len);
++	if ((flags & IOMAP_ATOMIC) && map.m_len < (length >> blkbits))
++		return -EINVAL;
++
+ 	ext4_set_iomap(inode, iomap, &map, offset, length, flags);
+ 
+ 	return 0;
 -- 
 2.56.1.708.g77570a6a1d-goog
 
