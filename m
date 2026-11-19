@@ -1,55 +1,58 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=18.9.28.11
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795121385;
-	b=Vg3pg/t9m0uTEBWze9QDmyTAKL9YxR3qW+oobNjKFG1px+9MJdVE6WKf5qsexPqM22CR
-	 mZJRn8bs6emi0niHtwwS+zhY9A9NuhEau2v2VSbuzVBdXijobNcBEAzGroHC13vOnqYjm
-	 DjmljN5DJ6PM7+irFjVa8P+wOkflkiQEW0bjVDjJQdxsd5Mln6jV+6GhzArKpKyWrYplH
-	 nwtoz/Lqqq6TjgMmtyFisG01QUE4Cu/ivNg1fqWst8TEgWFMlhzKO760Iz3++ptr0/+Xr
-	 dfvlWREDPM2/ITKL8zwMTxUeTxr/bNjYGDYQdNwrijiF1z3N5Di2m4H9riRrIx3mbVA==
+	t=1795123416;
+	b=o0q0rOsI4zmrdtx5FvaSFqaNSfRoj6cvZuKmjjLIryh2l9jhAWJFFILdCWUpKf6Ucptb
+	 dmz86fkjfMq8xUFeaTNF/7Q3ti26j54vZNpv9pMM0EOktEPZ/il06ShIGEZBcecsA5W6C
+	 s5QSq0vOBrp1BKndP5N6OMQdSkPO1++5Khsrhqxyfr+8mv+huexC3cHeTkxmhNAc6tYDS
+	 h3wpGxX6dEJAf6/nPrQ7V1fAP45XhGpPo4JS/NU4xzxFK1SVwjox+wYOR3zEkdJMU5HDv
+	 Zqt0KZVCNsPYHLRZ3heYd23NJ0xEKto6Xf492y8lxJbOdM/Zofb+Rp3FWwrtoFrdaOw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795121385;
-	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
-	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
-	bh=6uUyYlgjM4gUdz5mj1dp5lYq0596fRi9TUMCukh9VpQ=;
-	b=rP2lrXWpmuKpLCwJ6TXESEtwkbHdNAURHNefVse34z4WRtwv+MCikcfQ7z/H+radPO2q
-	 k7rro/UKSasYTlLnQv1ye47upO7OLFM6pQXgIDMy6/s656s/D/kRosoOQSI5LN5IVV6CU
-	 z092tk0RhDy1wMwICdRbWfaXNRhkh+65xxk6bHhsvzLhDHlC2kEhs1gx0tOnmjrW/zIYv
-	 az7R/sRnelxsPm6vsmXbkol/ixpw6VKuP1JUbWya/Fac6QefyYDKiSWG5lDyCTgJKr/JA
-	 1zL0ZC2GEm1m7JjTB1iDrX40QatCHqreaWx+CXUWKJxV/5Qd9IaL8TVYCI+EQXvqlwQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795123416;
+	h=DMARC-Filter:Received:DKIM-Signature:Received:Date:From:To:Subject:
+	 Message-ID:MIME-Version:Content-Type:Content-Disposition;
+	bh=9XwAo03nGDUfHZMAPg0nnz6ZbR2dq5xffwep78zO2r0=;
+	b=UPeS/jPEa94IsQ5K97cVHQWlfkLxzSVyWrvKXqqxVUbsiRp52dePPz2KZqBTRxR6zcXM
+	 L5J09rWDzGJAE5fAwLAFI1cG4O17RcTmI7QAoXEXjsYiOJDvp5YqJdK3cExJdO9EnzRAP
+	 htpQnCKZYy7X+qse0mbLEgGwyee+0mhLP3H2d/abg58IHuIEGSd0Im5WxvCNLF2tNpPzk
+	 j2seYzK5Dox3jpqrisJPI3+uK0wDP69azxg7YeneX7fOps4nUS/zA4Kx6BQr+kFUukF8I
+	 sdPCdafDYC8ujivVlNz6pcSrLyaD2eADpl82TVXbWu0/PXn/vlIiXEbsUxncSMEH6Sw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=XUsuVD2N;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=pass header.from=mit.edu;
+	spf=pass smtp.mailfrom=mit.edu;
+	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=S9QWJko3;
+	arc=none smtp.remote-ip=18.9.28.11
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0A48B606A905;
-	Thu, 19 Nov 2026 20:49:44 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 71D92606A320
+	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2026 21:23:35 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 71D92606A320
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=XUsuVD2N
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C419A1F000C0;
-	Thu, 19 Nov 2026 20:49:41 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795121384;
-	bh=6uUyYlgjM4gUdz5mj1dp5lYq0596fRi9TUMCukh9VpQ=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=XUsuVD2NP90/zfhUq9QbKDAGXZhdmG7O0dpAwPuMLXYuHA+VoVSq3LwTuzGNJ2xoy
-	 pV7h6GlpNWJZdh+tQ7T8BoZICBsaA2neeIJsyeGJPjHbEd8sWe8qD312t0m4XYkqV/
-	 LoSlP2csABz4sBDz1ttLmKZMKk3vQnxk3YuS21AsxlarQsWPozwmZMwptG4NWo0QR9
-	 N1wVktid4Bxzu54Xfs2Jy80X4EjDqQKBN1ZyQpXn7zh7DxjSVlmxETqGvXpTodcoIJ
-	 /PHgRfyNNNvlC/QJrm8d/c88bX+m/rrMjwyCSXG6XjQiLY63pymmDeSx+CM73mL4Pd
-	 /Lts2Y92lgbmg==
-Date: Thu, 19 Nov 2026 21:49:39 +0100
-From: Christian Brauner <brauner@kernel.org>
-To: Andrey Albershteyn <aalbersh@kernel.org>
-Cc: ebiggers@kernel.org, hch@lst.de, fsverity@lists.linux.dev, 
-	dsterba@suse.com, linux-xfs@vger.kernel.org, linux-btrfs@vger.kernel.org, 
-	linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
-	viro@zeniv.linux.org.uk, jaegeuk@kernel.org, chao@kernel.org, tytso@mit.edu
-Subject: Re: [PATCH v2 2/5] fsverity: add I_VERITY_BUILDING inode state flag
-Message-ID: <20261119-geben-irren-erspielen-4456e4be9246@brauner>
-References: <20261105115532.613467-1-aalbersh@kernel.org>
- <20261105115532.613467-3-aalbersh@kernel.org>
+	dkim=pass (2048-bit key, unprotected) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=S9QWJko3
+Received: from macsyma.thunk.org (c-73-9-28-129.hsd1.il.comcast.net [73.9.28.129])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AJLNUem012716
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Thu, 19 Nov 2026 16:23:32 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1795123412; bh=9XwAo03nGDUfHZMAPg0nnz6ZbR2dq5xffwep78zO2r0=;
+	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
+	b=S9QWJko3wEuAf2MwOHfM+K+to/LvkcCtxXHJ2yym9L+8grx4CNZ11vh3wTR1FteyJ
+	 yqytx6DexGDiZb/0FPE/KC8Wl7bb3fmFOvWSdFMFNwiWG4eTHkGTz4f4nbSA1YljSp
+	 KiOEw9v5JjxO4SN97dIYXREcWue5VKX96v5ebsOFAPky2SUMblICHA6IMbr8l7QrkT
+	 JMSAC2yi5YTysRJHdbKFsR37Zg05mDQoWUCECzA/+aSXUQZS5U7IG7wM9v1/vzbaXP
+	 KK38AQXoH3u4kOSUHBCwemCA4cySFi87WmTxe0DSbTo2ySObt43Z+UIiAG4ADO+WEO
+	 F8hI1EvbidloA==
+Received: by macsyma.thunk.org (Postfix, from userid 15806)
+	id 9D20B286BB57; Thu, 19 Nov 2026 16:23:30 -0500 (EST)
+Date: Thu, 19 Nov 2026 16:23:30 -0500
+From: "Theodore Tso" <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Subject: Transition to patchwork.kernel.org for ext4
+Message-ID: <av9gH-3h9t4Uy_xy@mit.edu>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -59,33 +62,19 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20261105115532.613467-3-aalbersh@kernel.org>
 
-On Thu, Nov 05, 2026 at 12:55:27PM +0100, Andrey Albershteyn wrote:
-> Every filesystem that supports fs-verity keeps a private runtime inode
-> flag meaning Merkle tree is currently being built *_VERITY_IN_PROGRESS.
-> They all serve the same two purposes: reject a concurrent enable with
-> -EBUSY and let the write paths recognize the special writes done while
-> the tree is under construction.
-> 
-> Hoist this flag into the VFS as a new inode state flag,
-> I_VERITY_BUILDING, and manage its lifetime in the generic fs-verity
-> enable path. The flag is set after ->begin_enable_verity() succeeds and
-> cleared after ->end_enable_verity() returns (both on the success and the
-> rollback paths). Add the concurrent-enable guard.
-> 
-> A new helper, fsverity_is_building(), is provided for filesystems to
-> query the flag. No filesystem uses it yet; the per-fs flags are
-> converted in following patches.
-> 
-> Signed-off-by: Andrey Albershteyn <aalbersh@kernel.org>
-> ---
->  fs/verity/enable.c       | 22 +++++++++++++++++++---
->  include/linux/fs.h       |  6 ++++++
->  include/linux/fsverity.h | 21 +++++++++++++++++++++
+As of today, ext4 will be using patchwork.kernel.org[1] instead of its
+old patchwork.ozlabs.org.  The reason for that is that ozlabs instance
+has been hammered so badly by bots that it's mostly useless.  :-(
 
-fs,fsverity:
+[1] https://patchwork.kernel.org/project/ext4/list
 
-as prefix, please.
+I've burned through all of the backlog of patches that I've been
+tracking on ozlabs dating from August.  So moving forward, please
+treat patchwork.kernel.org to be authoratative for ext4 development.
+
+Cheers,
+
+						- Ted
