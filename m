@@ -1,55 +1,55 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795104479;
-	b=PzleFJYhVnISeJ8L9wBXUSHSOyXoZfAfjW0kO5Q6r9hlt3Rmy95CFHS5HjXHXERcbTrt
-	 FKfzQMAXDCZeDkmhGkUsl8UjQaSpmkD/Tk/B1MCeX2Ve0IJvbOkC0MQt3UjsdLYYyOnY/
-	 T6lWj2ieh66wo16oWEbf+WlDDlImBOR3mLtbUosdAt1YvNytPnq2flsPX1YGCVKJPvvI6
-	 TAgvZik68d3U3WOlesUH6TN9ANsutkLBUEK3itF+VbA6dnpln0a2e8gSXlmrc1RHA3bgw
-	 zty57Xyc1wTF0qH5/dL5aFeSSVAT87BPWCzHCmL7Nt3m3H159yo4lVXd53ANnxLdGfA==
+	t=1795104500;
+	b=V8IQoLddDgnx2YNC3aEl2+QNQruQx8QTVNb70LnSffAAA0JUU34MVebxKkZaUAodb1eX
+	 1plRnb3l0kVxH8Cv60DN6Q5HOF6llWf3qBLJVS5NZbz11ZYmAlLJMnHAV6JfwRpM099KH
+	 SSQKrtMfOBGUGLEzLKsuzrRUs0KYSa1r9KBY89jA3uH6XPzPEqJlB3yHNEhQB2nQrTNOz
+	 EXa7uunrTfglWOqf38mttIV5rpt8G5v7V78AkCKLOGmjxxwDE/wp5fYg03YJhyYvFy0NA
+	 lMNMu+rr73FuBvicPy52bLZvbQ0ShRtb2Zox/KPuowrC766CRoaeeTia0/Powv1hALg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795104479;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795104500;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=xtzj8RzgL9YsS5tuXt/oMbvpA5f4GuoILMg9ox9LDLs=;
-	b=QQoEVJNtsx/WqiYfmjZ3J0zuCOH9LIXYa0Ygg53wWmnjUwTL3zu86LgAseBuo1A7jdqz
-	 vC978olYDMXzGJTsbyrDhHjfPqrMmQMbIDt/td22oc79y22UegG26P2Z8UgC3qLvRhlde
-	 Cz4S8OUKMMd5U0wLjSNBkLqWwpzhQETazrc8dpAoy8Si+67zuz9k1TCt0r+iXsAIzKvmB
-	 hFomhfe5BStccSLEq89iP2IaZ4umpU5f+J0fJZUjJ6F3zYEYhPnYbbePjgIXG46nDa08J
-	 ZXT63OxCQwxXBvckfht8U3CcQ5TGYjP4rNrBcKrNK9K6UedJtHZ+cXNQpn3EAVDhYCQ==
+	bh=vFW5wCDQsUs+MnXsSV7xUdm21FuFHfROO1tSO0Ss6Jg=;
+	b=DMgryfdttrNUTaJ3WaLVvkgJaIsEROPGnHPsK4vyrcpTXY1bPjTITtcz02E1jqbXs3r4
+	 BQz2hT5LnXYGiS3XYvwauT921te6kfOOIpl4gwtHdF6KWzSoHNRhTrut4JLJGKQvUOCfN
+	 YhMjCHa2Rj7uqaTS0+WJKiPFS17v71Fsb5VvkbaEyZ+dc5B0y6Cj+mSNs4DtD+0B/vksZ
+	 xpKW4Cd6zvNAU22o3zQXrGu3KJq3KfszAZRMca3T6MjHD1XV7ukOxugMQUV76dSyVWrjL
+	 lgWUkceK4Hr2XG1r9fnmx2wyki2A3P5siGZl6pUdBQtbjDiq+pXWhu2D5XR121LbfHQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="i/fXb9UF";
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Otb9Jl08;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 36247606A325
-	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2026 16:07:58 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A7D0C606A320
+	for <linux-ext4@vger.kernel.org>; Thu, 19 Nov 2026 16:08:20 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=i/fXb9UF
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B23961F000C6;
-	Thu, 19 Nov 2026 16:07:58 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Otb9Jl08
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 22DB61F000C8;
+	Thu, 19 Nov 2026 16:08:20 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795104478;
-	bh=xtzj8RzgL9YsS5tuXt/oMbvpA5f4GuoILMg9ox9LDLs=;
+	s=k20260515; t=1795104500;
+	bh=vFW5wCDQsUs+MnXsSV7xUdm21FuFHfROO1tSO0Ss6Jg=;
 	h=From:Subject:Reply-To:To:In-Reply-To:References:Date;
-	b=i/fXb9UFqaAcq/c5YkiulqXex2G0gL41ixyuxKC6H/lECzxSUsA92zGUewDwvmmO2
-	 mOPMf7Q5CLEZ+hsScgxSiEjpJLA8HTqq1qS1N62wPfW8qICrBDVs2rdb6p3osIVpfT
-	 u2oFnr13Dv/SUO3rP/PGHHZMLMt86ePRzTBUug3lMxLSl6iPp1nhFGPWrRy7ERS9An
-	 1sleZ5vkPNlF7frkbqjF+U8BnSU4Tb36jBDdX+pZwDKQqKbEWFCZi9zZWMz0KZ3tV0
-	 UmrnmqIjSMUKt0XkiUHy6T79HaNNYOJa8ZHo3qN5e8dT5/HAWz9BjAI24Qm0G8FF4a
-	 djXKX4/9aoQSg==
-Message-ID: <sashiko-outbox-223475@kernel.org>
+	b=Otb9Jl08/1ZDZZeW4cIvUeu9tb73X3zr2KhRDOsHCcomk+J0qSoeBTJumLar9cQ5I
+	 NR80rjJuw55n0kQhqa0BTDT1pugEM4aRVt++IGDCczTUErmJKPPYr0yjrkyz5GQQ8Q
+	 ADxPT4D336+lb7IRw1xuaSglOOnFcEIRRNIRIKc8TgdGLhgyOMg9NVo0eqOnpx9g1F
+	 DHITtzZMv3HRC8smyXy0Sr/g1PpR6947guPqwV+oJNMJmPlBBXKUcXb8KX0/K3rKJI
+	 5lsVy9qWUYionLF0BB46NkFVLH7m1MVY8d0KGLdgvg9Rve3t6EsLlklRGSNu3tlHh4
+	 5A4NpoV5sD3YQ==
+Message-ID: <sashiko-outbox-223477@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH -v2 11/26] ext4: add KUnit tests for fs/ext4/orphan.c
+Subject: Re: [PATCH -v2 16/26] ext4: add KUnit tests for fs/ext4/sysfs.c
 Reply-To: sashiko-reviews@lists.linux.dev
 To: =?utf-8?b?VGhlb2RvcmUgVHMnbw==?= <tytso@mit.edu>, "Ext4 Developers List" <linux-ext4@vger.kernel.org>
-In-Reply-To: <20261119155658.1940864-12-tytso@mit.edu>
+In-Reply-To: <20261119155658.1940864-17-tytso@mit.edu>
 References: <20261119155658.1940864-1-tytso@mit.edu>
- <20261119155658.1940864-12-tytso@mit.edu>
+ <20261119155658.1940864-17-tytso@mit.edu>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Thu, 19 Nov 2026 16:07:58 +0000
+Date: Thu, 19 Nov 2026 16:08:19 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -59,58 +59,32 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-Thank you for your contribution! Sashiko AI review found 1 potential
-issue to consider:
-- [Low] ext4: locked superblock and memory leak in orphan_test_init() on
-  OOM
---
+> Add a KUnit test suite (ext4_sysfs_test) covering ext4 sysfs attribute
+> show/store handlers, feature capability attributes, and sysfs/procfs
+> registration in fs/ext4/sysfs.c:
+>=20
+> - Generic pointer attributes across sbi, superblock, and explicit
+>   targets (attr_pointer_ui, attr_pointer_ul, attr_pointer_pi negative
+>   value rejection, attr_pointer_u8, attr_pointer_u64 LE64 decoding,
+>   attr_pointer_string 32-byte bounding, and attr_pointer_atomic).
+> - Range-checked read-write attributes: inode_readahead_blks power-of-2
+>   and upper-bound enforcement, reserved_clusters bounds against total
+>   clusters, mb_best_avail_max_trim_order <=3D 64, mb_group_prealloc <=3D
+>   s_clusters_per_group, and err_report_sec <=3D 1 year.
+> - Computed read-only attributes: delayed_allocation_blocks cluster-to-
+>   block scaling, session_write_kbytes and lifetime_write_kbytes sector
+>   accounting, sra_exceeded_retry_limit percpu summation, 40-bit error
+>   timestamps (first_error_time / last_error_time), and journal_task.
+> - Feature capability attributes under /sys/fs/ext4/features, error
+>   injection via trigger_fs_error, and lifecycle coverage of
+>   ext4_register_sysfs(), ext4_notify_error_sysfs(), and
+>   ext4_unregister_sysfs().
+>=20
+> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 
-commit 793a4f2e9db580fb201beeb33032333df8328513
-Author: Theodore Ts'o <tytso@mit.edu>
-
-ext4: add KUnit tests for fs/ext4/orphan.c
-
-This commit adds the ext4_orphan_test KUnit test suite to exercise ext4
-orphan inode tracking, orphan file management, and mount-time orphan
-recovery.
-
-> diff --git a/fs/ext4/orphan-test.c b/fs/ext4/orphan-test.c
-> new file mode 100644
-> index 0000000000000..bd60976a840d2
-> --- /dev/null
-> +++ b/fs/ext4/orphan-test.c
-[ ... ]
-> +static int orphan_test_init(struct kunit *test)
-> +{
-[ ... ]
-> +	sb =3D sget_fc(fc, NULL, set_anon_super_fc);
-> +	put_fs_context(fc);
-> +	if (IS_ERR(sb)) {
-> +		err =3D PTR_ERR(sb);
-> +		free_percpu(ctx->bdev.bd_stats);
-> +		kfree(ctx);
-> +		KUNIT_ASSERT_EQ(test, err, 0);
-> +	}
-[ ... ]
-> +	for (g =3D 0; g < ORPHAN_TEST_NGROUPS; g++) {
-> +		struct orphan_test_ibitmap *ibm =3D &ctx->ibitmaps[g];
-> +
-> +		ctx->grp_infos[g] =3D kunit_kzalloc(test,
-> +						  sizeof(*ctx->grp_infos[g]),
-> +						  GFP_KERNEL);
-> +		KUNIT_ASSERT_NOT_NULL(test, ctx->grp_infos[g]);
-
-[Severity: Low]
-Does KUNIT_ASSERT_NOT_NULL() leak sb, ctx->bdev.bd_stats, and ctx if
-kunit_kzalloc() fails here?
-
-sget_fc() returns with sb->s_umount write-locked, and
-orphan_test_cleanup_action is not registered until the end of
-orphan_test_init().  Aborting here exits the KUnit kthread with
-sb->s_umount held and leaves sb on super_blocks, unlike the root_inode
-failure paths below that call deactivate_locked_super(sb),
-free_percpu(), and kfree(ctx) before aborting.
+Sashiko has reviewed this patch and found no issues.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261119155658.1940=
-864-1-tytso@mit.edu?part=3D11
+864-1-tytso@mit.edu?part=3D16
+
