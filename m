@@ -1,48 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795205506;
-	b=JDAePIe8ePK+xhbGK9LsDg++5Xk9pEgmhttW/kcxUGEKUz0GVEddN/0OZWGldwvWbvcP
-	 2nKK7LVXSExdDwQtfZsSLGCceCkWVpykBjRWZ8t05c2c2dTQdi4kMzIh3Ty+7L0gCyi3a
-	 jRZ3PmUGDuwti1jAZ9DXJrpbwnaIvvbTR5yvT99tMhpT74JRwmBnBaOqN7MiLydg+kwlL
-	 AqOM72C8/GgjqzMpoXWwApMuF0HEYDgR0jL8VxQpKBQkTjiLdUsWo2gpciOj6VMNPhWHv
-	 lsb6vshddP2JGVYnjqoMyWAaxB2Q1gZ9vnVkW8hFdM/9U9W+wo4AH8+DWkX60bLha2w==
+	t=1795205509;
+	b=NStaLsxGMBV9G8iNJ9q2FgyUKvTQd0/pALhJG/r/O3kfxnxl2HHGjmQWCbEYruHozfeW
+	 4HbMuLWIE6mbnds2jwDxea46NQw8WHepl3gTVQ1MHX4CLBnTsY2a8cGAXgijxTDiXsFxl
+	 V8rwTNcffOUOuWX5WrDVRsS0tsQxZkSOpUQ1ugs+X+Com0HIj5yVPHWhRnuExZmVlLWTc
+	 pjPx/PXTZ1Ca7EbaL4qHph7a0u/iW+vF0kjyy8a3oalFzCSZYGDFY8o73JDPElN6rTDok
+	 7XlIrjjTMAhJ3YYFPostqboiEC90lq1e7Yb/UB3+mkSE/vRuaj2Lpu+4oNJApe3BYXw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795205506;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795205509;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=tSD+v5qtJvl1jtYKfGZE0/A9pPZfPt3HE1Ga1u1oj98=;
-	b=GhKRpKrzl3DjaTmnu+7p/Ai8sJ5jIGbd7rgFEKSNrB97D5+5jqjXVc9uMlA9GcpGh9LX
-	 ERqWSqh4faRbFiQqCQfaqEyotcEIetZ3Jm0i7VSn0D3yRpBg5imr+g1i1lndox6dU6wSn
-	 49MRBCrYCW3ZfhZgZBvOg40rHCWsXvUiJI8ec0OmMuzQN2NSPPCC1avkSpH4xLD4KSiYc
-	 vOhjVgLTcFJ7h2bYqiht7qAtqpJmtRQ9PG+yPi5tSSYAb/ZgQa73hdkzAr5qkVs8dOTkY
-	 +DzZRtY9TyJ93akKDxG73IJm4ETK4RmwFNCAuF2EUZSLtmS2p4WHQxkZkZo8ho3XWKg==
+	bh=nfsBEMGhx4Fh2PmnLWTGaQElHwcxVx4X18qdlNbyQXc=;
+	b=mwBLqBrtXQNpXIInjIsiz55mVKvucEWtPjMSx//cMLOzqmlKn2+HztzvfkkR3+f4MBzE
+	 /0mDxuu67ZF8t837c0pjqTCeFE0SFKMeldStpnyyvZk7espTyhHsZ61pGRkW1/mkEroPA
+	 AeiM9ojkWKj4PX35KaNvnuPhIY9bgljVgYbGy3jerywlaklgTYBo11FtMUNP1F40IajoC
+	 Nlq9sRnWDRcZ39RjD353cexy9VDeOor1WwPJQWfTdX03Lxwguoq92ODA9Zv47MXpIqjBP
+	 TVGqYOhpvaFYBqOuXLQonYqL+iSzCBc/f2ZEObRcFq0PqMhXPoKxokh0jmNdR7He5dA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=aT5+jo3k;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=dnbcJeQh;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7B922606A6DF
-	for <linux-ext4@vger.kernel.org>; Fri, 20 Nov 2026 20:11:46 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 70E59606A325
+	for <linux-ext4@vger.kernel.org>; Fri, 20 Nov 2026 20:11:49 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=aT5+jo3k
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5FF821F000C4;
-	Fri, 20 Nov 2026 20:11:44 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=dnbcJeQh
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3A2941F000D0;
+	Fri, 20 Nov 2026 20:11:47 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795205506;
-	bh=tSD+v5qtJvl1jtYKfGZE0/A9pPZfPt3HE1Ga1u1oj98=;
+	s=k20260515; t=1795205508;
+	bh=nfsBEMGhx4Fh2PmnLWTGaQElHwcxVx4X18qdlNbyQXc=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=aT5+jo3kkI/RnoMADuI6SYbdGmzwNLFFbSLKmWFftUdoN+VegCdD2tmlE2F3Zny+d
-	 5hocedOUvNOKVr84WbY04nTy0DgkUCbUzOFNjxbqzXF6MUTiRWf58oGrpx5i2y3PYm
-	 yJPJEnEvSTvqca3fpxhygR7O533gYuCMldpUmM7QxgNzhyBbOSSEonq7S9g8JcD3Eu
-	 aRYY2/Y+3jzeBrB9tLemZo24n8TtfxT1PKqvS4MXZjOfolw8kC8FVUG2g2gFTpNkmr
-	 NtjbnVGYD3QbNJZeZB0BLHSj8RRSarE0gZZVlZLYQH+mr3JB4uOhydoTyOm5kpLmF+
-	 MxspkXwFUHRKQ==
-Message-ID: <sashiko-outbox-226008@kernel.org>
+	b=dnbcJeQhjxfEbyzCwV9BmpAElVPrFgze7maEBJWLQ4B/thu5K41q9ozrp6++J2hp7
+	 D8AFv3iYurqXyzBRoDaBmFSMWRGepykcPPRhwtr7M7utJym/S3tz677Qwa7T+ICljp
+	 cCjHa3y1EBtHQRfOOPTKnuNqGb9d5LcAfvHFEFohJjCCbQkhPgHYqaMdqRDKk/BIRK
+	 nMePNg0hCfX4OyUZXVLg/JqGz84Jj7mwOE6SzQxOXAHCYIWl86J5WQMe4ZONsZ+0mI
+	 3uMcjyYI/5GK7NejjMPVEkff+qf6WjWsFhIoqwUF5w+fX/5ilbfiwhbQExQNqYlrM6
+	 xDOnHn9OeXBUg==
+Message-ID: <sashiko-outbox-226011@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH RFC 2/5] mm/huge_memory: fix filemap_release_folio()
- interaction with GUP dirty
+Subject: Re: [PATCH RFC 5/5] mm/filemap: refuse releasing maybe_dma_pinned
+ folios
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Pedro Falcato" <pfalcato@suse.de>, "David Hildenbrand" <david@kernel.org>, "Andrew
  Morton" <akpm@linux-foundation.org>, "Zi Yan" <ziy@nvidia.com>,
@@ -61,12 +61,12 @@ Cc: linux-ext4@vger.kernel.org, "Liam R. Howlett" <liam@infradead.org>, "Vlastim
  Xu" <weixugc@google.com>, "Baoquan He" <baoquan.he@linux.dev>, "Michal
  Hocko" <mhocko@kernel.org>, tytso@mit.edu, "Chuck Lever" <cel@kernel.org>, "Jeff
  Layton" <jlayton@kernel.org>, "Anna Schumaker" <anna@kernel.org>
-In-Reply-To: <20261119-gup-dirty-what-v1-2-236d69f25c24@suse.de>
+In-Reply-To: <20261119-gup-dirty-what-v1-5-236d69f25c24@suse.de>
 References: <20261119-gup-dirty-what-v1-0-236d69f25c24@suse.de>
- <20261119-gup-dirty-what-v1-2-236d69f25c24@suse.de>
+ <20261119-gup-dirty-what-v1-5-236d69f25c24@suse.de>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Fri, 20 Nov 2026 20:11:43 +0000
+Date: Fri, 20 Nov 2026 20:11:46 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -76,44 +76,127 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-Thank you for your contribution! Sashiko AI review found 1 potential
-issue to consider:
-- [Low] mm/huge_memory: Fixes trailer cites d824ec2a1546 instead of
-  6a3edd293956
+Thank you for your contribution! Sashiko AI review found 3 potential
+issues to consider:
+- [High] mm/filemap: filemap_release_folio() dma-pin check breaks
+  folio_invalidate()
+- [Medium] mm/filemap: VM_WARN_ON_FOLIO on mapped folio hit via
+  mext_move_extent()
+- [Medium] mm/filemap: VM_WARN_ON_FOLIO in filemap_release_folio()
+  precedes needs_release
 --
 
-commit 30321b8e2452fd3a099b0078bb5c7a8478e790ce
+commit 38a290b76cc80ed81b7d5a26e8b50ef48dfba24c
 Author: Pedro Falcato <pfalcato@suse.de>
 
-> mm/huge_memory: fix filemap_release_folio() interaction with GUP dirty
->
-> filemap_release_folio() can only be called safely on:
->  - folios that are unmapped and
->  - folios are not dirty and
->  - folios that don't have elevated refcounts
->
-> Anything else can plausibly be pinned for DMA/writing, which interacts
-> very poorly with ->release_folio().
->
-> Fix it by adding a filemap_may_release_folio() check, plus move unmap_fol=
-io()
-> outside the i_mmap_read_lock(). unmap_folio() does not need the
-> i_mmap_read_lock, since the folio is locked anyway.
->
-> Reported-by: David Hildenbrand <david@kernel.org>
-> Cc: stable@vger.kernel.org
-> Fixes: d824ec2a1546 ("mm: do not reclaim private data from pinned page")
-> Signed-off-by: Pedro Falcato <pfalcato@suse.de>
+mm/filemap: refuse releasing maybe_dma_pinned folios
 
-[Severity: Low]
-d824ec2a1546 ("mm: do not reclaim private data from pinned page") only
-modified shrink_folio_list() in mm/vmscan.c, whereas the
-filemap_release_folio() call in the THP split path was added by
-6a3edd293956 ("mm: release private data before split THP").  Should the
-Fixes tag be:
+This commit updates filemap_release_folio() to warn if the folio is mapped
+and refuse to release filesystem metadata when folio_maybe_dma_pinned() is
+true.
 
-  Fixes: 6a3edd293956 ("mm: release private data before split THP")
+> diff --git a/mm/filemap.c b/mm/filemap.c
+> index f9e34144c53c7..4fa75663b7f3e 100644
+> --- a/mm/filemap.c
+> +++ b/mm/filemap.c
+> @@ -4571,8 +4571,11 @@ bool filemap_release_folio(struct folio *folio, gf=
+p_t gfp)
+>  	struct address_space * const mapping =3D folio->mapping;
+> =20
+>  	BUG_ON(!folio_test_locked(folio));
+> +	VM_WARN_ON_FOLIO(folio_mapped(folio), folio);
+
+[Severity: Medium]
+Can EXT4_IOC_MOVE_EXT hit this VM_WARN_ON_FOLIO() on a memory-mapped file?
+
+In fs/ext4/move_extent.c, mext_move_extent() locks the origin and donor
+folios and calls filemap_release_folio() on them without unmapping them
+from user page tables or checking folio_mapped() first:
+
+fs/ext4/move_extent.c:mext_move_extent() {
+	...
+	if (!filemap_release_folio(folio[0], 0) ||
+	    !filemap_release_folio(folio[1], 0)) {
+		ret =3D -EBUSY;
+		goto unlock;
+	}
+	...
+}
+
+If either file is memory-mapped with resident PTEs in the moved range, an
+unprivileged EXT4_IOC_MOVE_EXT ioctl triggers this warning when
+CONFIG_DEBUG_VM is enabled.
+
+>  	if (!folio_needs_release(folio))
+>  		return true;
+
+[Severity: Medium]
+Should VM_WARN_ON_FOLIO(folio_mapped(folio), folio) come after the
+!folio_needs_release(folio) check to match filemap_may_release_folio()?
+
+filemap_may_release_folio() returns true when !folio_needs_release(folio)
+before checking folio_mapped(folio):
+
+mm/internal.h:filemap_may_release_folio() {
+	VM_WARN_ON_FOLIO(!folio_test_locked(folio), folio);
+	if (!folio_needs_release(folio))
+		return true;
+
+	/* There's no way to know whether these are write-mapped, so give up. */
+	if (folio_mapped(folio))
+		return false;
+	...
+}
+
+Callers such as collapse_file() (which calls try_to_unmap() without
+TTU_SYNC) and __folio_freeze_split_file() (which calls unmap_folio())
+can leave a folio mapped if unmapping races with zap_pte_range(), then
+rely on filemap_may_release_folio() to gate filemap_release_folio().
+For a folio that does not need release, filemap_may_release_folio()
+returns true and filemap_release_folio() then triggers
+VM_WARN_ON_FOLIO(folio_mapped(folio), folio).
+
+> +	if (folio_maybe_dma_pinned(folio))
+> +		return false;
+>  	if (folio_test_writeback(folio))
+>  		return false;
+
+[Severity: High]
+Does refusing to release a DMA-pinned folio here break truncation via
+folio_invalidate() and leak the folio and its buffer_heads?
+
+During full-folio truncation, truncate_cleanup_folio() calls
+folio_invalidate() before removing the folio from the page cache.
+block_invalidate_folio() and gfs2_invalidate_folio() first discard all
+buffers on the folio and then call filemap_release_folio(folio, 0) to
+free the buffer_heads and clear PG_private.
+
+If filemap_release_folio() returns false because the folio is DMA-pinned,
+truncation still removes the folio from the page cache and sets
+folio->mapping =3D NULL, leaving PG_private and the discarded buffer_heads
+attached.  When the DMA pin holder later unpins the folio as dirty (for
+example via unpin_user_pages_dirty_lock()), folio_mark_dirty() sees
+folio_mapping(folio) =3D=3D NULL and calls noop_dirty_folio(), setting
+PG_dirty on the orphaned folio while PG_private holds a reference.  When
+shrink_folio_list() later scans this folio on the file LRU, it sees
+folio_test_dirty(folio) and jumps to activate_locked before reaching the
+orphaned buffer release path, and because folio->mapping is NULL nothing
+can ever write it back or clear PG_dirty, permanently leaking the folio
+and its buffer_heads on the file LRU.
+
+On GFS2, gfs2_invalidate_folio() -> gfs2_discard() also leaves struct
+gfs2_bufdata attached at bh->b_private to be freed by gfs2_release_folio();
+once truncation clears folio->mapping, any later filemap_release_folio()
+call sees mapping =3D=3D NULL and falls back to try_to_free_buffers() inste=
+ad
+of mapping->a_ops->release_folio, permanently leaking struct gfs2_bufdata
+even if the folio was not dirtied.  In ext4's mpage_release_unused_pages(),
+a failed delayed allocation calls block_invalidate_folio() and then
+folio_clear_uptodate(folio), relying on filemap_release_folio() ->
+try_to_free_buffers() -> folio_cancel_dirty() to clear PG_dirty, so
+returning false leaves a pinned folio in the page cache with PG_dirty set
+and PG_uptodate clear.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261119-gup-dirty-=
-what-v1-0-236d69f25c24@suse.de?part=3D2
+what-v1-0-236d69f25c24@suse.de?part=3D5
