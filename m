@@ -1,55 +1,55 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795205510;
-	b=CAe1AKjzeZMZSeZrgLaJRhpSm48KqVNobC7rFOzYxDv90hTt4ysdLgpRE+VP0AYB2u4y
-	 mnYEEXzH6QvbKAW35xPauc6nJSdya8a09g8IVoW6BFVQF89pLAyOrpMwpaNZGtbugfnwi
-	 G6i0HIFtuvY9eTr/s/Mg0GtYDs9Mif2NRe0FsfdlfI9XY5ijxUzx9yKd3er+XqlniKMFP
-	 iWUibHchn47X4yP6YBQeRSifGUqHxYQl8OuISlz5vya2TeTPsFVDZdJ7xmGvugt8dOByQ
-	 RPvOwDCSHeG6wxvXERDf/sb18fu4fpBP4l4M09DTJbYikngQF6MQCrl0uqxUJwD+22Q==
+	t=1795207211;
+	b=mN3klvaCMzHTr/Phx08Z+FNuK2hDtDWPF3sfeckhxkE//FrrdfdQndPMglT8m9xNqsRK
+	 r4tU4T9cdbi3El0isiaFg2+pALOXvF5wwMdl59pj4mKeUAiAsNB5EJ6c3e6vl35+NWpGc
+	 ya0RC3bPMAcx1Yw2yEAcFcB25Ajtg+ltbqtRL0b27nO8usx8ZC7clM58FnteUAI+7nwKX
+	 L897/AD5bDcvSvZCU4mdYuFkyhvJ5eTj/UeQ7vVfdEB/Y4ItoOc5BAT1M6IGpZM8WC3YI
+	 WH0oPQqPpqdFax2twtd6Ib71J7NS7RO7XA8YqIqWsmlfiuis9dyZMRy9QV0108NZd2A==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795205510;
-	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
-	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=f3qW5ontsu2zJ7+zOBGK4XZyivitp6lAJ6IBQwassL0=;
-	b=vSsUGSw87tpeeGgEpGfGv3HnKVQbcRv/Jjz2mzDH186jtU+soG4smE0iA5hNj2XdVD/2
-	 WjU74OQfLldWOaLBMqdHedyXcPSrawICpVFnZTnJaeXWzo8g08N/9pMhufLvYC8kiVMps
-	 Dc7Mm0roDFQ5uHSFsp+k/P287wHZ8XcoOemaIyMZtkLrbR6SX7aRz+x/7CqvCWVbR12/+
-	 A+jgiKS2mECRJWYEu8Tlwa2kLCkwKnPmP1oGeuOEg9xLGQ2TmJ0WQNnARI5ikX+vjACgG
-	 cvkI4VytHslgA8/6Yhwu6iFh0DtEno06rbDUowTZfzO0+oRRdsTFlmCa99//1guHGLQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795207211;
+	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
+	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
+	bh=iuOAnFf7djN6MJm0xu/DSFJ+ZW3QNY44Rcjtb1OjLzk=;
+	b=R8fmuxeC+vr5wp8pKgswHue3u8y5TvcdB+98B/6vbn36y3eOGgIDQv0CVH4FYfH7hmeu
+	 8wFy6wC9nvEvUj+wb21/zyQhgQEl8vtf1yy3zukEFw2ezBPAYVBs+Cb+d0ssSYYoioYBa
+	 PVILxu42DxvsVkaVV2arV8N6OJY3XwfKanKfPwr3b7/UDQBUF1tGqMiHqUDgLqWC/3JUT
+	 Kkry+UtVd8aP07kDT80/2WTwlQQygPufV8hktgkshzHv2T46e+M8wlE7pp4amPLZkIl5g
+	 p0LDuoRwE37fWpqZOtSrAoTmz7kJ6CEPBML0h0wShSDCo/Sc4I8bfbDtMUnhHYg7OEA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=du3+80nr;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=VTqbOTMg;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C359060A260B
-	for <linux-ext4@vger.kernel.org>; Fri, 20 Nov 2026 20:11:50 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 66C7A606A6F8;
+	Fri, 20 Nov 2026 20:40:11 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=du3+80nr
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E33031F000CF;
-	Fri, 20 Nov 2026 20:11:49 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=VTqbOTMg
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A66AB1F000C6;
+	Fri, 20 Nov 2026 20:40:10 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795205510;
-	bh=f3qW5ontsu2zJ7+zOBGK4XZyivitp6lAJ6IBQwassL0=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=du3+80nrhNQUjYAQozfGco/CetwMLKFq0J492UMyPeMOY8kdhpYvsV0WG1UPDcLVl
-	 Ew/gkHmQGUuE3Gm9yCRICD5SRNotFXcIof2FPSICyR4llXg0lo8ow+wlM47xsnlBQm
-	 Ja/NnaTEY2t1lTQJefve6KKvDQI+NtDzRFgLjgNlCFpw5cUnH4KFDCGmgEpaIqOOui
-	 UU44VSTjKJUcl3rT6OR1Mcdl6lcmZPNC39P9aGf+pt8ynKINmBziq/ArCzNnZKcNfv
-	 YHrFRbDBGqcQThKX51ewhghQWuQqtfEERDrao2TY0c0Z288pzRneJJhGAigDS2664n
-	 6l8LCcb5sDI6A==
-Message-ID: <sashiko-outbox-226012@kernel.org>
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH RFC 0/5] mm: GUP dirty + ->release_folio() fixes
-Reply-To: sashiko-reviews@lists.linux.dev
-To: "Pedro Falcato" <pfalcato@suse.de>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-In-Reply-To: <20261119-gup-dirty-what-v1-0-236d69f25c24@suse.de>
-References: <20261119-gup-dirty-what-v1-0-236d69f25c24@suse.de>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Fri, 20 Nov 2026 20:11:49 +0000
+	s=k20260515; t=1795207211;
+	bh=iuOAnFf7djN6MJm0xu/DSFJ+ZW3QNY44Rcjtb1OjLzk=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References;
+	b=VTqbOTMgTIuk770jPL+Nut6OqaGrfpSSrSX1EnAXdx+kFkHt7nk6z2FsZ5t3XATMR
+	 AVHybLaMXRN/n77mzIpEqYMKH9b92WwMtYs5JakGoM2M2f24wA29xwSGv884xrc+nx
+	 A7MOufooYaYpTp2wjOT1XDLrg/Xztu4w1mgC9unLUbxwW1MC30BKiTCUlzCLNSQevu
+	 AQJVAaIve6D/m/KMLrczuTlYGX12WmXCz/C0XwOqkLnG6UlLlxjRrbtjfxdMpOdSPa
+	 LAWI85mZS5DBehN6NtrNgD1N7kPKJ7wzPVPR2H9YFNKPPyrV4R0rjeZEyWkIL8cokJ
+	 AgsRUBfrZTZ7A==
+From: Sasha Levin <sashal@kernel.org>
+To: linux-ext4@vger.kernel.org,
+	stable@vger.kernel.org
+Cc: Sasha Levin <sashal@kernel.org>,
+	"Safe-Lock.NET Dawid Partyka" <internet.jejkowice@gmail.com>
+Subject: Re: [REGRESSION] 6.1.192: NULL deref in ext4_mb_load_buddy_gfp() after, dropping page cache (__filemap_get_folio() returns NULL, callers check IS_ERR())
+Date: Fri, 20 Nov 2026 15:39:18 -0500
+Message-ID: <2026-11-20-1-daily-reply-0029@kernel.org>
+X-Mailer: git-send-email 2.53.0
+In-Reply-To: <81b3f525-0d62-4a46-a0f3-77d54b11d847@gmail.com>
+References: <81b3f525-0d62-4a46-a0f3-77d54b11d847@gmail.com>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -58,17 +58,16 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 
-Sashiko has finished reviewing this 5-patch series:
+> After updating from 6.1.190 to 6.1.192 I get a reproducible NULL pointer
+> dereference in ext4_mb_load_buddy_gfp() whenever the buddy/bitmap pages of
+> an ext4 group are not in the page cache.
 
-- Patches 1, 3, and 4: no issues found.
-- Patch 2 ("mm/huge_memory: fix filemap_release_folio() interact..."): 1
-  potential issue (1 Low)
-- Patch 5 ("mm/filemap: refuse releasing maybe_dma_pinned folios"): 3
-  potential issues (1 High, 2 Medium)
+The fix, "ext4: fix NULL folio dereference in mballoc", is queued and is in
+6.1.193-rc2.
 
-Detailed reviews have been sent as separate replies to patches 2 and 5.
-
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261119-gup-dirty-=
-what-v1-0-236d69f25c24@suse.de
+-- 
+Thanks,
+Sasha
