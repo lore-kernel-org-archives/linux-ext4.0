@@ -1,109 +1,54 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.130
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.167.200
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795176152;
-	b=BR/LAHbZZ0WOROBJveLTT0ZXPRjhV7BtTHjhddA/ZCDzbqgSmPQb7WO6Qm8OS9HNCWXN
-	 GuDCXIysvYLZ4lCzOUKlFGvgiGqlhHYD/hl+JlsNlhmSpc3GijTK8SPJ/dbVjH3xAmyg3
-	 i8KZl1yN3C2z3RpZsVlK4qj7rP2uPtDU7qZkQKBdhikTHv/muFrPqn6mrfS328VRH078S
-	 sd+vu3zxepo460O04BfIiYUWcJEcP55HxTUApcVuIWUrXK7r/8cBAH5VZvPEHUyFEbZpi
-	 4FtYMNJbCtsA/8t2jKO9EmKFV2+GHqgHSY5xXgSgoMbtswi0S+OVTmg79V2dRTPLs5w==
+	t=1795178985;
+	b=HrsVeC2aHxZUQen763iPKrfIZ6qqL1xxREBL3ExCN9R9R6eFClPbmsR8v331t/pkuJQ1
+	 T12fcNbRkEWrMBmuqncATQygutzPu16It8povGjPK3oU1LrBWW5mfQs4nzUQZzg0sGseC
+	 aLy5h0aiCmqukytR4/kgJ0iOlj6wbNnYX2qoIYRef0B2ZMSwyTNzMnu//VrMSJniZAvX6
+	 wh+hAJohG2mLj4HCErSyhrh381mMSviAx//LOLFhjdDpyZHLwEvdIWYpim9HydabkBDw5
+	 uT5O3sL7zLBtOapofHDMDkJSiyWda/nwv7lZLAVSGQjmkxsb39UHZuozJQyt4HizgDQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795176152;
-	h=DMARC-Filter:Received:DKIM-Signature:DKIM-Signature:DKIM-Signature:
-	 DKIM-Signature:Received:Received:Received:Date:From:To:Cc:Subject:
-	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
-	 In-Reply-To:X-Spam-Flag:X-Spam-Level:X-Spamd-Result:X-Spam-Score;
-	bh=5huJ7Tws924tDuhTO1u3kM+nUuh/jHx9kSK9JaKAGoM=;
-	b=zaBL3tDchewtKoKTEXeBsWP0n/tfLUy7kDIR8/A9fu4rZfVobgA7JMM3r3Dzn+dx/KSy
-	 i85r5i42yErwKfQam4NTssrMrVq1vGQ7FB23Z+9h+DFe9IABqgp9OdiradDGofkaQL0c8
-	 pF+Wwx/s60ipBAh9KiFtwjW42PFXXPZflVukfGXP0X019juBjlO1xmITZcTsQHQ8AxGss
-	 PxZuoKA8Gl0WFmoy0rFKaRyVRcCMqzw2KOiTDWkFuBrzuag5HiNGBtMYycyLpTTQDJoeY
-	 23VUcp8lQFk2maAOR/WHDNSpwhaZu+OVEQx8zYFykREhA9VeUcDfW9YOxPTqFRfaaew==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795178985;
+	h=DMARC-Filter:Received:X-Google-DKIM-Signature:X-Forwarded-Encrypted:
+	 X-Gm-Message-State:MIME-Version:X-Received:Date:
+	 X-Google-Appengine-App-Id:X-Google-Appengine-App-Id-Alias:Message-ID:
+	 Subject:From:To:Content-Type;
+	bh=N+v3sFpsELkV978xsbM9iHF9UbAncOfM+CUPVOODo2Q=;
+	b=FZPJl9G2SzSyRPHFnk5U41v8s3mxE29KflbSqTUvn0ti8GQJJESAGZvT473IJyg8vJNM
+	 hSwbdIjFlV6uRXqnqlGrcOP0TnpQHECRNNn0G45TCLNbC+YVTDdd0+MRga8Pp2sS67yu9
+	 xZFhI6dxuK9cDkN91kgZ1n7voBVozaR9o2sGFhmroGWAnv9gwxMDe9gWcYr0TWnn9DHSl
+	 om865Iq7gISVuNZA8SSu7MQJqigLFIwIgHhZ29A/2foKz1IBfp+D5HtqAYL9CdCvsC2hr
+	 IL2/D+L5pv/BAk9xfaJfuCzRfXJ31vTTb9IzLJVpagyn3/i7N71Absy9zaZxT7PzRgw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=none header.from=suse.cz;
-	spf=pass smtp.mailfrom=suse.cz;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=n6xygOtt;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=Yd9J0m1s;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=er9D4iFe;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=Zo6dlV6B;
-	arc=none smtp.remote-ip=195.135.223.130
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	dmarc=fail header.from=syzkaller.appspotmail.com;
+	spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com;
+	arc=none smtp.remote-ip=209.85.167.200
+Received: from mail-oi1-f200.google.com (mail-oi1-f200.google.com [209.85.167.200])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E89CD606A331;
-	Fri, 20 Nov 2026 12:02:31 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org E89CD606A331
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=n6xygOtt;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=Yd9J0m1s;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=er9D4iFe;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=Zo6dlV6B
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id EC96D221E2;
-	Fri, 20 Nov 2026 12:02:28 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1795176150; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=5huJ7Tws924tDuhTO1u3kM+nUuh/jHx9kSK9JaKAGoM=;
-	b=n6xygOttHH0bGFlyKpj0V4CrIs/GPqK+q1J/2JUTl4XylqnamtNBxACix3gbBisdQEmxnN
-	XcAP/UA0l7alpFmXzJY0dRmPYFaKdDYUqE2AMSA9+vu8bZ5hxE89lpoWlEaPbLKsvFPU5n
-	k27WPEJQ2OBsMGFyuHk6gxigg6mIzNs=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1795176150;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=5huJ7Tws924tDuhTO1u3kM+nUuh/jHx9kSK9JaKAGoM=;
-	b=Yd9J0m1s7lkmP0CIjRrkyWIChzjtOZvc6h6o3yFaZKAGuQT6DI+O9EzgX/rIAx+rYLhaPS
-	+ALm/nV/iEsrJ4Bg==
-Authentication-Results: smtp-out1.suse.de;
-	none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1795176148; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=5huJ7Tws924tDuhTO1u3kM+nUuh/jHx9kSK9JaKAGoM=;
-	b=er9D4iFeUaAZ43HgDjfY0xS3FuRdmha5ZvYlIV9wwj/5EZtXjLXnlIfCFZeAjkCFInvhvA
-	HqgAuuhD5aTY9i9ubZm9Yvm0FHd0Tp++RRjK/Q4PqG6hBPxmqUY81bXhkph+H3mqF9Ywos
-	zLj8o4YmW8bgr6XFe3ShGbakQ76htug=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1795176148;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=5huJ7Tws924tDuhTO1u3kM+nUuh/jHx9kSK9JaKAGoM=;
-	b=Zo6dlV6BeFZhLpxrmlBlvIERxNoc0OC/heUJueE7vdQxYOkVwJ1VqGXw2F1fCjMCRVc7l8
-	Zjk8gV7EyqHLkPCQ==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id BDABB1348F;
-	Fri, 20 Nov 2026 12:02:28 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id JwI4JtQ2AGtSFgAAD6G6ig
-	(envelope-from <jack@suse.cz>); Fri, 20 Nov 2026 12:02:28 +0000
-Received: by quack.suse.cz (Postfix, from userid 1000)
-	id 51F2625F42; Fri, 20 Nov 2026 13:02:24 +0100 (CET)
-Date: Fri, 20 Nov 2026 13:02:24 +0100
-From: Jan Kara <jack@suse.cz>
-To: Yichong Chen <chenyichong@uniontech.com>
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, 
-	jack@suse.cz, ojaswin@linux.ibm.com, ritesh.list@gmail.com, 
-	yi.zhang@huawei.com, linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
-	guanwentao@uniontech.com, niecheng1@uniontech.com, 
-	Morduan Zang <zhangdandan@uniontech.com>
-Subject: Re: [PATCH] ext4: keep ordered data and i_disksize consistent on
- size changes
-Message-ID: <f5fv5eyvkpeqtopmigq5q7cd6265ptu3jn4xqwglhhsrcxorop@z3buh3cwimvn>
-References: <D7EEAE1F0CDD3029+20261118075044.3511841-1-chenyichong@uniontech.com>
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F1E76606A325
+	for <linux-ext4@vger.kernel.org>; Fri, 20 Nov 2026 12:49:44 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org F1E76606A325
+Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
+Received: by mail-oi1-f200.google.com with SMTP id 5614622812f47-547ae874949so1466790b6e.2
+        for <linux-ext4@vger.kernel.org>; Fri, 20 Nov 2026 04:49:44 -0800 (PST)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1795178984; x=1795783784;
+        h=content-type:to:from:subject:message-id:date:mime-version
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=N+v3sFpsELkV978xsbM9iHF9UbAncOfM+CUPVOODo2Q=;
+        b=NmuhHnpjc5JtTf0j5UNa9Hbm/QycU97jSlZsW+g9NjNcSrJoltC03mIyBRkDog3bgO
+         8sy79upv3vlMRRxG1LUWHL/Ci6fHP7Xjn48Ra1NPG4PIo/DzObXJyHVB9BkDevv0tNn7
+         hfvPt8GbvJ3v2Ne42ZfjRJ4kRwA/pAKyEuadlpYi6wGTcJsZyVJDzLnzGmtsFHVRX6Ql
+         9q4xCD8/iYCk7vn1ApNlWtDDCiGW7vExLjM/7c6/jJkM5Bp+9rWk1rKa7XRhGcD2Fqj4
+         Qnez9F2qJ+y248TdWmUPkVNI+fgPNf3igBeauu8p30qPhehPD6IUTJNcVa5HEX/eH7le
+         tHAg==
+X-Forwarded-Encrypted: i=1; AL+hErHm0Y8hkjQPT8bAXm0i97c3v1m/UOnPx9mkRy+Z49b/aocA0skJ9MQqveWiaRmsJGQFxZ3uLG8Mb1gV@vger.kernel.org
+X-Gm-Message-State: APuU4Z/IRzahLM6deNcXB/0vldyJZoTxI85BCzW5MIPTXCitYVehLLgc
+	AMKzZZ1K4yfwwPVw8oazhXXi7YLBrMdpITTIEE9cwuT5zT+O47NcZ1eO4hQwV96v70lttKohqpr
+	R4QTCbhwn80sGiOrRsEiVcHTOdkWoOUTpcMjblYQSEhXM1mcOrgNdLKzRl0I=
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -113,338 +58,146 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <D7EEAE1F0CDD3029+20261118075044.3511841-1-chenyichong@uniontech.com>
-X-Spam-Flag: NO
-X-Spam-Level: 
-X-Spamd-Result: default: False [-11.30 / 50.00];
-	SUSE_INTERNAL_BYPASS(-9.00)[];
-	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	ARC_NA(0.00)[];
-	RCPT_COUNT_TWELVE(0.00)[13];
-	TAGGED_RCPT(0.00)[];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	TO_DN_SOME(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	FREEMAIL_CC(0.00)[mit.edu,dilger.ca,linux.alibaba.com,suse.cz,linux.ibm.com,gmail.com,huawei.com,vger.kernel.org,uniontech.com];
-	RCVD_COUNT_THREE(0.00)[3];
-	FROM_EQ_ENVFROM(0.00)[];
-	RCVD_TLS_LAST(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,uniontech.com:email,suse.com:email]
-X-Spam-Score: -11.30
+X-Received: by 2002:a05:6808:4f4c:b0:4f2:ac42:656b with SMTP id
+ 5614622812f47-57a06d1a84cmr3891005b6e.7.1795178983970; Fri, 20 Nov 2026
+ 04:49:43 -0800 (PST)
+Date: Fri, 20 Nov 2026 04:49:43 -0800
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <6b0041e7.9fc8cf76.202198.0005.GAE@google.com>
+Subject: [syzbot] [ext4?] BUG: unable to handle kernel NULL pointer
+ dereference in strrchr
+From: syzbot <syzbot+1d23ad199a3bfd6f9149@syzkaller.appspotmail.com>
+To: jack@suse.cz, linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
+	sandeen@redhat.com, syzkaller-bugs@googlegroups.com
+Content-Type: text/plain; charset="UTF-8"
 
-On Wed 18-11-26 15:50:42, Yichong Chen wrote:
-> From: Morduan Zang <zhangdandan@uniontech.com>
-> 
-> ext4 propagates i_size into i_disksize on three size-changing paths:
-> ext4_truncate_up(), the shrink branch of ext4_truncate_down(), and
-> ext4_truncate() reached from a size-preserving ftruncate().  In ordered
-> data mode these paths can commit the new size while data below it is still
-> delalloc-only.  Delalloc data has no JBD2 ordered-data registration before
-> writeback; the registration done while allocating its blocks cannot
-> retroactively protect an earlier size update.
-> 
-> A crash between the metadata commit and writeback can therefore bring the
-> file back with a non-zero size, zero blocks and no extents - the classic
-> NULL file that generic/044..046 check for.
+Hello,
 
-Yes, and as the LLM probably told you these checks are failing on ext4 for
-ages and no real user complained. Ted may have a different opinion but I
-don't think we care about fixing them, in particular given the costs in
-complexity of i_size updates and also performance of appending writes /
-truncate.
+syzbot found the following issue on:
 
-								Honza
+HEAD commit:    65e4fd942f72 Merge tag 'selinux-pr-20261119' of git://git...
+git tree:       https://kernel.googlesource.com/pub/scm/linux/kernel/git/torvalds/linux
+console output: https://syzkaller.appspot.com/x/log.txt?x=1102b185580000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=3299dd89908ef903
+dashboard link: https://syzkaller.appspot.com/bug?extid=1d23ad199a3bfd6f9149
+compiler:       arm-linux-gnueabi-gcc (Debian 14.2.0-19) 14.2.0, GNU ld (GNU Binutils for Debian) 2.44
+userspace arch: arm
+C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=165e3abd580000
 
-> 
-> Measured on 7.4.0-rc3 (aebb7274, x86_64, ext4, default mount options) on
-> a copy of the xfstests scratch image, 20 files per run, pwrite then
-> truncate with no delay in between, sleep 10s, then simulated crash:
-> 
->   write  truncate   result before the fix
->   64k    64k        size=65536 blocks=0 no extent    (generic/044)
->   64k    32k        size=32768 blocks=0 no extent    (generic/045)
->   32k    64k        size=65536 blocks=0 no extent    (generic/046)
-> 
-> Fix both directions:
-> 
->  - A truncate that does not change i_size only has to discard preallocated
->    blocks past i_size.  It must not advance i_disksize, so route it to
->    __ext4_truncate(inode, false).  Every other caller (evict, orphan
->    cleanup, verity, real shrink) keeps advancing it, where the orphan list
->    makes the update safe.
-> 
->  - When the size really changes, write out the still-delalloc range before
->    i_size/i_disksize are updated, via ext4_ordered_flush_to().  This runs
->    outside any journal handle so writeback can start its own transaction,
->    and before i_size is lowered so writeback still sees the old, larger
->    size.
-> 
-> Start the writeback at i_disksize, but also search the extent status tree
-> for the first delayed extent in the surviving range and use the lower of
-> the two.  DIO and fallocate can advance i_disksize over older buffered
-> delalloc data, so i_disksize alone is not sufficient to prove that all
-> blocks below it exist.  For example, a buffered write followed by an
-> extending fallocate and a shrink can otherwise still leave a NULL file.
-> 
-> The inode and invalidate locks held by ext4_setattr() prevent new delalloc
-> extents from appearing.  Concurrent writeback can only remove delayed
-> extents or advance i_disksize, making the selected range more conservative.
-> Take the i_disksize snapshot under i_data_sem to serialize with writeback
-> and avoid a torn 64-bit read on 32-bit systems.  Drop the lock before
-> waiting.
-> 
-> This avoids turning every size change into a whole-file sync point when
-> there is no earlier delalloc data.  Inline data needs no separate flush
-> because it is committed with the inode itself.
-> 
-> The new writeback is limited to data=ordered: data=journal already keeps
-> data in the journal, and data=writeback never made this guarantee.  The
-> size-preserving change applies to all modes and simply avoids advancing
-> i_disksize past delalloc data.
-> 
-> Signed-off-by: Morduan Zang <zhangdandan@uniontech.com>
-> ---
->  fs/ext4/ext4.h     |  6 ++--
->  fs/ext4/extents.c  | 18 +++++++----
->  fs/ext4/indirect.c |  8 +++--
->  fs/ext4/inode.c    | 75 +++++++++++++++++++++++++++++++++++++++++-----
->  4 files changed, 89 insertions(+), 18 deletions(-)
-> 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index bf0325ecbec7..b948a5953760 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -3263,7 +3263,8 @@ static inline bool is_special_ino(struct super_block *sb, unsigned long ino)
->  extern int ext4_ind_map_blocks(handle_t *handle, struct inode *inode,
->  				struct ext4_map_blocks *map, int flags);
->  extern int ext4_ind_trans_blocks(struct inode *inode, int nrblocks);
-> -extern void ext4_ind_truncate(handle_t *, struct inode *inode);
-> +extern void ext4_ind_truncate(handle_t *handle, struct inode *inode,
-> +			      bool update_disksize);
->  extern int ext4_ind_remove_space(handle_t *handle, struct inode *inode,
->  				 ext4_lblk_t start, ext4_lblk_t end);
->  
-> @@ -3965,7 +3966,8 @@ extern int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
->  ext4_lblk_t ext4_determine_insert_hole(struct inode *inode, ext4_lblk_t lblk,
->  				       ext4_lblk_t hole_start,
->  				       ext4_lblk_t hole_len);
-> -extern int ext4_ext_truncate(handle_t *, struct inode *);
-> +extern int ext4_ext_truncate(handle_t *handle, struct inode *inode,
-> +			     bool update_disksize);
->  extern int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start,
->  				 ext4_lblk_t end);
->  extern void ext4_ext_init(struct super_block *);
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index cd35e88bc372..fb5a16e5b176 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -4548,7 +4548,8 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
->  	return err ? err : allocated;
->  }
->  
-> -int ext4_ext_truncate(handle_t *handle, struct inode *inode)
-> +int ext4_ext_truncate(handle_t *handle, struct inode *inode,
-> +		      bool update_disksize)
->  {
->  	struct super_block *sb = inode->i_sb;
->  	ext4_lblk_t last_block;
-> @@ -4560,11 +4561,16 @@ int ext4_ext_truncate(handle_t *handle, struct inode *inode)
->  	 * because page truncation is enough.
->  	 */
->  
-> -	/* we have to know where to truncate from in crash case */
-> -	__ext4_set_i_disksize(inode, inode->i_size);
-> -	err = ext4_mark_inode_dirty(handle, inode);
-> -	if (err)
-> -		return err;
-> +	/*
-> +	 * A size-preserving truncate must not expose delalloc-only data by
-> +	 * advancing the on-disk size before writeback.
-> +	 */
-> +	if (update_disksize) {
-> +		__ext4_set_i_disksize(inode, inode->i_size);
-> +		err = ext4_mark_inode_dirty(handle, inode);
-> +		if (err)
-> +			return err;
-> +	}
->  
->  	last_block = (inode->i_size + sb->s_blocksize - 1)
->  			>> EXT4_BLOCK_SIZE_BITS(sb);
-> diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-> index a495080df710..d4de88c802b8 100644
-> --- a/fs/ext4/indirect.c
-> +++ b/fs/ext4/indirect.c
-> @@ -1126,7 +1126,8 @@ static void ext4_free_branches(handle_t *handle, struct inode *inode,
->  	}
->  }
->  
-> -void ext4_ind_truncate(handle_t *handle, struct inode *inode)
-> +void ext4_ind_truncate(handle_t *handle, struct inode *inode,
-> +		       bool update_disksize)
->  {
->  	struct ext4_inode_info *ei = EXT4_I(inode);
->  	__le32 *i_data = ei->i_data;
-> @@ -1158,8 +1159,11 @@ void ext4_ind_truncate(handle_t *handle, struct inode *inode)
->  	 * the new, shorter inode size (held for now in i_size) into the
->  	 * on-disk inode. We do this via i_disksize, which is the value which
->  	 * ext4 *really* writes onto the disk inode.
-> +	 *
-> +	 * A size-preserving truncate must not advance it past delalloc data.
->  	 */
-> -	ei->i_disksize = inode->i_size;
-> +	if (update_disksize)
-> +		ei->i_disksize = inode->i_size;
->  
->  	if (last_block == max_block) {
->  		/*
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index e3129353d4ed..48de9716305f 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -5410,7 +5410,7 @@ int ext4_inode_attach_jinode(struct inode *inode)
->   * that's fine - as long as they are linked from the inode, the post-crash
->   * ext4_truncate() run will find them and release them.
->   */
-> -int ext4_truncate(struct inode *inode)
-> +static int __ext4_truncate(struct inode *inode, bool update_disksize)
->  {
->  	struct ext4_inode_info *ei = EXT4_I(inode);
->  	unsigned int credits;
-> @@ -5483,9 +5483,9 @@ int ext4_truncate(struct inode *inode)
->  	ext4_discard_preallocations(inode);
->  
->  	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
-> -		err = ext4_ext_truncate(handle, inode);
-> +		err = ext4_ext_truncate(handle, inode, update_disksize);
->  	else
-> -		ext4_ind_truncate(handle, inode);
-> +		ext4_ind_truncate(handle, inode, update_disksize);
->  
->  	up_write(&ei->i_data_sem);
->  	if (err)
-> @@ -5516,6 +5516,11 @@ int ext4_truncate(struct inode *inode)
->  	return err;
->  }
->  
-> +int ext4_truncate(struct inode *inode)
-> +{
-> +	return __ext4_truncate(inode, true);
-> +}
-> +
->  static inline u64 ext4_inode_peek_iversion(const struct inode *inode)
->  {
->  	if (unlikely(EXT4_I(inode)->i_flags & EXT4_EA_INODE_FL))
-> @@ -6881,6 +6886,48 @@ static inline void ext4_set_inode_size(struct inode *inode, loff_t newsize)
->  	up_write(&EXT4_I(inode)->i_data_sem);
->  }
->  
-> +/*
-> + * Write back delalloc data before covering it with a new on-disk size.
-> + *
-> + * DIO and fallocate can advance i_disksize over older delalloc extents, so
-> + * include the first delayed extent in the surviving range when choosing the
-> + * start.  The inode and invalidate locks held by ext4_setattr() prevent new
-> + * delalloc extents; concurrent writeback can only remove them and make the
-> + * flush more conservative.
-> + *
-> + * Read i_disksize under i_data_sem to serialize with writeback and avoid a
-> + * torn read on 32-bit systems.  Drop the lock before waiting because
-> + * writeback needs it to advance i_disksize.
-> + *
-> + * Inline data is committed with the inode and needs no separate flush.
-> + * Must be called without a journal handle and before i_size is lowered.
-> + */
-> +static int ext4_ordered_flush_to(struct inode *inode, loff_t newsize)
-> +{
-> +	struct extent_status es;
-> +	ext4_lblk_t end_lblk;
-> +	loff_t start;
-> +
-> +	if (!ext4_should_order_data(inode) || ext4_has_inline_data(inode) ||
-> +	    newsize <= 0)
-> +		return 0;
-> +
-> +	end_lblk = (newsize - 1) >> inode->i_blkbits;
-> +	ext4_es_find_extent_range(inode, ext4_es_is_delayed, 0, end_lblk, &es);
-> +
-> +	down_read(&EXT4_I(inode)->i_data_sem);
-> +	start = EXT4_I(inode)->i_disksize;
-> +	up_read(&EXT4_I(inode)->i_data_sem);
-> +
-> +	if (es.es_len && es.es_lblk <= end_lblk)
-> +		start = min(start, EXT4_LBLK_TO_B(inode, es.es_lblk));
-> +	if (newsize <= start)
-> +		return 0;
-> +
-> +	return filemap_write_and_wait_range(inode->i_mapping, start,
-> +					    newsize - 1);
-> +}
-> +
->  static int ext4_truncate_up(struct inode *inode, loff_t oldsize, loff_t newsize)
->  {
->  	ext4_lblk_t old_lblk, new_lblk;
-> @@ -6900,6 +6947,10 @@ static int ext4_truncate_up(struct inode *inode, loff_t oldsize, loff_t newsize)
->  			return ret;
->  	}
->  
-> +	ret = ext4_ordered_flush_to(inode, newsize);
-> +	if (ret)
-> +		return ret;
-> +
->  	handle = ext4_journal_start(inode, EXT4_HT_INODE, 3);
->  	if (IS_ERR(handle))
->  		return PTR_ERR(handle);
-> @@ -6931,10 +6982,20 @@ static int ext4_truncate_down(struct inode *inode, loff_t oldsize,
->  	int ret;
->  
->  	/* Do not change i_size. */
-> -	if (newsize == oldsize)
-> -		goto truncate;
-> +	if (newsize == oldsize) {
-> +		/*
-> +		 * Only blocks past i_size need to be discarded.  Do not advance
-> +		 * i_disksize past data that may still be delalloc-only.
-> +		 */
-> +		truncate_pagecache(inode, newsize);
-> +		return __ext4_truncate(inode, false);
-> +	}
->  
->  	/* Shrink. */
-> +	ret = ext4_ordered_flush_to(inode, newsize);
-> +	if (ret)
-> +		return ret;
-> +
->  	handle = ext4_journal_start(inode, EXT4_HT_INODE, 3);
->  	if (IS_ERR(handle))
->  		return PTR_ERR(handle);
-> @@ -6971,11 +7032,9 @@ static int ext4_truncate_down(struct inode *inode, loff_t oldsize,
->  
->  	if (ext4_should_journal_data(inode))
->  		ext4_wait_for_tail_page_commit(inode);
-> -truncate:
->  	/*
->  	 * Truncate pagecache after we've waited for commit in data=journal
-> -	 * mode to make pages freeable.  Call ext4_truncate() even if
-> -	 * i_size didn't change to truncate possible preallocated blocks.
-> +	 * mode to make pages freeable.
->  	 */
->  	truncate_pagecache(inode, newsize);
->  	return ext4_truncate(inode);
-> -- 
-> 2.51.0
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+The issue was bisected by AI to:
+
+commit 98f18c76c2c3089183c35d2c33e468ad6c03d86b
+Author: Eric Sandeen <sandeen@redhat.com>
+Date:   Sun Feb 23 19:57:41 2025 +0000
+
+    ext2: create ext2_msg_fc for use during parsing
+
+AI reasoning:   https://syzkaller.appspot.com/ai_job?id=f0a661eb-7c3b-44be-becd-54ce0bd776b2
+
+AI-generated root cause summary:
+In fs/ext2/super.c, ext2_msg_fc() formats log messages for filesystem context
+operations. When fc->purpose != FS_CONTEXT_FOR_RECONFIGURE, it unconditionally
+executes strrchr(fc->source, '/') without verifying that fc->source is non-NULL.
+During filesystem configuration via the new mount API (e.g., fsopen() followed
+by fsconfig()), fc->source starts as NULL and options can be parsed in any
+order. Specifying an option that triggers ext2_msg_fc() (such as "dax", "nobh",
+or "reservation") prior to supplying the "source" parameter passes a NULL
+pointer to strrchr(), causing a kernel NULL pointer dereference.
+
+full analysis:  https://syzkaller.appspot.com/x/ai_root_cause?x=1d23ad199a3bfd6f9149
+
+IMPORTANT: if you fix the issue, please add the following tag to the commit:
+Reported-by: syzbot+1d23ad199a3bfd6f9149@syzkaller.appspotmail.com
+
+The cause commit was identified by AI and may be wrong.
+If you agree with it, please also add:
+Fixes: 98f18c76c2c3 ("ext2: create ext2_msg_fc for use during parsing")
+
+8<--- cut here ---
+Unable to handle kernel NULL pointer dereference at virtual address 00000000 when read
+[00000000] *pgd=86b45003, *pmd=df702003
+Internal error: Oops: 205 [#1] SMP ARM
+Modules linked in:
+CPU: 0 UID: 0 PID: 4221 Comm: syz-executor704 Not tainted syzkaller #0 PREEMPT 
+Hardware name: ARM-Versatile Express
+PC is at strrchr+0x4/0x20 arch/arm/lib/strrchr.S:16
+LR is at ext2_msg_fc+0x64/0xbc fs/ext2/super.c:94
+pc : [<81be3be4>]    lr : [<80207988>]    psr: 80000013
+sp : df969ed0  ip : 00000000  fp : df969efc
+r10: 8665ce00  r9 : 86c5a600  r8 : 8665ce00
+r7 : 00000000  r6 : 825897f0  r5 : 82533520  r4 : 00000000
+r3 : 00000000  r2 : 00000000  r1 : 0000002f  r0 : 00000000
+Flags: Nzcv  IRQs on  FIQs on  Mode SVC_32  ISA ARM  Segment user
+Control: 30c5387d  Table: 86801300  DAC: fffffffd
+Register r0 information: NULL pointer
+Register r1 information: non-paged memory
+Register r2 information: NULL pointer
+Register r3 information: NULL pointer
+Register r4 information: NULL pointer
+Register r5 information: non-slab/vmalloc memory
+Register r6 information: non-slab/vmalloc memory
+Register r7 information: NULL pointer
+Register r8 information: slab filp start 8665ce00 pointer offset 0 size 128
+Register r9 information: slab kmalloc-cg-128 start 86c5a600 pointer offset 0 size 128
+Register r10 information: slab filp start 8665ce00 pointer offset 0 size 128
+Register r11 information: 2-page vmalloc region starting at 0xdf968000 allocated at kernel_clone+0xc4/0x440 kernel/fork.c:2798
+Register r12 information: NULL pointer
+Process syz-executor704 (pid: 4221, stack limit = 0xdf968000)
+Stack: (0xdf969ed0 to 0xdf96a000)
+9ec0:                                     00000000 00000000 00000000 9b02fc30
+9ee0: 86c7ab80 86c5a600 86c7ab80 fffffdf9 df969f34 df969f08 80791374 80207934
+9f00: 825897f0 0000006a 00000000 00000000 00000001 00000000 fffffdf9 9b02fc30
+9f20: 86c5a600 df969f60 df969f5c df969f38 80632b70 8079114c 80501748 805015b0
+9f40: 00000000 00000000 00000000 86c5a604 df969fa4 df969f60 80634f3c 80632ab8
+9f60: 86801c00 00000001 00000000 00000000 00000000 9b02fc30 00000000 00000000
+9f80: 00000002 00000001 000001af 8020029c 84563300 000001af 00000000 df969fa8
+9fa0: 80200060 80634c2c 00000000 00000002 00000003 00000000 000653e0 00000000
+9fc0: 00000000 00000002 00000001 000001af 00000000 7eb39e0c 00000002 00000000
+9fe0: 7eb39c90 7eb39c80 00010330 00027e10 60000010 00000003 00000000 00000000
+Call trace: 
+[<80207924>] (ext2_msg_fc) from [<80791374>] (ext2_parse_param+0x234/0x2dc fs/ext2/super.c:598)
+ r3:0000006a r2:825897f0
+ r6:fffffdf9 r5:86c7ab80 r4:86c5a600
+[<80791140>] (ext2_parse_param) from [<80632b70>] (vfs_parse_fs_param+0xc4/0x13c fs/fs_context.c:132)
+ r5:df969f60 r4:86c5a600
+[<80632aac>] (vfs_parse_fs_param) from [<80634f3c>] (vfs_fsconfig_locked fs/fsopen.c:306 [inline])
+[<80632aac>] (vfs_parse_fs_param) from [<80634f3c>] (__do_sys_fsconfig fs/fsopen.c:466 [inline])
+[<80632aac>] (vfs_parse_fs_param) from [<80634f3c>] (sys_fsconfig+0x31c/0x514 fs/fsopen.c:353)
+ r6:86c5a604 r5:00000000 r4:00000000
+[<80634c20>] (sys_fsconfig) from [<80200060>] (ret_fast_syscall+0x0/0x1c arch/arm/mm/proc-v7.S:67)
+Exception stack(0xdf969fa8 to 0xdf969ff0)
+9fa0:                   00000000 00000002 00000003 00000000 000653e0 00000000
+9fc0: 00000000 00000002 00000001 000001af 00000000 7eb39e0c 00000002 00000000
+9fe0: 7eb39c90 7eb39c80 00010330 00027e10
+ r10:000001af r9:84563300 r8:8020029c r7:000001af r6:00000001 r5:00000002
+ r4:00000000
+Code: 00000000 00000000 00000000 e3a03000 (e4d02001) 
+---[ end trace 0000000000000000 ]---
+----------------
+Code disassembly (best guess):
+   c:	e3a03000 	mov	r3, #0
+* 10:	e4d02001 	ldrb	r2, [r0], #1 <-- trapping instruction
+
+
+---
+This report is generated by a bot. It may contain errors.
+See https://goo.gl/tpsmEJ for more information about syzbot.
+syzbot engineers can be reached at syzkaller@googlegroups.com.
+
+syzbot will keep track of this issue. See:
+https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
+For information about AI bisection see: https://goo.gl/tpsmEJ#ai-bisection
+
+If the report is already addressed, let syzbot know by replying with:
+#syz fix: exact-commit-title
+
+If you want to overwrite report's subsystems, reply with:
+#syz set subsystems: new-subsystem
+(See the list of subsystem names on the web dashboard)
+
+If the report is a duplicate of another one, reply with:
+#syz dup: exact-subject-of-another-report
+
+If you want to undo deduplication, reply with:
+#syz undup
