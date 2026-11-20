@@ -1,57 +1,57 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795190466;
-	b=qZzAhO/k0UXUl4XQgsuvniFwgZaEvGA8iQ/WAfGMpaXig6V+y/mc49Mq7mNpFYlS+W/L
-	 oESF1L+JfQz02HXRgXfAKzmaZO2hWcStm6Rl4SwEDOkOmC/NTRpgeimHKwtr3LNEmzVmW
-	 51mkKPtKZwak57jI6O7/7MDSwA2gN5hCqZCvIAKLVoH4d0t7gz7DiL60EZffcWmj3+B8h
-	 mJGn3qV878qyQSJMpKWvSZuNOgTd8y0IZ9igxBUAYxfvnzWjx2YfZVCLHHOhBHtxy4g+q
-	 wfC2y9mARH8VUINLHLmIG7L7magblh7U2Ccmy9B+bTEJBFQmAEWPydFzggJZzDBZRNQ==
+	t=1795190472;
+	b=pALnGlTtzACa4TAdMGiNm4HanOeIwptAUo+vpITr9exeQTR32ewxM0mqib4pRaWx80Zm
+	 FV3Y9P+0JO3de1mWRj4xPtDVHHmWJSv+iV5d7Yr4dM90mBPkBs4Oy0qjYfqN4HbSGwCS6
+	 JcwNtBTkxMXdAqOVYv/JeJBPwr5ZZzYIn5b1RyjTb65aF2ZHFj/zesDt7XIj+eApKJSKC
+	 H8hGW7up+GCwTuzXDYPLAMJxe8Mp+rogPOmWS+YA8Bfe3Ye66KI58jkSqGMbt+gP9Ny92
+	 j2nsW2VyZhAsABnuz9fHAVP8TD9LtgJscbU5I0zZm1+2Sj9ZaVVNhid0pFylnUXgcWQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795190466;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795190472;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=V2SqnhGr5XJ9Ex7VePEI1fy379fETPdmLIlLiSX9qrw=;
-	b=Gs5Ay6GhDnxPz4PJpOfqeQHH15G6FDIWEZz2KRRxnJ53Q/8ZjXv/fqwo1iXSg60ex1ec
-	 usdc4YTtkG30MfHd832hYvBghpmI9iDdLPgsVWDXa4899kqtDC7RnuJr/NrLxMuGqhKz4
-	 ETYHBiJXQ4S9B2Z+iJiyW8BdTVqo2y8OTxfwiQFYrLiEmGPYLcvZH/+wPWYd0Oxa+RE9S
-	 Ysd8Tw5svyw9z0ba3gcBwRnwXr3Kcbq9RbLxAGSbuN2CQKlBzgkMrUWi5A9ogAgqAoJ9z
-	 MBHR7yXIxiQ5iQi66steRKnuAveZoA0b3Phso7pZZZlDOqHu1oWlGoY9B4RWkHCe2Fw==
+	bh=spBkuYGKKr3FS2Wcz1kceTfUznyIHFN1FC3pVzAltRM=;
+	b=MknSIs0f66abdUmO0OYyYCq9nBtT2PysPDhbLQwreXCzjnpuqWgwWzp6gDXdX6iSfJdc
+	 fnC8yZkW7TFDGPYe9uh6QeiMObvQLbkaYwOjGTH4r+Enu+Gs8wOAOoUsLkWLF1bC/QIi7
+	 gPkxE2qzA/HFx+2SIvGpZcay2FcGveMm4eEM1Q2Llz1qLbujpBKj04Ik7kizE+LxismFR
+	 vrhpgLE04N+5vy8l42H+kv+4zGja9IeDE/uSKosofPlwp19Q7KuVee/WlJsw303iEwm60
+	 p3PStblGfWDp+4ZeMEM6CSZvR3EqF9b6MjPYfkslkE74sVlzIHxS3N/XmMdVQRjSi1w==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=OeNtgdom;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=W0Hjpa2U;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 450DF606A335
-	for <linux-ext4@vger.kernel.org>; Fri, 20 Nov 2026 16:01:06 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 817BB606A320
+	for <linux-ext4@vger.kernel.org>; Fri, 20 Nov 2026 16:01:12 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=OeNtgdom
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A15971F000EE;
-	Fri, 20 Nov 2026 16:01:05 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=W0Hjpa2U
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id D403C1F000D0;
+	Fri, 20 Nov 2026 16:01:11 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795190465;
-	bh=V2SqnhGr5XJ9Ex7VePEI1fy379fETPdmLIlLiSX9qrw=;
+	s=k20260515; t=1795190472;
+	bh=spBkuYGKKr3FS2Wcz1kceTfUznyIHFN1FC3pVzAltRM=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=OeNtgdomL3Q50W2grnx9cnFbL7lVWnEoFsz+qqZBFE2AjkMdJfgIfJPPopSy5ss7T
-	 ExU3hasXMzBIxl45plff8dVYyc23sMMOcWBvCnCFuuFDmflS6ChdgBkV8XzoPI2duI
-	 ww2OXHFzyndkRJSfyPK4VSmdj1tgXjSwf2kj21V7iLBFdS+IcwlHkCflOGY7OKrnex
-	 LAqpibN5alm4Mxf0KU+6bK0S1U6r1yfDfjib4C9K50VEWlRKndd5AVIFtJpubu6W0U
-	 WF1t/91V1NRCLt6fzzF7IONjDynD3iXWrC5UwtnhhqsGEHhI2bjMIPgbNHh5vw4a+g
-	 KXULMHII3/nQA==
-Message-ID: <sashiko-outbox-225507@kernel.org>
+	b=W0Hjpa2UBj081kEXytwq3aTDK7DB1AKKT7370mLs/luMDyJTklvCE22b1MJwOsabR
+	 kVn/eWSbAAajBpSOdc4CQx61vmDz/fHjeDfPeKlpR/UmWcbrn2YoGXOSsCf+6bcswX
+	 w9ppB272FkD9uesLvk+8gTppTSZ30EePkHM++xk1PT3j74yWxJc0wtJvviF/56BHzC
+	 vx0RxCs9rnVDbbZROBJmPFgAGBKVCwImRUAp1nl1qqxAknH2TKPXQZaUsK5W6ZTKjw
+	 eYl6sWu8haTVlwf0sXygsl78Vf1xvAFW3xbj5A16TD9U4b8IsiEl5L6OBb7RNvs4pp
+	 XDGRUpxvMvOzA==
+Message-ID: <sashiko-outbox-225510@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH v3 3/7] fs,fsverity: add I_VERITY_BUILDING inode state
- flag
+Subject: Re: [PATCH v3 6/7] ext4: use I_VERITY_BUILDING instead of private
+ flags
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Andrey Albershteyn" <aalbersh@kernel.org>, linux-ext4 <linux-ext4@vger.kernel.org>
 Cc: tytso@mit.edu
-In-Reply-To: <20261120155032.187246-4-aalbersh@kernel.org>
+In-Reply-To: <20261120155032.187246-7-aalbersh@kernel.org>
 References: <20261120155032.187246-1-aalbersh@kernel.org>
- <20261120155032.187246-4-aalbersh@kernel.org>
+ <20261120155032.187246-7-aalbersh@kernel.org>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Fri, 20 Nov 2026 16:01:05 +0000
+Date: Fri, 20 Nov 2026 16:01:11 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -61,21 +61,15 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-> Every filesystem that supports fs-verity keeps a private runtime inode
-> flag meaning Merkle tree is currently being built *_VERITY_IN_PROGRESS.
-> They all serve the same two purposes: reject a concurrent enable with
-> -EBUSY and let the write paths recognize the special writes done while
-> the tree is under construction.
+> Now that the VFS tracks an inode whose Merkle tree is under construction
+> via I_VERITY_BUILDING and handles the concurrent-enable guard in the
+> generic fs-verity enable path, drop the per-filesystem runtime flags that
+> duplicated this state.
 >=20
-> Hoist this flag into the VFS as a new inode state flag,
-> I_VERITY_BUILDING, and manage its lifetime in the generic fs-verity
-> enable path. The flag is set after ->begin_enable_verity() succeeds and
-> cleared after ->end_enable_verity() returns (both on the success and the
-> rollback paths). Add the concurrent-enable guard.
->=20
-> A new helper, fsverity_is_building(), is provided for filesystems to
-> query the flag. No filesystem uses it yet; the per-fs flags are
-> converted in following patches.
+> Replace ext4 own helper ext4_verity_in_progress() with
+> fsverity_is_building(), and remove the EXT4_STATE_VERITY_IN_PROGRESS
+> flags. The IS_ENABLED() guard is fine to remove now as
+> fsverity_is_building() has stub for disabled fsverity.
 >=20
 > Signed-off-by: Andrey Albershteyn <aalbersh@kernel.org>
 
@@ -83,5 +77,5 @@ Sashiko has reviewed this patch and found no issues.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261120155032.1872=
-46-2-aalbersh@kernel.org?part=3D3
+46-1-aalbersh@kernel.org?part=3D6
 
