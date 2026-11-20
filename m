@@ -1,57 +1,80 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795152981;
-	b=iO9wEcuzyAgs9CfPGorD3MI5/GD4HdOyPlB4hK5MX/AWY7ZlqfytcRZs9eyTHILoa9p2
-	 cj6AIZhdxVlz3um5+hUf+bL28T9JeJ9y05qRI3jOJw2nh0duFQP5ErltyDMvC00jie4Gi
-	 HC5+l68lcRbpNFl1IhjoFVPDixPcOlNSoznOFn3S1YnErZ5btnvAfDOj3leBeS5QOMtI8
-	 P9mDMnmI+JNtmwywWH7ERsGuI0bxZFuu5ROGS9pOuE1+9bJCK7ZODZtvnv3itypZ9KUu/
-	 W5I+8o/e/9VfKL/v2c/Hp4aKvbu/SQC9AXQl6ULE/q88K97C+m6M2FNz+Cc+30OzMeA==
+	t=1795158206;
+	b=cmVArxvKwRYAXnw7pMh10pvNZrDbTWI6tTUej/gnUiR4Rg/tgc5gsz+wSP9aThOZG3NL
+	 PJZ2hqRAhF9DBprRaarVSjKr7jo1x3rqUE4on/8BZEdnZvBrYFqa5d6WcfiddVj7e2+ZC
+	 wu6ddcTKa8CHwsM67QKL7F4BwxX/JhaG2y8bKWLUX0zzVUSmpg3TMrnzC+exRj/jmfgJs
+	 OB/HTqeoOZxeCH+fvAFn4/Ib5ZfqNgaR3ihmkt6mrMjfRfLWYci1TQgIv7a6ieeRu0la8
+	 OTYv0SCrBxCKgyj9nWG7eEtgZ5yqTkbyWeDgOOoIEz4Y+vIO6B2rGBm8EYud5e+lj5A==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795152981;
-	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
-	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=iba3EthPEXUJc+e+oMrAeOn69+dQ2+xmQdiXHoFQTdA=;
-	b=d1oRvcZAtsuEIE2J7ZEx29Eja85BlFPrmawKAtSHa49koqoQgTTmB1+AEabuGO5z88Zb
-	 fsWql4vsQa6URD5HWm/P2h8pHCbs2tnezq83190nIkaYrEkDX+ahE1uezMLyDXTGWBXsj
-	 HMucgN3Qy+ML7gH4z5U1XbfHiuIzEC1Ykls3NSqa8AtopXYhHav4zmkdnTl3V3R0CSaQR
-	 OvwRXpochq0qp4vLpCOMYVz4umcLnRoKRdoeO6Sw/KCxHzaPVdQ2vyaKJkGuur0E+zeUb
-	 W2S5W7NP4cpW3CQ53HGCEjz8ICF4uyiuWRAltcpa2Jr43wl0Wy1t0ULiDlxfz17gLvg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795158206;
+	h=Received:DKIM-Signature:Received:From:To:Subject:Date:
+	 X-Bugzilla-Reason:X-Bugzilla-Type:X-Bugzilla-Watch-Reason:
+	 X-Bugzilla-Product:X-Bugzilla-Component:X-Bugzilla-Version:
+	 X-Bugzilla-Keywords:X-Bugzilla-Severity:X-Bugzilla-Who:
+	 X-Bugzilla-Status:X-Bugzilla-Resolution:X-Bugzilla-Priority:
+	 X-Bugzilla-Assigned-To:X-Bugzilla-Flags:X-Bugzilla-Changed-Fields:
+	 Message-ID:In-Reply-To:References:Content-Type:
+	 Content-Transfer-Encoding:X-Bugzilla-URL:Auto-Submitted:MIME-Version;
+	bh=VFB86YOhZBmk4seGZnsJZoFfyiAxjLxMgBF1WsmMK2g=;
+	b=a1aMaBIJkQgbKUhGVURiXbddu+nXiHy8sRykIIU6woJatw2NUdoE4vog3EXFszOc8QBx
+	 2vfUJK+OcuFDqNbReOIkqu2WPTMv27H+WrNBzDP4gJOvDna/JJSbYw6CvEyO71dSNoWZ/
+	 H09Y16MmiQcHi9XPWiEd8gaZnuffIXFp4SGbCXwMDBQkwuh3L+ZVor4BLuRJ7sA9IKXRC
+	 G8DxrDi31+9wFuJlj7icuNtFk/vg3hDcKFgT4QCN2q45+MeGJfOhrnOEHXTQ4TDi4M8Sp
+	 WLn8Og2odcYN/Ojb/ZhwePR3/wacW8af+H0IgBFK6DDzyEZ0kf86minhZh6ApT+LysA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=d0MW1CPi;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Yw5ZJds2;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 279F860A2600;
-	Fri, 20 Nov 2026 05:36:20 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 36FF7606A32A
+	for <linux-ext4@vger.kernel.org>; Fri, 20 Nov 2026 07:03:25 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=d0MW1CPi
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5D0EB1F000CA;
-	Fri, 20 Nov 2026 05:36:20 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Yw5ZJds2
+Received: by smtp.kernel.org (Postfix) with ESMTPS id CB92D1F000C4
+	for <linux-ext4@vger.kernel.org>; Fri, 20 Nov 2026 07:03:25 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795152980;
-	bh=iba3EthPEXUJc+e+oMrAeOn69+dQ2+xmQdiXHoFQTdA=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=d0MW1CPiQdSlHC6K89qQ2PMBQKyZv0oURYTiZSzURX5i+9areuo+8nG8Z7HFD9oo6
-	 L1jaPxJS8upmn+EKvH3VQh025QNNUsgrHEnLEyRKi5O88C7g7JvDwpK8a6cI7tfCTs
-	 ypv7FZ8PA3ee9xyoJEcACK3sjNaQmBlVeI1ub20LmpredrQsTsJo5PVbH8aMHXse2Z
-	 +AbCYo/gqCKBGBEnTxWpP9HbVWLRtAqhgskIEm4+j5LtWkE4lHdwmQBrfvfHrDc6gB
-	 ycGaSOoCKe7KJZCbwzHnnpBwVHcN8G7V/6RvUd3LsUoPbkmWoCkEj/heI1930WKhNj
-	 /6JT1TEtPIRzA==
-Message-ID: <sashiko-outbox-224504@kernel.org>
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH v2 12/12] docs: ioctl-number: update DRM entries
-Reply-To: sashiko-reviews@lists.linux.dev
-To: "Randy Dunlap" <rdunlap@infradead.org>
-Cc: linux-usb@vger.kernel.org, virtualization@lists.linux.dev, linux-ext4@vger.kernel.org, tytso@mit.edu, "Michael
- S. Tsirkin" <mst@redhat.com>, "Eugenio Perez" <eperezma@redhat.com>
-In-Reply-To: <20261119053514.255348-13-rdunlap@infradead.org>
-References: <20261119053514.255348-1-rdunlap@infradead.org>
- <20261119053514.255348-13-rdunlap@infradead.org>
-Content-Type: text/plain; charset=utf-8
+	s=k20260515; t=1795158205;
+	bh=VFB86YOhZBmk4seGZnsJZoFfyiAxjLxMgBF1WsmMK2g=;
+	h=From:To:Subject:Date:In-Reply-To:References;
+	b=Yw5ZJds28evXWAj2mgCASbZF4NQiihs3V50bj/ONQtT+Rb27OzY/YagbC8HIQcS74
+	 G7aNbEZRb1HAIZ8nwmXzyDwfw9hR6nkZIxT/OgX6bDmEaexzVtijSEWPcMF5fVOfT3
+	 j0oB3ZXXQsaUGlnfIuLDPcWfbOM9+AvuCLbxHYWQhLeLUCD3K26CAkMOysBltpoLQ4
+	 oaQN0qXV/8cDLB+TsaPTjfFE4MZAYQQ2PRp+uozaeYVotcL+zpyziIFbAlnIPLCwI3
+	 F45PiASNVELYnFg+E2RTchvrPtcRBPMoDTIJdIVVw8NoywYSNkU0f54L539Tg7t4JU
+	 NxV3z5dUvNz0Q==
+Received: by aws-us-west-2-korg-bugzilla-alma10-1.codeaurora.org (Postfix, from userid 48)
+	id C7FE2240040D; Fri, 20 Nov 2026 07:03:25 +0000 (UTC)
+From: bugzilla-daemon@kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 222294] [REGRESSION] 6.1.191+: NULL deref in
+ ext4_mb_load_buddy_gfp() after a3a7d360252c ("ext4: fix e4b bitmap
+ inconsistency reports")
+Date: Fri, 20 Nov 2026 07:03:25 +0000
+X-Bugzilla-Reason: None
+X-Bugzilla-Type: changed
+X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
+X-Bugzilla-Product: File System
+X-Bugzilla-Component: ext4
+X-Bugzilla-Version: 2.5
+X-Bugzilla-Keywords: 
+X-Bugzilla-Severity: normal
+X-Bugzilla-Who: regressions@leemhuis.info
+X-Bugzilla-Status: NEW
+X-Bugzilla-Resolution: 
+X-Bugzilla-Priority: P3
+X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
+X-Bugzilla-Flags: 
+X-Bugzilla-Changed-Fields: cc
+Message-ID: <bug-222294-13602-6SCOgEhjKh@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-222294-13602@https.bugzilla.kernel.org/>
+References: <bug-222294-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
-Date: Fri, 20 Nov 2026 05:36:20 +0000
+X-Bugzilla-URL: https://bugzilla.kernel.org/
+Auto-Submitted: auto-generated
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -60,14 +83,25 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
+MIME-Version: 1.0
 
-> Update the list of files where DRM ioctls are defined.
->=20
-> Signed-off-by: Randy Dunlap <rdunlap@infradead.org>
+https://bugzilla.kernel.org/show_bug.cgi?id=3D222294
 
-Sashiko has reviewed this patch and found no issues.
+The Linux kernel's regression tracker (Thorsten Leemhuis) (regressions@leem=
+huis.info) changed:
+
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |regressions@leemhuis.info
+
+--- Comment #3 from The Linux kernel's regression tracker (Thorsten Leemhui=
+s) (regressions@leemhuis.info) ---
+From a quick look I guess it's the same problem that is being discussed her=
+e,
+with a fix already queued:
+https://lore.kernel.org/linux-ext4/20261102-ext4-ntfs3-null-folio-v1-0-4fd9=
+1ee23a4a@elliotjb.com/
 
 --=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261119053514.2553=
-48-1-rdunlap@infradead.org?part=3D12
-
+You are receiving this mail because:
+You are watching the assignee of the bug.=
