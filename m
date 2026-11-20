@@ -1,55 +1,61 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795207211;
-	b=mN3klvaCMzHTr/Phx08Z+FNuK2hDtDWPF3sfeckhxkE//FrrdfdQndPMglT8m9xNqsRK
-	 r4tU4T9cdbi3El0isiaFg2+pALOXvF5wwMdl59pj4mKeUAiAsNB5EJ6c3e6vl35+NWpGc
-	 ya0RC3bPMAcx1Yw2yEAcFcB25Ajtg+ltbqtRL0b27nO8usx8ZC7clM58FnteUAI+7nwKX
-	 L897/AD5bDcvSvZCU4mdYuFkyhvJ5eTj/UeQ7vVfdEB/Y4ItoOc5BAT1M6IGpZM8WC3YI
-	 WH0oPQqPpqdFax2twtd6Ib71J7NS7RO7XA8YqIqWsmlfiuis9dyZMRy9QV0108NZd2A==
+	t=1795213067;
+	b=NpOjs8ZXilvZE6mEECFCUT6hktrWlrSlPuNiXjLQOpAFFL8MI3SOS968MNh6srdFfHMO
+	 PxomZZdb1dqnTkMCWnRISoesHmQy5IKMR5I9zLINtt5B8+YpqWpBBUDuWRrmwy+9iOu3q
+	 1pgmumbLRMN4VEva2HnEo/mL5NCbLnwlyQxpowRIYfG3u2ldvA/CVqv5TOAHrT5P7vk9Z
+	 KGWWn7fWWe81L32vr0L49UIZ9eKaaLjdoRXLmuw3D1KA/0B+Ln/amfLwPEnXGgIyyQHIo
+	 fD8gv9M9PxA2A7FCLxuUyH3FyBl1Ghjdv3afpY1prTZ2yWXl1P2qzx0CQuFqUT15L7Q==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795207211;
-	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
-	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
-	bh=iuOAnFf7djN6MJm0xu/DSFJ+ZW3QNY44Rcjtb1OjLzk=;
-	b=R8fmuxeC+vr5wp8pKgswHue3u8y5TvcdB+98B/6vbn36y3eOGgIDQv0CVH4FYfH7hmeu
-	 8wFy6wC9nvEvUj+wb21/zyQhgQEl8vtf1yy3zukEFw2ezBPAYVBs+Cb+d0ssSYYoioYBa
-	 PVILxu42DxvsVkaVV2arV8N6OJY3XwfKanKfPwr3b7/UDQBUF1tGqMiHqUDgLqWC/3JUT
-	 Kkry+UtVd8aP07kDT80/2WTwlQQygPufV8hktgkshzHv2T46e+M8wlE7pp4amPLZkIl5g
-	 p0LDuoRwE37fWpqZOtSrAoTmz7kJ6CEPBML0h0wShSDCo/Sc4I8bfbDtMUnhHYg7OEA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795213067;
+	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
+	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
+	bh=khFB9XB534fgekb/CoE+7bFIpuAhIcZTTRU6XFAnt0g=;
+	b=3xWpOLOFBEm2bC+y9OgOKZGMAOIOi19u9Z1IaOVw9WjIWuE/Szx4HOhRUS3l9Vz3gAXh
+	 gclyTHhV/n649ZUFbuYIbKFcmkPHXb10Zh+CEvEOut4x1Olg2UULefS5i+/VqTk8DaTce
+	 w8kDS6fuVOq1yoBHFApX36yYcK+kRKPhscujtris7SjoDoSZBT2Ci+Uya3kHLX06M+PfR
+	 wy7YcHqZeqJoN1Fdtj4313ZLex8fYbxRj5p0R1f449MlKYWuC53rovLeniZAKMijQ3Hgu
+	 Ju097MAkI7gLkSEM9q8C7Xdts5G6cnPqn+aT5ccJvd4hFVc+B2v5CJiLcuy0XqDIezw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=VTqbOTMg;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=RWUwWl3D;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 66C7A606A6F8;
-	Fri, 20 Nov 2026 20:40:11 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5D639606A334;
+	Fri, 20 Nov 2026 22:17:47 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=VTqbOTMg
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A66AB1F000C6;
-	Fri, 20 Nov 2026 20:40:10 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=RWUwWl3D
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5DE581F000CA;
+	Fri, 20 Nov 2026 22:17:46 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795207211;
-	bh=iuOAnFf7djN6MJm0xu/DSFJ+ZW3QNY44Rcjtb1OjLzk=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=VTqbOTMgTIuk770jPL+Nut6OqaGrfpSSrSX1EnAXdx+kFkHt7nk6z2FsZ5t3XATMR
-	 AVHybLaMXRN/n77mzIpEqYMKH9b92WwMtYs5JakGoM2M2f24wA29xwSGv884xrc+nx
-	 A7MOufooYaYpTp2wjOT1XDLrg/Xztu4w1mgC9unLUbxwW1MC30BKiTCUlzCLNSQevu
-	 AQJVAaIve6D/m/KMLrczuTlYGX12WmXCz/C0XwOqkLnG6UlLlxjRrbtjfxdMpOdSPa
-	 LAWI85mZS5DBehN6NtrNgD1N7kPKJ7wzPVPR2H9YFNKPPyrV4R0rjeZEyWkIL8cokJ
-	 AgsRUBfrZTZ7A==
-From: Sasha Levin <sashal@kernel.org>
-To: linux-ext4@vger.kernel.org,
-	stable@vger.kernel.org
-Cc: Sasha Levin <sashal@kernel.org>,
-	"Safe-Lock.NET Dawid Partyka" <internet.jejkowice@gmail.com>
-Subject: Re: [REGRESSION] 6.1.192: NULL deref in ext4_mb_load_buddy_gfp() after, dropping page cache (__filemap_get_folio() returns NULL, callers check IS_ERR())
-Date: Fri, 20 Nov 2026 15:39:18 -0500
-Message-ID: <2026-11-20-1-daily-reply-0029@kernel.org>
-X-Mailer: git-send-email 2.53.0
-In-Reply-To: <81b3f525-0d62-4a46-a0f3-77d54b11d847@gmail.com>
-References: <81b3f525-0d62-4a46-a0f3-77d54b11d847@gmail.com>
+	s=k20260515; t=1795213066;
+	bh=khFB9XB534fgekb/CoE+7bFIpuAhIcZTTRU6XFAnt0g=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=RWUwWl3Dzutjwu7Cy5jDblMhQtXMeEMH4EURZs10qbRLcoXjIZ7zcCpQAVc+Naejb
+	 l/HCvk8+QixPPXRUj7W2pxs1bVmhbNVSQCR2qD+y/1Ux9RSGs6CE2n8X2DCp5zGjbQ
+	 /CZYQdVIC93EmoqO8hA8heVbGIFhudDBJ1uC2HxllmaCFeSNbqBKrjHt4hqwXwr663
+	 ljXB95Jbz6123HBoN4nK/hmKhn/5h7romjkMCkp1itCWaHuiw0yaD7gAkCoOyZBqgA
+	 hVOZEJOOYcMRoCo6oadpSJYrrkm1Jc1fTUZC8H0aul3fHOIdrLW6xv+TBKRnrfKvXw
+	 3UOjZpRfSTChA==
+Date: Fri, 20 Nov 2026 22:17:44 +0000
+From: Eric Biggers <ebiggers@kernel.org>
+To: Andrey Albershteyn <aalbersh@kernel.org>
+Cc: fsdevel <linux-fsdevel@vger.kernel.org>,
+	fsverity <fsverity@lists.linux.dev>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-btrfs <linux-btrfs@vger.kernel.org>,
+	linux-f2fs <linux-f2fs-devel@lists.sourceforge.net>,
+	linux-xfs <linux-xfs@vger.kernel.org>, dsterba@suse.com,
+	Christian Brauner <brauner@kernel.org>, tytso@mit.edu,
+	chao@kernel.org, jaegeuk@kernel.org, viro@zeniv.linux.org.uk,
+	Christoph Hellwig <hch@lst.de>
+Subject: Re: [PATCH v3 3/7] fs,fsverity: add I_VERITY_BUILDING inode state
+ flag
+Message-ID: <20261120221744.GB3048696@google.com>
+References: <20261120155032.187246-1-aalbersh@kernel.org>
+ <20261120155032.187246-4-aalbersh@kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -59,15 +65,39 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20261120155032.187246-4-aalbersh@kernel.org>
 
-> After updating from 6.1.190 to 6.1.192 I get a reproducible NULL pointer
-> dereference in ext4_mb_load_buddy_gfp() whenever the buddy/bitmap pages of
-> an ext4 group are not in the page cache.
+On Fri, Nov 20, 2026 at 04:50:25PM +0100, Andrey Albershteyn wrote:
+> + * I_VERITY_BUILDING	fs-verity is being enabled on the inode: the Merkle
+> + *			tree is under construction.  The file is effectively
+> + *			read-only to userspace; the only writes happening are
+> + *			for the fs-verity metadata.
 
-The fix, "ext4: fix NULL folio dereference in mballoc", is queued and is in
-6.1.193-rc2.
+Existing dirty data can still be written out though, right?
 
--- 
-Thanks,
-Sasha
+> diff --git a/include/linux/fsverity.h b/include/linux/fsverity.h
+> index 61fe96ccdff6..e02f79682e33 100644
+> --- a/include/linux/fsverity.h
+> +++ b/include/linux/fsverity.h
+> @@ -36,11 +36,12 @@ struct fsverity_operations {
+>  	 * @filp: a readonly file descriptor for the file
+>  	 *
+>  	 * The filesystem must do any needed filesystem-specific preparations
+> -	 * for enabling verity, e.g. evicting inline data.  It also must return
+> -	 * -EBUSY if verity is already being enabled on the given file.
+> +	 * for enabling verity, e.g. evicting inline data.
+>  	 *
+>  	 * i_rwsem is held for write.
+>  	 *
+> +	 * I_VERITY_BUILDING is set on the inode for the duration of enabling.
+> +	 *
+>  	 * Return: 0 on success, -errno on failure
+>  	 */
+>  	int (*begin_enable_verity)(struct file *filp);
+
+The new sentence doesn't seem relevant here, as the flag isn't set
+during this method call.
+
+- Eric
