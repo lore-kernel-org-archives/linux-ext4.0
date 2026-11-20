@@ -1,80 +1,107 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795158206;
-	b=cmVArxvKwRYAXnw7pMh10pvNZrDbTWI6tTUej/gnUiR4Rg/tgc5gsz+wSP9aThOZG3NL
-	 PJZ2hqRAhF9DBprRaarVSjKr7jo1x3rqUE4on/8BZEdnZvBrYFqa5d6WcfiddVj7e2+ZC
-	 wu6ddcTKa8CHwsM67QKL7F4BwxX/JhaG2y8bKWLUX0zzVUSmpg3TMrnzC+exRj/jmfgJs
-	 OB/HTqeoOZxeCH+fvAFn4/Ib5ZfqNgaR3ihmkt6mrMjfRfLWYci1TQgIv7a6ieeRu0la8
-	 OTYv0SCrBxCKgyj9nWG7eEtgZ5yqTkbyWeDgOOoIEz4Y+vIO6B2rGBm8EYud5e+lj5A==
+	t=1795162127;
+	b=cRRasoQTObwdC/WtvTrU3Fd8kuQaVwJV18tht7O7FGKDpbK7L9Z1u2vcDLmrbP6L0ICG
+	 pS8J/zfTkBKcWL/slWeK0tS+fa41sQhuVQyNB+iSHt0lpO5iBAvUQiS3SXrgU3YtrvVN6
+	 +HAeNuKPIbKOgzmy/fc+Wnv/wmZVTxzH7FVfSoxLRi6nld/VhRAvekc6s++ubRGQTxHF4
+	 d2LrjGRxhWdvE+PMajx2foPZjezTiC6kMNnVAFNRPFrTZZ9ICc1JLxYe5AgWP9qSUF4D5
+	 nOgSP1ALSXP0NMsQeuy0VIyuCR7HFxWJpruEeGiMaJzOQc/rShKmeSOuRBFhw65DyzQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795158206;
-	h=Received:DKIM-Signature:Received:From:To:Subject:Date:
-	 X-Bugzilla-Reason:X-Bugzilla-Type:X-Bugzilla-Watch-Reason:
-	 X-Bugzilla-Product:X-Bugzilla-Component:X-Bugzilla-Version:
-	 X-Bugzilla-Keywords:X-Bugzilla-Severity:X-Bugzilla-Who:
-	 X-Bugzilla-Status:X-Bugzilla-Resolution:X-Bugzilla-Priority:
-	 X-Bugzilla-Assigned-To:X-Bugzilla-Flags:X-Bugzilla-Changed-Fields:
-	 Message-ID:In-Reply-To:References:Content-Type:
-	 Content-Transfer-Encoding:X-Bugzilla-URL:Auto-Submitted:MIME-Version;
-	bh=VFB86YOhZBmk4seGZnsJZoFfyiAxjLxMgBF1WsmMK2g=;
-	b=a1aMaBIJkQgbKUhGVURiXbddu+nXiHy8sRykIIU6woJatw2NUdoE4vog3EXFszOc8QBx
-	 2vfUJK+OcuFDqNbReOIkqu2WPTMv27H+WrNBzDP4gJOvDna/JJSbYw6CvEyO71dSNoWZ/
-	 H09Y16MmiQcHi9XPWiEd8gaZnuffIXFp4SGbCXwMDBQkwuh3L+ZVor4BLuRJ7sA9IKXRC
-	 G8DxrDi31+9wFuJlj7icuNtFk/vg3hDcKFgT4QCN2q45+MeGJfOhrnOEHXTQ4TDi4M8Sp
-	 WLn8Og2odcYN/Ojb/ZhwePR3/wacW8af+H0IgBFK6DDzyEZ0kf86minhZh6ApT+LysA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795162127;
+	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
+	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
+	bh=nhWTtz/XtWf+zHzkg8QT/u7XDoQ0xAQ0UFQlVcaEpd4=;
+	b=4USGx7nU205lARgP8/HDMojtNV3S9Dy3CAbuVMSlQgfXg8a19uE++7GCxTO+NrZXTFce
+	 Q8KX7f9QfjO5hWvd6kdgdDKiEr8yy9Gcl+vstmYOz1yJukXOXHfB5bIB7DRUDsCvja5Fm
+	 2ZqFU1eDKnbRxV8lX46t2HvYovtD+QyCkcCzGoKyjMzm6OCjHThz0mvWMz+etUjca4tej
+	 37f8cwYZRPIC3JiuTKVyuE6Yc7LRUt6R1UhG2/Rj5rJMivZ2ulbiixFm78lNdoazYaOui
+	 S1J8uBaPv5eaVcygetjd8CD/l0hzRwgxIC3LqaU6bFGB2DBWL/oxK4zixZBD3sYAXCQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Yw5ZJds2;
+	dkim=pass header.d=linuxfoundation.org header.i=@linuxfoundation.org header.a=rsa-sha256 header.s=korg header.b=oNThT0mS;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 36FF7606A32A
-	for <linux-ext4@vger.kernel.org>; Fri, 20 Nov 2026 07:03:25 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8F661606A331;
+	Fri, 20 Nov 2026 08:08:47 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Yw5ZJds2
-Received: by smtp.kernel.org (Postfix) with ESMTPS id CB92D1F000C4
-	for <linux-ext4@vger.kernel.org>; Fri, 20 Nov 2026 07:03:25 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795158205;
-	bh=VFB86YOhZBmk4seGZnsJZoFfyiAxjLxMgBF1WsmMK2g=;
-	h=From:To:Subject:Date:In-Reply-To:References;
-	b=Yw5ZJds28evXWAj2mgCASbZF4NQiihs3V50bj/ONQtT+Rb27OzY/YagbC8HIQcS74
-	 G7aNbEZRb1HAIZ8nwmXzyDwfw9hR6nkZIxT/OgX6bDmEaexzVtijSEWPcMF5fVOfT3
-	 j0oB3ZXXQsaUGlnfIuLDPcWfbOM9+AvuCLbxHYWQhLeLUCD3K26CAkMOysBltpoLQ4
-	 oaQN0qXV/8cDLB+TsaPTjfFE4MZAYQQ2PRp+uozaeYVotcL+zpyziIFbAlnIPLCwI3
-	 F45PiASNVELYnFg+E2RTchvrPtcRBPMoDTIJdIVVw8NoywYSNkU0f54L539Tg7t4JU
-	 NxV3z5dUvNz0Q==
-Received: by aws-us-west-2-korg-bugzilla-alma10-1.codeaurora.org (Postfix, from userid 48)
-	id C7FE2240040D; Fri, 20 Nov 2026 07:03:25 +0000 (UTC)
-From: bugzilla-daemon@kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 222294] [REGRESSION] 6.1.191+: NULL deref in
- ext4_mb_load_buddy_gfp() after a3a7d360252c ("ext4: fix e4b bitmap
- inconsistency reports")
-Date: Fri, 20 Nov 2026 07:03:25 +0000
-X-Bugzilla-Reason: None
-X-Bugzilla-Type: changed
-X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
-X-Bugzilla-Product: File System
-X-Bugzilla-Component: ext4
-X-Bugzilla-Version: 2.5
-X-Bugzilla-Keywords: 
-X-Bugzilla-Severity: normal
-X-Bugzilla-Who: regressions@leemhuis.info
-X-Bugzilla-Status: NEW
-X-Bugzilla-Resolution: 
-X-Bugzilla-Priority: P3
-X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
-X-Bugzilla-Flags: 
-X-Bugzilla-Changed-Fields: cc
-Message-ID: <bug-222294-13602-6SCOgEhjKh@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-222294-13602@https.bugzilla.kernel.org/>
-References: <bug-222294-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-X-Bugzilla-URL: https://bugzilla.kernel.org/
-Auto-Submitted: auto-generated
+	dkim=pass (1024-bit key) header.d=linuxfoundation.org header.i=@linuxfoundation.org header.a=rsa-sha256 header.s=korg header.b=oNThT0mS
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 042371F000CA;
+	Fri, 20 Nov 2026 08:08:46 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=linuxfoundation.org;
+	s=korg; t=1795162127;
+	bh=nhWTtz/XtWf+zHzkg8QT/u7XDoQ0xAQ0UFQlVcaEpd4=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=oNThT0mSGG6kUZAwqZsOB53nYtEkre5+BXqj2CeCW2DezGxoseqckwyiR/VE/H5rV
+	 fasb29VNh/hB3PNLtjFkss79IjJ2QxSftm4LCX3QTWO6ojWb5uhH6sv3drEWCZAFZL
+	 WHSdRIgt+zBwwz1WhpggeQETXK/uvYvzW9vMcVhg=
+Date: Fri, 20 Nov 2026 09:08:23 +0100
+From: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+To: Randy Dunlap <rdunlap@infradead.org>
+Cc: linux-kernel@vger.kernel.org, Jonathan Corbet <corbet@lwn.net>,
+	Shuah Khan <skhan@linuxfoundation.org>, linux-doc@vger.kernel.org,
+	David Hildenbrand <david@kernel.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Jason Gunthorpe <jgg@nvidia.com>,
+	Leon Romanovsky <leonro@nvidia.com>, linux-mm@kvack.org,
+	Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>,
+	linux-sound@vger.kernel.org, Jens Axboe <axboe@kernel.dk>,
+	linux-block@vger.kernel.org, Marcel Holtmann <marcel@holtmann.org>,
+	Luiz Augusto von Dentz <luiz.dentz@gmail.com>,
+	linux-bluetooth@vger.kernel.org,
+	Willem de Bruijn <willemdebruijn.kernel@gmail.com>,
+	Jason Wang <jasowangio@gmail.com>, David Heidelberg <david@ixit.cz>,
+	oe-linux-nfc@lists.linux.dev, Chas Williams <3chas3@gmail.com>,
+	"David S. Miller" <davem@davemloft.net>,
+	Eric Dumazet <edumazet@kernel.org>,
+	Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>,
+	netdev@vger.kernel.org, Helge Deller <deller@gmx.de>,
+	linux-fbdev@vger.kernel.org, dri-devel@lists.freedesktop.org,
+	MPT-FusionLinux.pdl@broadcom.com,
+	"James E.J. Bottomley" <James.Bottomley@hansenpartnership.com>,
+	"Martin K. Petersen" <mkp@kernel.org>, linux-scsi@vger.kernel.org,
+	Miquel Raynal <miquel.raynal@bootlin.com>,
+	Richard Weinberger <richard@nod.at>,
+	Vignesh Raghavendra <vigneshr@ti.com>,
+	Zhihao Cheng <chengzhihao1@huawei.com>,
+	linux-mtd@lists.infradead.org, Neill Kapron <nkapron@google.com>,
+	Andrey Konovalov <andreyknvl@gmail.com>, linux-usb@vger.kernel.org,
+	Juergen Gross <jgross@suse.com>,
+	Stefano Stabellini <sstabellini@kernel.org>,
+	xen-devel@lists.xenproject.org, Hans de Goede <hansg@kernel.org>,
+	Arnd Bergmann <arnd@arndb.de>,
+	"Michael S. Tsirkin" <mst@redhat.com>,
+	Eugenio =?iso-8859-1?Q?P=E9rez?= <eperezma@redhat.com>,
+	Sean Christopherson <seanjc@google.com>,
+	Paolo Bonzini <pbonzini@redhat.com>, kvm@vger.kernel.org,
+	virtualization@lists.linux.dev, Jan Kara <jack@suse.cz>,
+	linux-fsdevel@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+	linux-ext4@vger.kernel.org, Mike Marshall <hubcap@omnibond.com>,
+	devel@lists.orangefs.org, Paulo Alcantara <pc@manguebit.org>,
+	Namjae Jeon <linkinjeon@kernel.org>, linux-cifs@vger.kernel.org,
+	Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>,
+	linux-f2fs-devel@lists.sourceforge.net,
+	Florian Fainelli <florian.fainelli@broadcom.com>,
+	Broadcom internal kernel review list <bcm-kernel-feedback-list@broadcom.com>,
+	Tzung-Bi Shih <tzungbi@kernel.org>,
+	Benson Leung <bleung@chromium.org>,
+	David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>,
+	Alex Deucher <alexander.deucher@amd.com>,
+	Christian =?iso-8859-1?Q?K=F6nig?= <christian.koenig@amd.com>,
+	amd-gfx@lists.freedesktop.org,
+	Jani Nikula <jani.nikula@linux.intel.com>,
+	Joonas Lahtinen <joonas.lahtinen@linux.intel.com>,
+	Rodrigo Vivi <rodrigo.vivi@intel.com>,
+	Tvrtko Ursulin <tursulin@ursulin.net>,
+	intel-gfx@lists.freedesktop.org,
+	Matthew Brost <matthew.brost@intel.com>,
+	Thomas =?iso-8859-1?Q?Hellstr=F6m?= <thomas.hellstrom@linux.intel.com>,
+	intel-xe@lists.freedesktop.org
+Subject: Re: [PATCH v2 08/12] docs: ioctl-number: update USB entries
+Message-ID: <2026112013-crave-ocean-6117@gregkh>
+References: <20261119053514.255348-1-rdunlap@infradead.org>
+ <20261119053514.255348-9-rdunlap@infradead.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -84,24 +111,19 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20261119053514.255348-9-rdunlap@infradead.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=3D222294
+On Wed, Nov 18, 2026 at 09:35:09PM -0800, Randy Dunlap wrote:
+> Update the list of files where USB ioctls are defined.
+> 
+> Signed-off-by: Randy Dunlap <rdunlap@infradead.org>
+> ---
+> v2: no change
+> 
+> [Since having multiple maintainers trying to merge these would
+> cause some conflicts, it would be more manageable for Jon to
+> take all of these through the docs-next tree.]
 
-The Linux kernel's regression tracker (Thorsten Leemhuis) (regressions@leem=
-huis.info) changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |regressions@leemhuis.info
-
---- Comment #3 from The Linux kernel's regression tracker (Thorsten Leemhui=
-s) (regressions@leemhuis.info) ---
-From a quick look I guess it's the same problem that is being discussed her=
-e,
-with a fix already queued:
-https://lore.kernel.org/linux-ext4/20261102-ext4-ntfs3-null-folio-v1-0-4fd9=
-1ee23a4a@elliotjb.com/
-
---=20
-You are receiving this mail because:
-You are watching the assignee of the bug.=
+Reviewed-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
