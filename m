@@ -1,76 +1,79 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=192.198.163.13
-ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795241713;
-	b=wRnlcxPxZHWCPoSDFw7Pp40+xuHpYkhsM/7qZN0Z4N/uDFMYNbbTa5z+Svzpn6keXYru
-	 a+ep2+eV9jiq8bB4eJVf5MybvOwv9935SEtRH3TvihMuLzB2+RvrtRRWSMM6mOiPub+oZ
-	 r/AeEkB0ILqTeEqwmO7emKsinqdsv2sgYda1lHUyDDkzYDUUhD8FH5Hd7mOssdmesormc
-	 9M5mNNemExYY2nEVRHrwISphxbiuc82JU767FMo5IeBXw7enR/PrSPwH2iKM/4ZZJfWBC
-	 5FH5qMF9XOe57lyE7qrv46qr1qE/sVIZ8EpWGHV8tM9/+1ODSkPBHb4+3C58DP6nP4w==
-ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795241713;
-	h=DMARC-Filter:DKIM-Signature:X-CSE-ConnectionGUID:X-CSE-MsgGUID:
-	 X-IronPort-AV:X-IronPort-AV:Received:X-CSE-ConnectionGUID:
-	 X-CSE-MsgGUID:X-ExtLoop1:X-IronPort-AV:Received:Received:Date:From:To:
-	 Cc:Subject:Message-ID:User-Agent;
-	bh=P+F4/mF5CKN+zX3rvO8yExcYxU2OjlTVQ1XGxAH4JPY=;
-	b=UQWzhtxm5oBTP0TVEXRbqRcm+ARF5AhZthlcyyLEpxIosERChpw1NF4hWmz4gslK+AKp
-	 0Uz61gsVGpLjUJujzomzjYJRCchJTaLF3vs/dqLMr0wNJ2Prp4zoMNzHZiQmh6PNdZufK
-	 1PtiP3Pah47n73WhDqry6bnHt0F0vdZWn0IlLKYuKZXZjHdgKh+hL+eFEV5pOmdS2SIEh
-	 l1NqE1l0vG+LbK4gmbPAtCSkpw9g9sW1I4ITBvsrFCEFwAImExp5kQpcCziUU+gNcMyr5
-	 SyR/SAcHrIiQ/r6hANurj4jAJWnaGJZ6w6kPhqyj2f27ZoxMVLAsdZCDPeRR0kU9vwg==
-ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=intel.com;
-	spf=pass smtp.mailfrom=intel.com;
-	dkim=pass header.d=intel.com header.i=@intel.com header.a=rsa-sha256 header.s=Intel header.b=L8r5n+z6;
-	arc=none smtp.remote-ip=192.198.163.13
-Received: from mgamail.intel.com (mgamail.intel.com [192.198.163.13])
-	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
+Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=100.103.45.18
+ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
+	t=1795266583;
+	b=re1f6er+9alshASseLgrlGYbpgS6KtIcC8ofjyYGCrNE+8AcW7ucNThmB17veMgJZ6rH
+	 7cSoUGOWStCEYVGUUqiqeQZa9xPmc3aXAL8Esp2I2yKNKRNBzIDwmMTVbcnf8YcTHz3bl
+	 T+HSoBDlOSn64AOtO1bncWrqz0L+FKBs01UbCFlly8uyDnPNKBnUSuMaZWuqdOqSpunRc
+	 ocJTHxeJDn8pCqEQWUNGFa8uxuwCa3emD5vzVHq4weOPkOikWKaNCgsDgJRz6qsrYrUZ9
+	 NA2wg5XwxlrAYfE00VJeIYsDzgK+b3q81Wtc3XBgT8L6h0MPy5MdBDJ+jTsQGxEYHSQ==
+ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795266583;
+	h=Received:DKIM-Signature:Received:From:Date:Subject:MIME-Version:
+	 Content-Type:Message-Id:X-B4-Tracking:X-Change-ID:To:Cc:X-Mailer:
+	 X-Developer-Signature:X-Developer-Key:X-Endpoint-Received:
+	 X-Original-From:Reply-To:Content-Transfer-Encoding;
+	bh=j99TQFDHfLJ6aeyS1qzJokJ79GqgAG9QmgsuNLNuiHg=;
+	b=Da7ROQhSgNjceq7EIVd3vST6V/prMA/qNCg0+AG4ECmcPRoJvbVimeddyN0LxQZgcHYk
+	 ZGAj7mAufrDU0sZe4R69l8iTmptpxhB6LFzjLZivLOEMD6bwWq98PNtEN5IKmNGeEj2I8
+	 uEAS2NSmYDJ4nuAk2Htl8VT2nGKCvIl/ZxaHXo3AP9MxNgHKPXnpo1Do6LpzJ1SORy3Fw
+	 vW2lGzWn8oBqIAtq1AgLGpPCRdrb+lNJsQD7Uyp260RdGQVpX8EGny0RjApqnBV6Sywh9
+	 /wkBVPMKXBfn+GJFmp7IRnrjJlpVlTYxZT/WKPNZTXDKoK57YEbHx9BEPwmS2Emji/g==
+ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ANsMGi6+;
+	arc=pass header.oldest-pass=0 smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 02069606A32C
-	for <linux-ext4@vger.kernel.org>; Sat, 21 Nov 2026 06:15:12 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 02069606A32C
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=intel.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EC916606A320;
+	Sat, 21 Nov 2026 13:09:42 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.a=rsa-sha256 header.s=Intel header.b=L8r5n+z6
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
-  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
-  t=1795241714; x=1826777714;
-  h=date:from:to:cc:subject:message-id;
-  bh=qCPgpvpzM69q/6a6rnUfFWbVVSPU9BGMYkzt5CGjUDY=;
-  b=L8r5n+z6+DRQNDcu7Cl/KMKnooIncloeCAZIMGZGt4n9ayiqzF0vaq1z
-   rfVG429M/zz6xE3HyxO++HgIEuFMZ/nTi9jii9bVFwxXyjKrP0E5dEOBj
-   kxaEOvGD5/Ztr+tLgq6hZf3xov0vVueWwYkHokLuMXhtHlkURaaz9ggQe
-   s3EwP+JOnW9XzqLLCoq6qtomy41b5tMtGxxdHB69ox8yRTWqU4UL1B++d
-   qu3ctcqT65GFtmDvXjFiATA6jgDxt/bK9Zk/BH/fEOSJCIdazaF7HdtUF
-   ia4tGP8TQEoi9Mg1xH3mPjzN3dTH2HZL4CnnSE6JBPMvc2xQgp1r0qiF5
-   g==;
-X-CSE-ConnectionGUID: ZAEKeYzZTVeulCk3kw7Ycw==
-X-CSE-MsgGUID: Wpr38t9nRViv3RtikNKQBg==
-X-IronPort-AV: E=McAfee;i="6800,10657,11972"; a="4110489"
-X-IronPort-AV: E=Sophos;i="6.27,224,1787036400"; 
-   d="scan'208";a="4110489"
-Received: from fmviesa011.fm.intel.com ([10.60.135.151])
-  by fmvoesa107.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 20 Nov 2026 22:15:13 -0800
-X-CSE-ConnectionGUID: /N1Pm3FdQaKiif3qcEwhbQ==
-X-CSE-MsgGUID: 49U20wybSRSadhcHfKk/fQ==
-X-ExtLoop1: 1
-X-IronPort-AV: E=Sophos;i="6.27,224,1787036400"; 
-   d="scan'208";a="12690069"
-Received: from lkp-server01.sh.intel.com (HELO 0caa9d2d175c) ([10.239.97.150])
-  by fmviesa011.fm.intel.com with ESMTP; 20 Nov 2026 22:15:10 -0800
-Received: from kbuild by 0caa9d2d175c with local (Exim 4.98.2)
-	(envelope-from <lkp@intel.com>)
-	id 1xUeNQ-00000001Jbd-2kYd;
-	Sat, 21 Nov 2026 06:15:08 +0000
-Date: Sat, 21 Nov 2026 14:14:52 +0800
-From: kernel test robot <lkp@intel.com>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org
-Subject: [tytso-ext4:test] BUILD REGRESSION
- f39b6beaed1c1cd9cd503d548008710ba2b9d9e6
-Message-ID: <20261121141452.irIR8PVM-lkp@intel.com>
-User-Agent: s-nail v14.9.25
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ANsMGi6+
+Authentication-Results: smtp.kernel.org; arc=none smtp.remote-ip=100.80.115.77
+ARC-Seal: i=1; d=kernel.org; s=arc20260519; a=rsa-sha256; cv=none;
+	t=1795266582;
+	b=u1FOeiqfVg0AvW1ElAq/S1RNSuSZxa8uTVbTYYdmnt0hB/NonlN3Ss7uagpjZTi3bp98
+	 FeM8ojtvY3YVz7jJCedyHBZJ9gda+r+QjYt996q4pr+2iOz6xKmDBurFgSsqfLc+f9MM3
+	 SNXlXIZeUKc9WcxpObyyZt5LQBH7SH5kN+396ZIGaej17oTs73SQeMM+mxI8X1YncyaXt
+	 yelowr1h1Arkc4j0iXcLMq88VOmY5XYwvhzjBkiJAt/8VpR+Q3Mojtl4TVn4c6S2ZurQm
+	 4jWocWY2SZZ1i/e/itjzUHYFomgDkVsfZqqEkwoLIilZP6AO0uPN28Su6IqzYHuf9rA==
+ARC-Message-Signature: i=1; d=kernel.org; s=arc20260519; a=rsa-sha256;
+	c=relaxed/relaxed; t=1795266582;
+	h=DKIM-Signature:Received:From:Date:Subject:MIME-Version:Content-Type:
+	 Message-Id:X-B4-Tracking:X-Change-ID:To:Cc:X-Mailer:
+	 X-Developer-Signature:X-Developer-Key:X-Endpoint-Received:
+	 X-Original-From:Reply-To:Content-Transfer-Encoding;
+	bh=j99TQFDHfLJ6aeyS1qzJokJ79GqgAG9QmgsuNLNuiHg=;
+	b=zfsdJlTgFjLzHAwNM2DV+wl2/i8wI7szhK9BnWIXv0KLDJwq255gVuFJATXHINEmt8db
+	 8Mm2s00IbGSmJohAe6CV33ZEVVyqRpfyCbqbnI3oqeWjHg7V4Ef7nnbpYdzf8Y9LURBJL
+	 L9DBunonT+5D3+VWe3YSx6CVr2aiuYAJ9F+14uyH+b7Msht8uVDC8eI8WU8NVM5sbD/Wz
+	 k5G5TruVv3slgsxRpByN+YJdpRoL9DXE+j5S9a0EHThc9s9WiZ9r02FqUEHA4/rlNRMgE
+	 5Ncx7wkq9uHYfavD4kCXSvKpYZWxzvu5Xk9725a8/B3ZfA7qruokhavhrxiWVaiWJuA==
+ARC-Authentication-Results: i=1; smtp.kernel.org; 
+	arc=none smtp.remote-ip=100.80.115.77
+Received: from lkml.kernel.org (nexus.subspace.kernel.org [100.80.115.77])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	(No client certificate requested)
+	by smtp.kernel.org (Postfix) with ESMTPS id 129961F000C0;
+	Sat, 21 Nov 2026 13:09:42 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1795266582;
+	bh=j99TQFDHfLJ6aeyS1qzJokJ79GqgAG9QmgsuNLNuiHg=;
+	h=From:Date:Subject:To:Cc:Reply-To;
+	b=ANsMGi6+LfPvxtcA1sBJn9xOssv9/ZURhAwdyw1tIeEFancZCR6xv+zzNm2o1tpDV
+	 PT+ZDw8lY314Q2pHJqQmrtGjqg381mb3YxO1cSGg9y5KjLyzFGqCVKQyC7GhYKc4Cg
+	 kqqLT087gH4yHf4OaohUZZUuH3I5Tn+Zzn39c7HZEMq4kT0HqK2+4lDZGF4xgmCwWG
+	 yb9bJJJY+2doodXpQBYyWvFbMVQ+BI4/ZSL4y3ZmmHVwP465LC8eDKFRGylMEVIBfx
+	 MdAdW0gHF35ugV8aTJql2yCI2N6Z8jrlBwX678P8LVBZGZOw77TRaQsex6HUQUYhi5
+	 8G1Hq7+eiiVPQ==
+Received: from nexus.subspace.kernel.org (localhost [IPv6:::1])
+	by lkml.kernel.org (Postfix) with ESMTP id 9A2CE4BC52;
+	Sat, 21 Nov 2026 13:09:41 +0000 (UTC)
+From: =?utf-8?q?Aykut_C=C4=B1nc=C4=B1k_via_B4_Relay?= <devnull+aykutcincik.ogr.eskisehir.edu.tr@kernel.org>
+Date: Sat, 21 Nov 2026 16:09:40 +0300
+Subject: [PATCH] ext4: discard inode preallocations when indirect block
+ allocation fails
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -79,134 +82,182 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Message-Id: <20261121-ext4-ind-discard-pa-v1-1-ee92928f7797@ogr.eskisehir.edu.tr>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMPQ6DMAxA4asgz7WEI/6vUnUIiQPuEFBMERLi7
+ k3L+A3vnaCchBWG4oTEu6gsMYMeBbjZxolRfDaY0jREhpCPrUKJHr2os8njarHrQ1VTHXrbtpD
+ LNXGQ4399vm7rZ3yz234ruK4vugv123cAAAA=
+X-Change-ID: 20261121-ext4-ind-discard-pa-89f4515f9a77
+To: Theodore Ts'o <tytso@mit.edu>, 
+ Andreas Dilger <adilger.kernel@dilger.ca>
+Cc: Jan Kara <jack@suse.cz>, Baokun Li <libaokun@linux.alibaba.com>, 
+ Ojaswin Mujoo <ojaswin@linux.ibm.com>, 
+ "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, 
+ Zhang Yi <yi.zhang@huawei.com>, linux-ext4@vger.kernel.org, 
+ syzbot+d79019213609e7056a19@syzkaller.appspotmail.com, 
+ stable@vger.kernel.org, 
+ =?utf-8?q?Aykut_C=C4=B1nc=C4=B1k?= <aykutcincik@ogr.eskisehir.edu.tr>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795266579; l=5732;
+ i=aykutcincik@ogr.eskisehir.edu.tr; s=20261121; h=from:subject:message-id;
+ bh=u2mp19xud4/0B/he8gKsRnxVzIf7SqxhCwexE7gjAkI=;
+ b=jvo/6FBjNLAM0qCcxCqG6yF3tGE/Bv4Rm08gWTz5D56f2ECKbkB54ESwzFkyb4oB5cLve0xAD
+ T3i5HTF05NWBpyH5eeyQHzEdh/jcwzDQHLC7KLKocJFT/HxC8PlIdVW
+X-Developer-Key: i=aykutcincik@ogr.eskisehir.edu.tr; a=ed25519;
+ pk=0VzUGJI+NLEekrIgYW4SWfh5kCTg8XsSWzEwmTagNes=
+X-Endpoint-Received: by B4 Relay for
+ aykutcincik@ogr.eskisehir.edu.tr/20261121 with auth_id=1593
+X-Original-From: =?utf-8?q?Aykut_C=C4=B1nc=C4=B1k?= <aykutcincik@ogr.eskisehir.edu.tr>
+Reply-To: aykutcincik@ogr.eskisehir.edu.tr
+Content-Transfer-Encoding: 8bit
 
-tree/branch: https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git test
-branch HEAD: f39b6beaed1c1cd9cd503d548008710ba2b9d9e6  ext4: add KUnit tests for fs/ext4/dir.c
+From: Aykut Cıncık <aykutcincik@ogr.eskisehir.edu.tr>
 
-Unverified Error/Warning (likely false positive, kindly check if interested):
+When ext4_alloc_branch() or ext4_splice_branch() fails after the data
+blocks have been allocated, the blocks are released with
+ext4_free_blocks().  For an indirect-mapped inode these blocks usually
+come from the inode preallocation (PA), and ext4_mb_use_inode_pa() has
+already subtracted them from pa_free.  Freeing them does not return
+them to the PA, so the PA still covers the logical range while pa_free
+no longer accounts for it.
 
-    https://lore.kernel.org/oe-kbuild/20261119153312.JoLTih25-lkp@intel.com
+Writeback retries the same logical range after such a failure, for
+example after sb_getblk() returns NULL with -ENOMEM for an indirect
+block that lies beyond the end of a shrunk loop device, and
+ext4_mb_use_preallocated() picks the same PA again.  This time pa_free
+is smaller than the requested length and the BUG_ON() in
+ext4_mb_use_inode_pa() fires:
 
-    fs/ext4/mballoc-test.c:2177:14-19: ERROR: reference preceded by free on line 2174
-    fs/ext4/mballoc-test.c:2190:14-19: ERROR: reference preceded by free on line 2187
+  kernel BUG at fs/ext4/mballoc.c:4779!
+  RIP: 0010:ext4_mb_use_inode_pa+0x557/0x890
+  Call Trace:
+   ext4_mb_use_preallocated+0xd96/0x1440
+   ext4_mb_new_blocks+0x72d/0x4900
+   ext4_ind_map_blocks+0x142c/0x2210
+   ext4_map_create_blocks+0x2be/0x5c0
+   ext4_map_blocks+0xbb2/0x1480
+   ext4_do_writepages+0x1dba/0x3a60
+   ext4_writepages+0x370/0x770
+   do_writepages+0x288/0x600
+   filemap_writeback+0x203/0x290
+   file_write_and_wait_range+0xf7/0x170
+   ext4_sync_file+0x418/0xdb0
+   do_fsync+0xda/0x240
 
-Error/Warning ids grouped by kconfigs:
+If the BUG_ON() is not reached, the mismatch shows up later as
+"freeing already freed block" and "ext4_mb_release_inode_pa: free N,
+pa_free M" errors when the PA is released.
 
-recent_errors
-|-- arc-randconfig-r2101-20261119
-|   `-- fs-ext4-mballoc-test.c:ERROR:reference-preceded-by-free-on-line
-|-- i386-randconfig-2105-20261119
-|   `-- fs-ext4-mballoc-test.c:ERROR:reference-preceded-by-free-on-line
-`-- i386-randconfig-2302-20261119
-    |-- arch-x86-include-asm-atomic64_32.h:sparse:sparse:cast-truncates-bits-from-constant-value-(2cafebabe-becomes-cafebabe)
-    `-- arch-x86-include-asm-atomic64_32.h:sparse:sparse:cast-truncates-bits-from-constant-value-(f11335577-becomes-)
+The extent-mapped path has handled this since mballoc was added by
+discarding the inode PAs before freeing the blocks in
+ext4_ext_map_blocks().  Do the same in both indirect error paths.
 
-elapsed time: 1509m
+An AI coding assistant (Claude Code with Claude Opus) was used to
+analyse the syzbot report, write a reproducer, trace the root cause with
+temporary printk instrumentation, and draft both the fix and this
+changelog.  I have reviewed the change and verified it as follows:
+without the fix the reproducer hits the BUG_ON() deterministically in
+QEMU (virtme-ng, KASAN and lockdep enabled); with the fix it ran 3/3
+times without BUG, KASAN or pa_free reports.  The ext4 KUnit tests pass,
+and a copy/write/delete workload on a no-extents filesystem leaves
+e2fsck clean.
 
-configs tested: 99
-configs skipped: 0
+Reported-by: syzbot+d79019213609e7056a19@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=d79019213609e7056a19
+Fixes: c9de560ded61 ("ext4: Add multi block allocator for ext4")
+Cc: stable@vger.kernel.org
+Signed-off-by: Aykut Cıncık <aykutcincik@ogr.eskisehir.edu.tr>
+---
+The syzbot reproducers no longer mount on current kernels (bigalloc with
+s_first_data_block != 0 is now rejected), so I used this reproducer instead:
 
-tested configs:
-alpha       randconfig-2200-20261119    gcc-12.5.0 smatch
-arc         randconfig-2000-20261119    gcc-14.4.0
-arc         randconfig-2001-20261119    gcc-16.2.0
-arc         randconfig-2002-20261119    gcc-14.4.0
-arc         randconfig-2003-20261119    gcc-16.2.0
-arc         randconfig-2004-20261119    gcc-14.4.0
-arc         randconfig-2005-20261119    gcc-12.5.0
-arc        randconfig-r2101-20261119    gcc-15.3.0 cocci
-arc        randconfig-r2307-20261119    gcc-8.5.0  sparse
-arm        randconfig-r2100-20261119    gcc-10.5.0 cocci
-arm64       randconfig-2200-20261119    clang-17   smatch
-csky        randconfig-2000-20261119    gcc-16.2.0
-csky        randconfig-2001-20261119    gcc-16.2.0
-csky        randconfig-2200-20261119    gcc-16.2.0 smatch
-csky       randconfig-r2105-20261119    gcc-13.5.0 cocci
-hexagon     randconfig-2000-20261119    clang-17
-hexagon     randconfig-2001-20261119    clang-24
-hexagon     randconfig-2200-20261119    clang-17   smatch
-i386        randconfig-2000-20261119    gcc-14
-i386        randconfig-2001-20261119    gcc-14
-i386        randconfig-2002-20261119    gcc-14
-i386        randconfig-2003-20261119    clang-22
-i386        randconfig-2004-20261119    gcc-14
-i386        randconfig-2005-20261119    gcc-14
-i386        randconfig-2100-20261119    gcc-14     cocci
-i386        randconfig-2101-20261119    gcc-14     cocci
-i386        randconfig-2102-20261119    gcc-14     cocci
-i386        randconfig-2103-20261119    clang-22   cocci
-i386        randconfig-2104-20261119    clang-22   cocci
-i386        randconfig-2105-20261119    clang-22   cocci
-i386        randconfig-2300-20261119    gcc-13     sparse
-i386        randconfig-2301-20261119    gcc-14     sparse
-i386        randconfig-2302-20261119    clang-22   sparse
-i386       randconfig-r2104-20261119    clang-22   cocci
-loongarch   randconfig-2000-20261119    clang-24
-loongarch   randconfig-2001-20261119    gcc-16.2.0
-m68k        randconfig-2200-20261119    gcc-9.5.0  smatch
-mips        randconfig-2000-20261119    gcc-8.5.0
-mips        randconfig-2001-20261119    clang-24
-mips        randconfig-2002-20261119    clang-21
-mips        randconfig-2200-20261119    clang-24   smatch
-mips       randconfig-r2107-20261119    clang-24   cocci
-nios2       randconfig-2000-20261119    gcc-8.5.0
-nios2       randconfig-2001-20261119    gcc-11.5.0
-nios2       randconfig-2200-20261119    gcc-11.5.0 smatch
-openrisc    randconfig-2000-20261119    gcc-16.2.0
-openrisc    randconfig-2001-20261119    gcc-16.2.0
-openrisc    randconfig-2002-20261119    gcc-16.2.0
-openrisc    randconfig-2200-20261119    gcc-16.2.0 smatch
-openrisc   randconfig-r2111-20261119    gcc-16.2.0 cocci
-parisc      randconfig-2000-20261119    gcc-16.2.0
-parisc      randconfig-2001-20261119    gcc-10.5.0
-parisc     randconfig-r2309-20261119    gcc-15.3.0 sparse
-parisc     randconfig-r2311-20261119    gcc-16.2.0 sparse
-powerpc     randconfig-2200-20261119    gcc-13.5.0 smatch
-powerpc64   randconfig-2200-20261119    clang-24   smatch
-powerpc64  randconfig-r2103-20261119    gcc-8.5.0  cocci
-riscv      randconfig-r2109-20261119    clang-24   cocci
-riscv      randconfig-r2310-20261119    gcc-16.2.0 sparse
-s390        randconfig-2000-20261119    gcc-8.5.0
-s390        randconfig-2001-20261119    clang-24
-s390        randconfig-2002-20261119    clang-24
-s390        randconfig-2003-20261119    gcc-8.5.0
-s390        randconfig-2004-20261119    clang-22
-s390        randconfig-2005-20261119    clang-20
-s390       randconfig-r2308-20261119    clang-24   sparse
-sh          randconfig-2000-20261119    gcc-14.4.0
-sh          randconfig-2001-20261119    gcc-16.2.0
-sh          randconfig-2002-20261119    gcc-14.4.0
-sh          randconfig-2003-20261119    gcc-16.2.0
-sh          randconfig-2004-20261119    gcc-14.4.0
-sh          randconfig-2005-20261119    gcc-12.5.0
-sparc       randconfig-2000-20261119    gcc-14.4.0
-sparc       randconfig-2001-20261119    gcc-16.2.0
-sparc       randconfig-2200-20261119    gcc-8.5.0  smatch
-sparc      randconfig-r2106-20261119    gcc-14.4.0 cocci
-sparc      randconfig-r2306-20261119    gcc-8.5.0  sparse
-sparc64     randconfig-2000-20261119    gcc-8.5.0
-sparc64     randconfig-2001-20261119    gcc-9.5.0
-sparc64     randconfig-2200-20261119    gcc-13.5.0 smatch
-sparc64    randconfig-r2102-20261119    gcc-8.5.0  cocci
-sparc64    randconfig-r2110-20261119    clang-20   cocci
-um          randconfig-2000-20261119    gcc-13
-um          randconfig-2001-20261119    clang-21
-um          randconfig-2200-20261119    clang-24   smatch
-x86_64      randconfig-2000-20261119    gcc-14
-x86_64      randconfig-2001-20261119    clang-22
-x86_64      randconfig-2002-20261119    clang-22
-x86_64      randconfig-2003-20261119    gcc-14
-x86_64      randconfig-2004-20261119    gcc-14
-x86_64      randconfig-2005-20261119    clang-22
-x86_64      randconfig-2200-20261119    clang-22   smatch
-x86_64      randconfig-2300-20261119    clang-22   sparse
-x86_64      randconfig-2301-20261119    clang-22   sparse
-x86_64      randconfig-2302-20261119    gcc-14     sparse
-x86_64     randconfig-r2108-20261119    clang-22   cocci
-xtensa      randconfig-2000-20261119    gcc-12.5.0
-xtensa      randconfig-2001-20261119    gcc-8.5.0
-xtensa      randconfig-2200-20261119    gcc-14.4.0 smatch
+  truncate -s 4M img
+  mkfs.ext4 -q -F -b 1024 -O ^extents,^huge_file,^has_journal,^metadata_csum,^64bit,^flex_bg img
+  losetup /dev/loop0 img
+  mount -o errors=continue /dev/loop0 /mnt
+  touch /mnt/f
+  ./shrink /mnt/f /dev/loop0
 
--- 
-0-DAY CI Kernel Test Service
-https://github.com/intel/lkp-tests/wiki
+shrink.c writes 64 KiB, shrinks the loop device to 32 KiB with
+LOOP_SET_STATUS64 (lo_sizelimit), then rewrites and calls fsync().  The
+indirect block now lies beyond the end of the device, so sb_getblk() fails
+and ext4_alloc_branch() returns -ENOMEM.
+
+shrink.c:
+
+  #include <fcntl.h>
+  #include <linux/loop.h>
+  #include <stdio.h>
+  #include <string.h>
+  #include <sys/ioctl.h>
+  #include <unistd.h>
+
+  int main(int argc, char **argv)
+  {
+  	static char buf[64 * 1024];
+  	struct loop_info64 li;
+  	int fd = open(argv[1], O_RDWR);
+  	int lfd = open(argv[2], O_RDWR);
+
+  	if (fd < 0 || lfd < 0) { perror("open"); return 1; }
+  	memset(buf, 'a', sizeof(buf));
+  	pwrite(fd, buf, sizeof(buf), 0);
+  	if (ioctl(lfd, LOOP_GET_STATUS64, &li)) { perror("get"); return 1; }
+  	li.lo_sizelimit = 32 * 1024;
+  	if (ioctl(lfd, LOOP_SET_STATUS64, &li)) { perror("set"); return 1; }
+  	for (int r = 0; r < 8; r++) {
+  		pwrite(fd, buf, sizeof(buf), 0);
+  		printf("fsync %d: %d\n", r, fsync(fd));
+  	}
+  	return 0;
+  }
+
+With the fix applied, fsync() in this reproducer still does not return,
+because writeback treats -ENOMEM as transient and keeps retrying.  That
+behaviour predates this patch and is not changed by it.
+
+Two related problems in the same error paths are not addressed here and
+can be sent separately if wanted:
+ - ext4_splice_branch() does not undo *where->p = where->key on failure.
+ - The blocks are freed with a quota update even for delalloc-reserved
+   blocks, which can underflow i_blocks.
+---
+ fs/ext4/indirect.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+index a495080df710..3b4ec1c3d5ec 100644
+--- a/fs/ext4/indirect.c
++++ b/fs/ext4/indirect.c
+@@ -389,6 +389,11 @@ static int ext4_alloc_branch(handle_t *handle,
+ 	return 0;
+ failed:
+ 	if (i == indirect_blks) {
++		/*
++		 * The data blocks may come from the inode PA, which already
++		 * counts them as used; drop the PA so they are not handed out twice.
++		 */
++		ext4_discard_preallocations(ar->inode);
+ 		/* Free data blocks */
+ 		ext4_free_blocks(handle, ar->inode, NULL, new_blocks[i],
+ 				 ar->len, 0);
+@@ -493,6 +498,8 @@ static int ext4_splice_branch(handle_t *handle,
+ 		ext4_free_blocks(handle, ar->inode, where[i].bh, 0, 1,
+ 				 EXT4_FREE_BLOCKS_FORGET);
+ 	}
++	/* See ext4_alloc_branch(): the data blocks may belong to the inode PA. */
++	ext4_discard_preallocations(ar->inode);
+ 	ext4_free_blocks(handle, ar->inode, NULL, le32_to_cpu(where[num].key),
+ 			 ar->len, 0);
+ 
+
+---
+base-commit: c44104f3642da720164042623e4832836aefdd8e
+change-id: 20261121-ext4-ind-discard-pa-89f4515f9a77
+
+Best regards,
+--  
+Aykut Cıncık <aykutcincik@ogr.eskisehir.edu.tr>
+
+
