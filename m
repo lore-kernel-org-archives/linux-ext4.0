@@ -1,97 +1,47 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.215.174
-ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
-	t=1795272595;
-	b=0kTPeOuV5/1FD0A3F7E7h1+3rHUJRXOWtn5msG6lCGXqKSpUCkD49+WbwEE5OZz+LOSm
-	 vsYi1G94+33xevsOmw3vFgHUvsYJem9bqX1cVdkUqA42WezO6Lc9+msaI2El0olO+Ijir
-	 RxW2Ww0Yc5HaJ5pWH3KcthbqlVqtWtwimH4f1KA7+6RDmasARqzTqxjKk4GQSKEAYJuLa
-	 axMa45GFIXmwqb2rBHB6MbMY995v/uTtp+5qs+ExscWxNgZef6PPKLo3N0P4A+PWA3RbP
-	 hQ/SxTN3Wu1bm2/nsBFUWGKKDMVanvF+2UJ1OCC1eRlj22rTeFJFP2AM/jX8ZHaiK6A==
-ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795272595;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:
-	 MIME-Version:From:Date:X-Gm-Features:Message-ID:Subject:To:Cc:
-	 Content-Type;
-	bh=KMleV59mDasfc9ZrDI02cJ4rVcYzhncPH8nN8fIqQw0=;
-	b=RoWDqTwicpjjm1PqoAUvyA34AChwLqyHwanaOWdZmagIPkQ4Zv/x0zL1zMnxJEQyoopP
-	 0+l3GPZdYJRDlFpG3ZveURTcuUgs0ZR2IHCgGZHCeEaxvozNfkfPcXGaIIt4DpL26PvPz
-	 C/9jk2LA6shBD0pTkYXWh6VzK7NGyPnkn7hr63I8ArF65N2NCWwugY9B2ull1z02lBtpH
-	 bh1Brw14oS+ofoOZThqbMS6cQXZw05aIVFyATuBMl0uQx+DRKWb6JqemgKGxvJWHz3aCw
-	 5TY9BdkMpACEUX3qN/4iUL3mK1E0KVJnCLc4YWqlYIEDYlVEMdUqASNTaKoDK1T1DKg==
-ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=gmail.com;
-	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=MLkrnOPN;
-	arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.215.174
-Received: from mail-pg1-f174.google.com (mail-pg1-f174.google.com [209.85.215.174])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
+	t=1795279480;
+	b=nX6K2GXgcPf+LBwNvgWsvCYJoSyuqp442QuS/QmTUcuQsvPaR8wSFLloDZH6/YKITEKF
+	 7Q/qEodydUAsncswz5sQEXc7VS7WiIt5HIz6A5C9FWFDFVoazeTYuNQfMEmuxbLpOCyLx
+	 +ys5+9HdDMRNj+CRuBXqxGgpi9ygKUcB5gJW0cCOe3XN6lC9TOzbzIVlhOg7fQwx9UDwI
+	 /3QMa+gnhw/8zJNdhZdzgTWPlCc4boOGbgpKMupdH/HnQdOvY7W1NAcjdRYw8FYo1Wsh2
+	 fFy+sr2mIe7YGxWLiH/YEtCbcJYOvMwCnCRqrP5Nz+YrtVHyTFwGSBpiJOG+pvITIMw==
+ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795279480;
+	h=Received:DKIM-Signature:Message-ID:Date:MIME-Version:User-Agent:
+	 Subject:To:Cc:References:From:Content-Language:Autocrypt:In-Reply-To:
+	 Content-Type:Content-Transfer-Encoding;
+	bh=s2vyU3vFrC0NUh7tVrPidneeWbqOaMwhYs4Bn+HJRNw=;
+	b=Ui5uyDg8HunPyzNCckSbeBizm6NzwDMWJmYh8UVZ7zfLjO1YEJaLDi6MzxZG5CWdP1jf
+	 jlHB4Z81LzMWXJ0UL9pspgPzj2YuQcvOaVDQ9g7Mt982XnNbj3Dg9d+yc586H8iYKa7/X
+	 Ybnme0+7qYkKGiVT6Kw1kgVpO7qAFNRomx/kLwUWbgCgvDLcbvpgX3fUS6BXcSBEDhCOB
+	 tuF6yAEKMfVp2D61VR5yZFKCOGHfpiGGp+3ABmG9z9lrjCLZsvbiWGJZ2cVEWzQn4WJ9z
+	 THTG2BCkVLwaMSPwj68pnFdSjHPx7eoc0Rl8uR7dBlGWaHiJtYFYvB1jMYz3QvZegPQ==
+ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=V3hESoHs;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3BA42606A32A
-	for <linux-ext4@vger.kernel.org>; Sat, 21 Nov 2026 14:49:55 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 3BA42606A32A
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B3E7E606A337;
+	Sat, 21 Nov 2026 16:44:40 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=MLkrnOPN
-Received: by mail-pg1-f174.google.com with SMTP id 41be03b00d2f7-cdb2893531bso1061917a12.1
-        for <linux-ext4@vger.kernel.org>; Sat, 21 Nov 2026 06:49:55 -0800 (PST)
-ARC-Seal: i=1; a=rsa-sha256; t=1795272594; cv=none;
-        d=google.com; s=arc-20260327;
-        b=DBd1JBtkT3YwPAS6BFnrpw2qjezfHrQDxMoQQcfpoKen5qUECUGYTFu3uv58jZmUpG
-         eEcH6mc200D4xb7Eco6SFfa4/LfBjj5nOWu42kw4hzhXXQVGIWU1zaTnDfGmIlABHDR4
-         z/8zWBofkXEjNA8d1hz6IOOwVP7bPX52+RRxkbRgKFvmfQbr0Nfkeg7F4A0wec8j0o6m
-         pFhlON3VqXLB10o1TwAiYNf3RIcBtp/tALi524Cm04Vorh8vfHvM8t31MtX/mLgmqCU1
-         T2gOuohqUmTvJPWDXz4MzHSxCnW4WPwbdyTxBMdeNz2Bn6lg4UfilBAQuH+hCVdCIIhm
-         1DhQ==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=cc:to:subject:message-id:date:from:mime-version:dkim-signature;
-        bh=KMleV59mDasfc9ZrDI02cJ4rVcYzhncPH8nN8fIqQw0=;
-        fh=5Uutpn8cusi5upw90ddxO671qoM28IjTHwlkGvgR360=;
-        b=LSBdgKdos2mCZwKKUaitxpWX5ASQ5XrgYbsbT47ZNCLxhjRjqZFJ6Bc0JZLxwjOJzv
-         Et8dG8B5sEt3rhFnmjUpdik9D0J8gGVREf44LlF6nF02FXZU8Om4P48DTFbsFbYoYoF8
-         4MYqrsJpC55NV+kvWmZUPdqO+UzwxGYIXAW+qiWLl2dh11Z71P639CQDpXN8RGWyjYl7
-         v6YuMlVVy5W0QD225LPf2YCKmLRVYzw8VZzogoUIMV0GTbuvoDYLusp6CpODaipyKKFa
-         ahZvHPuav1/ZT0LlEaRf8riFmCY3b1jsILW6nPo9u1CG8Ausq1kGM+Ap5A67i3283GGP
-         hp+g==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1795272594; x=1795877394; darn=vger.kernel.org;
-        h=content-type:cc:to:subject:message-id:date:from:mime-version:from
-         :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=KMleV59mDasfc9ZrDI02cJ4rVcYzhncPH8nN8fIqQw0=;
-        b=MLkrnOPNCstSi8svs6c1/FDow3Ugv34GJJ0zqaByDNgJM1EvDQpemdnCCYYuMQwuF6
-         Urp0eqa0oOqVX3ivri+0b6p+E2lyNnPCSeGULskaa8ObcP7L7xAmq03oROwvjZii4vqS
-         ZI4GLeDDHpdLzrnZEXJ2w/KqTHnShY/bOgs1/d/hMfvUeeXZjOaZ4zrE0+eGBNqaQZMQ
-         L2SmPBNvCZvGv7BPkez5dDF0XnuiqCXZylE+rCV0/1tiPmjkyYGf5b2b6m+k96lQYp91
-         Vb6Obz5nWK9Pna6LgIoOKH226aeqgnuSCN/srMhSdJFIKNaSFu35PcVK5LtiyMt815Cy
-         T0kw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1795272594; x=1795877394;
-        h=content-type:cc:to:subject:message-id:date:from:mime-version
-         :x-gm-gg:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to:content-type;
-        bh=KMleV59mDasfc9ZrDI02cJ4rVcYzhncPH8nN8fIqQw0=;
-        b=hAXYEHeJ74gZKt+IBwAhLiJs5lOJPn26Wgc83OnNdSE7DT/H5+jbcDEVmay6onL6RH
-         Dcew3mHEVM85sBvq4pU8I74uyJ96WMrn5b6GlXmLlGlLpDdcWEGr58DU9my0HqMvZhy7
-         hShwEwYd859or7LUsf9RNqhz4rtutfZEhYTIF8LY1gbahBu/xERVQcCXz5vfsv1/A/XK
-         NOPXmYCDvRpOK22u38K3HleRlxNY2kd3d1wl0Z/qQV2+KLeubEw4SjsymYaVXL/cuq0i
-         Q9GHs5R7HWQJtfACG3+tgF7DGNr9eCiuzDU1kzkMgaBlpD5Mfl7kOB1J30MorvmhAKhm
-         AmDg==
-X-Forwarded-Encrypted: i=1; AL+hErHhxV8N33dDzWPgD3k41A1b7gWWL/FpE/oQEn7MnrhF+27RIwU+eJYOlRjy3/idS5m7tZQzA5/SXxtZ@vger.kernel.org
-X-Gm-Message-State: APuU4Z+OxkPNcKkKWVql5FBtycT0RoRxK15a/nB3t80wIpQlscT4Cs2F
-	7MPsj0CCpDLsfFqzRrT6yMTp5nY+ipOCbU/lS84bgfIep0RP5VYoEmZgv5YLLHo/6MagYdPLXLn
-	c0jKVWg4EjdOEEJ+k80F5JcekgfSll/H9mOpb63ZOgw==
-X-Gm-Gg: AZFdTZcQJrNU6KS+Q1RSXFTKmeCPe1VbW6jUR1njnv4g9JMALQTx5ZBr3zOfBpD7/VE
-	mMxZ68ihwnAjd9VIGx3+DLN+IorMzFhsaElDW64ab5ip92uPs9hWquGCATj4CVojNyJB+j0nNv1
-	VwKnQ0Cvs8Q2NP4QjlInJpHgVDTcaTxtNRT8s1MlCP3+8kVsUvnZGOL6whYJlZa8IyH9ZVaP351
-	AFElrcDWvfy3vR1XotsI3m3hWJKrEhhWwWcoek1YHkFeVacLHI4KnydF7cYhLxGKDV0XAHxJLGi
-	IatanKvIrZ/Rsur8masGMZ2mymzKUuut/3ifhuA2gsIth3tOtUuLB+cLRmOnrM864YNSlIjZJiQ
-	ek51O90aJRdNpE0URDN5hrdHsDovk5TRo05FZCug=
-X-Received: by 2002:a05:6a21:6e04:b0:3e8:b7fd:6288 with SMTP id
- adf61e73a8af0-4014d159070mr6730389637.41.1795272594392; Sat, 21 Nov 2026
- 06:49:54 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=V3hESoHs
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 802481F000C4;
+	Sat, 21 Nov 2026 16:44:38 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1795279480;
+	bh=s2vyU3vFrC0NUh7tVrPidneeWbqOaMwhYs4Bn+HJRNw=;
+	h=Date:Subject:To:Cc:References:From:In-Reply-To;
+	b=V3hESoHsfIFyhVVUq9Nbw76xQwwdkkosH3PAFFajdKtfYnYXuEeqkTldM2EgmV8Ln
+	 LIbBkNRkerRa94S3OuiWCZTIz4Kac2J+ex80ehWYjNrtLa2HfUOnCasVVO8kuhyzvq
+	 6V+qjIS6H0ZYWKrZS5/rcX482eDlsXgr1sy81p5v5l2/vVRjhDriVXj0OP7l4Jn4gm
+	 kD2+R0gCpirlkenGbmota9uaBoGX/m4gEkTLKWHVvsNWWTDpTQ7Jl3G0gwY0SUSG5e
+	 e6SoDIGiQR6MUhB+BEsJAY2pYcctqVteeYe8eVAiIrTukyV1a6W3ykkfvJwVD5/e4S
+	 jJiLvnXtpOxsg==
+Message-ID: <f8cc1652-7577-4ace-97ed-081ecd65a031@kernel.org>
+Date: Sat, 21 Nov 2026 17:44:34 +0100
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -101,108 +51,116 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-From: Yi Wen <shicenci@gmail.com>
-Date: Sat, 21 Nov 2026 22:49:43 +0800
-X-Gm-Features: Aa3M54o-c3umdLG_yLVUlZkiDbL2uREfVKI1Y1odDetEyJ0RRT4OIUMRc1PDQa4
-Message-ID: <CAPHJ_V+_=Av8pAM+N+oc4JRmtqBjhcimh3B_pSy_N+5qecm6Mg@mail.gmail.com>
-Subject: [BUG] mm/gup: WARNING: mm/page-writeback.c:2678 at __folio_mark_dirty
- on v7.4-rc3
-To: David Hildenbrand <david@kernel.org>, linux-mm@kvack.org
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+User-Agent: Mozilla Thunderbird
+Subject: Re: [BUG] mm/gup: WARNING: mm/page-writeback.c:2678 at
+ __folio_mark_dirty on v7.4-rc3
+To: Yi Wen <shicenci@gmail.com>, linux-mm@kvack.org
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+ Jan Kara <jack@suse.cz>, John Hubbard <jhubbard@nvidia.com>,
+ Pedro Falcato <pfalcato@suse.de>
+References: <CAPHJ_V+_=Av8pAM+N+oc4JRmtqBjhcimh3B_pSy_N+5qecm6Mg@mail.gmail.com>
+From: "David Hildenbrand (Arm)" <david@kernel.org>
+Content-Language: en-US
+Autocrypt: addr=david@kernel.org; keydata=
+ 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
+ qIws/H2t
+In-Reply-To: <CAPHJ_V+_=Av8pAM+N+oc4JRmtqBjhcimh3B_pSy_N+5qecm6Mg@mail.gmail.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+
+On 11/21/26 15:49, Yi Wen wrote:
+> Hi,
+> 
+> I am reporting a kernel WARNING triggered by a syzkaller reproducer on
+> Linux v7.4-rc3.
+> 
+> The reproducer triggers a WARNING in ext4_dirty_folio() when
+> process_vm_writev() writes to a file-backed mapping.
+> 
+> The call trace shows that the warning occurs during the GUP page
+> unpinning and dirtying path:
+> 
+> process_vm_writev()
+>   -> process_vm_rw_core()
+>     -> unpin_user_pages_dirty_lock()
+>       -> folio_mark_dirty()
+>         -> ext4_dirty_folio()
+> 
+> A second WARNING is subsequently triggered in __folio_mark_dirty() in
+> mm/page-writeback.c.
+> 
+> This appears to be related to the interaction between GUP-based page
+> dirtying and filesystem-managed folio metadata. In particular, the GUP
+> dirtying path may mark a file-backed folio dirty without ensuring that
+> the filesystem-specific metadata required by its dirty_folio()
+> implementation remains available.
+> 
+> This may be related to the known issue where GUP-based page dirtying
+> does not properly notify the filesystem through page_mkwrite(), as
+> well as the interaction between GUP dirtying and
+> filemap_release_folio().
+> 
+> Before these warnings, all four ext4 loop devices also report delayed
+> block allocation errors and abnormal free block accounting. These
+> errors may indicate an additional filesystem inconsistency and are
+> included in the console log for further investigation.
+> 
 
 Hi,
 
-I am reporting a kernel WARNING triggered by a syzkaller reproducer on
-Linux v7.4-rc3.
+thanks for the report.
 
-The reproducer triggers a WARNING in ext4_dirty_folio() when
-process_vm_writev() writes to a file-backed mapping.
+Did you only find this through syzcaller or by the help of an LLM?
 
-The call trace shows that the warning occurs during the GUP page
-unpinning and dirtying path:
+I'm asking because the timing is interesting; this should be one of the problems
+discussed by:
 
-process_vm_writev()
-  -> process_vm_rw_core()
-    -> unpin_user_pages_dirty_lock()
-      -> folio_mark_dirty()
-        -> ext4_dirty_folio()
+https://lore.kernel.org/r/20261119-gup-dirty-what-v1-0-236d69f25c24@suse.de
 
-A second WARNING is subsequently triggered in __folio_mark_dirty() in
-mm/page-writeback.c.
+CCing Pedro, John und Jan.
 
-This appears to be related to the interaction between GUP-based page
-dirtying and filesystem-managed folio metadata. In particular, the GUP
-dirtying path may mark a file-backed folio dirty without ensuring that
-the filesystem-specific metadata required by its dirty_folio()
-implementation remains available.
+-- 
+Cheers,
 
-This may be related to the known issue where GUP-based page dirtying
-does not properly notify the filesystem through page_mkwrite(), as
-well as the interaction between GUP dirtying and
-filemap_release_folio().
-
-Before these warnings, all four ext4 loop devices also report delayed
-block allocation errors and abnormal free block accounting. These
-errors may indicate an additional filesystem inconsistency and are
-included in the console log for further investigation.
-
-Reproducer:
-
-C reproducer: https://pastebin.com/raw/VMwNSqrp
-console output: https://pastebin.com/raw/43Ne65Vu
-kernel config: https://pastebin.com/raw/dG24GcY1
-
-
-Kernel:
-
-HEAD commit: aebb7274476403040d582c61478df8f4a7bf9cd3
-
-Kernel version: Linux v7.4-rc3
-
-Environment: QEMU virtual machine
-
-WARNING 1:
-
-WARNING: fs/ext4/inode.c:4527 at ext4_dirty_folio+0xe3/0x110
-
-Call Trace:
-
-  ext4_dirty_folio+0xe3/0x110
-  folio_mark_dirty+0xb9/0x120
-  unpin_user_pages_dirty_lock+0x588/0x6e0
-  process_vm_rw_core.isra.0+0x7ad/0x960
-  process_vm_rw+0x1c1/0x260
-  __x64_sys_process_vm_writev+0xe3/0x1b0
-  do_syscall_64+0xee/0x4f0
-  entry_SYSCALL_64_after_hwframe+0x4b/0x53
-
-WARNING 2:
-
-WARNING: mm/page-writeback.c:2678 at __folio_mark_dirty+0x644/0x780
-
-Call Trace:
-
-  __folio_mark_dirty+0x644/0x780
-  block_dirty_folio+0x149/0x1a0
-  folio_mark_dirty+0xb9/0x120
-  unpin_user_pages_dirty_lock+0x588/0x6e0
-  process_vm_rw_core.isra.0+0x7ad/0x960
-  process_vm_rw+0x1c1/0x260
-  __x64_sys_process_vm_writev+0xe3/0x1b0
-  do_syscall_64+0xee/0x4f0
-  entry_SYSCALL_64_after_hwframe+0x4b/0x53
-
-Relevant ext4 messages:
-
-EXT4-fs error (device loopX): ...
-EXT4-fs (loopX): Delayed block allocation failed
-EXT4-fs (loopX): This should not happen!
-EXT4-fs (loopX): Total free blocks count 0
-EXT4-fs (loopX): free_blocks=2415919104
-
-The issue is reproducible on Linux v7.4-rc3.
-
-The full console output and C reproducer are attached.
-
-Best regards
+David
