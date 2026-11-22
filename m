@@ -1,58 +1,52 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=202.182.106.98
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795293674;
-	b=bRZiCzgmkerDiY880W0eQYr3YsA0Erf1RYHHPhFRTeqAePnjn7SMsL84iZVwgQQnlhRd
-	 AVLl5+zxcRMwp99FuYEixfTUknivutG2aTvsa83eTemV+CE52Mh0DfzUGNoG3wcKAGA2/
-	 hnVdL4BAPsJoTvDYgYuyb+KETk0vqw3N+T0aWMeIg1ZT8yddgl335v4hPJsF2PvsAcXte
-	 QRNvaQ/fcKslz23RDq+t4Vtlx/BEjPVSoLirGzBTlZRbuQiPOn/fc79JBCARApqEf9xr0
-	 Y2OSj7XIHTtC/UAQdYdIs38v6FjgI+J0xx12LvKDxYtfp40WrbTra7GWRNhfAcdRdlg==
+	t=1795310067;
+	b=phiNgVfWqIZRUJSQP8g1zwl/SjVPicQYlgw1XpBb6+JMEmevFtUJpJYAuadlOmCYbxVm
+	 KkdOUw4d6BIQ5SH1xhx+M4cKf+4c1fU5XfuKaGKOKQiH/OMzCgAAwXZNEb7i1fuzDId2n
+	 LzpQjgnlBoJgegWHMvZ6q4vEABa2ja0b3u2zS+6e6gek6BP3hLrh4SOxpD9hCtS/LNKKt
+	 aZyIlIWsY09BZifL+vT5AWtb4V5PQ2aAVF4yBv+KMM4uF+4zqJvVBhzkOp1ExzbTxi2+M
+	 4xZX6EG42mWkhH+89OLI340zfwVTIM0nEDAP9+1Zt7MotejIXTct8P4YpwSVQnGcSuA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795293674;
-	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
-	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
-	bh=hmRMq/jyaz6ubqP2Q/8QAmwoitBfjKyHf2qlq73z/v0=;
-	b=1Z7UYkXnU1oDnm1ddLIfLMNii/sA+3r4ZoL0TGxLnGPgDAO/hH49w3z9Y7xtymUzbiwk
-	 Yibn9gl9t+SSV05ktXuxXLxMS1Yu6J1vBvhwwkqfk8gSTLyr1GwwqruMuAxow4EgmT5gC
-	 A5/AH8ybgvIXgdanJBUgy2DGuyEXC+rc0xTt8lLeEKSoaPkJf6xvaR2n3BNGAWQzHpA5W
-	 K1QkIObaaRp3eFPJ9jjUBqX93WFx/1dEvdzLa6WPKjuc0YjIhNVUFHtnGsdqiO39od102
-	 CElfkVhnrc9tgcgatmzO5BzuA+kEFJQ+atuUtE2wGEQeV+jQGLXYa38Om+afxrgONJg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795310067;
+	h=DMARC-Filter:DKIM-Signature:Received:Content-Type:MIME-Version:
+	 Content-Transfer-Encoding:Subject:From:To:Reply-To:Message-ID:
+	 List-Unsubscribe;
+	bh=K8Q7c4D+mtdCW48/x/ynC1MyxoxfS5BhCPj8qg5OfjM=;
+	b=ElBjPDgUASe0WYyb0Xf8/4NmRXznTpTGOgxiKkh/SeFJ7s7n0hExjY2vKjeKYtpXvYtT
+	 aT6mYQJecMlB6qpkNmyTNq3UxswfM+t3cl9eBn9+UZnWlPuBygQangQ4ZZsAd4v/hSL6P
+	 p5r2E2nehvpt75Lg5VEuFiHCL+MPd/SW+PGMihpM0EL5sNHwBSEwUuWNueQW5LI7ATVtm
+	 ohdSXEqZU039I9H6Sb1ALkrun53RxlqRiuJblSBCLtxHnzQE2dCnhRKezsmy4tsoqS3pD
+	 vzFUJpcyfvt5QPMrymd4qgRMeK2Y3wu5nR+Qqcxo+4LIrakilQsKEva9XbrQp//YZRA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="asgtto/P";
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	dmarc=pass header.from=quanmeifa.com;
+	spf=pass smtp.mailfrom=quanmeifa.com;
+	dkim=pass header.d=quanmeifa.com header.i=@quanmeifa.com header.a=rsa-sha256 header.s=default header.b=baDkUoM2;
+	arc=none smtp.remote-ip=202.182.106.98
+Received: from m3.textscene.com (m3.textscene.com [202.182.106.98])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6B841606A320;
-	Sat, 21 Nov 2026 20:41:14 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E6143606A320
+	for <linux-ext4@vger.kernel.org>; Sun, 22 Nov 2026 01:14:25 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org E6143606A320
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=quanmeifa.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=quanmeifa.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=asgtto/P
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2C82C1F000C0;
-	Sat, 21 Nov 2026 20:41:10 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795293674;
-	bh=hmRMq/jyaz6ubqP2Q/8QAmwoitBfjKyHf2qlq73z/v0=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=asgtto/P/mqBPw1Axj+fEFZsvYqeSF/ZmIFH4PnCav4vjk1EbTjJ0mTk50wXzXd3A
-	 0oPFL4L3Soh2pKh6TNWZ0JSsVbLH0ArdhUWSpj9CqFwFPmMUVqG1r5h5vC44+KPoXl
-	 IR2BtKSF+byzNkv20T34sbwoIxBfP2Au8bsE80sR6c0kF2VA8MPzCvevXGiZgqVo4c
-	 Ih2S1i5XOt/camX8d7qFp4AF4rSFWnUSEIfOE7Bamymi/uFcvttZy8TP3iTO4po1sD
-	 USsdPvR/w9Ks6xkidDC065RYjoqD8Vpq4iibvN1DrVToa1VhYtqvYCgR9ESKu7c95F
-	 yRPPqnQHCa93w==
-Date: Sat, 21 Nov 2026 21:41:08 +0100
-From: Andrey Albershteyn <aalbersh@kernel.org>
-To: Eric Biggers <ebiggers@kernel.org>
-Cc: fsdevel <linux-fsdevel@vger.kernel.org>, 
-	fsverity <fsverity@lists.linux.dev>, linux-ext4 <linux-ext4@vger.kernel.org>, 
-	linux-btrfs <linux-btrfs@vger.kernel.org>, linux-f2fs <linux-f2fs-devel@lists.sourceforge.net>, 
-	linux-xfs <linux-xfs@vger.kernel.org>, dsterba@suse.com, Christian Brauner <brauner@kernel.org>, 
-	tytso@mit.edu, chao@kernel.org, jaegeuk@kernel.org, viro@zeniv.linux.org.uk
-Subject: Re: [PATCH v3 4/7] iomap: use fsverity_is_building() to check for
- fsverity IO
-Message-ID: <awFTapiR9KK9H6PC@aalbersh-thinkpadx1carbongen13.rmtcz.csb>
-References: <20261120155032.187246-1-aalbersh@kernel.org>
- <20261120155032.187246-5-aalbersh@kernel.org>
- <20261120222302.GD3048696@google.com>
+	dkim=pass (2048-bit key, unprotected) header.d=quanmeifa.com header.i=@quanmeifa.com header.a=rsa-sha256 header.s=default header.b=baDkUoM2
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=quanmeifa.com;
+	s=default; t=1795310064;
+	bh=K8Q7c4D+mtdCW48/x/ynC1MyxoxfS5BhCPj8qg5OfjM=;
+	h=Subject:From:To:Reply-To:List-Unsubscribe;
+	b=baDkUoM2mc5ZJdrsGGPQqZ64r0jeVrx5f5iyMpdOM6T1IdzRo32qUmwPomAwEQPE4
+	 78KrAlsxaG/8G/iANSvWu/nxRxTguD+jiSgBGY+hurpUJQAc1hv/3rK0BDhzXKaFgk
+	 xPpw8Nfl7PvBjGq82u2ZTBIeld+XQA0x2LfSJ6pE3tkxXVUuKc9qYWclzgQIK5oQxW
+	 aHQS63LwJW/b9+JlvP3nM6z8j1zqspMOvbpS5UN/vUPsJhrF69Gem1EK5Z/y0UDbj2
+	 Fm5nGlkDQutpp3HFbGGo5OtS5tBFCV3+uPGWeeR4WUZ3bG9/XpPHaivz3zlRPlioym
+	 QxiM8hzivdtmA==
+Received: from [172.30.219.47] (unknown [39.105.124.184])
+	by mail.textscene.com (Postfix) with ESMTPSA id 17991126AD5
+	for <linux-ext4@vger.kernel.org>; Sun, 22 Nov 2026 01:14:23 +0000 (UTC)
+Content-Type: text/plain; charset="utf-8"
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -62,51 +56,38 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20261120222302.GD3048696@google.com>
+Content-Transfer-Encoding: base64
+Subject: =?utf-8?q?One_key_for_DeepSeek=2C_Kimi=2C_Qwen_+_video?=
+From: =?utf-8?b?ODM0MVRva2Vu5bel5Y6C?= <s04@quanmeifa.com>
+To: linux-ext4@vger.kernel.org
+Reply-To: wuqiong@token8341.com
+Message-ID: <179531006112.2888635.11164390171022849365@quanmeifa.com>
 
-On 2026-11-20 22:23:02, Eric Biggers wrote:
-> On Fri, Nov 20, 2026 at 04:50:26PM +0100, Andrey Albershteyn wrote:
-> > As fsverity inodes are read-only, the only write IO happening
-> > during I_VERITY_BUILDING is fsverity metadata.
-> 
-> I think this is not accurate?  The inode is not a "fsverity inode" yet,
-> and it can still have dirty data in it that is undergoing writeback.
-
-XFS flushes data folios in _begin_enable(). Make sense for me to
-have data stable on disk before starting the build, if any error
-happens in data writeback we won't spent time building the tree.
-That why the warning below.
-
-But as I_VERITY_BUILDING exists now, I don't think there's
-requirement to sync data before starting the build, I will update
-the comment.
-
-> 
-> > diff --git a/fs/iomap/buffered-io.c b/fs/iomap/buffered-io.c
-> > index 6d843b168d5f..0a176741e7b0 100644
-> > --- a/fs/iomap/buffered-io.c
-> > +++ b/fs/iomap/buffered-io.c
-> > @@ -1930,7 +1930,7 @@ static bool iomap_writeback_handle_eof(struct folio *folio,
-> >  	struct inode *inode = wpc->inode;
-> >  	u64 isize = i_size_read(inode);
-> >  
-> > -	if (wpc->iomap.flags & IOMAP_F_FSVERITY) {
-> > +	if (fsverity_is_building(inode)) {
-> >  		WARN_ON_ONCE(folio_pos(folio) < isize);
-> >  		return true;
-> >  	}
-> 
-> This function no longer needs the 'wpc' parameter: it can be passed
-> 'inode' directly instead.
-
-Sure, I will update it.
-
-> Sashiko also found an issue with this change.
-
-That's related to my response above.
-
-
--- 
-- Andrey
+SGksCgpDYW1lIGFjcm9zcyB5b3VyIHdvcmsgd2hpbGUgbG9va2luZyBpbnRvIGhvdyB0ZWFtcyBo
+YW5kbGUgbW9kZWwgYWNjZXNzIOKAlCB3b3J0aCBhIHNob3J0IG5vdGUuLgoKQXQgdGhpcyBsYXll
+ciB0aGUgZmlkZGx5IHBhcnQgaXMgdXN1YWxseSBrZWVwaW5nIHRoZSBwbHVtYmluZyBvdXQgb2Yg
+eW91ciB3YXksIHNvIHlvdXIgdGltZSBjYW4gZ28gdG8gdGhlIHJlYWwgcHJvYmxlbXMuCgpBIHNv
+bG8tbWFpbnRhaW5lZCBwcm9qZWN0IG1lYW5zIHlvdXIgZW5lcmd5IGdvZXMgdG8gcmVhbCBwcm9i
+bGVtcy4gU3RpY2tpbmcgd2l0aCBpdCB0aGlzIGxvbmcgaXMgd29ydGggdGFraW5nIHNlcmlvdXNs
+eS4KCklmIG1vZGVsIGludGVncmF0aW9uIGlzIGFueXdoZXJlIGluIHRoZSBwaWN0dXJlLCBvdXIg
+QVBJIGNhbiB0YWtlIHRoYXQgbGF5ZXIgb2ZmIHlvdXIgcGxhdGUg4oCUIG5vIGtleXMsIHF1b3Rh
+cyBvciBmYWxsYmFja3MgdG8gbWFpbnRhaW4geW91cnNlbGYuCgpJJ20gV3UgUWlvbmcsIGFuZCBJ
+IHJ1biA4MzQxVG9rZW5GYWN0b3J5ICh0b2tlbjgzNDEuY29tKSDigJQgb25lIE9wZW5BSS1jb21w
+YXRpYmxlIGtleSBmb3IgRGVlcFNlZWssIEtpbWksIFpoaXB1IEdMTSwgUXdlbiBhbmQgTWluaU1h
+eC4gUG9pbnQgYmFzZV91cmwgYXQgdG9rZW44MzQxLmNvbSBhbmQgaXQgcnVucy4KCldlIGFsc28g
+ZG8gdGhyZWUgdGhpbmdzIGJleW9uZCB0ZXh0LCBpZiBhbnkgb2YgaXQgaXMgcmVsZXZhbnQ6CsK3
+IHRleHQg4oCUIHRoZSBtb2RlbHMgYWJvdmUsIGxvbmcgY29udGV4dCBhbmQgc3RydWN0dXJlZCBv
+dXRwdXQgaW5jbHVkZWQKwrcgdmlkZW8g4oCUIE1pbmlNYXggSDMsIFdhbiAyLjI6IHRleHQvaW1h
+Z2UtdG8tdmlkZW8sIGZpcnN0LWxhc3QgZnJhbWUsIHJlZnMsIGJpbGxlZCBwZXIgc2Vjb25kCsK3
+IHNob3J0IGRyYW1hIOKAlCBvbmUgc2VudGVuY2UgdG8gYSBmaW5pc2hlZCBlcGlzb2RlLCB0YWly
+ZWVsLmNvbQoKwqUwLjUgdHJpYWwgY3JlZGl0IG9uIHNpZ251cCwgYW5vdGhlciDCpTUgb24gYSBm
+aXJzdCB0b3AtdXAgb2YgwqU1Ky4gRW5vdWdoIHRvIGJlbmNobWFyayBvbiB5b3VyIG93biB3b3Jr
+bG9hZC4KCk9uZSBtb3JlIHRoaW5nIHdlIGJ1aWx0OiA8c3Ryb25nPnRva2VuLWxldmVsIHNtYXJ0
+IHJvdXRpbmc8L3N0cm9uZz4gKGRldmVsb3BlZCB3aXRoIGEgdGVhbSBmcm9tIFRzaW5naHVhIFVu
+aXZlcnNpdHkpIOKAlCBub3QgZXZlcnkgcmVxdWVzdCBuZWVkcyBhIGZyb250aWVyIG1vZGVsLiBT
+aW1wbGUgcXVlcmllcyBnbyB0byBhIHNtYWxsIG1vZGVsLCBoYXJkIG9uZXMgZ2V0IGVzY2FsYXRl
+ZC4gU2FtZSBhbnN3ZXIsIG1hdGVyaWFsbHkgZmV3ZXIgdG9rZW5zLCBsb3dlciBiaWxsLCBubyBx
+dWFsaXR5IGxvc3MuCgpSZXBseSBoZXJlIGFuZCBpdCByZWFjaGVzIG1lIGRpcmVjdGx5LgoKCgo4
+MzQxVG9rZW5GYWN0b3J5ICh0b2tlbjgzNDEuY29tKQoKLS0tCld1IFFpb25nCjgzNDFUb2tlbkZh
+Y3RvcnkKCi0tCkRvbid0IHdhbnQgdGhlc2UgZW1haWxzPyBSZXBseSAidW5zdWJzY3JpYmUiIG9y
+IHdyaXRlIHRvIGhlbGxvQHRleHRzY2VuZS5jb20gd2l0aCBzdWJqZWN0IHVuc3Vic2NyaWJlLg==
