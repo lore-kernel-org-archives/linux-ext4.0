@@ -1,54 +1,94 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=198.137.202.133
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.128.51
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795366163;
-	b=M2rVjQh+0cadtFz6iwnDh7OCO4OUXCRthieb2Oky2UfUVIRKoEJ4wo3UcNFCffaJkYUT
-	 ZfswG4mEnNsEIoNibiYKxyYY0LNhZGLoVKn/eGaV3L2W0RQ2ULD0j1p8SihuYfZnVTeSX
-	 KpXljjQYUGDtXN68S6Lzd8GA7ybWIbCuXDI9egEaoD66IpO/vG5J9F/bezvdm3XKxFah1
-	 IjPNl+wqWB1DaMQdTyR4fMs46QdF9X95PVH24LNpJ4hchSPHeVythVrmdIrnHVV0c4mWe
-	 MzVaWtH3+YzF1oHm2a33oPaRMpDTGNuK1y4FJ4bJvf9UHEoi/XtZT+9ujPhT+QfVpxQ==
+	t=1795371876;
+	b=JLxPNqSs91AAqohstj0Z3EftzYyXV0V5PDeZfw/Rujp4KoK5/LmEvBiRw6vhCywsHBjX
+	 RDJfT5GtDp1o4er3nMpihNwTFkSzSMi8KW3r6jDNSk9ZVpOF9Qb4dzRAmeuyqwvP1VHkG
+	 zRx2449vYnpu8aetu2khDg3EE4HsTU7kBkz01z+b/Y9o/rmfvK+drPN4sdam38iKb2rA8
+	 IDqOhrCnrUTJmEMR8n01zaZUKdLyGmgvuvrU78zJQ0XLlWNgDUcUTA8HPxJAvTUSOsCDf
+	 qXyyd3voBtJj/ve91XuobYkxONE0js3hAryxT+9eGnEPiYC6dyNJRPa5Oh67oBN0NJA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795366163;
-	h=DMARC-Filter:DKIM-Signature:Received:Message-ID:Date:MIME-Version:
-	 User-Agent:Subject:To:Cc:References:Content-Language:From:In-Reply-To:
-	 Content-Type:Content-Transfer-Encoding;
-	bh=1n4tlVAMD1oQEfLg7AgK6BF8JkJzQIdhcOfMal/6gZY=;
-	b=Xn1QeDYrhUCf5KSznSO8TQS5yilxytITKRCS0Q98TtaU1Bh2PDExizFYCKIpsHvWNcgu
-	 E8XcT6vXAr/qvpqYW6UanZhXVd3nys0uknOiOkyuE1nbGg3ePnHngh/HUpTFcrppOddb+
-	 czlTKIvcKQjOxOpAAww3jtr1ENgTkOAbpLuymNNNbcWpuKCoTDNENk+PuJqlRhFyFMIbO
-	 8nTLbkM8WWK8O7rYMuJeMtTKHHCp+ZwZ96VXFPChH5uGlDmPU3z/vlppNM3Aajjm3tGEV
-	 vDB+lc+wwmQyx1lsHZnZXAFp7qEp5VJCtD1ueBPgk9mRafCwMe+QOpjedDbWTQXMXIw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795371876;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
+	 From:To:Cc:Subject:Date:Message-ID:X-Mailer:MIME-Version:
+	 Content-Transfer-Encoding;
+	bh=76A4WPudZsZy4CJtPE5LMtql++Tj2dohb2B1StvtAx0=;
+	b=HItrWYSroMDQTMgyEc+b6ooA+YnHaK2J39c9XPFfGRluR/TJpFP2mmvGIVndvC48Q6Oe
+	 CTwcKm71SbpdEoWyc5HMUBlcAWsyO91FYVLB+6YlWmO24+Vt8970B7FqEilAcSn/t1jeN
+	 +syPNVeGAU2wHBFkaiMyDFpyah5eohfMxJaWr8p9CQMZ9e/97ipogS+YP8H2cGjaywhtT
+	 I3GbkSfqYx93MhU9WJOB2SYw+d5FEapCena+kRTbIUjv/xUM/XBYHoKs18c3kxvA1kAms
+	 yxdVYaborRR8DmC3YGvDMOgq3yO70sjIUAhYGSjcdH0Mer7xbCZjjwhG5LRttkOCLPA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=infradead.org;
-	spf=pass smtp.mailfrom=infradead.org;
-	dkim=pass header.d=infradead.org header.i=@infradead.org header.a=rsa-sha256 header.s=bombadil.20210309 header.b=If1yj84T;
-	arc=none smtp.remote-ip=198.137.202.133
-Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	dmarc=pass header.from=gmail.com;
+	spf=pass smtp.mailfrom=gmail.com;
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=aDml5vAB;
+	arc=none smtp.remote-ip=209.85.128.51
+Received: from mail-wm1-f51.google.com (mail-wm1-f51.google.com [209.85.128.51])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 617FD606A320;
-	Sun, 22 Nov 2026 16:49:23 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 617FD606A320
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=infradead.org
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D377F606A32A
+	for <linux-ext4@vger.kernel.org>; Sun, 22 Nov 2026 18:24:35 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org D377F606A32A
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.a=rsa-sha256 header.s=bombadil.20210309 header.b=If1yj84T
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
-	Content-Type:In-Reply-To:From:References:Cc:To:Subject:MIME-Version:Date:
-	Message-ID:Sender:Reply-To:Content-ID:Content-Description;
-	bh=1n4tlVAMD1oQEfLg7AgK6BF8JkJzQIdhcOfMal/6gZY=; b=If1yj84Ty+PWC5pwN3l+urBf68
-	2hR0b/KbpLdHtCSDssJRGtWWNVVHcXXibwvo0e16Wu5PcF1GbzrF+0Nn/0orhZPZLp3AaUrOqCeE3
-	M0g3/VZCXrSCWsLf3OJiUda66VgMdDR5zNN/JnYJhMr6Zloh8ZVpZL5T6FbjOGEGGG9pYSEFlPSo3
-	xNjZ+pwXJ34Yaiph8LhnUvR+33XsPWSndNcZzF1mF1Y/Rg3p7J5onQ/FXu2y6sBr06vas2ATQ1cNu
-	jo4l2Ca8g1GdoMwCPQY26/RHxrAwrwLjXqoQ1EhLUm39E6z3sHmGRuhzwWdrOJON3ct7fIVJwApAK
-	GCbPEuHg==;
-Received: from [50.53.43.113] (helo=[192.168.254.34])
-	by bombadil.infradead.org with esmtpsa (Exim 4.100.1 #2 (Red Hat Linux))
-	id 1xVAkg-00000001O6v-277K;
-	Sun, 22 Nov 2026 16:49:19 +0000
-Message-ID: <1e62d5c8-3ca7-441d-8979-f054fb815912@infradead.org>
-Date: Sun, 22 Nov 2026 08:49:16 -0800
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=aDml5vAB
+Received: by mail-wm1-f51.google.com with SMTP id 5b1f17b1804b1-4b79502c27aso22377505e9.1
+        for <linux-ext4@vger.kernel.org>; Sun, 22 Nov 2026 10:24:35 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20260707; t=1795371874; x=1795976674; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=76A4WPudZsZy4CJtPE5LMtql++Tj2dohb2B1StvtAx0=;
+        b=aDml5vABEDkKy8vsbL8COyzwkkoQ65IJ/EAggkdXqeEmF24s9kd24MeYsbiaxzwR0W
+         Cw3o2WQcaja8UqOGtGtCT561ukMh7lAg6gLEqaOYI3LKQxSergdTZCvR7yEbM1fmcZel
+         ghDhF62n0JAq/SmNfVwRF7lVKklbAKmY4ZFtyojZmn3Xud2A5fK+ndU9kyYD7kCPqLUH
+         yOyQ45G6TPLx3G+EsReFD6vLfhe+kvNLWbbe5NJcIHAdZjlX9Jo/yvZ6LY1w0IlyrpD8
+         RTAXzloYIEBO081PQjjcraJE9wilm6GBqDtHCqDCzPXHnA21vymOwXgQh3kFs5Gi1qwJ
+         qhUQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1795371874; x=1795976674;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=76A4WPudZsZy4CJtPE5LMtql++Tj2dohb2B1StvtAx0=;
+        b=NSC82bYdRs2ffOkVT03sY8otwzO/NdPQ3XPaqkXFl09UD6FoTdY32a6MWE0UYgyNtp
+         TuecoCjF98MmS8t99lwqKRio4MJIPWHjCYz8ys1m1sR8LvoprBJNXVIEpRiz9yDIt+z5
+         e6IRJk4Db4k0NA9hFst23IYHWzZcjqMwBo1s/AibQZJDHzpwZJAi09dhRhocIrvs++/1
+         hHEMkLwvomuXUfcFKp5VKg164kgRJu9UJtRxe29AYLJ4SSgnRTA18drxfL3McOtf32c4
+         vVZLSMF0DtKeYO7yp9NCx++52g9mx3hQCw2N68Tz8D5/sr3ZVy9RN6QWryvc6ceZG+2W
+         RxUA==
+X-Forwarded-Encrypted: i=1; AL+hErEniHR7OZHtVMA3xjydgX+UlFgDsnLeOcES8wJxJbi8bZzYCGQuWCJ9/zUMt7oooz6FwUnHBWjmfFjF@vger.kernel.org
+X-Gm-Message-State: APuU4Z8F0ACU3DKl0earS8FpnOpESmrREkyIn8VmECuTbtFpHdLZ98zN
+	rzRHgU9otM0rvDVnCa4A0FQJI2uU0GZRggVBCTzwPRCYwNFTdr9tS/ti/cgEdTNg
+X-Gm-Gg: AZFdTZe8Qh0c2nUmfMbo0pQ8bjUfLbW/j3Yd9J62dD/jHX/KDnZUboUyALPkU62palN
+	xd1xWGsC8rpla/RlCoDea8wI237dHJySg0OGEj3hOtukrcVlHV8NRU82cj9arsAEAuCVOkCtZvk
+	a5G+ddUDJUSmuDNEv5hnS6CkX22HZOt0dxgog2YN39vrdUMZfFeyCSYht40p1Dyf+bgrE9bg/ks
+	JGY+jDKwLZDXRP/3I/aipZmgsVWZD1vitxGvpXErMQInL49u16r8IQA1cvRpqVnOhNp/ogWBGz3
+	SFdImFbIA0WlEpbnMYWMdEp9WWIjB1iQS4blrv1y3uOJpO4SN0tnSziWY6qEERFfTG3MrbhoJHH
+	GcNzmA4MDE03+AXg5ZBMPyZfkYWCf2F70i6aC+iT9GT9n7N/bBFsN+aIUY2S8WkuVdwYpCMl0Kt
+	VQUnkGOOg5ruhtOHDBa2YDF9USbat+9BgzfcHbygQgP13IHjW0FJS+NPgC+iHNGOxxd2HR5sFh9
+	ajzi2zcsAhezzjiKW4E7MFrtGB0xBkB47DHTr1/2OfdyMHKVmk6szLWuLo87fWF5Dsix5EJOY89
+	R8+RKh8S4PdkNs1sxLwkJwEnnRF2xB9+ywfcr+TAmQX+TFHIJkRH52wA
+X-Received: by 2002:a05:600c:1549:b0:4bb:741d:ea8 with SMTP id 5b1f17b1804b1-4bb8880ad4amr190688825e9.7.1795371874103;
+        Sun, 22 Nov 2026 10:24:34 -0800 (PST)
+Received: from DESKTOP-V28CTA4.localdomain ([103.125.177.105])
+        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4bb905f0f1csm112711375e9.0.2026.11.22.10.24.27
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Sun, 22 Nov 2026 10:24:33 -0800 (PST)
+From: Arbab Haider <arbabhaider649@gmail.com>
+To: Jan Kara <jack@suse.cz>
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	syzbot+1d23ad199a3bfd6f9149@syzkaller.appspotmail.com,
+	stable@vger.kernel.org,
+	Arbab Haider <arbabhaider649@gmail.com>
+Subject: [PATCH] ext2: handle NULL fc->source in ext2_msg_fc()
+Date: Sun, 22 Nov 2026 23:23:31 +0500
+Message-ID: <20261122182331.13740-2-arbabhaider649@gmail.com>
+X-Mailer: git-send-email 2.53.0
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -58,104 +98,68 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v2 02/12] docs: ioctl-number: update sound entries
-To: sashiko-reviews@lists.linux.dev
-Cc: Jonathan Corbet <corbet@lwn.net>, Shuah Khan <skhan@linuxfoundation.org>,
- David Hildenbrand <david@kernel.org>,
- Andrew Morton <akpm@linux-foundation.org>, Jason Gunthorpe <jgg@nvidia.com>,
- Leon Romanovsky <leonro@nvidia.com>, linux-mm@kvack.org,
- Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>,
- linux-sound@vger.kernel.org, Jens Axboe <axboe@kernel.dk>,
- Marcel Holtmann <marcel@holtmann.org>,
- Luiz Augusto von Dentz <luiz.dentz@gmail.com>,
- Willem de Bruijn <willemdebruijn.kernel@gmail.com>,
- Jason Wang <jasowangio@gmail.com>, David Heidelberg <david@ixit.cz>,
- Chas Williams <3chas3@gmail.com>, "David S. Miller" <davem@davemloft.net>,
- Eric Dumazet <edumazet@kernel.org>, Jakub Kicinski <kuba@kernel.org>,
- Paolo Abeni <pabeni@redhat.com>, Helge Deller <deller@gmx.de>,
- dri-devel@lists.freedesktop.org, MPT-FusionLinux.pdl@broadcom.com,
- "James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>,
- "Martin K. Petersen" <mkp@kernel.org>, linux-scsi@vger.kernel.org,
- Miquel Raynal <miquel.raynal@bootlin.com>,
- Richard Weinberger <richard@nod.at>, Vignesh Raghavendra <vigneshr@ti.com>,
- Zhihao Cheng <chengzhihao1@huawei.com>, linux-mtd@lists.infradead.org,
- Neill Kapron <nkapron@google.com>, Andrey Konovalov <andreyknvl@gmail.com>,
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, linux-usb@vger.kernel.org,
- Juergen Gross <jgross@suse.com>, Stefano Stabellini
- <sstabellini@kernel.org>, Hans de Goede <hansg@kernel.org>,
- Arnd Bergmann <arnd@arndb.de>, "Michael S. Tsirkin" <mst@redhat.com>,
- =?UTF-8?Q?Eugenio_P=C3=A9rez?= <eperezma@redhat.com>,
- Sean Christopherson <seanjc@google.com>, Paolo Bonzini
- <pbonzini@redhat.com>, kvm@vger.kernel.org, virtualization@lists.linux.dev,
- Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
- linux-ext4@vger.kernel.org, Mike Marshall <hubcap@omnibond.com>,
- devel@lists.orangefs.org, Paulo Alcantara <pc@manguebit.org>,
- Namjae Jeon <linkinjeon@kernel.org>, Jaegeuk Kim <jaegeuk@kernel.org>,
- Chao Yu <chao@kernel.org>, Florian Fainelli <florian.fainelli@broadcom.com>,
- Broadcom internal kernel review list
- <bcm-kernel-feedback-list@broadcom.com>, Tzung-Bi Shih <tzungbi@kernel.org>,
- Benson Leung <bleung@chromium.org>, David Airlie <airlied@gmail.com>,
- Simona Vetter <simona@ffwll.ch>, Alex Deucher <alexander.deucher@amd.com>,
- =?UTF-8?Q?Christian_K=C3=B6nig?= <christian.koenig@amd.com>,
- amd-gfx@lists.freedesktop.org, Jani Nikula <jani.nikula@linux.intel.com>,
- Joonas Lahtinen <joonas.lahtinen@linux.intel.com>,
- Rodrigo Vivi <rodrigo.vivi@intel.com>, Tvrtko Ursulin
- <tursulin@ursulin.net>, intel-gfx@lists.freedesktop.org,
- Matthew Brost <matthew.brost@intel.com>,
- =?UTF-8?Q?Thomas_Hellstr=C3=B6m?= <thomas.hellstrom@linux.intel.com>,
- intel-xe@lists.freedesktop.org, Takashi Sakamoto <o-takashi@sakamocchi.jp>
-References: <20261119053514.255348-1-rdunlap@infradead.org>
- <20261119053514.255348-3-rdunlap@infradead.org>
- <sashiko-outbox-224494@kernel.org>
-Content-Language: en-US
-From: Randy Dunlap <rdunlap@infradead.org>
-In-Reply-To: <sashiko-outbox-224494@kernel.org>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 
+With the new mount API (fsopen()/fsconfig()), userspace can pass mount
+options such as "nobh", "dax", or "reservation" before setting the
+"source" parameter, leaving fc->source as NULL during option parsing.
 
+In ext2_msg_fc(), when fc->purpose != FS_CONTEXT_FOR_RECONFIGURE,
+strrchr(fc->source, '/') is called unconditionally without checking if
+fc->source is non-NULL, causing a kernel NULL pointer dereference:
 
-On 11/19/26 9:36 PM, sashiko-bot@kernel.org wrote:
-> Thank you for your contribution! Sashiko AI review found 1 potential
-> issue to consider:
-> - [Low] docs: ioctl-number: incomplete sequence range for
->   sound/scarlett2.h
-> --
-> 
-> commit 93a4f635ed001735e939a3dc4a2526e8af9e9bd0
-> Author: Randy Dunlap <rdunlap@infradead.org>
-> 
-> docs: ioctl-number: update sound entries
-> 
-> This commit updates the ioctl-number documentation table with additional
-> sound subsystem files and sequence number ranges.
-> 
->> diff --git a/Documentation/userspace-api/ioctl/ioctl-number.rst b/Documentation/userspace-api/ioctl/ioctl-number.rst
->> index e1d56d5cccd14..f29d2c17ca7b9 100644
->> --- a/Documentation/userspace-api/ioctl/ioctl-number.rst
->> +++ b/Documentation/userspace-api/ioctl/ioctl-number.rst
-> 
-> [ ... ]
-> 
->> @@ -204,6 +209,9 @@ Code  Seq#    Include File                                             Comments
->>  'S'   80-81  scsi/scsi_ioctl.h                                         conflict!
->>  'S'   82-FF  scsi/scsi.h                                               conflict!
->>  'S'   00-7F  sound/asequencer.h                                        conflict!
->> +'S'   20-52  sound/core/seq/seq_compat.c                               conflict!
->> +'S'   60-63  sound/scarlett2.h                                         conflict!
-> 
-> [Severity: Low]
-> Should the sequence range for sound/scarlett2.h be 60-64?
-> include/uapi/sound/scarlett2.h also defines
-> SCARLETT2_IOCTL_GET_ERASE_PROGRESS with sequence number 0x64:
-> 
-> include/uapi/sound/scarlett2.h:
-> #define SCARLETT2_IOCTL_GET_ERASE_PROGRESS \
-> 	_IOR('S', 0x64, struct scarlett2_flash_segment_erase_progress)
+  KASAN: null-ptr-deref in range [0x0000000000000000-0x0000000000000007]
+  RIP: 0010:strrchr+0x24/0x80
+  ext2_msg_fc+0x157/0x1e3
 
-Yes. Fixed now.
+Check fc->source before calling strrchr(), and omit the "(%s)" device
+prefix when s_id is NULL or empty (e.g., when source is unset, empty,
+or ends with '/').
 
+Tested locally in QEMU (x86_64, KASAN+UBSAN) using fsopen()/fsconfig()
+with NULL, empty, trailing-slash, relative, and full-path sources.
+
+Reported-by: syzbot+1d23ad199a3bfd6f9149@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=1d23ad199a3bfd6f9149
+Fixes: 98f18c76c2c3 ("ext2: create ext2_msg_fc for use during parsing")
+Cc: stable@vger.kernel.org
+Signed-off-by: Arbab Haider <arbabhaider649@gmail.com>
+---
+ fs/ext2/super.c | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
+
+diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+index 54a6c26d0..c99367652 100644
+--- a/fs/ext2/super.c
++++ b/fs/ext2/super.c
+@@ -89,20 +89,25 @@ static void ext2_msg_fc(struct fs_context *fc, const char *prefix,
+ 
+ 	if (fc->purpose == FS_CONTEXT_FOR_RECONFIGURE) {
+ 		s_id = fc->root->d_sb->s_id;
+-	} else {
++	} else if (fc->source) {
+ 		/* get last path component of source */
+ 		s_id = strrchr(fc->source, '/');
+ 		if (s_id)
+ 			s_id++;
+ 		else
+ 			s_id = fc->source;
++	} else {
++		s_id = NULL;
+ 	}
+ 	va_start(args, fmt);
+ 
+ 	vaf.fmt = fmt;
+ 	vaf.va = &args;
+ 
+-	printk("%sEXT2-fs (%s): %pV\n", prefix, s_id, &vaf);
++	if (s_id && *s_id)
++		printk("%sEXT2-fs (%s): %pV\n", prefix, s_id, &vaf);
++	else
++		printk("%sEXT2-fs: %pV\n", prefix, &vaf);
+ 
+ 	va_end(args);
+ }
 -- 
-~Randy
+2.53.0
 
