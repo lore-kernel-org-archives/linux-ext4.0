@@ -1,57 +1,54 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=198.137.202.133
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795341181;
-	b=sVVxQD0AcZIXg8hE14prl/YGDbD4c4QC7IcdxjR2iQmAs8kzFJ/UN+2I7uE9qkTPqp1t
-	 dlz1hetrtHOXOVNtYVnzruIaiZqPPAkHnZZ29EI88ro3XfYB80iROdSsK9QF0MlstMunN
-	 5B0wrdJsPRvaVflr8rrD25tSKwKzOxKIn5gxBg/g2SbsujL+k1M5o6YUSmhHgLGEZ+lFT
-	 lPZkY7bCISLs78P9NPGLqNORzkDCc9Sz8nOWwfpscMMmdwFF3Cvz+T0H2fMd3jBrptiIO
-	 GshQDhzIXE9Pz5JkGENeZBq9DPemuzfWGJtkgQiFoQdFfktm9slEi2NYsofKN6XSHug==
+	t=1795366163;
+	b=M2rVjQh+0cadtFz6iwnDh7OCO4OUXCRthieb2Oky2UfUVIRKoEJ4wo3UcNFCffaJkYUT
+	 ZfswG4mEnNsEIoNibiYKxyYY0LNhZGLoVKn/eGaV3L2W0RQ2ULD0j1p8SihuYfZnVTeSX
+	 KpXljjQYUGDtXN68S6Lzd8GA7ybWIbCuXDI9egEaoD66IpO/vG5J9F/bezvdm3XKxFah1
+	 IjPNl+wqWB1DaMQdTyR4fMs46QdF9X95PVH24LNpJ4hchSPHeVythVrmdIrnHVV0c4mWe
+	 MzVaWtH3+YzF1oHm2a33oPaRMpDTGNuK1y4FJ4bJvf9UHEoi/XtZT+9ujPhT+QfVpxQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795341181;
-	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
-	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=3RDF1WM4SEV/H+sFh+drzidOtNsr4tZRsgJfOGTBjEA=;
-	b=D3mEf0guG0uCyFsGx7pW4VsNd79UTVs5yWOLc6d0h/wMEyV2So/k5h/EMfeGAkKZAnjo
-	 HTlSHhIZoAhj9oR8hjPBMxTdAtzlnyeVGSdFM2p6+tw6nX3MppuWW3Rp3+svDTzMNu6Jz
-	 m/AznmOsXlbhMfVtcjAidKH+OQJLin+lc5QedQXHSDZU1+nmfg6rOVof9oj60eXfLZ0+1
-	 7MncmTo6QBDvTYnabchXDa3hT6QWEPRJO/rAjTei1NrX21oASxBcR3od1K1+nREYcMCpe
-	 BUZR26/jcoZD/O9XUpyET9uhnHQboy1uVZsdjxRnGVRDtjs39JtGiAZUPvNXwEHMX1A==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795366163;
+	h=DMARC-Filter:DKIM-Signature:Received:Message-ID:Date:MIME-Version:
+	 User-Agent:Subject:To:Cc:References:Content-Language:From:In-Reply-To:
+	 Content-Type:Content-Transfer-Encoding;
+	bh=1n4tlVAMD1oQEfLg7AgK6BF8JkJzQIdhcOfMal/6gZY=;
+	b=Xn1QeDYrhUCf5KSznSO8TQS5yilxytITKRCS0Q98TtaU1Bh2PDExizFYCKIpsHvWNcgu
+	 E8XcT6vXAr/qvpqYW6UanZhXVd3nys0uknOiOkyuE1nbGg3ePnHngh/HUpTFcrppOddb+
+	 czlTKIvcKQjOxOpAAww3jtr1ENgTkOAbpLuymNNNbcWpuKCoTDNENk+PuJqlRhFyFMIbO
+	 8nTLbkM8WWK8O7rYMuJeMtTKHHCp+ZwZ96VXFPChH5uGlDmPU3z/vlppNM3Aajjm3tGEV
+	 vDB+lc+wwmQyx1lsHZnZXAFp7qEp5VJCtD1ueBPgk9mRafCwMe+QOpjedDbWTQXMXIw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=oulL52Ae;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	dmarc=pass header.from=infradead.org;
+	spf=pass smtp.mailfrom=infradead.org;
+	dkim=pass header.d=infradead.org header.i=@infradead.org header.a=rsa-sha256 header.s=bombadil.20210309 header.b=If1yj84T;
+	arc=none smtp.remote-ip=198.137.202.133
+Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2645B606A320
-	for <linux-ext4@vger.kernel.org>; Sun, 22 Nov 2026 09:53:01 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 617FD606A320;
+	Sun, 22 Nov 2026 16:49:23 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 617FD606A320
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=oulL52Ae
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D92061F000CA;
-	Sun, 22 Nov 2026 09:53:00 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795341181;
-	bh=3RDF1WM4SEV/H+sFh+drzidOtNsr4tZRsgJfOGTBjEA=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=oulL52AeepTJ/xvB9o2yy4gjmo0Je/JBN7TuUI6c+n2fPuU2yvfgitQmwxqnaXICQ
-	 STB+CtLUZcOegV/BQjPTOGvyHGysHZYBBPSgOvDpIFPwbdIa6yXOXCPrtiYojKXafa
-	 ISp48CZd5s4QfsQChWzx7ADq9zEdZ4UxvC6EABcWcexPDyJ0zJASmlZRaG6Yp8z4pN
-	 aqjz1pC3eGpVkcSh82g0xO7kIH6zc/U6Cy8Aj++ZuJu/T0gzSH5XZSTWXkFkjQqsff
-	 dR25wFh/Cf7tVuXinT3CrjXsugaEBCyuWcy7Sms2aFcaau5GLYULBvrppVmrkGIL3B
-	 7coINRMUmoowg==
-Message-ID: <sashiko-outbox-227865@kernel.org>
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH v3] ext4: bound xattr journal credits to transaction
- limit
-Reply-To: sashiko-reviews@lists.linux.dev
-To: arzuagapozosergio@gmail.com
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-In-Reply-To: <20261122093732.136895-1-arzuagapozosergio@gmail.com>
-References: <20261122084939.129223-1-arzuagapozosergio@gmail.com>
- <20261122093732.136895-1-arzuagapozosergio@gmail.com>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Sun, 22 Nov 2026 09:53:00 +0000
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.a=rsa-sha256 header.s=bombadil.20210309 header.b=If1yj84T
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
+	Content-Type:In-Reply-To:From:References:Cc:To:Subject:MIME-Version:Date:
+	Message-ID:Sender:Reply-To:Content-ID:Content-Description;
+	bh=1n4tlVAMD1oQEfLg7AgK6BF8JkJzQIdhcOfMal/6gZY=; b=If1yj84Ty+PWC5pwN3l+urBf68
+	2hR0b/KbpLdHtCSDssJRGtWWNVVHcXXibwvo0e16Wu5PcF1GbzrF+0Nn/0orhZPZLp3AaUrOqCeE3
+	M0g3/VZCXrSCWsLf3OJiUda66VgMdDR5zNN/JnYJhMr6Zloh8ZVpZL5T6FbjOGEGGG9pYSEFlPSo3
+	xNjZ+pwXJ34Yaiph8LhnUvR+33XsPWSndNcZzF1mF1Y/Rg3p7J5onQ/FXu2y6sBr06vas2ATQ1cNu
+	jo4l2Ca8g1GdoMwCPQY26/RHxrAwrwLjXqoQ1EhLUm39E6z3sHmGRuhzwWdrOJON3ct7fIVJwApAK
+	GCbPEuHg==;
+Received: from [50.53.43.113] (helo=[192.168.254.34])
+	by bombadil.infradead.org with esmtpsa (Exim 4.100.1 #2 (Red Hat Linux))
+	id 1xVAkg-00000001O6v-277K;
+	Sun, 22 Nov 2026 16:49:19 +0000
+Message-ID: <1e62d5c8-3ca7-441d-8979-f054fb815912@infradead.org>
+Date: Sun, 22 Nov 2026 08:49:16 -0800
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -60,143 +57,105 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
+MIME-Version: 1.0
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH v2 02/12] docs: ioctl-number: update sound entries
+To: sashiko-reviews@lists.linux.dev
+Cc: Jonathan Corbet <corbet@lwn.net>, Shuah Khan <skhan@linuxfoundation.org>,
+ David Hildenbrand <david@kernel.org>,
+ Andrew Morton <akpm@linux-foundation.org>, Jason Gunthorpe <jgg@nvidia.com>,
+ Leon Romanovsky <leonro@nvidia.com>, linux-mm@kvack.org,
+ Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>,
+ linux-sound@vger.kernel.org, Jens Axboe <axboe@kernel.dk>,
+ Marcel Holtmann <marcel@holtmann.org>,
+ Luiz Augusto von Dentz <luiz.dentz@gmail.com>,
+ Willem de Bruijn <willemdebruijn.kernel@gmail.com>,
+ Jason Wang <jasowangio@gmail.com>, David Heidelberg <david@ixit.cz>,
+ Chas Williams <3chas3@gmail.com>, "David S. Miller" <davem@davemloft.net>,
+ Eric Dumazet <edumazet@kernel.org>, Jakub Kicinski <kuba@kernel.org>,
+ Paolo Abeni <pabeni@redhat.com>, Helge Deller <deller@gmx.de>,
+ dri-devel@lists.freedesktop.org, MPT-FusionLinux.pdl@broadcom.com,
+ "James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>,
+ "Martin K. Petersen" <mkp@kernel.org>, linux-scsi@vger.kernel.org,
+ Miquel Raynal <miquel.raynal@bootlin.com>,
+ Richard Weinberger <richard@nod.at>, Vignesh Raghavendra <vigneshr@ti.com>,
+ Zhihao Cheng <chengzhihao1@huawei.com>, linux-mtd@lists.infradead.org,
+ Neill Kapron <nkapron@google.com>, Andrey Konovalov <andreyknvl@gmail.com>,
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, linux-usb@vger.kernel.org,
+ Juergen Gross <jgross@suse.com>, Stefano Stabellini
+ <sstabellini@kernel.org>, Hans de Goede <hansg@kernel.org>,
+ Arnd Bergmann <arnd@arndb.de>, "Michael S. Tsirkin" <mst@redhat.com>,
+ =?UTF-8?Q?Eugenio_P=C3=A9rez?= <eperezma@redhat.com>,
+ Sean Christopherson <seanjc@google.com>, Paolo Bonzini
+ <pbonzini@redhat.com>, kvm@vger.kernel.org, virtualization@lists.linux.dev,
+ Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
+ linux-ext4@vger.kernel.org, Mike Marshall <hubcap@omnibond.com>,
+ devel@lists.orangefs.org, Paulo Alcantara <pc@manguebit.org>,
+ Namjae Jeon <linkinjeon@kernel.org>, Jaegeuk Kim <jaegeuk@kernel.org>,
+ Chao Yu <chao@kernel.org>, Florian Fainelli <florian.fainelli@broadcom.com>,
+ Broadcom internal kernel review list
+ <bcm-kernel-feedback-list@broadcom.com>, Tzung-Bi Shih <tzungbi@kernel.org>,
+ Benson Leung <bleung@chromium.org>, David Airlie <airlied@gmail.com>,
+ Simona Vetter <simona@ffwll.ch>, Alex Deucher <alexander.deucher@amd.com>,
+ =?UTF-8?Q?Christian_K=C3=B6nig?= <christian.koenig@amd.com>,
+ amd-gfx@lists.freedesktop.org, Jani Nikula <jani.nikula@linux.intel.com>,
+ Joonas Lahtinen <joonas.lahtinen@linux.intel.com>,
+ Rodrigo Vivi <rodrigo.vivi@intel.com>, Tvrtko Ursulin
+ <tursulin@ursulin.net>, intel-gfx@lists.freedesktop.org,
+ Matthew Brost <matthew.brost@intel.com>,
+ =?UTF-8?Q?Thomas_Hellstr=C3=B6m?= <thomas.hellstrom@linux.intel.com>,
+ intel-xe@lists.freedesktop.org, Takashi Sakamoto <o-takashi@sakamocchi.jp>
+References: <20261119053514.255348-1-rdunlap@infradead.org>
+ <20261119053514.255348-3-rdunlap@infradead.org>
+ <sashiko-outbox-224494@kernel.org>
+Content-Language: en-US
+From: Randy Dunlap <rdunlap@infradead.org>
+In-Reply-To: <sashiko-outbox-224494@kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
 
-Thank you for your contribution! Sashiko AI review found 2 potential
-issues to consider:
-- [Medium] selftests/ext4: duplicate skips and false pass in main() on
-  shared-block errors
-- [Medium] selftests/ext4: prepare_shared_file() stores large_name in
-  inode body not block
---
 
-commit acc0f729809bd687fef099d47921332f19729aeb
-Author: Ryuji Hiroshi <arzuagapozosergio@gmail.com>
 
-ext4: bound xattr journal credits to transaction limit
+On 11/19/26 9:36 PM, sashiko-bot@kernel.org wrote:
+> Thank you for your contribution! Sashiko AI review found 1 potential
+> issue to consider:
+> - [Low] docs: ioctl-number: incomplete sequence range for
+>   sound/scarlett2.h
+> --
+> 
+> commit 93a4f635ed001735e939a3dc4a2526e8af9e9bd0
+> Author: Randy Dunlap <rdunlap@infradead.org>
+> 
+> docs: ioctl-number: update sound entries
+> 
+> This commit updates the ioctl-number documentation table with additional
+> sound subsystem files and sequence number ranges.
+> 
+>> diff --git a/Documentation/userspace-api/ioctl/ioctl-number.rst b/Documentation/userspace-api/ioctl/ioctl-number.rst
+>> index e1d56d5cccd14..f29d2c17ca7b9 100644
+>> --- a/Documentation/userspace-api/ioctl/ioctl-number.rst
+>> +++ b/Documentation/userspace-api/ioctl/ioctl-number.rst
+> 
+> [ ... ]
+> 
+>> @@ -204,6 +209,9 @@ Code  Seq#    Include File                                             Comments
+>>  'S'   80-81  scsi/scsi_ioctl.h                                         conflict!
+>>  'S'   82-FF  scsi/scsi.h                                               conflict!
+>>  'S'   00-7F  sound/asequencer.h                                        conflict!
+>> +'S'   20-52  sound/core/seq/seq_compat.c                               conflict!
+>> +'S'   60-63  sound/scarlett2.h                                         conflict!
+> 
+> [Severity: Low]
+> Should the sequence range for sound/scarlett2.h be 60-64?
+> include/uapi/sound/scarlett2.h also defines
+> SCARLETT2_IOCTL_GET_ERASE_PROGRESS with sequence number 0x64:
+> 
+> include/uapi/sound/scarlett2.h:
+> #define SCARLETT2_IOCTL_GET_ERASE_PROGRESS \
+> 	_IOR('S', 0x64, struct scarlett2_flash_segment_erase_progress)
 
-This commit refines ext4 xattr journal credit estimation by accounting for =
-an
-existing ea_inode reference only when the target attribute currently points=
- to
-one and bounding the estimate against the JBD2 transaction buffer limit, al=
-ong
-with adding an ext4 selftest.
+Yes. Fixed now.
 
-Link: https://syzbot.org/bug?extid=3D25d45c0bd716f2b794a7
+-- 
+~Randy
 
-> diff --git a/tools/testing/selftests/filesystems/ext4/ext4_xattr_journal_=
-credits.c b/tools/testing/selftests/filesystems/ext4/ext4_xattr_journal_cre=
-dits.c
-> new file mode 100644
-> index 0000000000000..313e817671ac3
-> --- /dev/null
-> +++ b/tools/testing/selftests/filesystems/ext4/ext4_xattr_journal_credits=
-.c
-> @@ -0,0 +1,244 @@
-[ ... ]
-> +#define LARGE_VALUE_SIZE 65296
-> +#define FILLER_VALUE_SIZE 32
-> +#define TEST_COUNT 10
-> +
-> +static const char large_name[] =3D "user.ext4-credit-large";
-> +static const char small_name[] =3D "user.ext4-credit-small";
-> +static const char target_name[] =3D "user.ext4-credit-target";
-> +static const char filler_name[] =3D "user.ext4-credit-filler";
-[ ... ]
-> +static void report_setup_error(const char *what, unsigned int skip_count)
-> +{
-> +	int saved_errno =3D errno;
-> +	unsigned int i;
-> +
-> +	ksft_test_result_error("setup %s: %s\n", what,
-> +			       strerror(saved_errno));
-> +	for (i =3D 0; i < skip_count; i++)
-> +		ksft_test_result_skip("setup failed\n");
-> +}
-> +
-> +static bool prepare_shared_file(const char *path, const char *large_valu=
-e,
-> +				const char *filler, char target_value)
-> +{
-> +	return create_file(path) =3D=3D 0 &&
-> +	       set_xattr(path, target_name, &target_value, sizeof(target_value),
-> +			 XATTR_CREATE) &&
-> +	       set_xattr(path, filler_name, filler, FILLER_VALUE_SIZE,
-> +			 XATTR_CREATE) &&
-> +	       set_xattr(path, large_name, large_value, LARGE_VALUE_SIZE,
-> +			 XATTR_CREATE);
-> +}
-
-[Severity: Medium]
-Does prepare_shared_file() place large_name into the inode body instead of
-the shared external xattr block?
-
-On a 256-byte inode with i_extra_isize =3D 32, 88 bytes are available for x=
-attr
-entries and values in the inode body.  target_name uses 40 bytes, leaving 48
-bytes free.  Because filler_name with FILLER_VALUE_SIZE =3D 32 needs 68 byt=
-es,
-ext4_xattr_ibody_set() returns -ENOSPC and spills filler_name to the extern=
-al
-xattr block without consuming the remaining 48 bytes in the inode body.  Wh=
-en
-large_name is added next, its value is stored in an ea_inode (i.in_inode =
-=3D 1),
-so its entry needs only 36 bytes in the xattr table and fits into the inode
-body.  As a result, the shared external xattr block only contains filler_na=
-me
-with e_value_inum =3D=3D 0, and the test never exercises the block_bh e_val=
-ue_inum
-credit loop in __ext4_xattr_set_credits() or ea_inode refcount updates duri=
-ng
-block cloning.
-
-[ ... ]
-
-> +	if (prepare_shared_block(shared_a, shared_b, value, readback)) {
-> +		shared_ready =3D true;
-> +		ksft_test_result_pass("shared external xattr block fixture\n");
-> +	} else {
-> +		report_setup_error("prepare shared xattr block", 2);
-> +	}
-> +
-> +	if (shared_ready) {
-> +		memset(target_new, 0x22, sizeof(target_new));
-> +		shared_replaced =3D set_xattr(shared_a, target_name, target_new,
-> +					    sizeof(target_new), XATTR_REPLACE);
-> +		result(shared_replaced,
-> +		       "replace inode-body xattr with shared external block present");
-> +
-> +		result(xattr_matches(shared_a, target_name, readback,
-> +				     shared_replaced ? target_new : &target_old,
-> +				     shared_replaced ? sizeof(target_new) :
-> +				     sizeof(target_old)) &&
-> +		       xattr_matches(shared_b, target_name, readback,
-> +				     &target_old, sizeof(target_old)) &&
-> +		       xattr_matches(shared_b, large_name, readback, value,
-> +				     LARGE_VALUE_SIZE),
-> +		       "xattr block clone preserves both files' values");
-> +	} else {
-> +		ksft_test_result_skip("shared-block replacement needs its fixture\n");
-> +		ksft_test_result_skip("shared-block readback needs its fixture\n");
-> +	}
-
-[Severity: Medium]
-When prepare_shared_block() fails, does calling report_setup_error(..., 2)
-and then entering the !shared_ready branch emit four skip results instead of
-two?
-
-That produces 12 TAP results for a 10-test plan and inflates
-ksft_cnt.ksft_xskip, which can make ksft_finished() compute
-ksft_pass + ksft_xskip =3D=3D ksft_plan and exit with 0 even when earlier t=
-ests
-failed or errored.
-
-Also, in the shared_ready branch, falling back to &target_old when
-shared_replaced is false causes "xattr block clone preserves both files'
-values" to report a pass when the replacement failed and no block clone took
-place.
-
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261122093732.1368=
-95-1-arzuagapozosergio@gmail.com?part=3D1
