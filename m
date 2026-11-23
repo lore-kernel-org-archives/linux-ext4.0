@@ -1,55 +1,49 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=115.124.30.113
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795400925;
-	b=xT0q8U/B44JLuUZ8OnbL5ZjQLNeSpWpT0zJ7Gn3mFV+pKiDnZwMHtCb1XW8LLlmhyl15
-	 VaYXs5UrLDvAuq2B2/eXDFjUYjLyfXDmJbPiXjAlTqmNTsIZkIG7XuU/yPhPpMHs9MwzY
-	 oAE+Q2f+R3S3YCEDnr6vlkYFPfjpA9iII8dbBoCVHDgIJuRxA1RbdtmX4/m4Sa+Y15Xhi
-	 jTrH43j/A6N7JVStpWQx4GXkrZpjkrz1DZnnk6uQA5pLfk94xNMah7lf3x80Gu8LuDQNq
-	 Fum0GJpNS/+dwijtzRbHFLxz9cOCsZfyff//4TAG5qJmBDHJfdfpgiS30LkvvyhxbRA==
+	t=1795405167;
+	b=j4b3m3GoNVJXfLs4IJa7d8bHMwc/rWkWl0TiK8AEdkFNEge3MNkyhPGlVOQRwG8e+BO2
+	 eJTlhuIxscDpb5/7XBcLNktXZWgffu0JNU4107fGhXHFkEXa+xoy1sUCWxWa0krdmYCq2
+	 FYdIKV9f3I8b93TYRtXCjUv5YwrtRSEeCY5o9DyyBTmLfX1Mr/4Gi47rdHAaNM6TVdEaT
+	 Jt5/bKpGNkQkFU7odzj+13KowhIRqLsG6o6wW5hQEBNHhj6yLo7WooZZcQZVwAPAUV8Kj
+	 wEIOCn+6W3xBe2d7AzmM0mudhd0X7LkeqZivIvug4zptikMXDHSpLOg/BWjPiIFD4qA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795400925;
-	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
-	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=o5erJ3rynnoj4HPD/nwMbveKcC/In0NQoKJE/bHCOZk=;
-	b=rgNGEtyqFXLcUSe+qJTeP0XyNKHp168PJ66WNTbkyrqqvH7L1ASYN0rq1oPG9twmKpo4
-	 R3/yw1s8msjsX8GTo0NmhsIK4LqAtSCYpq7J8umyqUF+snL5I4K5JQiB6T+jM2K4leDfn
-	 By9dmuk7HPY9hP5HsV0Sx18hpULTzereq9Xwb/TU7RvZBgHkq73W3nXGDi0CRGwbKZvSh
-	 THLuHeWhPJ7X0VgH3YmNVOQeOZ65fpZpNVe6hq2ffjjErWmgFWhqfiuIjyHIjMkX3Talm
-	 KKvUF1jw8beGkmsrdKEobffbiSM8O00C7vceWU1r4UKfUHfBR+xdur0l0iDogsWqcFg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795405167;
+	h=DMARC-Filter:DKIM-Signature:X-Alimail-AntiSpam:Received:Message-ID:
+	 Date:MIME-Version:User-Agent:Subject:To:References:Content-Language:
+	 Cc:From:In-Reply-To:Content-Type:Content-Transfer-Encoding;
+	bh=T1PTWvwFn/wbYQN3ucBdR3DJrn6KnnE98b1wRi3pEIo=;
+	b=SfaOwZa5EYae40YrqyxIXMhtWhVN37D/Jsl/IhriktdnptjK/yLUPy1C9i5Js7SOQh0o
+	 YTWsj3OSGaj4BPXX0zvSWgMJ77UN4b0+QPLAFF4o9D72nqJOG2BHXe3YAZ5KdAY/5uiO3
+	 1JRoOcPloYdRXxPTSoYrP6WsSmfU6ciXnnwdalwb+EgtED3kkMxKxlxhLH6BjPLPKX2zW
+	 uTSBpESHj1bdKJ+JSYFeDwTqtF3/AWcuB5Kf+mNqUrDJOP94qMZfI7riNigbS08jPY11L
+	 itykdh1JeZeb0XvgaZjKP75QTiyi5ekhBWrQZS6UJZvh3WSPJBKufNL+TnkcqIVjTWw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Kvj2n5Ts;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	dmarc=pass header.from=linux.alibaba.com;
+	spf=pass smtp.mailfrom=linux.alibaba.com;
+	dkim=pass header.d=linux.alibaba.com header.i=@linux.alibaba.com header.a=rsa-sha256 header.s=default header.b=DsxXnwVg;
+	arc=none smtp.remote-ip=115.124.30.113
+Received: from out30-113.freemail.mail.aliyun.com (out30-113.freemail.mail.aliyun.com [115.124.30.113])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7F964606A31E
-	for <linux-ext4@vger.kernel.org>; Mon, 23 Nov 2026 02:28:45 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E2B31606A31A;
+	Mon, 23 Nov 2026 03:39:24 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org E2B31606A31A
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Kvj2n5Ts
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D6B851F000F4;
-	Mon, 23 Nov 2026 02:28:44 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795400925;
-	bh=o5erJ3rynnoj4HPD/nwMbveKcC/In0NQoKJE/bHCOZk=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=Kvj2n5TsDVLyQxfchK4sOrqva7Pk7RjcQ93EA7zH4neFA3qsvErokf26SnenlN+ZB
-	 G9Qk4TXKX31rb48UAnCg+wt+CIhMn7uBWQSf5UjXWOnwhCVH5Nf9BA53xhbkpJuQYn
-	 rGVKWJlhOcwhCium1m/pfzoL5IDcmu7V01Y+chPiyXFJCSCzttTrtkhmHaf79LQSSr
-	 PBegUwzd0qLjUQ41gOuY4pmHlx/keZtB8HvbQFSLO9YNqHBKP8WiAGt92D6pORUaue
-	 a69h7GxrIJNV6p9+c7zI4ta4aoDal5CEBPBwHAvtEKk7/bZ9wsWRGDBUD9DCFboNNW
-	 xBhJJ5oCnpxIA==
-Message-ID: <sashiko-outbox-228550@kernel.org>
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH] ext4: use unsigned int for inode numbers in fast commit
-Reply-To: sashiko-reviews@lists.linux.dev
-To: "Hsiu-Hsien Lee" <swinds24@gmail.com>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-In-Reply-To: <20261123022309.990044-1-swinds24@gmail.com>
-References: <20261123022309.990044-1-swinds24@gmail.com>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Mon, 23 Nov 2026 02:28:44 +0000
+	dkim=pass (1024-bit key, unprotected) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.a=rsa-sha256 header.s=default header.b=DsxXnwVg
+DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
+	d=linux.alibaba.com; s=default;
+	t=1795405162; h=Message-ID:Date:MIME-Version:Subject:To:From:Content-Type;
+	bh=T1PTWvwFn/wbYQN3ucBdR3DJrn6KnnE98b1wRi3pEIo=;
+	b=DsxXnwVgEC0GBfv6rr/YMMo4mSeFgPLFoqFsKWiIJWsyGsANEctKP78v7KkVmAGObJIrHStUzmBkY0VbLPNk7szt2KXQXgl2G54tLjzHMCH5eQGCtXQbYPSW1sNjHlrDLJEu436OtYvLXxHY/e5XGHZTSrBjXst2qaQT91d6z5E=
+X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R111e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033037009110;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=13;SR=0;TI=SMTPD_---0XFCGc6V_1795405161;
+Received: from 30.221.149.19(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0XFCGc6V_1795405161 cluster:ay36)
+          by smtp.aliyun-inc.com;
+          Mon, 23 Nov 2026 11:39:21 +0800
+Message-ID: <a5ad29d3-eb4d-479d-af48-b679fe8b5d23@linux.alibaba.com>
+Date: Mon, 23 Nov 2026 11:39:19 +0800
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -58,31 +52,85 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
+MIME-Version: 1.0
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH] common/encrypt: support block sizes larger than the page
+ size
+To: Zorro Lang <zlang@kernel.org>
+References: <20261103160906.188544-1-libaokun@linux.alibaba.com>
+ <awHJso_ELIgRjbdg@zlang-mailbox>
+Content-Language: en-US
+Cc: fstests@vger.kernel.org, linux-fscrypt@vger.kernel.org,
+ ebiggers@kernel.org, jaegeuk@kernel.org, tytso@mit.edu,
+ linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca, jack@suse.cz,
+ yi.zhang@huawei.com, ojaswin@linux.ibm.com, ritesh.list@gmail.com,
+ linux-kernel@vger.kernel.org
+From: Baokun Li <libaokun@linux.alibaba.com>
+In-Reply-To: <awHJso_ELIgRjbdg@zlang-mailbox>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
 
-> The fast commit code keeps inode numbers in signed int: fcd_parent and
-> fcd_ino in struct ext4_fc_dentry_update, the fc_modified_inodes array,
-> struct dentry_info_args, the inode number in ext4_fc_replay_inode() and
-> the argument of ext4_fc_record_modified_inode() and
-> ext4_mark_inode_used().  On a file system with more than 2^31 inodes,
-> inode numbers of 2^31 and above become negative.
->=20
-> In the commit path, fcd_ino is sign-extended when compared with i_ino,
-> so the WARN_ON() in ext4_fc_commit_dentry_updates() fires on every
-> fsync() of a newly created file with such an inode number.
->=20
-> In the replay path, the sign-extended value passed to ext4_iget() is
-> larger than s_inodes_count, so ext4_iget() reports "iget: illegal
-> inode #" and the dentry and inode tags of these inodes are not replayed
-> after a crash.
-> [ ... ]
->=20
-> Fixes: aa75f4d3daae ("ext4: main fast-commit commit path")
-> Fixes: 8016e29f4362 ("ext4: fast commit recovery path")
-> Assisted-by: Claude Opus 5.5
-> Signed-off-by: Hsiu-Hsien Lee <swinds24@gmail.com>
+Hi Zorro,
 
-Sashiko has reviewed this patch and found no issues.
+Thank you for your review!
 
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261123022309.9900=
-44-1-swinds24@gmail.com?part=3D1
+On 2026/11/22 01:04, Zorro Lang wrote:
+> On Wed, Nov 04, 2026 at 12:09:06AM +0800, Baokun Li wrote:
+>> +	#
+>> +	# If the test requires a v2 policy, don't probe with a v1 policy:
+>> +	# v1 policies are not supported when the block size exceeds the page
+>> +	# size.  _require_encryption_policy_support() will check for the
+>> +	# requested policy version below.
+>> +	if [ "$policy_version" -le 1 ]; then
+>> +		mkdir $SCRATCH_MNT/tmpdir
+>> +		if _set_encpolicy $SCRATCH_MNT/tmpdir 2>&1 >>$seqres.full | \
+>> +			grep -Eq 'Inappropriate ioctl for device|Operation not supported'
+>> +		then
+>> +			_notrun "kernel does not support $FSTYP encryption"
+>> +		fi
+>> +		rmdir $SCRATCH_MNT/tmpdir
+>> +
+>> +		# v1 policies use the block size as their data unit size,
+>> +		# which doesn't work if the block size exceeds the page size.
+>> +		_require_v1_encryption_support
+> 
+> How about do _require_v1_encryption_support at first:
+> 
+>   if [ "$policy_version" -le 1 ]; then
+>       _require_v1_encryption_support
+>       mkdir $SCRATCH_MNT/tmpdir
+>       if _set_encpolicy $SCRATCH_MNT/tmpdir 2>&1 >>$seqres.full | \
+> 
+> In that case, if block_size > page_size, we can directly skip the test
+> with an explicit reason, avoids a redundant mkdir/rmdir and ioctl call.
+> 
+
+Yes, this can avoid some unnecessary operations.
+
+
+>>  # FS QA Test No. ext4/309
+>>  #
+>>  # Verify that file contents encryption works on a filesystem with a block size
+>> -# larger than the page size.  fscrypt uses the block size as the data unit size
+>> -# by default, so this tests data units that span multiple pages, both for the
+>> -# writeback path and for the on-disk ciphertext.
+>> +# larger than the page size.  fscrypt uses min(block size, page size) as the
+>> +# default data unit size, so this tests 4K data units on a 32K-block
+> 
+> Does ext4/309 hardcode 32k ?
+> 
+
+No, that's actually just an example using a block size of 32k; I'll
+rephrase that.
+
+Additionally, the final plan has not been fully confirmed yet. I am
+still working on the details with Eric. It is expected that all v1 use
+cases will be converted to v2 later, and in the testing process, the
+data unit size will be explicitly specified. Please refer to:
+
+  https://lore.kernel.org/r/20261104195127.GA1971@quark
+
+
+Cheers,
+Baokun
+
