@@ -1,58 +1,59 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795460188;
-	b=vz3UvQ0nwIIp5B73SK6FyRqbotFkZJi1XK/+wKodrxjJkQLSz9wQJGJhlMdcrLU1DzvO
-	 zqM8O4/MugfG5FitsYHm5VbLABnwxipI8KiqcWWxSOsG46QjES1S91pccX366K7nSqXbx
-	 COWfmc1i02/qF2Tps4X4dE3Mg+ZF9OgfASknMPS0G4IgrqshenpSuF9+W2YtcQSy8vvKX
-	 LA8QULGjwQzm2FxM2YpiAhaDf6Kvl1EQs4e7z0ZvyvlAL1bHdx5UzHBQILzVTNSL0HMXg
-	 XIq0FLhSynI3mhGfWjIgOsOhEXAKhepobgIDMa48CriWoNtH5frsfI2O+fWP+9MkPTw==
+	t=1795460253;
+	b=2+p4P4ts9zusEm01i5kLAI8lI71MaAaGLMVyZY72oCywsqGblpPkk36DhH/gIgHUc98t
+	 9ry+WwhoIcvZSJv7hT4Pd0mUMluviv7UGxPWintCu5QN5+W2XzyQaj9nE1Myi7K2BRliL
+	 aMGIA2NDykgtFS1rho86+O0VnHSsE1eVBaUJ5xMaicjO8J05u8mfSfKRy8/dTgk23ktK5
+	 /10U1/Cw6gozQVRXmM4ZPo5vCkV1wa2Gz17acaYXJ1V24PXKBBzDCqb9JarsbQ3knGwLF
+	 8D0JJUrc5D7U8DCSL9TrBS1Qu4pLacPEBXf3/hmT2xEwy2wtg9vh3p3+ZivoXgz3ikA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795460188;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795460253;
 	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
 	 Mail-Followup-To:References:MIME-Version:Content-Type:
 	 Content-Disposition:In-Reply-To;
-	bh=W843qhYFyVrdU+PtZ2yKDlnLUyTuEyPwzJ4NhBbmx9g=;
-	b=iDJKLESfW1b/a6HvS4CZkLPOxJKbzGQtwNlZi1KwD4CwHQ3YF1jVN0aNQQEeqAGJg8Mm
-	 1Hi9hzQ512q5jlKAsBXouaJ5cT+uZqgEJ5S032/MHUVaR48TW0mXcZA+fnkN4Qt7ZbcHS
-	 t3kC4RikM/ryNorltlDAF46El7flFhZZzr7tsAq5KZ4qmBK8+5xQLhkyuNX3n9mE0S082
-	 CkVlkLfnQXXHNU+hzYfCof10O49nFrGbDY1JlcwFW9Mx7LRPgcJ7mDVWf8UFBDJbvKjHd
-	 N44/rbiX5iiPIhT+6U+xZ/2DbDk6m24T0Yx/Xvro8Ypxs6up7Vd6bih/oF8S4Z1RS3Q==
+	bh=H93CB7j1oNhjdUYK0ZSNjTneR70X6EfbfNI+/55q5ew=;
+	b=kQYzZHRw7R6P3gVgRhqMGH+IEETG84bwZYRXQbkaKvA9oQdsVhbu/zoZRcSnotMOfkDq
+	 +LOeOlxfV7h61nklCuhXBTJvcirsl6PiqxMR+MvpRaos0V9PQDhgW6u0+ul4Q7GA4m0uZ
+	 35VSaCSsOgdtkCryZsE/Yj9fYqQEGuL2FniQ5soPOOMzuo3mIw3GfH0NcyicmGpOyrQrf
+	 G937zF5ewo6QDH4oqA9BVqVsFDMjwokrFukDmz3ZWmYh83LwrgJ4KxA1KhQuwXfB7M69b
+	 UxkdImddLEmFj9W4ykzrgjOfvPq4xEX0y/Pu81EWMcShRMeECxvdjLCnl0Rmn5YcHQQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Bo4+HgPQ;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=N22qDFAe;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AE4B5606A31A;
-	Mon, 23 Nov 2026 18:56:28 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 96470606A31A;
+	Mon, 23 Nov 2026 18:57:33 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Bo4+HgPQ
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D9CEA1F000CA;
-	Mon, 23 Nov 2026 18:56:23 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=N22qDFAe
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id DB8FC1F000C0;
+	Mon, 23 Nov 2026 18:57:28 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795460188;
-	bh=W843qhYFyVrdU+PtZ2yKDlnLUyTuEyPwzJ4NhBbmx9g=;
+	s=k20260515; t=1795460253;
+	bh=H93CB7j1oNhjdUYK0ZSNjTneR70X6EfbfNI+/55q5ew=;
 	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=Bo4+HgPQ2bW4OmWwC5qp1hehI5W6L0H1BvsP+nUaw4np6xYqVpvr7ke+jJdQcvmt4
-	 LcmAGQ38zwZNlImDI6gRNoeKurokwIL9IN10OXq656UWcpf+XJ/XpRzWR05Zjh1yev
-	 GxLtclDcGg7/nXOXbJCxjOLO9qeyx9S41n5v092uoAn0ErIWbdDRVSztqcSysc8vwh
-	 twYJd4H9af4ECwIIk2WRgpRJuVF9sOXpiRxHo5PipNrIYt+0itDSV7Rfo84EaNY6D/
-	 gmHqEolg/hX4sX29l73g8qpUaj52GG/NuJchi0wy1N06oZ8YNvQAgkFi/XXEloL88B
-	 6bGhqAYfzMvPQ==
-Date: Tue, 24 Nov 2026 02:56:19 +0800
+	b=N22qDFAebF8d4UjhzQWu2mMTYnWBxTYas5KtcaDCQSHOknLswE/0QUdWCR/N7nm9q
+	 FCixJs2Lqu3BoFr+eAWHuXBPfYLhKp101i6rFpZnKgWAn649RoakvGSQMWG7AErDaG
+	 G1Wn7Vqfd3Nx0lbQl1P0BvX69HH22fo7EOnHZC0OgMvQ7y0kUPZGKONNPA2psackpo
+	 RQ4r6QgHnAjZZoTYvOt1iXG+O1ri/Y67sdmwY/kiQq6OX5cha94200fdg6pUC6JGx1
+	 1o5UyvLCgLaUbkhdSlXYtD/Pd+DG6kpJwr0Ri56/bq7A4wBN+fDYCcSBxfxSTp2E+o
+	 kR57gbbDYyloQ==
+Date: Tue, 24 Nov 2026 02:57:24 +0800
 From: Zorro Lang <zlang@kernel.org>
 To: Anand Jain <asj@kernel.org>
 Cc: fstests@vger.kernel.org, linux-btrfs@vger.kernel.org, 
 	linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org, 
 	linux-f2fs-devel@lists.sourceforge.net
-Subject: Re: [PATCH 14/21] fstests: verify IMA isolation on cloned filesystems
-Message-ID: <awSK8y1srBdq2eds@zlang-mailbox>
+Subject: Re: [PATCH 15/21] fstests: verify exportfs file handles on cloned
+ filesystems
+Message-ID: <awSMZ6pYfpYH20bZ@zlang-mailbox>
 Mail-Followup-To: Anand Jain <asj@kernel.org>, fstests@vger.kernel.org, 
 	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org, 
 	linux-f2fs-devel@lists.sourceforge.net
 References: <cover.1791272793.git.asj@kernel.org>
- <ed4b48e156ccad10cff02f17ece3c624cc9dd749.1791272793.git.asj@kernel.org>
+ <40f9fa47341946da9edbe10498c3d8d789ce202f.1791272793.git.asj@kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -64,64 +65,46 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <ed4b48e156ccad10cff02f17ece3c624cc9dd749.1791272793.git.asj@kernel.org>
+In-Reply-To: <40f9fa47341946da9edbe10498c3d8d789ce202f.1791272793.git.asj@kernel.org>
 
-On Tue, Oct 06, 2026 at 04:55:40PM +0800, Anand Jain wrote:
-> Add testcase to verify IMA measurement isolation when multiple devices
-> share the same FSUUID.
+On Tue, Oct 06, 2026 at 04:55:41PM +0800, Anand Jain wrote:
+> Ensure that exportfs can correctly decode file handles on a cloned
+> filesystem across a mount cycle, by file handles generated on a
+> cloned device remain valid after mount cycle.
 > 
 > Signed-off-by: Anand Jain <asj@kernel.org>
 > ---
 
-Regarding this IMA test, I still have some concerns about the fact that it
-modifies system settings irreversibly. If you want to get the rest of this
-patchset merged faster, I suggest splitting this patch (along with the
-previous patch it depends on) out of the series, and sending this test case
-separately for further review once the main patchset is merged.
+Reviewed-by: Zorro Lang <zlang@kernel.org>
 
-This will also help speed up the merging of the rest of this patchset :)
-
-Thanks,
-Zorro
-
->  tests/generic/904     | 113 ++++++++++++++++++++++++++++++++++++++++++
->  tests/generic/904.out |  10 ++++
->  2 files changed, 123 insertions(+)
->  create mode 100644 tests/generic/904
->  create mode 100644 tests/generic/904.out
+>  tests/generic/905     | 79 +++++++++++++++++++++++++++++++++++++++++++
+>  tests/generic/905.out |  2 ++
+>  2 files changed, 81 insertions(+)
+>  create mode 100644 tests/generic/905
+>  create mode 100644 tests/generic/905.out
 > 
-> diff --git a/tests/generic/904 b/tests/generic/904
+> diff --git a/tests/generic/905 b/tests/generic/905
 > new file mode 100644
-> index 000000000000..d8412d0bc402
+> index 000000000000..d69c613110db
 > --- /dev/null
-> +++ b/tests/generic/904
-> @@ -0,0 +1,113 @@
+> +++ b/tests/generic/905
+> @@ -0,0 +1,79 @@
 > +#! /bin/bash
 > +# SPDX-License-Identifier: GPL-2.0
 > +# Copyright (c) 2026 Anand Jain <asj@kernel.org>.  All Rights Reserved.
 > +#
-> +# FS QA Test No. 904
-> +# Verify IMA isolation on cloned filesystems:
-> +# . Mount two devices sharing the same FSUUID (cloned).
-> +# . Apply an IMA policy to measure files based on that FSUUID.
-> +# . Create unique files on each mount point to trigger measurements.
-> +# . Confirm the IMA log correctly attributes events to the respective mounts.
+> +# FS QA Test No. 905
+> +# Verify that file handles encoded on a cloned filesystem remain valid and
+> +# resolvable via open_by_handle across a mount cycle and mount order swap.
 > +
 > +. ./common/preamble
-> +. ./common/filter
 > +
-> +_begin_fstest tempfsid
+> +_begin_fstest auto quick exportfs tempfsid
 > +
 > +_require_test
+> +_require_exportfs
 > +_require_loop
-> +_require_security_ima
-> +
-> +_fixed_by_fs_commit btrfs df84f6c77377 \
-> +	"btrfs: use on-disk uuid for s_uuid in temp_fsid mounts"
-> +_fixed_by_fs_commit btrfs c2a74ed0494c \
-> +	"btrfs: derive f_fsid from on-disk fsuuid and dev_t"
-> +_fixed_by_fs_commit btrfs 72de4807ba84 \
-> +	"btrfs: derive f_fsid with dev_t only when temp_fsid is active"
+> +_require_test_program "open_by_handle"
 > +
 > +_cleanup()
 > +{
@@ -132,56 +115,27 @@ Zorro
 > +	_destroy_cloned_loop_devs "${devs[@]}" 2> /dev/null
 > +}
 > +
-> +# Normalize device names and mount points
-> +filter_pool()
+> +# Create test dir and test files, encode file handles and store to tmp file
+> +create_test_files()
 > +{
-> +	sed -e "s|${devs[0]}|DEV1|g" -e "s|$mnt1|MNT1|g" \
-> +	    -e "s|${devs[1]}|DEV2|g" -e "s|$mnt2|MNT2|g" | _filter_spaces
+> +	rm -rf $testdir
+> +	mkdir -p $testdir
+> +	$here/src/open_by_handle -cwp -o $tmp.handles_file $testdir $NUMFILES
 > +}
 > +
-> +# Core helper to set IMA policy and check measurement logs
-> +do_ima()
+> +# Attempt to read and decode the saved file handles on the targeted mount point.
+> +test_file_handles()
 > +{
-> +	local ima_policy="/sys/kernel/security/ima/policy"
-> +	local ima_log="/sys/kernel/security/ima/ascii_runtime_measurements"
-> +	local fsuuid
-> +	local mnt=$1
-> +	local enable=$2
+> +	local opt=$1
+> +	local when=$2
 > +
-> +	# Since the in-memory IMA audit log is only cleared upon reboot,
-> +	# use unique random filenames to avoid log collisions.
-> +	local foofile=$(mktemp --dry-run foobar_XXXXX)
-> +
-> +	echo $mnt $enable | filter_pool
-> +
-> +	fsuuid=$(blkid -s UUID -o value ${devs[0]})
-> +
-> +	# Load IMA policy to measure file access specifically for this
-> +	# filesystem UUID.
-> +	if [[ $enable -eq 1 ]]; then
-> +		echo "measure func=FILE_CHECK fsuuid=$fsuuid" > "$ima_policy" || \
-> +			_fail "Policy rejected"
-> +	fi
-> +
-> +	# Create a file to trigger measurement and verify its entry in
-> +	# the IMA log.
-> +	echo "test_data" > $mnt/$foofile
-> +
-> +	# IMA log extract
-> +	grep $foofile "$ima_log" | awk '{ print $5 }' | filter_pool | \
-> +						sed "s/$foofile/FOOBAR_FILE/"
-> +
-> +	echo "dbg: $mnt $fsuuid $foofile" >> $seqres.full
-> +	tail -1 "$ima_log" >> $seqres.full
-> +	echo >> $seqres.full
+> +	echo test_file_handles after $when
+> +	$here/src/open_by_handle $opt -i $tmp.handles_file $mnt2 $NUMFILES
 > +}
-> +
-> +# Core helper to set IMA policy and check measurement logs
 > +
 > +rm -rf $TEST_DIR/$seq 2>/dev/null
 > +mkdir -p $TEST_DIR/$seq
-> +
-> +# Initialize loop base and cloned instances
+> +# Setup base loop device and its clone
 > +devs=()
 > +_create_cloned_loop_devs devs
 > +mnt1=$TEST_DIR/$seq/mnt1
@@ -189,42 +143,39 @@ Zorro
 > +mkdir -p $mnt1
 > +mkdir -p $mnt2
 > +
-> +# Concurrently mount both clones
+> +# Mount both identical UUID filesystems simultaneously
 > +_mount $(_common_dev_mount_options) $(_clone_mount_options) ${devs[0]} $mnt1 || \
 > +						_fail "Failed to mount dev1"
 > +_mount $(_common_dev_mount_options) $(_clone_mount_options) ${devs[1]} $mnt2 || \
 > +						_fail "Failed to mount dev2"
 > +
-> +#  IMA response on baseline and clone configuration
-> +do_ima $mnt1 1
-> +do_ima $mnt2 0
+> +NUMFILES=1
+> +testdir=$mnt2/testdir
 > +
-> +# Cycle mount on the second device.
-> +echo mount cycle
+> +# Decode file handles of files/dir after cycle mount
+> +create_test_files
+> +
+> +# Cycle mounts and reverse initialization sequence to check if
+> +# file handle lookups are okay
+> +_unmount $mnt1
 > +_unmount $mnt2
 > +_mount $(_common_dev_mount_options) $(_clone_mount_options) ${devs[1]} $mnt2 || \
 > +						_fail "Failed to mount dev2"
+> +_mount $(_common_dev_mount_options) $(_clone_mount_options) ${devs[0]} $mnt1 || \
+> +						_fail "Failed to mount dev1"
 > +
-> +do_ima $mnt1 0
-> +do_ima $mnt2 0
+> +# Verify file handles can still be resolved post-mount-cycle
+> +test_file_handles -rp "cycle mount"
 > +
 > +_exit 0
-> diff --git a/tests/generic/904.out b/tests/generic/904.out
+> diff --git a/tests/generic/905.out b/tests/generic/905.out
 > new file mode 100644
-> index 000000000000..22340f236a45
+> index 000000000000..234f5ec35863
 > --- /dev/null
-> +++ b/tests/generic/904.out
-> @@ -0,0 +1,10 @@
-> +QA output created by 904
-> +MNT1 1
-> +MNT1/FOOBAR_FILE
-> +MNT2 0
-> +MNT2/FOOBAR_FILE
-> +mount cycle
-> +MNT1 0
-> +MNT1/FOOBAR_FILE
-> +MNT2 0
-> +MNT2/FOOBAR_FILE
+> +++ b/tests/generic/905.out
+> @@ -0,0 +1,2 @@
+> +QA output created by 905
+> +test_file_handles after cycle mount
 > -- 
 > 2.43.0
 > 
