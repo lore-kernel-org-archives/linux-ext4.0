@@ -1,47 +1,97 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.210.180
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795399268;
-	b=YUz9GkMbE5Ipv2rihyqAAwWFufPAgIMuBCo8KQ8JW9/jS1oi9L45ugkAKxR9D3JTSDYC
-	 N+GKibVc5k4jER7dm7TjtMbcP3LAXGZVys/7KtaiKx65Lr1kO6bvSm8EQpvtz1uUkyX/B
-	 wdpn8LsVEbsNYpuZXRkKhggMNiVRLmGk7DdB6u5nwsD7H4rtK0ozABcMd6D47xHPgPNAb
-	 yG0B5EsNGkyGVvw2fem/owIFFZaYgOyP+cOkDpVzI0h6UuHV8HKpJTERleSRwJLI4uHIP
-	 +4U62tmgLIQw8tU93YBJA4Uu5A7MeJtU3vHjDhkLKJ/+s29N16Zutl2LXUssej1IzeA==
+	t=1795400600;
+	b=ds6OKDwYKrpACWSioCBlq6bu4HAGZaP8hyT440BqTMK4HopRs26CO1yYx0s8exKjxcIM
+	 xyIu9E4SQt33YGGVs6GtK9pUMgO9r3fbb3eMGTcgNLXaR9IA2VJjA+nGTxj/E5MKNvQJv
+	 ckJXcg5SaT9lvyXqLtQBrSWXlgRe1PON2D4xQ2yjN/FACWj69p+Rm5z5cWcncnrsGzDWc
+	 FVwuF2bYjqId5hq5IJDltzlNNUZ54sn5UnlyzD4aeBoTQBeRvbRaKM9y+vzw0om0HtuK4
+	 2MZIDps6QLueVrbErEnVGSw1E3b5zLoLOYAU+SPuL5kDig40qY1HBnUTdAcmssGnKyQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795399268;
-	h=Received:DKIM-Signature:Message-ID:Date:MIME-Version:User-Agent:
-	 Subject:From:To:Cc:References:Content-Language:In-Reply-To:
-	 Content-Type:Content-Transfer-Encoding;
-	bh=m+gc+znZc0DYq0MzYS52FeXlxJDAFGgMkyRwnibnHlM=;
-	b=ompSdCHXV+j7pVNlQlX66opwsC0DCgBmIbbm6w4DvgyOHR8yO15uKx+8PihRus36wkDF
-	 QowoShNWD03Y00sR4gjowrtJqKK+KZKNdG9ws3DnRk9g54WeXw+mvQwdjqsPUGcx9RqbE
-	 qDHtrOXhe28xoXsFEfogYm0C8PFmYZXkInrqj+jXkromcCItnW7FamaS/FkfHD31gvY9i
-	 0SlJbAVvsP0Csu5J7SCSR/7RCtXl+unCHVXb83KtB8HLNxhOHgXaJjyrAz4Fb/iUBY/5G
-	 cShysmaTMAyraT/5bYk6T6QiQyyHZ/U3d42mJBxF17QkZ5aeDgMlZVigwc4lufC5irA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795400600;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
+	 From:To:Cc:Subject:Date:Message-ID:X-Mailer:MIME-Version:
+	 Content-Transfer-Encoding;
+	bh=7uAY5/w5Puv28N2neSgul396PP9IIniC66BhUtJLfCI=;
+	b=RaWcTb/BlYgJsTkei1Jkp9FRVBtbp1S3aWEWrkbhhIIsqRxKFPBpYD6l9pOBLbuQQb9d
+	 N/HfWlY2UE91X/8PMRiWL9qY7AEra+zqkCNOKH0dPa4NooC70cdT7V31/9/cFoLu6mi0k
+	 wNPc3oJRunPcUuGcSOgP17n3Am2GFlcDNmOXlJ+BtCNO4OjbjYN1o4xTolzkTvx54JWiQ
+	 lqTiau1vJQA8+LLyerLNPgr2r4pE0jncDbhhbX6GTZs5YPA7QvVU7nlICp8+R8BJfAilm
+	 2mRv9SOQcU0ogh5BUY5Cd9v5fRfkuAPGksmd7crJnlPObkWb3nN9fSHNgdpE4W8peCw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ObsSb+Cv;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=pass header.from=gmail.com;
+	spf=pass smtp.mailfrom=gmail.com;
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=A9yCVn+f;
+	arc=none smtp.remote-ip=209.85.210.180
+Received: from mail-pf1-f180.google.com (mail-pf1-f180.google.com [209.85.210.180])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2AC7D606A31A;
-	Mon, 23 Nov 2026 02:01:07 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 558A1606A31A
+	for <linux-ext4@vger.kernel.org>; Mon, 23 Nov 2026 02:23:20 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 558A1606A31A
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ObsSb+Cv
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8E04E1F000C6;
-	Mon, 23 Nov 2026 02:01:05 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795399267;
-	bh=m+gc+znZc0DYq0MzYS52FeXlxJDAFGgMkyRwnibnHlM=;
-	h=Date:Subject:From:To:Cc:References:In-Reply-To;
-	b=ObsSb+CvUC53o2tazBghu01uT+J9yR3VLwZ7GmvcOhHzyytJOMGBcUGOrB4OFcZJq
-	 ZkgqXr8f0jqSOAjLJpLZpjT1YBe8iRJNCelplysa/Ms4+s5NuN8yUUr5ZcASBPhHwU
-	 oTOtousKWDJg2UuxResC1TSNneVFiF3TYcdTSxGiNnjVkbw2JplywdCMfXCGaPyWIn
-	 CUegc3EfUoCaMnrKD4ctPfONutriIHzcBO9IvQK38Ri+qEFFvZfXuSdQ29EbeT5xSc
-	 DMM9ST3EpwWicTrN20MgfifP9+e6B0g88x04Jv/aq1uT7UUDCJbocSM5mOXPhGIXlF
-	 xoTGENrztTEOw==
-Message-ID: <768152d1-4215-4f27-a3ca-50252c5b5d9a@kernel.org>
-Date: Mon, 23 Nov 2026 10:01:03 +0800
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=A9yCVn+f
+Received: by mail-pf1-f180.google.com with SMTP id d2e1a72fcca58-8a05b210703so1208272b3a.0
+        for <linux-ext4@vger.kernel.org>; Sun, 22 Nov 2026 18:23:20 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20260707; t=1795400600; x=1796005400; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=7uAY5/w5Puv28N2neSgul396PP9IIniC66BhUtJLfCI=;
+        b=A9yCVn+fXInLTFUm76cI1GkeVtfvpWmSK9DX9wGE20dpsGNOtf1b6Nci87QJl+iV2h
+         Hz0xVtkRxCH0KeaZus91CkSOx5fEFQ6Vc3sasd2qLPAZbUhirYHBTRxDnLasFf39bPyD
+         TsjsldW61vs+88EnGrXkz/OIIqsWwLLH/uUlEvJuLKrLbgy7iwf2zkApYzaqLK0UKUXj
+         k9ouyak+xtRVrNfxG8v+fHuk8ahpaed6i1z5+AWUT8Qmq8PM78KhuuYJMzOq/T93dIXn
+         Xqr9FBDys8+6ljh4vIA+hLjDPtp5ZKKBoOhRMSRdFn7Z3hP56XA8f3EiRB44lawe7ffl
+         paPA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1795400600; x=1796005400;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=7uAY5/w5Puv28N2neSgul396PP9IIniC66BhUtJLfCI=;
+        b=CGTrjRoUpTLOCwbpqTsr5KYIptejv+lCOmqsGnnxOtfv18JnqNZtbeGQoP3Z6dnpUF
+         BsNByLi4Owb6yylaTgWI4VMsBKeG0SUd0oEmoF/Ky56GYR1ax9sNPFsmfZY1ufynrBbO
+         EL2UWzmTJYCXJhE5B3qaQTwqbn38k4Biy/AyOMAdFzm5M4MoV8Y0x98Ai2GGkGd4AGMO
+         SsFIfJ1NNapA7o277dzpdOmDGw8GCYgLZUmUne4D0xaYiJRw0mINgkUo5yVV29P624dn
+         IRLwlEKbxkv686TVOK2XitKA/LMS+MI7xV2ZZx+0xFxyOG9oDA7KX1QZEU2jSHMMsrXU
+         tfOw==
+X-Forwarded-Encrypted: i=1; AL+hErHh2d4cOjKC9HZHs7W12bWEhItwiqseQp4BKIOkOnTGlZr4eljOb14vAo5oUkJeTf+TOBVKsc4JOgIV@vger.kernel.org
+X-Gm-Message-State: APuU4Z+wZPrYdlQkDr+qJEUPHil/Y9gbjGvFFUgTddu6vvj5fwuN6tRb
+	r4PrEFAnpmcgyfhWc5d4LAyt0vpeWfErgdruCFgpY68R5ZNS+lRUp0jr
+X-Gm-Gg: AZFdTZfmVNFas3eKeW94eFUd9FgWTzeoPSN/bOSWO1BorOJi37t8U68sdsBJCW9LJ1u
+	6Dn4Tr9fNDfsvz9C6xd04946aLReoVWOw87MEUEgtuqdU9F5btMamZbSW3+huFaeNAvQvbPhN3L
+	wjTyzup+Ze8iTsPut/vBrHSR/APRxD3tS4+O423/q9ECLP4zI7dGvSwiQV6Gy/BT7WVmgbfVR0o
+	yDAZMEDV3J8jUrWYxZsX6H0VZklVGNWnq3x5c0GGXrMzLTuSEvsXz/H3A292sr13SUOdQnYFmaT
+	noHQErwZ/G0pMmaQtbTNrmKihryvkojNxz6nfK75AUYdzkEIWNUVEJCwMNxT83Cep/2ZUNNPpT9
+	uI3yu+nkporZ1/wcev+6VhAMZPXogjeh3eQzvTuCvlCIZPSWHaf2APz/gRcJ78UEk9flgm/ifWi
+	hjsRTU1vFvX8J/2OEN2CVHFIYJrLMa4HwcCuBjJ7EMvvvKHPyp9Ki6LscbV63SkKufz4mSNNqIa
+	2q4gmaPQSRvlJ+uP9HCYcBgdnIsEgvbRhIRPG1kSPWZfK1941cZYK8B3K2tgNEfvTpnILFKllDH
+	CMbFs+ePIlOfuObOQ9vAHFVdG7VtfzR4M78DmdarT31PtVtOvVVD8vSQKdKr/LSc
+X-Received: by 2002:a05:6a00:1301:b0:881:be70:4490 with SMTP id d2e1a72fcca58-8c87c38b63emr9479674b3a.28.1795400599553;
+        Sun, 22 Nov 2026 18:23:19 -0800 (PST)
+Received: from jubuntu-dev.. (125-227-154-99.hinet-ip.hinet.net. [125.227.154.99])
+        by smtp.gmail.com with ESMTPSA id d2e1a72fcca58-8c87344058bsm4564365b3a.41.2026.11.22.18.23.16
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Sun, 22 Nov 2026 18:23:19 -0800 (PST)
+From: Hsiu-Hsien Lee <swinds24@gmail.com>
+To: Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>
+Cc: Jan Kara <jack@suse.cz>,
+	Baokun Li <libaokun@linux.alibaba.com>,
+	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
+	Ritesh Harjani <ritesh.list@gmail.com>,
+	Zhang Yi <yi.zhang@huawei.com>,
+	linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	Hsiu-Hsien Lee <swinds24@gmail.com>
+Subject: [PATCH] ext4: use unsigned int for inode numbers in fast commit
+Date: Mon, 23 Nov 2026 10:23:09 +0800
+Message-ID: <20261123022309.990044-1-swinds24@gmail.com>
+X-Mailer: git-send-email 2.43.0
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -51,160 +101,231 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH 0/21] fstests: tests for cloned filesystem validation and
- f_fsid
-From: Anand Jain <asj@kernel.org>
-To: zlang@kernel.org
-Cc: linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
- linux-xfs@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
- fstests@vger.kernel.org
-References: <cover.1791272793.git.asj@kernel.org>
-Content-Language: en-US
-In-Reply-To: <cover.1791272793.git.asj@kernel.org>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 
-Zorro,
+The fast commit code keeps inode numbers in signed int: fcd_parent and
+fcd_ino in struct ext4_fc_dentry_update, the fc_modified_inodes array,
+struct dentry_info_args, the inode number in ext4_fc_replay_inode() and
+the argument of ext4_fc_record_modified_inode() and
+ext4_mark_inode_used().  On a file system with more than 2^31 inodes,
+inode numbers of 2^31 and above become negative.
 
- Could we merge the patches in stages? What's your plan?
+In the commit path, fcd_ino is sign-extended when compared with i_ino,
+so the WARN_ON() in ext4_fc_commit_dentry_updates() fires on every
+fsync() of a newly created file with such an inode number.
 
-Regards, Anand
+In the replay path, the sign-extended value passed to ext4_iget() is
+larger than s_inodes_count, so ext4_iget() reports "iget: illegal
+inode #" and the dentry and inode tags of these inodes are not replayed
+after a crash.
 
+The on-disk fields are __le32 and converted with cpu_to_le32() and
+le32_to_cpu(), so the journal format does not change.  Also print these
+inode numbers with %u, and print the parent inode number instead of the
+child's when the parent directory of a create is not found.
 
-On 6/10/26 16:55, Anand Jain wrote:
-> This series continues the work from the earlier "test coverage for cloned
-> filesystem ids" series (last posted as v8 [1]) and has been tested against
-> the major filesystems: Btrfs, XFS, ext4, and f2fs.
-> 
-> Although this version incorporates the review feedback received on v8, it
-> expands substantially with additional infrastructure helpers, an extra test
-> case to cover the recent regression report, and migration/cleanup of
-> existing generic/744. Because the patch count grew from 13 to 21 patches,
-> disrupting the previous patch numbering and scope, I have reset the
-> versioning and updated the subject line to better reflect the broader
-> validation coverage.
-> 
-> The core motivation remains identical: testing that mounting a block-level
-> cloned filesystem concurrently with the original filesystem behaves
-> correctly across filesystems and VFS subsystems (fanotify, statfs/f_fsid,
-> libblkid resolution, IMA measurement, exportfs file handles, and
-> metadata_uuid handling).
-> 
-> Summary of major changes since v8:
-> - Added 1 new regression test case to verify statfs f_fsid derivation against FS UUID.
-> - Dropped the test case verifying f_fsid persistence across mount cycles on
->   cloned filesystems, as this assumption is no longer valid following the Btrfs kernel
->   regression fix [2].
-> - Introduced common helpers:
->   . _require_security_ima() and _require_metadata_uuid().
->   . _scratch_mkfs_uuid() and helpers for f_fsid verification.
-> - Migrated generic/744 to utilize the new common clone helpers.
-> - Worked on the review comments.
-> 
-> Details of changes:
-> - _create_cloned_loop_devs():
->   . Renamed from _loop_image_create_clone() to _create_cloned_loop_devs().
->   . Relocated backing image files from "$TEST_DIR/${seq}.*" to a dedicated
->     directory "$TEST_DIR/${seq}/*".
->   . Added internal call to _require_clone_mount().
->   . Switched from _create_loop_device() to _create_loop_device_like_bdev()
->     to guarantee identical logical/physical sector sizes (512 vs 4096)
->     between the original and cloned loop devices.
->   . Used an intermediate local setup step to ensure consistent Direct I/O
->     attributes across both loop devices (preventing the first device from
->     enabling DIO while the cloned device fell back to buffered mode).
->   . Added device geometry and DIO attribute dump to $seqres.full for debugging.
->   . Renamed teardown helper _loop_image_destroy() to _destroy_cloned_loop_devs().
-> - _clone_mount_options():
->   . Renamed from _clone_mount_option() to _clone_mount_options().
-> - _require_metadata_uuid():
->   . Factored out prerequisite checks from _change_metadata_uuid() into a new
->     dedicated helper _require_metadata_uuid() and invoked it accordingly.
-> - _require_clone_mount():
->   . Introduced new helper to check kernel support for concurrent clone mounts.
->   . Removed obsolete _require_duplicate_fsid() in favor of _require_clone_mount().
-> - _require_security_ima():
->   . Introduced new helper to check securityfs and IMA policy availability.
-> - _create_loop_device_like_bdev():
->   . Removed unused local variable 'dev'.
-> 
-> - Test Cases common update:
->   - Adjusted test groups: replaced 'clone' with 'tempfsid'.
->   - Standardized test exits: replaced open-coded "status=0; exit" with "_exit 0".
->   - Dropped stale "_require_block_device $TEST_DEV" checks left over from before
->     migrating tests to loop devices.
->   - Percolated helper renames across all tests:
->     . _loop_image_create_clone -> _create_cloned_loop_devs
->     . _loop_image_destroy      -> _destroy_cloned_loop_devs
->     . _clone_mount_option      -> _clone_mount_options
->   - Added cleanup of "$TEST_DIR/$seq" in test exit/cleanup handlers.
-> 
-> - Test Cases Individual Updates:
->   - generic/744:
->     . Replaced _require_duplicate_fsid with _require_clone_mount().
->     . Migrated to common _create_cloned_loop_devs() and _clone_mount_options().
->   - generic/902:
->     . New regression test case added to verify statfs f_fsid derivation against filesystem UUID.
->   - generic/903:
->     . Added --noheadings flag to findmnt queries for cleaner output parsing.
->   - generic/904:
->     . Dropped 'auto' and 'quick' from test groups due to runtime and policy requirements.
->     . Updated referenced kernel commit IDs.
-> 
-> [1] https://lore.kernel.org/fstests/cover.1784949154.git.asj@kernel.org
-> [2] 72de4807ba84 ("btrfs: derive f_fsid with dev_t only when temp_fsid is active")
-> 
-> Anand Jain (21):
->   fstests: introduce _require_clone_mount() helper
->   fstests: introduce _create_cloned_loop_devs() helper
->   fstests: add _clone_mount_options() helper
->   fstests: add FSNOTIFYWAIT_PROG
->   fstests: add _require_fanotify_function
->   fstests: add _require_unique_f_fsid() helper
->   fstests: add SEMANAGE_PROG
->   fstests: verify fanotify isolation on cloned filesystems
->   fstests: introduce helper _scratch_mkfs_uuid()
->   fstests: add helpers to verify the expected f_fsid
->   fstests: verify statfs f_fsid is derived from the filesystem UUID
->   fstests: verify libblkid resolution of duplicate UUIDs
->   fstests: introduce _require_security_ima() helper
->   fstests: verify IMA isolation on cloned filesystems
->   fstests: verify exportfs file handles on cloned filesystems
->   fstests: introduce _require_metadata_uuid() helper
->   fstests: add _change_metadata_uuid helper
->   fstests: test UUID consistency for clones with metadata_uuid
->   fstests: generic/744: use new helper _require_clone_mount()
->   fstests: generic/744: migrate to _create_cloned_loop_devs()
->   fstests: _create_loop_device_like_bdev() remove unused variable
-> 
->  common/config         |   2 +
->  common/rc             | 262 +++++++++++++++++++++++++++++++++++++++---
->  tests/generic/744     |  72 +++++-------
->  tests/generic/901     | 142 +++++++++++++++++++++++
->  tests/generic/901.out |   7 ++
->  tests/generic/902     |  38 ++++++
->  tests/generic/902.out |   2 +
->  tests/generic/903     |  71 ++++++++++++
->  tests/generic/903.out |   6 +
->  tests/generic/904     | 113 ++++++++++++++++++
->  tests/generic/904.out |  10 ++
->  tests/generic/905     |  79 +++++++++++++
->  tests/generic/905.out |   2 +
->  tests/generic/906     |  74 ++++++++++++
->  tests/generic/906.out |   6 +
->  15 files changed, 827 insertions(+), 59 deletions(-)
->  create mode 100644 tests/generic/901
->  create mode 100644 tests/generic/901.out
->  create mode 100644 tests/generic/902
->  create mode 100644 tests/generic/902.out
->  create mode 100644 tests/generic/903
->  create mode 100644 tests/generic/903.out
->  create mode 100644 tests/generic/904
->  create mode 100644 tests/generic/904.out
->  create mode 100644 tests/generic/905
->  create mode 100644 tests/generic/905.out
->  create mode 100644 tests/generic/906
->  create mode 100644 tests/generic/906.out
-> 
+Reproducer:
+
+  dd if=/dev/zero of=img bs=1M count=0 seek=9437184    # 9 TiB sparse
+  mkfs.ext4 -O fast_commit -i 4096 -E lazy_itable_init=1 img
+  mount -o loop,noinit_itable img /mnt
+  mkdir /mnt/d1 ... /mnt/d64    # Orlov spreads them over all groups
+  pick a directory with an inode number >= 2^31, then
+  dd if=/dev/zero of=/mnt/dN/f bs=4k count=1 conv=fsync
+
+Without this patch every such fsync() triggers the WARN_ON().  With it
+there is no warning, and after EXT4_IOC_SHUTDOWN with
+EXT4_GOING_FLAGS_NOLOGFLUSH following creates, an unlink, a link and an
+append in that directory, all of them are replayed on the next mount and
+e2fsck -fn finds no errors.
+
+Fixes: aa75f4d3daae ("ext4: main fast-commit commit path")
+Fixes: 8016e29f4362 ("ext4: fast commit recovery path")
+Assisted-by: Claude Opus 5.5
+Signed-off-by: Hsiu-Hsien Lee <swinds24@gmail.com>
+---
+Testing: the reproducer and crash test above were run on a 6.6.y
+kernel with this patch backported (the same change apart from context).
+Without the patch, 10 of 10 fsync() calls in a directory with inode
+number 2343567361 triggered the warning; with it, 0 of 10 did in a
+directory with inode number 2313158657, while the fast commit stats
+showed 26 commits and 0 ineligible.  On this tree the
+patch is build-tested only (W=1, CONFIG_EXT4_DEBUG, ext4 KUnit tests).
+
+The pending KUnit series for fast_commit.c [1] adds stubs and test
+helpers with "int ino" arguments that will need the same type change
+if it lands first.
+
+[1] https://lore.kernel.org/linux-ext4/20261119155658.1940864-8-tytso@mit.edu/
+
+ fs/ext4/ext4.h        |  2 +-
+ fs/ext4/fast_commit.c | 28 ++++++++++++++++------------
+ fs/ext4/fast_commit.h |  6 +++---
+ fs/ext4/ialloc.c      |  2 +-
+ 4 files changed, 21 insertions(+), 17 deletions(-)
+
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index aa0f23052..75039cf83 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -3067,7 +3067,7 @@ extern int ext4fs_dirhash(const struct inode *dir, const char *name, int len,
+ 			  struct dx_hash_info *hinfo);
+ 
+ /* ialloc.c */
+-extern int ext4_mark_inode_used(struct super_block *sb, int ino);
++extern int ext4_mark_inode_used(struct super_block *sb, unsigned int ino);
+ extern struct inode *__ext4_new_inode(const struct mnt_idmap *, handle_t *,
+ 				      struct inode *, umode_t,
+ 				      const struct qstr *qstr, __u32 goal,
+diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
+index 5f12449b9..4a066e43e 100644
+--- a/fs/ext4/fast_commit.c
++++ b/fs/ext4/fast_commit.c
+@@ -1763,7 +1763,8 @@ static void ext4_fc_cleanup(journal_t *journal, int full, tid_t tid)
+ 
+ /* Helper struct for dentry replay routines */
+ struct dentry_info_args {
+-	int parent_ino, dname_len, ino, inode_len;
++	unsigned int parent_ino, ino;
++	int dname_len, inode_len;
+ 	char *dname;
+ };
+ 
+@@ -1814,14 +1815,14 @@ static int ext4_fc_replay_unlink(struct super_block *sb,
+ 	inode = ext4_iget(sb, darg.ino, EXT4_IGET_NORMAL);
+ 
+ 	if (IS_ERR(inode)) {
+-		ext4_debug("Inode %d not found", darg.ino);
++		ext4_debug("Inode %u not found", darg.ino);
+ 		return 0;
+ 	}
+ 
+ 	old_parent = ext4_iget(sb, darg.parent_ino,
+ 				EXT4_IGET_NORMAL);
+ 	if (IS_ERR(old_parent)) {
+-		ext4_debug("Dir with inode %d not found", darg.parent_ino);
++		ext4_debug("Dir with inode %u not found", darg.parent_ino);
+ 		iput(inode);
+ 		return 0;
+ 	}
+@@ -1845,7 +1846,7 @@ static int ext4_fc_replay_link_internal(struct super_block *sb,
+ 
+ 	dir = ext4_iget(sb, darg->parent_ino, EXT4_IGET_NORMAL);
+ 	if (IS_ERR(dir)) {
+-		ext4_debug("Dir with inode %d not found.", darg->parent_ino);
++		ext4_debug("Dir with inode %u not found.", darg->parent_ino);
+ 		dir = NULL;
+ 		goto out;
+ 	}
+@@ -1897,7 +1898,8 @@ static int ext4_fc_replay_link(struct super_block *sb,
+  * Record all the modified inodes during replay. We use this later to setup
+  * block bitmaps correctly.
+  */
+-static int ext4_fc_record_modified_inode(struct super_block *sb, int ino)
++static int ext4_fc_record_modified_inode(struct super_block *sb,
++					 unsigned int ino)
+ {
+ 	struct ext4_fc_replay_state *state;
+ 	int i;
+@@ -1907,10 +1909,11 @@ static int ext4_fc_record_modified_inode(struct super_block *sb, int ino)
+ 		if (state->fc_modified_inodes[i] == ino)
+ 			return 0;
+ 	if (state->fc_modified_inodes_used == state->fc_modified_inodes_size) {
+-		int *fc_modified_inodes;
++		unsigned int *fc_modified_inodes;
+ 
+ 		fc_modified_inodes = krealloc(state->fc_modified_inodes,
+-				sizeof(int) * (state->fc_modified_inodes_size +
++				sizeof(*fc_modified_inodes) *
++				(state->fc_modified_inodes_size +
+ 				EXT4_FC_REPLAY_REALLOC_INCREMENT),
+ 				GFP_KERNEL);
+ 		if (!fc_modified_inodes)
+@@ -1934,7 +1937,8 @@ static int ext4_fc_replay_inode(struct super_block *sb,
+ 	struct ext4_inode *raw_fc_inode;
+ 	struct inode *inode = NULL;
+ 	struct ext4_iloc iloc;
+-	int inode_len, ino, ret, tag = tl->fc_tag;
++	int inode_len, ret, tag = tl->fc_tag;
++	unsigned int ino;
+ 	struct ext4_extent_header *eh;
+ 	size_t off_gen = offsetof(struct ext4_inode, i_generation);
+ 
+@@ -2058,7 +2062,7 @@ static int ext4_fc_replay_create(struct super_block *sb,
+ 
+ 	inode = ext4_iget(sb, darg.ino, EXT4_IGET_NORMAL);
+ 	if (IS_ERR(inode)) {
+-		ext4_debug("inode %d not found.", darg.ino);
++		ext4_debug("inode %u not found.", darg.ino);
+ 		inode = NULL;
+ 		ret = -EINVAL;
+ 		goto out;
+@@ -2071,7 +2075,7 @@ static int ext4_fc_replay_create(struct super_block *sb,
+ 		 */
+ 		dir = ext4_iget(sb, darg.parent_ino, EXT4_IGET_NORMAL);
+ 		if (IS_ERR(dir)) {
+-			ext4_debug("Dir %d not found.", darg.ino);
++			ext4_debug("Dir %u not found.", darg.parent_ino);
+ 			ret = PTR_ERR(dir);
+ 			goto out;
+ 		}
+@@ -2280,7 +2284,7 @@ ext4_fc_replay_del_range(struct super_block *sb, u8 *val)
+ 
+ 	inode = ext4_iget(sb, le32_to_cpu(lrange.fc_ino), EXT4_IGET_NORMAL);
+ 	if (IS_ERR(inode)) {
+-		ext4_debug("Inode %d not found", le32_to_cpu(lrange.fc_ino));
++		ext4_debug("Inode %u not found", le32_to_cpu(lrange.fc_ino));
+ 		return 0;
+ 	}
+ 
+@@ -2338,7 +2342,7 @@ static int ext4_fc_set_bitmaps_and_counters(struct super_block *sb)
+ 		inode = ext4_iget(sb, state->fc_modified_inodes[i],
+ 			EXT4_IGET_NORMAL);
+ 		if (IS_ERR(inode)) {
+-			ext4_debug("Inode %d not found.",
++			ext4_debug("Inode %u not found.",
+ 				state->fc_modified_inodes[i]);
+ 			continue;
+ 		}
+diff --git a/fs/ext4/fast_commit.h b/fs/ext4/fast_commit.h
+index 2f77a37fb..446841c4b 100644
+--- a/fs/ext4/fast_commit.h
++++ b/fs/ext4/fast_commit.h
+@@ -110,8 +110,8 @@ enum {
+  */
+ struct ext4_fc_dentry_update {
+ 	int fcd_op;		/* Type of update create / unlink / link */
+-	int fcd_parent;		/* Parent inode number */
+-	int fcd_ino;		/* Inode number */
++	unsigned int fcd_parent;	/* Parent inode number */
++	unsigned int fcd_ino;		/* Inode number */
+ 	struct name_snapshot fcd_name;	/* Dirent name */
+ 	struct list_head fcd_list;
+ 	struct list_head fcd_dilist;
+@@ -153,7 +153,7 @@ struct ext4_fc_replay_state {
+ 	int fc_crc;
+ 	struct ext4_fc_alloc_region *fc_regions;
+ 	int fc_regions_size, fc_regions_used, fc_regions_valid;
+-	int *fc_modified_inodes;
++	unsigned int *fc_modified_inodes;
+ 	int fc_modified_inodes_used, fc_modified_inodes_size;
+ };
+ 
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 92e2243b9..4ad7a1809 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -817,7 +817,7 @@ static int find_inode_bit(struct super_block *sb, ext4_group_t group,
+ 	return 1;
+ }
+ 
+-int ext4_mark_inode_used(struct super_block *sb, int ino)
++int ext4_mark_inode_used(struct super_block *sb, unsigned int ino)
+ {
+ 	unsigned long max_ino = le32_to_cpu(EXT4_SB(sb)->s_es->s_inodes_count);
+ 	struct buffer_head *inode_bitmap_bh = NULL, *group_desc_bh = NULL;
+
+base-commit: 008aad6508e30cd1bb6d2c2cf65221ba1f16a065
+-- 
+2.43.0
 
