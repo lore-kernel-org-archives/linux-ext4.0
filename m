@@ -1,55 +1,58 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795458401;
-	b=fh91ebuTcOVQoZWIyYfxz5KlEBuAEPV6eVARcrxfVp7Jql5ENIHNzRSrBWHq0BSIHXUW
-	 vVIQ5i0AAhLlwThK+3/g3tYCB8PsDrEUcR7dY72Bp8AGLi1Cshaaz2paTypvV+qF06RgE
-	 XAUom/WoTXoHWxuszbfQ0GDKFACZuuuLAU2hsHmMwn4Cjf+KWhRfbKSavDtQ+CgqIg/Nm
-	 SnL7+30O3SvPwIMmGCAmyYBv/tNEcth04x8/cMnQ24SdAhNi4U3EziIfO9cjMr0ddfs2W
-	 hHMFRioV/uiqU7w6dH1hXdQzcQbyN7s1eVweTYOoqvmvLiV5CNKUFHJRP03fDEMfXAQ==
+	t=1795458570;
+	b=h9ursOij24rW65IDYBs/x0T7NFfjw2mA5GqTbQlGbmcYaOuwe+/UuBPFiaPrIAbV3Ml2
+	 KDZeODjC7yL4g4XiovqG+7ej1j+0x2sM+V/HUHDYzATKddbQIOCJiwS9n7Djex3zaY/6z
+	 NrtpfVaDgmD24vyWoM7Qy48iLCa1rA5mH9neueONlS7hCCIu0/tzMwf/hiuAvVbTIKZv/
+	 y+YVgdE7bBmjBk6QjoPP6FzksEToiN43Ji6Jcf0HW5gyT3hhTvFaqA23MO0yq/JA7IBdH
+	 fxAeo/U5fI7r+Aw4vYyLKI4LcPlCbxfwsOE8+3KLug/KmQYzTxnMNMLUQW8wn8dZLvw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795458401;
-	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
-	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=SjOX7ot6VZBSkIMKrSUNP2DXFRWgXxZC5QYRfDNqGRE=;
-	b=r07MQDWOPOyyi0hv5fyDux8u15ds8OxU7xLfAlDq8QRI5mAARuG48e3H2fLYpIf63WaQ
-	 /8184yJgmQ071N84fMjWW/6KETXGXsRpR+ELk5LcWLmI1B9fIbONcoMruNdby6YMzuIdd
-	 +Eb+jgDwwZnfl24xB1jzUOhgu6bAni9G2RNUKId2q/nbamJ+1LfVqxE1tsVm3nMdVgk62
-	 Pk3fDxnfxBxtDs9P6ZSo4XkSbQcvlfV5vPnAf2DUfXiSqxIbqWaHfKOhEhL7NK0/bK7uk
-	 JkoRhgXCtTfXNxes6JbQTZpUFh0VqpdcqStX30hZxNQSuaDS5BzyQcYwj5AAoRPTYgw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795458570;
+	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
+	 Mail-Followup-To:References:MIME-Version:Content-Type:
+	 Content-Disposition:In-Reply-To;
+	bh=9FVwijSS/u13QVeqTyKKb8D3NxGid/P0YoVWsdCD+gc=;
+	b=JPj/bxoyYxREc8Mw9wOc5AXaBeWEcSdp09XdOBMLD4Lb5pXIDj4sax0zBtZmvBVLHv9B
+	 08qQnqfElFtgOI+FJTxLO9YZpqI6h0LHwsRgPKKaaXwTOvs+1kjTVFBbEY3phEPBz4hU2
+	 kpR6yVkBdH46wfu+V6Xi+nOZxGPyfU04MvfgIchm8NNrWfTHo5924Eup6oRqmxj1CSHa2
+	 LWs+ZLoFitIDXMxNerHuRgxq+qbiFzkOf0xfFGGId+HfVA94yb9bP+40Mryq27F6dJzdz
+	 eStDDtHkitDfD/dNcB1xCnt8gcR2HULAYAHoHAfdv3vDShjJ4gGP0k4WD5Wn6QNMBNw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="b15/llBO";
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=NDD4CU9t;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AE367606A33C
-	for <linux-ext4@vger.kernel.org>; Mon, 23 Nov 2026 18:26:41 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 045A8606A321;
+	Mon, 23 Nov 2026 18:29:29 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=b15/llBO
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1E8C61F000C4;
-	Mon, 23 Nov 2026 18:26:41 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=NDD4CU9t
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 055991F000D4;
+	Mon, 23 Nov 2026 18:29:24 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795458401;
-	bh=SjOX7ot6VZBSkIMKrSUNP2DXFRWgXxZC5QYRfDNqGRE=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=b15/llBOwS2TVnjC6ZUJskm1Sjw266QZ5P8THYAEbzNar9Jya27nrJqiZvBU4OZbC
-	 +e8pYkDVxPSIKv187GBz+YG0PYBsHtxrs5WkvpKP9NTeHr7CyqubTG/jd6RmyMnBzT
-	 AWieLP9mgf7QfASIg2QVLNJq5uCyPVRgPCXSASbaYDu8Miwq6H4oPz78ZD8oIMPDPk
-	 PJWW3/NVPLiqYRo7eN7M7nT6jnAW6H8rM61o65pP4JVWDjQAzBZXYBTSzOcV3R8Re2
-	 1VJIZnybsbjI2BsO8mTDVvny8r9ZpvG2MWf3J1txaoFOl00bhmH6JHuFdcSyeNRslN
-	 T68YTxR1FtGAg==
-Message-ID: <sashiko-outbox-229814@kernel.org>
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH] ext4: undo the splice when ext4_splice_branch() fails
-Reply-To: sashiko-reviews@lists.linux.dev
-To: =?utf-8?b?QXlrdXQgQ8SxbmPEsWs=?= <aykutcincik@ogr.eskisehir.edu.tr>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-In-Reply-To: <20261123-ext4-splice-unsplice-v1-1-d291b741d15a@ogr.eskisehir.edu.tr>
-References: <20261123-ext4-splice-unsplice-v1-1-d291b741d15a@ogr.eskisehir.edu.tr>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Mon, 23 Nov 2026 18:26:40 +0000
+	s=k20260515; t=1795458569;
+	bh=9FVwijSS/u13QVeqTyKKb8D3NxGid/P0YoVWsdCD+gc=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=NDD4CU9tZCHQTX1HQBApcgQ+eam+hqAHxUI9qI/9mGXglS7mQT1hKWvGrgug09ScD
+	 6KL3xrvKyyoGdTDVm0TKXPRaqDvVSTAuLii8Xnb50ADdtPYwSLomTKW5O4R7MopqL0
+	 hmoTytl71lpc6l4gpm6Udlh0Tv9JFWAjkk48xUmadw7zpqzTtcVD3l8jcVVjK6ITTo
+	 CzytHyWLoy7SOqes2pqIXH9Ez/2RWKJv6WBKZ7W4zcQwcA7V4i+nOYlWaJOOPAmQmw
+	 QD5Hw+VQlqxQGa4ZCt4fKCmqu2r2/Hmep3LNmY/DpjJXTcHWED+vFqzaIiV25VoP8f
+	 i/GQv0ik7KxAw==
+Date: Tue, 24 Nov 2026 02:29:20 +0800
+From: Zorro Lang <zlang@kernel.org>
+To: Anand Jain <asj@kernel.org>
+Cc: fstests@vger.kernel.org, linux-btrfs@vger.kernel.org, 
+	linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org, 
+	linux-f2fs-devel@lists.sourceforge.net
+Subject: Re: [PATCH 06/21] fstests: add _require_unique_f_fsid() helper
+Message-ID: <awSDxwVociDn6649@zlang-mailbox>
+Mail-Followup-To: Anand Jain <asj@kernel.org>, fstests@vger.kernel.org, 
+	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org, 
+	linux-f2fs-devel@lists.sourceforge.net
+References: <cover.1791272793.git.asj@kernel.org>
+ <523304ad35666548443b910955ae7d3a1669ae5a.1791272793.git.asj@kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -58,24 +61,69 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <523304ad35666548443b910955ae7d3a1669ae5a.1791272793.git.asj@kernel.org>
 
-> From: Aykut C=C4=B1nc=C4=B1k <aykutcincik@ogr.eskisehir.edu.tr>
->=20
-> If ext4_handle_dirty_metadata() or ext4_mark_inode_dirty() fails,
-> ext4_splice_branch() frees the new blocks but leaves the pointers to
-> them in place.  A later write then reuses the freed blocks, which can
-> silently overwrite another file's data.
->=20
-> Clear the pointers before freeing the blocks.
->=20
-> Found and fixed with the help of Claude Code (Claude Opus).
->=20
-> Fixes: ac27a0ec112a ("[PATCH] ext4: initial copy of files from ext3")
-> Cc: stable@vger.kernel.org
-> Signed-off-by: Aykut C=C4=B1nc=C4=B1k <aykutcincik@ogr.eskisehir.edu.tr>
+On Tue, Oct 06, 2026 at 04:55:32PM +0800, Anand Jain wrote:
+> Add a helper to check if the target filesystem supports unique f_fsid
+> tracking across cloned or snapshot instances.
+> 
+> Certain filesystems like XFS, Btrfs, and F2FS ensure unique f_fsid
+> identifiers per filesystem instance. However, Ext4 derives its f_fsid
+> directly from its superblock UUID, which leads to identical f_fsid
+> values on cloned images until the UUID is manually modified by userspace.
+> 
+> Introduce _require_unique_f_fsid() to allow test cases requiring strict
+> f_fsid uniqueness to skip gracefully on unsupported filesystems.
+> 
+> Signed-off-by: Anand Jain <asj@kernel.org>
+> ---
 
-Sashiko has reviewed this patch and found no issues.
+Reviewed-by: Zorro Lang <zlang@kernel.org>
 
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261123-ext4-splic=
-e-unsplice-v1-1-d291b741d15a@ogr.eskisehir.edu.tr?part=3D1
+>  common/rc | 27 +++++++++++++++++++++++++++
+>  1 file changed, 27 insertions(+)
+> 
+> diff --git a/common/rc b/common/rc
+> index 0fcc1a614ad1..37b32b498c80 100644
+> --- a/common/rc
+> +++ b/common/rc
+> @@ -6417,6 +6417,33 @@ _require_fanotify_ioerrors()
+>  	_notrun "$FSTYP does not support fanotify ioerrors"
+>  }
+>  
+> +# Skip the test if the filesystem does not enforce unique f_fsids
+> +# natively. Checking this dynamically requires recreating a clone
+> +# layout, so we use a static lookup based on FSTYP.
+> +#
+> +# Across all filesystems, a UUID collision causes libblkid tools to return
+> +# non-deterministic device mappings. It is ultimately the responsibility
+> +# of the userspace utility or use-case to enforce uniqueness when a clone
+> +# diverges. For details, see mailing list thread discussions:
+> +#   Link: https://lore.kernel.org/linux-ext4/20260409131238.GC18443@macsyma-wired.lan/
+> +_require_unique_f_fsid()
+> +{
+> +	case "$FSTYP" in
+> +	ext*)
+> +		# Ext4 derives f_fsid from the superblock UUID, meaning
+> +		# clones share the same f_fsid until their UUIDs
+> +		# diverge.
+> +		_notrun "Target filesystem ($FSTYP) does not guarantee unique f_fsid on clones."
+> +		;;
+> +	*)
+> +		# Conversely, XFS, Btrfs, and F2FS ensure f_fsid remains
+> +		# unique per filesystem instance (often by deriving it
+> +		# from the UUID and underlying block device.)
+> +		;;
+> +	esac
+> +}
+> +
+> +
+>  # Computes a percentage of the available space in a filesystem and
+>  # returns that quantity in MB. The percentage must not contain a percent
+>  # sign ("%").
+> -- 
+> 2.43.0
+> 
