@@ -1,114 +1,108 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.130
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795429231;
-	b=XKLof8BoxZMeZ+vxwnV162kWQ/Ju9vFGJDRLSHGfrKInveDDr9JsS5sa5QpBgxzLGjNK
-	 3Co4PtE4DzyP7BUshk1Vry63QOnPDr0Cpp1U5hyBYUnq/OUIMB/qqtGfx5FWxe/WeEZ/Z
-	 8H0bAnXvXpG2wTzBU5bwTGPgtw0pK+lUNeI6f65d0mMXqdc1nopI/jSi/8tFxkGatb3sA
-	 FKRKB6XleNo6ovE4CplKMfEtMsHFbHkQ7HsPsYbhiItzJzepNGtVN5F8G6CQqLZAaioum
-	 UB04RK+JHikDmCpCNwFDxMvrxSh8rS9v+u6V9h455nCCIrlBT4/8M7TcWC0I24e+yZw==
+	t=1795430330;
+	b=o9HUTc8B8S/TxSQhvP5GPEBeMP/93Kuik3c8NbBsNpXMIrJgLNB9rACi99OwZJmeDIkX
+	 WMC9l8siTALQrfD1EmF1bjJdsGbbMIWDMvF14xf1NsM+V+YhCRyk9XjtpSgxEiRUXX+cg
+	 xnCLrVexutt9w71G1YtuUetOqpBzqysEhkRwMB6DCSBg7laOEAgfQ/A6eRq6/F6bDA8HX
+	 LnwExxeksUhRyHH2q+krg48bh9GXvuIOILgtJhHOa+B3N4xqXQFrIS94kDK0uVLqG9Us6
+	 aYLK8Udwf14Re7K5539mjAIUSpbgqJjMd6lLjzYQ/t1cf+SoxLUMak2XCgp91FKxd9w==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795429231;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795430330;
 	h=DMARC-Filter:Received:DKIM-Signature:DKIM-Signature:DKIM-Signature:
 	 DKIM-Signature:Received:Received:Received:Date:From:To:Cc:Subject:
 	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
-	 Content-Transfer-Encoding:In-Reply-To:X-Spamd-Result:X-Spam-Score:
-	 X-Spam-Level:X-Spam-Flag;
-	bh=nXQrda0aRT2N30fD5HbPAqaDJvuUWOe2czzuoJRWrUA=;
-	b=BdiUAJr2iuwEftUo+wcPX1wj95o5EjgL1GIK9fOiG0enqstB051cpa6g0EKqtHKdubRF
-	 QJK2DMWbydddTFw50BKuzjzBwwy5tmTUEeDzii4m9fKOAbGEgmR8eKT2LZGgtex4RRXYi
-	 /E9d1ZvM0eYcCcnzbN+LWYWWdNl4nirlF7diB2W08dH+wdhOOIUlFiSAF7n680VcpjkN1
-	 VIx5Bto0AzzG+fEvVWcS0NfDufitJTGlkm2Tw6wthuUs92Oer4DgZyCqF9678zKFNo/vX
-	 hPaDo6aHoy2amO0B7AX6+qbWFkxwPgiC9r14e3GbYJE95hzfbETpHx4S5if4F40CSsg==
+	 In-Reply-To:X-Spamd-Result:X-Rspamd-Server:X-Rspamd-Action:
+	 X-Spam-Flag:X-Spam-Score:X-Spam-Level:X-Rspamd-Queue-Id;
+	bh=25HQwnu7e3FGuiwMIPkT94HGf3K/Bf7tNaljloY0VDM=;
+	b=zoaq//Ub4w0pI7ZTb2Xz9S2/9z7Oyh+31yRfSAUQjVlaauYPgBPWvsWimiB02wbXjfYe
+	 OiQ8n8f/IdsPh5Qax30f6RNRKWfuZhNjecoc7hc5+32Qo17h8icd65XoeyKV13pSmQqxE
+	 kcol3aOXl7MwGuO/MDvtKdK+KkHscJ5TbO7N87xYA7cdGCeLVjuOoMwyVLixrNaxVlfNu
+	 QeqfVSB6LjSDrTXpL+qONsaYZ8om/o3gHtCloJuNOO7yMj64YLP3Dyyw3zdVdHBfv3EVM
+	 ISI3Jp1X7fDC5g3mjqjxmmJQqsWVzj7BoXaGUa+/91GuEhxsKuLfXLuCCEpcgvYE9iA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=none header.from=suse.cz;
 	spf=pass smtp.mailfrom=suse.cz;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=tzbZn+0l;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=k4GN7YQQ;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=tzbZn+0l;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=k4GN7YQQ;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=eXFg6f0E;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=EOI4hZlt;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=VgMODSmF;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=QMQzL15M;
 	arc=none smtp.remote-ip=195.135.223.130
 Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4725D606A31A;
-	Mon, 23 Nov 2026 10:20:31 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 4725D606A31A
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E8FD5606A31E;
+	Mon, 23 Nov 2026 10:38:49 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org E8FD5606A31E
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=tzbZn+0l;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=k4GN7YQQ;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=tzbZn+0l;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=k4GN7YQQ
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=eXFg6f0E;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=EOI4hZlt;
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=VgMODSmF;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=QMQzL15M
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 613C321F63;
-	Mon, 23 Nov 2026 10:20:29 +0000 (UTC)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id B67FD22098;
+	Mon, 23 Nov 2026 10:38:46 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1795429229; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1795430328; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=nXQrda0aRT2N30fD5HbPAqaDJvuUWOe2czzuoJRWrUA=;
-	b=tzbZn+0lWMOeGVW8eepVtUKEoFJd7gEouqnafCJd5b62+n1Kw8EcYA00eoOxmVVF6FuW5F
-	/3N5lfUFow3GOyTq7JUlpY3w6vxG6ervN+oB9TgWBanF4YsxOdp2T8nM4yjWl6NtNgfQii
-	t3mKbfm+vqhSO1uqgtn/uWjabp/xb9Y=
+	bh=25HQwnu7e3FGuiwMIPkT94HGf3K/Bf7tNaljloY0VDM=;
+	b=eXFg6f0ETZg6Z005XQCOn7gRg3XRZYpcBd/STGQVniKXeDk0p8g1oxe6eIMxNhdxQjRXBd
+	G6OW6+eN1BQvlLv40cbtrOlu0sU011Eu3F+0Pwe5qc/x2D5R35lojwaoV7Q2LOiOxe2nNJ
+	oVrpbnUKkzPXhApFsT7VomP5m6DcQmU=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1795429229;
+	s=susede2_ed25519; t=1795430328;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=nXQrda0aRT2N30fD5HbPAqaDJvuUWOe2czzuoJRWrUA=;
-	b=k4GN7YQQojAvvnPaex0ZEUNq/8J6BnxLAMJQ6tyTZvz8jSaeAtrvhceyxvQem9FE+rVnxW
-	3JiDkPWBNyKNUOBw==
+	bh=25HQwnu7e3FGuiwMIPkT94HGf3K/Bf7tNaljloY0VDM=;
+	b=EOI4hZlte2PozI7e75cDQ5JyubRkVvRc3Zm0mM8g0w+6KuyCyDpd1QAkXaSHSLb7QUtmBl
+	un7UTguWKvUEGRDg==
 Authentication-Results: smtp-out1.suse.de;
-	none
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=VgMODSmF;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=QMQzL15M
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1795429229; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1795430326; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=nXQrda0aRT2N30fD5HbPAqaDJvuUWOe2czzuoJRWrUA=;
-	b=tzbZn+0lWMOeGVW8eepVtUKEoFJd7gEouqnafCJd5b62+n1Kw8EcYA00eoOxmVVF6FuW5F
-	/3N5lfUFow3GOyTq7JUlpY3w6vxG6ervN+oB9TgWBanF4YsxOdp2T8nM4yjWl6NtNgfQii
-	t3mKbfm+vqhSO1uqgtn/uWjabp/xb9Y=
+	bh=25HQwnu7e3FGuiwMIPkT94HGf3K/Bf7tNaljloY0VDM=;
+	b=VgMODSmF11gwFn08muFFUuXAPKh2NR5Nmbe2A9fdhlgq5mwfUoUGzRsfw410SGfgs2kXU9
+	gV01oRajU7l+4KSa3x5J8dJ5wuMpzGORO81Jav/RZ1YpHG3UHJ5M5VkaGchrbuDpAhliFM
+	rcHI0geL4rClm4xKYkkTLQd3ks3ODbk=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1795429229;
+	s=susede2_ed25519; t=1795430326;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=nXQrda0aRT2N30fD5HbPAqaDJvuUWOe2czzuoJRWrUA=;
-	b=k4GN7YQQojAvvnPaex0ZEUNq/8J6BnxLAMJQ6tyTZvz8jSaeAtrvhceyxvQem9FE+rVnxW
-	3JiDkPWBNyKNUOBw==
+	bh=25HQwnu7e3FGuiwMIPkT94HGf3K/Bf7tNaljloY0VDM=;
+	b=QMQzL15M0ID233nroooDuiyVoPowyyJasKmFSfmcbB1S8NX8oCb0EowiT3Aupu2OhzKCBR
+	A9l3h6X5VXSaMbDQ==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 3606D13510;
-	Mon, 23 Nov 2026 10:20:29 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 8F79C13510;
+	Mon, 23 Nov 2026 10:38:46 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id p6EaBG0TBGt7WAAAD6G6ig
-	(envelope-from <jack@suse.cz>); Mon, 23 Nov 2026 10:20:29 +0000
+	id 854JG7YXBGtTawAAD6G6ig
+	(envelope-from <jack@suse.cz>); Mon, 23 Nov 2026 10:38:46 +0000
 Received: by quack.suse.cz (Postfix, from userid 1000)
-	id B552C27642; Mon, 23 Nov 2026 11:20:13 +0100 (CET)
-Date: Mon, 23 Nov 2026 11:20:13 +0100
+	id 192702764E; Mon, 23 Nov 2026 11:38:31 +0100 (CET)
+Date: Mon, 23 Nov 2026 11:38:31 +0100
 From: Jan Kara <jack@suse.cz>
-To: aykutcincik@ogr.eskisehir.edu.tr
-Cc: Theodore Ts'o <tytso@mit.edu>, 
-	Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.cz>, Baokun Li <libaokun@linux.alibaba.com>, 
-	Ojaswin Mujoo <ojaswin@linux.ibm.com>, "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, 
-	Zhang Yi <yi.zhang@huawei.com>, linux-ext4@vger.kernel.org, 
-	syzbot+d79019213609e7056a19@syzkaller.appspotmail.com, stable@vger.kernel.org
-Subject: Re: [PATCH] ext4: discard inode preallocations when indirect block
- allocation fails
-Message-ID: <y3nf4iozg3ec2kdo7g7a2ci4vo54j3ksjtdatx337q2jhgiip4@ynfo5ojxtr52>
-References: <20261121-ext4-ind-discard-pa-v1-1-ee92928f7797@ogr.eskisehir.edu.tr>
+To: Arbab Haider <arbabhaider649@gmail.com>
+Cc: Jan Kara <jack@suse.cz>, Eric Sandeen <sandeen@redhat.com>, 
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
+	syzbot+1d23ad199a3bfd6f9149@syzkaller.appspotmail.com, stable@vger.kernel.org
+Subject: Re: [PATCH] ext2: handle NULL fc->source in ext2_msg_fc()
+Message-ID: <csic66pmgrepiii5gkegqjykm3oceytmjymq323kqpx3mzlfrf@u6leijtq2hrh>
+References: <20261122182331.13740-2-arbabhaider649@gmail.com>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -118,194 +112,114 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <20261121-ext4-ind-discard-pa-v1-1-ee92928f7797@ogr.eskisehir.edu.tr>
-X-Spamd-Result: default: False [-11.30 / 50.00];
+In-Reply-To: <20261122182331.13740-2-arbabhaider649@gmail.com>
+X-Spamd-Result: default: False [-11.51 / 50.00];
 	SUSE_INTERNAL_BYPASS(-9.00)[];
 	BAYES_HAM(-3.00)[100.00%];
 	SUSPICIOUS_RECIPS(1.50)[];
 	NEURAL_HAM_LONG(-1.00)[-1.000];
 	MID_RHS_NOT_FQDN(0.50)[];
+	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
 	NEURAL_HAM_SHORT(-0.20)[-1.000];
 	MIME_GOOD(-0.10)[text/plain];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	ARC_NA(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	TAGGED_RCPT(0.00)[d79019213609e7056a19];
-	MIME_TRACE(0.00)[0:+];
-	RCPT_COUNT_SEVEN(0.00)[11];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	TO_DN_SOME(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	FREEMAIL_CC(0.00)[mit.edu,dilger.ca,suse.cz,linux.alibaba.com,linux.ibm.com,gmail.com,huawei.com,vger.kernel.org,syzkaller.appspotmail.com];
-	RCVD_COUNT_THREE(0.00)[3];
-	FROM_EQ_ENVFROM(0.00)[];
+	MX_GOOD(-0.01)[];
 	RCVD_TLS_LAST(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
 	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:email,suse.com:email,imap1.dmz-prg2.suse.org:helo]
-X-Spam-Score: -11.30
-X-Spam-Level: 
+	RCVD_COUNT_THREE(0.00)[3];
+	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	FREEMAIL_TO(0.00)[gmail.com];
+	MIME_TRACE(0.00)[0:+];
+	ARC_NA(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	DKIM_TRACE(0.00)[suse.cz:+];
+	DNSWL_BLOCKED(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	TO_DN_SOME(0.00)[];
+	RCPT_COUNT_SEVEN(0.00)[7];
+	TAGGED_RCPT(0.00)[1d23ad199a3bfd6f9149];
+	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	MISSING_XM_UA(0.00)[];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[appspotmail.com:email,suse.com:email,imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,vaf.va:url,suse.cz:dkim,syzkaller.appspot.com:url]
+X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
+X-Rspamd-Action: no action
 X-Spam-Flag: NO
+X-Spam-Score: -11.51
+X-Spam-Level: 
+X-Rspamd-Queue-Id: B67FD22098
 
-On Sat 21-11-26 16:09:40, Aykut Cıncık via B4 Relay wrote:
-> From: Aykut Cıncık <aykutcincik@ogr.eskisehir.edu.tr>
+On Sun 22-11-26 23:23:31, Arbab Haider wrote:
+> With the new mount API (fsopen()/fsconfig()), userspace can pass mount
+> options such as "nobh", "dax", or "reservation" before setting the
+> "source" parameter, leaving fc->source as NULL during option parsing.
 > 
-> When ext4_alloc_branch() or ext4_splice_branch() fails after the data
-> blocks have been allocated, the blocks are released with
-> ext4_free_blocks().  For an indirect-mapped inode these blocks usually
-> come from the inode preallocation (PA), and ext4_mb_use_inode_pa() has
-> already subtracted them from pa_free.  Freeing them does not return
-> them to the PA, so the PA still covers the logical range while pa_free
-> no longer accounts for it.
+> In ext2_msg_fc(), when fc->purpose != FS_CONTEXT_FOR_RECONFIGURE,
+> strrchr(fc->source, '/') is called unconditionally without checking if
+> fc->source is non-NULL, causing a kernel NULL pointer dereference:
 > 
-> Writeback retries the same logical range after such a failure, for
-> example after sb_getblk() returns NULL with -ENOMEM for an indirect
-> block that lies beyond the end of a shrunk loop device, and
-> ext4_mb_use_preallocated() picks the same PA again.  This time pa_free
-> is smaller than the requested length and the BUG_ON() in
-> ext4_mb_use_inode_pa() fires:
+>   KASAN: null-ptr-deref in range [0x0000000000000000-0x0000000000000007]
+>   RIP: 0010:strrchr+0x24/0x80
+>   ext2_msg_fc+0x157/0x1e3
 > 
->   kernel BUG at fs/ext4/mballoc.c:4779!
->   RIP: 0010:ext4_mb_use_inode_pa+0x557/0x890
->   Call Trace:
->    ext4_mb_use_preallocated+0xd96/0x1440
->    ext4_mb_new_blocks+0x72d/0x4900
->    ext4_ind_map_blocks+0x142c/0x2210
->    ext4_map_create_blocks+0x2be/0x5c0
->    ext4_map_blocks+0xbb2/0x1480
->    ext4_do_writepages+0x1dba/0x3a60
->    ext4_writepages+0x370/0x770
->    do_writepages+0x288/0x600
->    filemap_writeback+0x203/0x290
->    file_write_and_wait_range+0xf7/0x170
->    ext4_sync_file+0x418/0xdb0
->    do_fsync+0xda/0x240
+> Check fc->source before calling strrchr(), and omit the "(%s)" device
+> prefix when s_id is NULL or empty (e.g., when source is unset, empty,
+> or ends with '/').
 > 
-> If the BUG_ON() is not reached, the mismatch shows up later as
-> "freeing already freed block" and "ext4_mb_release_inode_pa: free N,
-> pa_free M" errors when the PA is released.
+> Tested locally in QEMU (x86_64, KASAN+UBSAN) using fsopen()/fsconfig()
+> with NULL, empty, trailing-slash, relative, and full-path sources.
 > 
-> The extent-mapped path has handled this since mballoc was added by
-> discarding the inode PAs before freeing the blocks in
-> ext4_ext_map_blocks().  Do the same in both indirect error paths.
-> 
-> An AI coding assistant (Claude Code with Claude Opus) was used to
-> analyse the syzbot report, write a reproducer, trace the root cause with
-> temporary printk instrumentation, and draft both the fix and this
-> changelog.  I have reviewed the change and verified it as follows:
-> without the fix the reproducer hits the BUG_ON() deterministically in
-> QEMU (virtme-ng, KASAN and lockdep enabled); with the fix it ran 3/3
-> times without BUG, KASAN or pa_free reports.  The ext4 KUnit tests pass,
-> and a copy/write/delete workload on a no-extents filesystem leaves
-> e2fsck clean.
-> 
-> Reported-by: syzbot+d79019213609e7056a19@syzkaller.appspotmail.com
-> Closes: https://syzkaller.appspot.com/bug?extid=d79019213609e7056a19
-> Fixes: c9de560ded61 ("ext4: Add multi block allocator for ext4")
+> Reported-by: syzbot+1d23ad199a3bfd6f9149@syzkaller.appspotmail.com
+> Closes: https://syzkaller.appspot.com/bug?extid=1d23ad199a3bfd6f9149
+> Fixes: 98f18c76c2c3 ("ext2: create ext2_msg_fc for use during parsing")
 > Cc: stable@vger.kernel.org
-> Signed-off-by: Aykut Cıncık <aykutcincik@ogr.eskisehir.edu.tr>
+> Signed-off-by: Arbab Haider <arbabhaider649@gmail.com>
 
-Thanks. The patch looks good. Feel free to add:
-
-Reviewed-by: Jan Kara <jack@suse.cz>
+Thanks but I've already merged a similar fix on Friday to my tree.
 
 								Honza
 
 > ---
-> The syzbot reproducers no longer mount on current kernels (bigalloc with
-> s_first_data_block != 0 is now rejected), so I used this reproducer instead:
+>  fs/ext2/super.c | 9 +++++++--
+>  1 file changed, 7 insertions(+), 2 deletions(-)
 > 
->   truncate -s 4M img
->   mkfs.ext4 -q -F -b 1024 -O ^extents,^huge_file,^has_journal,^metadata_csum,^64bit,^flex_bg img
->   losetup /dev/loop0 img
->   mount -o errors=continue /dev/loop0 /mnt
->   touch /mnt/f
->   ./shrink /mnt/f /dev/loop0
-> 
-> shrink.c writes 64 KiB, shrinks the loop device to 32 KiB with
-> LOOP_SET_STATUS64 (lo_sizelimit), then rewrites and calls fsync().  The
-> indirect block now lies beyond the end of the device, so sb_getblk() fails
-> and ext4_alloc_branch() returns -ENOMEM.
-> 
-> shrink.c:
-> 
->   #include <fcntl.h>
->   #include <linux/loop.h>
->   #include <stdio.h>
->   #include <string.h>
->   #include <sys/ioctl.h>
->   #include <unistd.h>
-> 
->   int main(int argc, char **argv)
->   {
->   	static char buf[64 * 1024];
->   	struct loop_info64 li;
->   	int fd = open(argv[1], O_RDWR);
->   	int lfd = open(argv[2], O_RDWR);
-> 
->   	if (fd < 0 || lfd < 0) { perror("open"); return 1; }
->   	memset(buf, 'a', sizeof(buf));
->   	pwrite(fd, buf, sizeof(buf), 0);
->   	if (ioctl(lfd, LOOP_GET_STATUS64, &li)) { perror("get"); return 1; }
->   	li.lo_sizelimit = 32 * 1024;
->   	if (ioctl(lfd, LOOP_SET_STATUS64, &li)) { perror("set"); return 1; }
->   	for (int r = 0; r < 8; r++) {
->   		pwrite(fd, buf, sizeof(buf), 0);
->   		printf("fsync %d: %d\n", r, fsync(fd));
->   	}
->   	return 0;
->   }
-> 
-> With the fix applied, fsync() in this reproducer still does not return,
-> because writeback treats -ENOMEM as transient and keeps retrying.  That
-> behaviour predates this patch and is not changed by it.
-> 
-> Two related problems in the same error paths are not addressed here and
-> can be sent separately if wanted:
->  - ext4_splice_branch() does not undo *where->p = where->key on failure.
->  - The blocks are freed with a quota update even for delalloc-reserved
->    blocks, which can underflow i_blocks.
-> ---
->  fs/ext4/indirect.c | 7 +++++++
->  1 file changed, 7 insertions(+)
-> 
-> diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-> index a495080df710..3b4ec1c3d5ec 100644
-> --- a/fs/ext4/indirect.c
-> +++ b/fs/ext4/indirect.c
-> @@ -389,6 +389,11 @@ static int ext4_alloc_branch(handle_t *handle,
->  	return 0;
->  failed:
->  	if (i == indirect_blks) {
-> +		/*
-> +		 * The data blocks may come from the inode PA, which already
-> +		 * counts them as used; drop the PA so they are not handed out twice.
-> +		 */
-> +		ext4_discard_preallocations(ar->inode);
->  		/* Free data blocks */
->  		ext4_free_blocks(handle, ar->inode, NULL, new_blocks[i],
->  				 ar->len, 0);
-> @@ -493,6 +498,8 @@ static int ext4_splice_branch(handle_t *handle,
->  		ext4_free_blocks(handle, ar->inode, where[i].bh, 0, 1,
->  				 EXT4_FREE_BLOCKS_FORGET);
->  	}
-> +	/* See ext4_alloc_branch(): the data blocks may belong to the inode PA. */
-> +	ext4_discard_preallocations(ar->inode);
->  	ext4_free_blocks(handle, ar->inode, NULL, le32_to_cpu(where[num].key),
->  			 ar->len, 0);
+> diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+> index 54a6c26d0..c99367652 100644
+> --- a/fs/ext2/super.c
+> +++ b/fs/ext2/super.c
+> @@ -89,20 +89,25 @@ static void ext2_msg_fc(struct fs_context *fc, const char *prefix,
 >  
-> 
-> ---
-> base-commit: c44104f3642da720164042623e4832836aefdd8e
-> change-id: 20261121-ext4-ind-discard-pa-89f4515f9a77
-> 
-> Best regards,
-> --  
-> Aykut Cıncık <aykutcincik@ogr.eskisehir.edu.tr>
-> 
+>  	if (fc->purpose == FS_CONTEXT_FOR_RECONFIGURE) {
+>  		s_id = fc->root->d_sb->s_id;
+> -	} else {
+> +	} else if (fc->source) {
+>  		/* get last path component of source */
+>  		s_id = strrchr(fc->source, '/');
+>  		if (s_id)
+>  			s_id++;
+>  		else
+>  			s_id = fc->source;
+> +	} else {
+> +		s_id = NULL;
+>  	}
+>  	va_start(args, fmt);
+>  
+>  	vaf.fmt = fmt;
+>  	vaf.va = &args;
+>  
+> -	printk("%sEXT2-fs (%s): %pV\n", prefix, s_id, &vaf);
+> +	if (s_id && *s_id)
+> +		printk("%sEXT2-fs (%s): %pV\n", prefix, s_id, &vaf);
+> +	else
+> +		printk("%sEXT2-fs: %pV\n", prefix, &vaf);
+>  
+>  	va_end(args);
+>  }
+> -- 
+> 2.53.0
 > 
 -- 
 Jan Kara <jack@suse.com>
