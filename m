@@ -1,58 +1,55 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795457944;
-	b=m7mKSw99wmxmnwWuJuMNc95vk74Cl8o0+FjqpXZctcwv5j4RbOp/05vuiwKGI+AQ5X1T
-	 ljLEh26ah+40Zrct5I/yQUM8yLnCTiFMVSTPytv7IlzTg6QCNiWwdm1SgAMPm9hK3+ENb
-	 fOx4DFpLuKRPJ6c8891IkhlbeFhLnkqp6JJSAWIsyxqx5r4VTwyloZ6YRh9B472Zz74ZI
-	 rUs+n6b0dqqhV/404wue1lWVhlyDqleMEE/XCjYQAweQnk4c3X+KCxS2mNY8w7Tk4Uux2
-	 q/ATczSgbAfW5q+/AdFPDqpZOFvQuXeHrDX4c74tLQ0U0pbUXo6Hjjg0CS9Qhpnb6pQ==
+	t=1795458401;
+	b=fh91ebuTcOVQoZWIyYfxz5KlEBuAEPV6eVARcrxfVp7Jql5ENIHNzRSrBWHq0BSIHXUW
+	 vVIQ5i0AAhLlwThK+3/g3tYCB8PsDrEUcR7dY72Bp8AGLi1Cshaaz2paTypvV+qF06RgE
+	 XAUom/WoTXoHWxuszbfQ0GDKFACZuuuLAU2hsHmMwn4Cjf+KWhRfbKSavDtQ+CgqIg/Nm
+	 SnL7+30O3SvPwIMmGCAmyYBv/tNEcth04x8/cMnQ24SdAhNi4U3EziIfO9cjMr0ddfs2W
+	 hHMFRioV/uiqU7w6dH1hXdQzcQbyN7s1eVweTYOoqvmvLiV5CNKUFHJRP03fDEMfXAQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795457944;
-	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
-	 Mail-Followup-To:References:MIME-Version:Content-Type:
-	 Content-Disposition:In-Reply-To;
-	bh=u6X2E0XUgIO+iKoQD/SNiDFffgouosxGaFf5DehOZNA=;
-	b=Gf4nXGu4vkp+ecpY1GjendJmqadboxF5DjH/acNDUTx9JqPypQ71J952L3MrFgZ2mA5w
-	 gk56zSpyaGSf5CdzhdzGWFuU61oewNYQoefuyCfLYQVkNYJjF8gHAMwLYeMdzhqS+4a1d
-	 sp7tcLmKyK4uMcmnlOX0w2cm/H0jMFWf5xGdukodAx4+GbTukoviGy5aBZinq8yQGSGB2
-	 jjG/6opLTnTsHHzvw3IdIwd/aP45HiWgr4yswQtLMf5DWYrbsQgJqY4OD8gcgpO8P3UQJ
-	 b1zzsTrpAqERNVSNajzMcoO+zF4NKncF9waQnTor6ZLEbJhmUJeyIOQ5iVAMmH7CW8w==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795458401;
+	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
+	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
+	bh=SjOX7ot6VZBSkIMKrSUNP2DXFRWgXxZC5QYRfDNqGRE=;
+	b=r07MQDWOPOyyi0hv5fyDux8u15ds8OxU7xLfAlDq8QRI5mAARuG48e3H2fLYpIf63WaQ
+	 /8184yJgmQ071N84fMjWW/6KETXGXsRpR+ELk5LcWLmI1B9fIbONcoMruNdby6YMzuIdd
+	 +Eb+jgDwwZnfl24xB1jzUOhgu6bAni9G2RNUKId2q/nbamJ+1LfVqxE1tsVm3nMdVgk62
+	 Pk3fDxnfxBxtDs9P6ZSo4XkSbQcvlfV5vPnAf2DUfXiSqxIbqWaHfKOhEhL7NK0/bK7uk
+	 JkoRhgXCtTfXNxes6JbQTZpUFh0VqpdcqStX30hZxNQSuaDS5BzyQcYwj5AAoRPTYgw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Hpgz6uT0;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="b15/llBO";
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7AC65606A32D;
-	Mon, 23 Nov 2026 18:19:04 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AE367606A33C
+	for <linux-ext4@vger.kernel.org>; Mon, 23 Nov 2026 18:26:41 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Hpgz6uT0
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 920321F000C4;
-	Mon, 23 Nov 2026 18:18:58 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=b15/llBO
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1E8C61F000C4;
+	Mon, 23 Nov 2026 18:26:41 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795457944;
-	bh=u6X2E0XUgIO+iKoQD/SNiDFffgouosxGaFf5DehOZNA=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=Hpgz6uT051pI6IVUFBVPt8R6H8+PpzR3cnm0zJA+v6SfGXeqaZX07vaJ5GdRfxOO0
-	 BkxyCMegj0h+sItLamcfEhVOtQOFYBgtkhNEoL8HQiG/g9JrjbsAQMfizgSj/gdrFB
-	 xXGE9/AkzkLYJrtiGZb792MoBGuZM6uG9Vu8ztK7CZ/fG+qRJuvfFUxp1wWI4yR6VR
-	 amgNmgoPblLRxAhSZu6IciIAXVQjIx9MCHZFXfVFHXeUKll2kcwyfZnG1Gm/NwY3G6
-	 hpmeJyuuqfP8zVqSOgN0UBb5f9XuaOXM21e+Fij4SQHoHQbWwaDaBky1mvpdHrvBUF
-	 qKAf1PdrqRYPw==
-Date: Tue, 24 Nov 2026 02:18:53 +0800
-From: Zorro Lang <zlang@kernel.org>
-To: Anand Jain <asj@kernel.org>
-Cc: fstests@vger.kernel.org, linux-btrfs@vger.kernel.org, 
-	linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org, 
-	linux-f2fs-devel@lists.sourceforge.net
-Subject: Re: [PATCH 05/21] fstests: add _require_fanotify_function
-Message-ID: <awR6WGcokCWeZVal@zlang-mailbox>
-Mail-Followup-To: Anand Jain <asj@kernel.org>, fstests@vger.kernel.org, 
-	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org, 
-	linux-f2fs-devel@lists.sourceforge.net
-References: <cover.1791272793.git.asj@kernel.org>
- <16d1b43e27ee01742eb6a431d99a738c0696a94f.1791272793.git.asj@kernel.org>
+	s=k20260515; t=1795458401;
+	bh=SjOX7ot6VZBSkIMKrSUNP2DXFRWgXxZC5QYRfDNqGRE=;
+	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
+	b=b15/llBOwS2TVnjC6ZUJskm1Sjw266QZ5P8THYAEbzNar9Jya27nrJqiZvBU4OZbC
+	 +e8pYkDVxPSIKv187GBz+YG0PYBsHtxrs5WkvpKP9NTeHr7CyqubTG/jd6RmyMnBzT
+	 AWieLP9mgf7QfASIg2QVLNJq5uCyPVRgPCXSASbaYDu8Miwq6H4oPz78ZD8oIMPDPk
+	 PJWW3/NVPLiqYRo7eN7M7nT6jnAW6H8rM61o65pP4JVWDjQAzBZXYBTSzOcV3R8Re2
+	 1VJIZnybsbjI2BsO8mTDVvny8r9ZpvG2MWf3J1txaoFOl00bhmH6JHuFdcSyeNRslN
+	 T68YTxR1FtGAg==
+Message-ID: <sashiko-outbox-229814@kernel.org>
+From: sashiko-bot@kernel.org
+Subject: Re: [PATCH] ext4: undo the splice when ext4_splice_branch() fails
+Reply-To: sashiko-reviews@lists.linux.dev
+To: =?utf-8?b?QXlrdXQgQ8SxbmPEsWs=?= <aykutcincik@ogr.eskisehir.edu.tr>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+In-Reply-To: <20261123-ext4-splice-unsplice-v1-1-d291b741d15a@ogr.eskisehir.edu.tr>
+References: <20261123-ext4-splice-unsplice-v1-1-d291b741d15a@ogr.eskisehir.edu.tr>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+Date: Mon, 23 Nov 2026 18:26:40 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -61,55 +58,24 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <16d1b43e27ee01742eb6a431d99a738c0696a94f.1791272793.git.asj@kernel.org>
 
-On Tue, Oct 06, 2026 at 04:55:31PM +0800, Anand Jain wrote:
-> fanotify support may not be compiled into the kernel. Add
-> _require_fanotify_function to skip tests when fanotify is disabled.
-> 
-> Signed-off-by: Anand Jain <asj@kernel.org>
-> ---
->  common/rc | 7 +++++++
->  1 file changed, 7 insertions(+)
-> 
-> diff --git a/common/rc b/common/rc
-> index b9481ba8ab55..0fcc1a614ad1 100644
-> --- a/common/rc
-> +++ b/common/rc
-> @@ -6384,6 +6384,13 @@ _require_max_file_range_blocks()
->  	esac
->  }
->  
-> +_require_fanotify_function()
+> From: Aykut C=C4=B1nc=C4=B1k <aykutcincik@ogr.eskisehir.edu.tr>
+>=20
+> If ext4_handle_dirty_metadata() or ext4_mark_inode_dirty() fails,
+> ext4_splice_branch() frees the new blocks but leaves the pointers to
+> them in place.  A later write then reuses the freed blocks, which can
+> silently overwrite another file's data.
+>=20
+> Clear the pointers before freeing the blocks.
+>=20
+> Found and fixed with the help of Claude Code (Claude Opus).
+>=20
+> Fixes: ac27a0ec112a ("[PATCH] ext4: initial copy of files from ext3")
+> Cc: stable@vger.kernel.org
+> Signed-off-by: Aykut C=C4=B1nc=C4=B1k <aykutcincik@ogr.eskisehir.edu.tr>
 
-I'm not sure if fanotify_function here refers to any specific function.
-The name makes it sound a bit like "a function named _require_fanotify".
-Could we simply name it _require_fanotify, or perhaps _require_fanotify_enabled?
+Sashiko has reviewed this patch and found no issues.
 
-> +{
-> +        if $FSNOTIFYWAIT_PROG 2>&1 | grep -q "Function not implemented"; then
-
-What if there's not fsnotifywait command? Maybe we should call
-  _require_command "$FSNOTIFYWAIT_PROG" fsnotifywait
-at first? Alternatively, you could check this in src/feature.c by calling
-fanotify_init() directly (so we don't have to rely on fsnotifywait).
-
-> +                _notrun "Need CONFIG_FANOTIFY and CONFIG_FANOTIFY_ACCESS_PERMISSIONS to be enabled"
-> +        fi
-
-This function uses 8 spaces for indentation. Please use tabs instead.
-
-Thanks,
-Zorro
-
-> +}
-> +
->  _require_fanotify_ioerrors()
->  {
->  	local x
-> -- 
-> 2.43.0
-> 
+--=20
+Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261123-ext4-splic=
+e-unsplice-v1-1-d291b741d15a@ogr.eskisehir.edu.tr?part=3D1
