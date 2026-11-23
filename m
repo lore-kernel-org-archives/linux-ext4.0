@@ -1,113 +1,114 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.130
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795428560;
-	b=E70JATNb6QPjMA1niKshxSpziV4otwsJwVwQDGI6DZWy5wXOZ2xoZ8idNa+QhWERvSsk
-	 hb/taXFw8qJavGQrFe08/I0re+FOkJ6c2X/HI26CJSZaZ3u2iZAprf2P2hZaG37ToXrbz
-	 ceeyIYMtLUif5rVLy8FugGjSTvVAdE3buLArBylcBqtoZ/bNkdJXE2HgHl19XfHGdqKVt
-	 oMNRTTSTMsVdBOfi4yq7lO8A2L5DApHqx2+yST2fLNspgjo3SvyBqSR/89mPMDDgzdCwI
-	 91mo78skqxguK09Puc5a/stKolGOIFG9VnhAfQpYF3Mr5YpDlwNjfb3kUfS88ck9tbQ==
+	t=1795429231;
+	b=XKLof8BoxZMeZ+vxwnV162kWQ/Ju9vFGJDRLSHGfrKInveDDr9JsS5sa5QpBgxzLGjNK
+	 3Co4PtE4DzyP7BUshk1Vry63QOnPDr0Cpp1U5hyBYUnq/OUIMB/qqtGfx5FWxe/WeEZ/Z
+	 8H0bAnXvXpG2wTzBU5bwTGPgtw0pK+lUNeI6f65d0mMXqdc1nopI/jSi/8tFxkGatb3sA
+	 FKRKB6XleNo6ovE4CplKMfEtMsHFbHkQ7HsPsYbhiItzJzepNGtVN5F8G6CQqLZAaioum
+	 UB04RK+JHikDmCpCNwFDxMvrxSh8rS9v+u6V9h455nCCIrlBT4/8M7TcWC0I24e+yZw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795428560;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795429231;
 	h=DMARC-Filter:Received:DKIM-Signature:DKIM-Signature:DKIM-Signature:
 	 DKIM-Signature:Received:Received:Received:Date:From:To:Cc:Subject:
 	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
-	 Content-Transfer-Encoding:In-Reply-To:X-Spam-Flag:X-Spam-Level:
-	 X-Spamd-Result:X-Spam-Score;
-	bh=z5RA0mOOGtppCNR+TVlNNlu921LghCrTQ8okbAGwxMs=;
-	b=B7DjYtAvSWGube2p6ceGV5hPPB5lHmvBqoKZPEop+h9yBKTdiW1eb2S3cfMX99B45HZF
-	 6HE1f/Nm40YVwx+fqCk+H7tIb+35toTniV+FeIJ4OcZ7PWA/qAmV9tNieNmWWn/ldeM8j
-	 TK9K5fbNhDAsihilRphBzahijKBbvhUU2eG9lCtu0+uQtq2kEKRkv1mv4P3i2o8hftxJB
-	 mrvPb7p70blaDyrkwO5ioF/HFsrE7IcCLIOh6vg6p4sIq1T+CzG6Q4YWYl2OPfihzEVq0
-	 FQ5Xo2791qqbHKlgi8nDPBNliOANeI5L2qKm5AJHkgYcCYUQRtPg+SEiGw9Tw+/2rsQ==
+	 Content-Transfer-Encoding:In-Reply-To:X-Spamd-Result:X-Spam-Score:
+	 X-Spam-Level:X-Spam-Flag;
+	bh=nXQrda0aRT2N30fD5HbPAqaDJvuUWOe2czzuoJRWrUA=;
+	b=BdiUAJr2iuwEftUo+wcPX1wj95o5EjgL1GIK9fOiG0enqstB051cpa6g0EKqtHKdubRF
+	 QJK2DMWbydddTFw50BKuzjzBwwy5tmTUEeDzii4m9fKOAbGEgmR8eKT2LZGgtex4RRXYi
+	 /E9d1ZvM0eYcCcnzbN+LWYWWdNl4nirlF7diB2W08dH+wdhOOIUlFiSAF7n680VcpjkN1
+	 VIx5Bto0AzzG+fEvVWcS0NfDufitJTGlkm2Tw6wthuUs92Oer4DgZyCqF9678zKFNo/vX
+	 hPaDo6aHoy2amO0B7AX6+qbWFkxwPgiC9r14e3GbYJE95hzfbETpHx4S5if4F40CSsg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=none header.from=suse.cz;
 	spf=pass smtp.mailfrom=suse.cz;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=XCZYujhF;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=ZDOJqc8S;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=XCZYujhF;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=ZDOJqc8S;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=tzbZn+0l;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=k4GN7YQQ;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=tzbZn+0l;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=k4GN7YQQ;
 	arc=none smtp.remote-ip=195.135.223.130
 Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2FBDA606A332;
-	Mon, 23 Nov 2026 10:09:19 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 2FBDA606A332
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4725D606A31A;
+	Mon, 23 Nov 2026 10:20:31 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 4725D606A31A
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=XCZYujhF;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=ZDOJqc8S;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=XCZYujhF;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=ZDOJqc8S
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=tzbZn+0l;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=k4GN7YQQ;
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=tzbZn+0l;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=k4GN7YQQ
 Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 476CC21A56;
-	Mon, 23 Nov 2026 10:09:17 +0000 (UTC)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id 613C321F63;
+	Mon, 23 Nov 2026 10:20:29 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1795428557; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1795429229; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=z5RA0mOOGtppCNR+TVlNNlu921LghCrTQ8okbAGwxMs=;
-	b=XCZYujhF1/u67sD75nsaLlMVWT1O5wvOlA75vztF+a/XZPD49OmUe0BVR8BtcUwLAHZJ49
-	mCclSK/7nyMAkLtcTRRT5YUiQvTRhUHfAAzJoHg5vKvbBb40W71PSXS2SUsaGmr3KMkBNk
-	FJiLdjmhXGMakfPFhnQEtD9QhOOFhpo=
+	bh=nXQrda0aRT2N30fD5HbPAqaDJvuUWOe2czzuoJRWrUA=;
+	b=tzbZn+0lWMOeGVW8eepVtUKEoFJd7gEouqnafCJd5b62+n1Kw8EcYA00eoOxmVVF6FuW5F
+	/3N5lfUFow3GOyTq7JUlpY3w6vxG6ervN+oB9TgWBanF4YsxOdp2T8nM4yjWl6NtNgfQii
+	t3mKbfm+vqhSO1uqgtn/uWjabp/xb9Y=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1795428557;
+	s=susede2_ed25519; t=1795429229;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=z5RA0mOOGtppCNR+TVlNNlu921LghCrTQ8okbAGwxMs=;
-	b=ZDOJqc8SXIRtuXDPii/vNDDzkoa7Yfhc47xbAPRlYJ6Z7sSy1mweM8uqhbh+V8bFawqs7c
-	ilbI8geG9h7+6yCg==
+	bh=nXQrda0aRT2N30fD5HbPAqaDJvuUWOe2czzuoJRWrUA=;
+	b=k4GN7YQQojAvvnPaex0ZEUNq/8J6BnxLAMJQ6tyTZvz8jSaeAtrvhceyxvQem9FE+rVnxW
+	3JiDkPWBNyKNUOBw==
 Authentication-Results: smtp-out1.suse.de;
 	none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1795428557; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1795429229; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=z5RA0mOOGtppCNR+TVlNNlu921LghCrTQ8okbAGwxMs=;
-	b=XCZYujhF1/u67sD75nsaLlMVWT1O5wvOlA75vztF+a/XZPD49OmUe0BVR8BtcUwLAHZJ49
-	mCclSK/7nyMAkLtcTRRT5YUiQvTRhUHfAAzJoHg5vKvbBb40W71PSXS2SUsaGmr3KMkBNk
-	FJiLdjmhXGMakfPFhnQEtD9QhOOFhpo=
+	bh=nXQrda0aRT2N30fD5HbPAqaDJvuUWOe2czzuoJRWrUA=;
+	b=tzbZn+0lWMOeGVW8eepVtUKEoFJd7gEouqnafCJd5b62+n1Kw8EcYA00eoOxmVVF6FuW5F
+	/3N5lfUFow3GOyTq7JUlpY3w6vxG6ervN+oB9TgWBanF4YsxOdp2T8nM4yjWl6NtNgfQii
+	t3mKbfm+vqhSO1uqgtn/uWjabp/xb9Y=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1795428557;
+	s=susede2_ed25519; t=1795429229;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=z5RA0mOOGtppCNR+TVlNNlu921LghCrTQ8okbAGwxMs=;
-	b=ZDOJqc8SXIRtuXDPii/vNDDzkoa7Yfhc47xbAPRlYJ6Z7sSy1mweM8uqhbh+V8bFawqs7c
-	ilbI8geG9h7+6yCg==
+	bh=nXQrda0aRT2N30fD5HbPAqaDJvuUWOe2czzuoJRWrUA=;
+	b=k4GN7YQQojAvvnPaex0ZEUNq/8J6BnxLAMJQ6tyTZvz8jSaeAtrvhceyxvQem9FE+rVnxW
+	3JiDkPWBNyKNUOBw==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 2199313510;
-	Mon, 23 Nov 2026 10:09:17 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 3606D13510;
+	Mon, 23 Nov 2026 10:20:29 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id jXBqO8wQBGuwTAAAD6G6ig
-	(envelope-from <jack@suse.cz>); Mon, 23 Nov 2026 10:09:17 +0000
+	id p6EaBG0TBGt7WAAAD6G6ig
+	(envelope-from <jack@suse.cz>); Mon, 23 Nov 2026 10:20:29 +0000
 Received: by quack.suse.cz (Postfix, from userid 1000)
-	id A214E2763B; Mon, 23 Nov 2026 11:09:12 +0100 (CET)
-Date: Mon, 23 Nov 2026 11:09:12 +0100
+	id B552C27642; Mon, 23 Nov 2026 11:20:13 +0100 (CET)
+Date: Mon, 23 Nov 2026 11:20:13 +0100
 From: Jan Kara <jack@suse.cz>
-To: =?utf-8?B?VG9tw6Fz?= Senart <ts@perfloop.ai>
-Cc: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>, 
-	Harshad Shirwadkar <harshadshirwadkar@gmail.com>, linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
-	stable@vger.kernel.org
-Subject: Re: [PATCH v2] jbd2: fix fast commit recovery failure when the FC
- area is full
-Message-ID: <m3st5t7s3xzuuphid6lcd22mazxt6ibxp44by27qdog7qbdcd7@775azrq2yohj>
-References: <CAEEBa3XJt0XU+5pXNQz_tjZyPEeEnY67i_QGupOnHLnXB=BVDw@mail.gmail.com>
- <CAEEBa3Un8x208Ox=20TTmGgcmdMSTCC41fB7SWP7uuY1N3xLPw@mail.gmail.com>
+To: aykutcincik@ogr.eskisehir.edu.tr
+Cc: Theodore Ts'o <tytso@mit.edu>, 
+	Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.cz>, Baokun Li <libaokun@linux.alibaba.com>, 
+	Ojaswin Mujoo <ojaswin@linux.ibm.com>, "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, 
+	Zhang Yi <yi.zhang@huawei.com>, linux-ext4@vger.kernel.org, 
+	syzbot+d79019213609e7056a19@syzkaller.appspotmail.com, stable@vger.kernel.org
+Subject: Re: [PATCH] ext4: discard inode preallocations when indirect block
+ allocation fails
+Message-ID: <y3nf4iozg3ec2kdo7g7a2ci4vo54j3ksjtdatx337q2jhgiip4@ynfo5ojxtr52>
+References: <20261121-ext4-ind-discard-pa-v1-1-ee92928f7797@ogr.eskisehir.edu.tr>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -117,15 +118,14 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+Content-Type: text/plain; charset=utf-8
 Content-Disposition: inline
 Content-Transfer-Encoding: 8bit
-In-Reply-To: <CAEEBa3Un8x208Ox=20TTmGgcmdMSTCC41fB7SWP7uuY1N3xLPw@mail.gmail.com>
-X-Spam-Flag: NO
-X-Spam-Level: 
-X-Spamd-Result: default: False [-12.80 / 50.00];
+In-Reply-To: <20261121-ext4-ind-discard-pa-v1-1-ee92928f7797@ogr.eskisehir.edu.tr>
+X-Spamd-Result: default: False [-11.30 / 50.00];
 	SUSE_INTERNAL_BYPASS(-9.00)[];
 	BAYES_HAM(-3.00)[100.00%];
+	SUSPICIOUS_RECIPS(1.50)[];
 	NEURAL_HAM_LONG(-1.00)[-1.000];
 	MID_RHS_NOT_FQDN(0.50)[];
 	NEURAL_HAM_SHORT(-0.20)[-1.000];
@@ -133,129 +133,180 @@ X-Spamd-Result: default: False [-12.80 / 50.00];
 	RCVD_VIA_SMTP_AUTH(0.00)[];
 	ARC_NA(0.00)[];
 	MISSING_XM_UA(0.00)[];
-	RCPT_COUNT_SEVEN(0.00)[7];
+	TAGGED_RCPT(0.00)[d79019213609e7056a19];
 	MIME_TRACE(0.00)[0:+];
-	RCVD_COUNT_THREE(0.00)[3];
+	RCPT_COUNT_SEVEN(0.00)[11];
 	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	FROM_HAS_DN(0.00)[];
-	FREEMAIL_CC(0.00)[mit.edu,suse.cz,gmail.com,vger.kernel.org];
 	TO_DN_SOME(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	FREEMAIL_CC(0.00)[mit.edu,dilger.ca,suse.cz,linux.alibaba.com,linux.ibm.com,gmail.com,huawei.com,vger.kernel.org,syzkaller.appspotmail.com];
+	RCVD_COUNT_THREE(0.00)[3];
 	FROM_EQ_ENVFROM(0.00)[];
 	RCVD_TLS_LAST(0.00)[];
 	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,imap1.dmz-prg2.suse.org:helo]
-X-Spam-Score: -12.80
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:email,suse.com:email,imap1.dmz-prg2.suse.org:helo]
+X-Spam-Score: -11.30
+X-Spam-Level: 
+X-Spam-Flag: NO
 
-On Sat 21-11-26 04:14:05, Tom嫳 Senart wrote:
-> jbd2_journal_load() sets j_fc_last to s_maxlen, which is the first block
-> past the end of the journal, and jbd2_fc_get_buf() never hands out a
-> block at or beyond j_fc_last.  The recovery loop in fc_do_one_pass()
-> nevertheless runs while next_fc_block <= j_fc_last.  If ordinary fsync
-> use has filled every usable fast commit block before the next full
-> commit, recovery reads one block past the journal and jread() fails
-> with -EFSCORRUPTED ("JBD2: corrupted journal superblock").  The
-> filesystem then fails to mount after a crash until e2fsck is run.
+On Sat 21-11-26 16:09:40, Aykut C覺nc覺k via B4 Relay wrote:
+> From: Aykut C覺nc覺k <aykutcincik@ogr.eskisehir.edu.tr>
 > 
-> Stop the loop at j_fc_last.
+> When ext4_alloc_branch() or ext4_splice_branch() fails after the data
+> blocks have been allocated, the blocks are released with
+> ext4_free_blocks().  For an indirect-mapped inode these blocks usually
+> come from the inode preallocation (PA), and ext4_mb_use_inode_pa() has
+> already subtracted them from pa_free.  Freeing them does not return
+> them to the PA, so the PA still covers the logical range while pa_free
+> no longer accounts for it.
 > 
-> That alone is not enough.  ext4_fc_replay() calls
-> ext4_fc_set_bitmaps_and_counters() only when it is called again after
-> fc_replay_num_tags has reached zero.  A TAIL tag always ends its block,
-> so the call that handles the last tag returns JBD2_FC_REPLAY_CONTINUE
-> and the finishing call used to come from the next block.  When the last
-> fast commit block is the last block of the journal there is no next
-> call, ext4_fc_replay_inode() has already cleared the inode's blocks in
-> the bitmap and e2fsck reports a block bitmap difference.  Do the
-> finishing step in the same call that consumes the last tag, and drop
-> the in-loop copy, which would otherwise run it twice.
+> Writeback retries the same logical range after such a failure, for
+> example after sb_getblk() returns NULL with -ENOMEM for an indirect
+> block that lies beyond the end of a shrunk loop device, and
+> ext4_mb_use_preallocated() picks the same PA again.  This time pa_free
+> is smaller than the requested length and the BUG_ON() in
+> ext4_mb_use_inode_pa() fires:
 > 
-> Reproduced in User-Mode Linux with 1 KiB blocks (mke2fs -J size=8,
-> 63 usable fast commit blocks) and 4 KiB blocks (default journal, 15
-> usable blocks): with the fast commit area exactly full the unpatched
-> kernel fails the mount, and with one block fewer it recovers.  With this
-> patch mount succeeds, the file has all fast committed data, and
-> e2fsck -fn exits 0 with no differences after recovery, for the full,
-> one-block-short and three-fast-commit cases at both block sizes.
+>   kernel BUG at fs/ext4/mballoc.c:4779!
+>   RIP: 0010:ext4_mb_use_inode_pa+0x557/0x890
+>   Call Trace:
+>    ext4_mb_use_preallocated+0xd96/0x1440
+>    ext4_mb_new_blocks+0x72d/0x4900
+>    ext4_ind_map_blocks+0x142c/0x2210
+>    ext4_map_create_blocks+0x2be/0x5c0
+>    ext4_map_blocks+0xbb2/0x1480
+>    ext4_do_writepages+0x1dba/0x3a60
+>    ext4_writepages+0x370/0x770
+>    do_writepages+0x288/0x600
+>    filemap_writeback+0x203/0x290
+>    file_write_and_wait_range+0xf7/0x170
+>    ext4_sync_file+0x418/0xdb0
+>    do_fsync+0xda/0x240
 > 
-> This bug was found with Perfloop, an automated code analysis tool. The
-> fix, this message and the reproducer were written with AI assistance and
-> reviewed by me.
+> If the BUG_ON() is not reached, the mismatch shows up later as
+> "freeing already freed block" and "ext4_mb_release_inode_pa: free N,
+> pa_free M" errors when the PA is released.
 > 
-> Fixes: 5b849b5f96b4 ("jbd2: fast commit recovery path")
-> Fixes: 8016e29f4362 ("ext4: fast commit recovery path")
+> The extent-mapped path has handled this since mballoc was added by
+> discarding the inode PAs before freeing the blocks in
+> ext4_ext_map_blocks().  Do the same in both indirect error paths.
+> 
+> An AI coding assistant (Claude Code with Claude Opus) was used to
+> analyse the syzbot report, write a reproducer, trace the root cause with
+> temporary printk instrumentation, and draft both the fix and this
+> changelog.  I have reviewed the change and verified it as follows:
+> without the fix the reproducer hits the BUG_ON() deterministically in
+> QEMU (virtme-ng, KASAN and lockdep enabled); with the fix it ran 3/3
+> times without BUG, KASAN or pa_free reports.  The ext4 KUnit tests pass,
+> and a copy/write/delete workload on a no-extents filesystem leaves
+> e2fsck clean.
+> 
+> Reported-by: syzbot+d79019213609e7056a19@syzkaller.appspotmail.com
+> Closes: https://syzkaller.appspot.com/bug?extid=d79019213609e7056a19
+> Fixes: c9de560ded61 ("ext4: Add multi block allocator for ext4")
 > Cc: stable@vger.kernel.org
-> Signed-off-by: Tom嫳 Senart <ts@perfloop.ai>
+> Signed-off-by: Aykut C覺nc覺k <aykutcincik@ogr.eskisehir.edu.tr>
 
-Looks good. Feel free to add:
+Thanks. The patch looks good. Feel free to add:
 
 Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
 
 > ---
-> v2:
-> - Please do not apply v1. v1 only changed the loop bound. As the
->   Sashiko review pointed out, a full fast commit area then mounts but
->   skips ext4_fc_set_bitmaps_and_counters(), and e2fsck -fn reports
->   "Block bitmap differences: +2113" (4 KiB) and "+32769" (1 KiB) after
->   recovery. ext4_fc_replay() now finishes the replay in the call that
->   consumes the last tag.
-> - The reproducer now runs e2fsck -fn after recovery.
+> The syzbot reproducers no longer mount on current kernels (bigalloc with
+> s_first_data_block != 0 is now rejected), so I used this reproducer instead:
 > 
-> Tested on torvalds master 65e4fd942f72a9dba0e4e257290c4fa1aa756854,
-> under User-Mode Linux only, with one journal size per block size, and
-> only with INODE fast commit tags (no create, link or range tags).
+>   truncate -s 4M img
+>   mkfs.ext4 -q -F -b 1024 -O ^extents,^huge_file,^has_journal,^metadata_csum,^64bit,^flex_bg img
+>   losetup /dev/loop0 img
+>   mount -o errors=continue /dev/loop0 /mnt
+>   touch /mnt/f
+>   ./shrink /mnt/f /dev/loop0
 > 
->  fs/ext4/fast_commit.c | 9 +++++----
->  fs/jbd2/recovery.c    | 2 +-
->  2 files changed, 6 insertions(+), 5 deletions(-)
+> shrink.c writes 64 KiB, shrinks the loop device to 32 KiB with
+> LOOP_SET_STATUS64 (lo_sizelimit), then rewrites and calls fsync().  The
+> indirect block now lies beyond the end of the device, so sb_getblk() fails
+> and ext4_alloc_branch() returns -ENOMEM.
 > 
-> diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
-> index 0cac890cf370..5d9b95817ac6 100644
-> --- a/fs/ext4/fast_commit.c
-> +++ b/fs/ext4/fast_commit.c
-> @@ -2608,11 +2608,8 @@ static int ext4_fc_replay(journal_t *journal,
-> struct buffer_head *bh,
->  		ext4_fc_get_tl(&tl, cur);
->  		val = cur + EXT4_FC_TAG_BASE_LEN;
+> shrink.c:
 > 
-> -		if (state->fc_replay_num_tags == 0) {
-> -			ret = JBD2_FC_REPLAY_STOP;
-> -			ext4_fc_set_bitmaps_and_counters(sb);
-> +		if (state->fc_replay_num_tags == 0)
->  			break;
-> -		}
+>   #include <fcntl.h>
+>   #include <linux/loop.h>
+>   #include <stdio.h>
+>   #include <string.h>
+>   #include <sys/ioctl.h>
+>   #include <unistd.h>
 > 
->  		ext4_debug("Replay phase, tag:%s\n", tag2str(tl.fc_tag));
->  		state->fc_replay_num_tags--;
-> @@ -2656,6 +2653,10 @@ static int ext4_fc_replay(journal_t *journal,
-> struct buffer_head *bh,
->  			break;
->  		ret = JBD2_FC_REPLAY_CONTINUE;
+>   int main(int argc, char **argv)
+>   {
+>   	static char buf[64 * 1024];
+>   	struct loop_info64 li;
+>   	int fd = open(argv[1], O_RDWR);
+>   	int lfd = open(argv[2], O_RDWR);
+> 
+>   	if (fd < 0 || lfd < 0) { perror("open"); return 1; }
+>   	memset(buf, 'a', sizeof(buf));
+>   	pwrite(fd, buf, sizeof(buf), 0);
+>   	if (ioctl(lfd, LOOP_GET_STATUS64, &li)) { perror("get"); return 1; }
+>   	li.lo_sizelimit = 32 * 1024;
+>   	if (ioctl(lfd, LOOP_SET_STATUS64, &li)) { perror("set"); return 1; }
+>   	for (int r = 0; r < 8; r++) {
+>   		pwrite(fd, buf, sizeof(buf), 0);
+>   		printf("fsync %d: %d\n", r, fsync(fd));
+>   	}
+>   	return 0;
+>   }
+> 
+> With the fix applied, fsync() in this reproducer still does not return,
+> because writeback treats -ENOMEM as transient and keeps retrying.  That
+> behaviour predates this patch and is not changed by it.
+> 
+> Two related problems in the same error paths are not addressed here and
+> can be sent separately if wanted:
+>  - ext4_splice_branch() does not undo *where->p = where->key on failure.
+>  - The blocks are freed with a quota update even for delalloc-reserved
+>    blocks, which can underflow i_blocks.
+> ---
+>  fs/ext4/indirect.c | 7 +++++++
+>  1 file changed, 7 insertions(+)
+> 
+> diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+> index a495080df710..3b4ec1c3d5ec 100644
+> --- a/fs/ext4/indirect.c
+> +++ b/fs/ext4/indirect.c
+> @@ -389,6 +389,11 @@ static int ext4_alloc_branch(handle_t *handle,
+>  	return 0;
+>  failed:
+>  	if (i == indirect_blks) {
+> +		/*
+> +		 * The data blocks may come from the inode PA, which already
+> +		 * counts them as used; drop the PA so they are not handed out twice.
+> +		 */
+> +		ext4_discard_preallocations(ar->inode);
+>  		/* Free data blocks */
+>  		ext4_free_blocks(handle, ar->inode, NULL, new_blocks[i],
+>  				 ar->len, 0);
+> @@ -493,6 +498,8 @@ static int ext4_splice_branch(handle_t *handle,
+>  		ext4_free_blocks(handle, ar->inode, where[i].bh, 0, 1,
+>  				 EXT4_FREE_BLOCKS_FORGET);
 >  	}
-> +	if (ret >= 0 && state->fc_replay_num_tags == 0) {
-> +		ext4_fc_set_bitmaps_and_counters(sb);
-> +		ret = JBD2_FC_REPLAY_STOP;
-> +	}
->  	return ret;
->  }
+> +	/* See ext4_alloc_branch(): the data blocks may belong to the inode PA. */
+> +	ext4_discard_preallocations(ar->inode);
+>  	ext4_free_blocks(handle, ar->inode, NULL, le32_to_cpu(where[num].key),
+>  			 ar->len, 0);
+>  
 > 
-> diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
-> index cac8c2cd4a92..a59de33a2a4a 100644
-> --- a/fs/jbd2/recovery.c
-> +++ b/fs/jbd2/recovery.c
-> @@ -242,7 +242,7 @@ static int fc_do_one_pass(journal_t *journal,
->  	if (!journal->j_fc_replay_callback)
->  		return 0;
+> ---
+> base-commit: c44104f3642da720164042623e4832836aefdd8e
+> change-id: 20261121-ext4-ind-discard-pa-89f4515f9a77
 > 
-> -	while (next_fc_block <= journal->j_fc_last) {
-> +	while (next_fc_block < journal->j_fc_last) {
->  		jbd2_debug(3, "Fast commit replay: next block %ld\n",
->  			  next_fc_block);
->  		err = jread(&bh, journal, next_fc_block);
-> -- 
-> 2.55.0
+> Best regards,
+> --  
+> Aykut C覺nc覺k <aykutcincik@ogr.eskisehir.edu.tr>
+> 
+> 
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
