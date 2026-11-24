@@ -1,89 +1,92 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.215.173
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.216.41
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795519033;
-	b=R3UFC5Inid9MV087uLJAYsZtAScIiigByDZLbe7wUDze5QCX1zzxQ8Ekyk2jXPHDaeZF
-	 P8GkpiEFmls6So9HqG7g8ZjPjxcP5r16a8YshnsSsuxrq1DydY/PRRamypwIOnmR4GWMy
-	 YT+dxZjWxBzRzSlGzEQpXMXCMMdQ1eYNVdpCzrFZYoyTFJFYwWW1Oqr28LbknhaxzbwMR
-	 3fo5PFTq5eMf9t0FlOmODRQlct40S3Ys+eZdDUPRf2yYu09s60RUCIqenC4/1UqzmnLmz
-	 Cn2PAkqOFkgFKiCk/0RiIT6WvBFlmV9tDDKwXmspNU2wM+sGBF6dC+U1ix4uxVmKlog==
+	t=1795519035;
+	b=IfBFvopggHfy5OHIN7ynb/QVcQtaU/sYZLtulUP/og8auNdlhKeDY6nLf2V7LgCDUUIT
+	 G+p1B82gqfndSXP7b5xaKR+QjcR+jDvvYN2jKk7bYPoWtOatGsUu5xL2CGA8KMb3XaE3p
+	 syROQbEW8bxF558Vi+3IdfeLm+UIIQn7RZW2LT+ZSVzs8enlhj+m+tuL35BaNqwrKpWXy
+	 x+uIbj5A76riUXch9qWlIhMCM4OiB5YH5AjEr5/yJlakhYjhRJrZxQ7fE4LHPQSh8hxkC
+	 qyllpqctQn+/uCbqsH4iQIz6/h8mW4oMqLY+3FSjP9Gj1ycGop9DUv82JfRcDu7W09Q==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795519033;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795519035;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
 	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:From:
 	 X-Google-Original-From:To:Cc:Subject:Date:Message-ID:X-Mailer:
-	 MIME-Version:Content-Transfer-Encoding;
-	bh=KO6dxUkUXU98c4tED+8CA7XbSFtv+fywcNSILwQLmRE=;
-	b=VeqWD/CJejcObXBnM3k7Le+xzcyAjon84LHFv87CmqHsmq01nf5NPYERcd/AE1eANRRC
-	 1372xA0/W1XC7wDcNiXB0wbOsfRwuJt3x88RARIpAt5xmh4NPFTfCOAyGfemnNawpc1oz
-	 3nFrcC7t1K9i0Aheu1FCFdk+415QYaKHGL0Khm5uPDRQm6D2UNK+5Gdy91imoy0t6D3Au
-	 +xxUPgEpXadzTbN7PlsEwkQTHFNO05zDyBfrwCWsFawrx8tptdLKJPioNrBzbyvxE8FZL
-	 eS3Fodnbf9rMBUlZPIUQgP85OObAmKly7phmoEtwPCxd6yVCvdASOTC6JiU/RkyNSnA==
+	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
+	bh=XFLGMtBc1JZg09Phla9Biwk3NG8/cDhQq/hZlHLhTsM=;
+	b=yK1FmFdj46/PgJIplTarifAp8vukMW/g7j2zU6BWrAfDxjXucRd8dx2wAb8b2dQobNzW
+	 9rYofOlw8Vsx17HwNkqsPURVmxELSvUipMRie7Vb0abdXuVJNg4y3TBQb7ZuJv8wGtL1O
+	 iVXC+3NWneVdUzaBiUFRWnOPTZucZXW0mSukoUA98BgGM5qP8XbgXdTiFWXlyueVvbj1m
+	 MKMnMQ2Ab8GEQRIrCOtNDPOjC6iDy0Hq2ySK15jka6/DYs+MB+TAaWKeX+1MV2T4zqGUw
+	 bL3PzEJ6Q5Aux+66TXZiOI3JTrh+ZJZVQ39GNn+0+Q9+Q+tVNV8R6f1f7Cv2Dt1icgA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=gmail.com;
 	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=fDL3tPMW;
-	arc=none smtp.remote-ip=209.85.215.173
-Received: from mail-pg1-f173.google.com (mail-pg1-f173.google.com [209.85.215.173])
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=CCiLICF1;
+	arc=none smtp.remote-ip=209.85.216.41
+Received: from mail-pj1-f41.google.com (mail-pj1-f41.google.com [209.85.216.41])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E4CE5606A31E
-	for <linux-ext4@vger.kernel.org>; Tue, 24 Nov 2026 11:17:12 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org E4CE5606A31E
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B6ACB606A31E
+	for <linux-ext4@vger.kernel.org>; Tue, 24 Nov 2026 11:17:14 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org B6ACB606A31E
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=fDL3tPMW
-Received: by mail-pg1-f173.google.com with SMTP id 41be03b00d2f7-cdb2e0062bbso1703648a12.1
-        for <linux-ext4@vger.kernel.org>; Tue, 24 Nov 2026 03:17:12 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=CCiLICF1
+Received: by mail-pj1-f41.google.com with SMTP id 98e67ed59e1d1-3ae7626d14aso2102833a91.2
+        for <linux-ext4@vger.kernel.org>; Tue, 24 Nov 2026 03:17:14 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1795519032; x=1796123832; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=KO6dxUkUXU98c4tED+8CA7XbSFtv+fywcNSILwQLmRE=;
-        b=fDL3tPMWNdKUcFDChCEmhaWh4YN4v+A35ZYvklJlr2+Vh1FtOpNcu6OqJyFH4qfMqD
-         OegljK8p/wVmoM+TSKgQTX/d9fSBWQKX0X1Mj/tVod9Fh9eqZabIRlYx6TZP9tH/dBsO
-         KJWG2NyWBccXuu36HfmBi+3uJ5JUnbwbtSU97xaVWibeWBNnwFXOxv/kux/BE6AmqoCH
-         KW4zUQhUylI2+E96dWe3ng5JTtSg6P//Xz7yrblmgKt4b8+ff3wUegZGKjAiv1mokFqS
-         GRZUwJoWw+ZR2pQRK29LVrlI4DLcp2DYIbYHjPHCcNg5Ol82Mc2uw9r2uEB1z161MXGk
-         mRvg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1795519032; x=1796123832;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+        d=gmail.com; s=20260707; t=1795519034; x=1796123834; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=KO6dxUkUXU98c4tED+8CA7XbSFtv+fywcNSILwQLmRE=;
-        b=MetNXpiPAk6h8A+h6CAptF2Vr1MZKeLWx0dDl/hw9wmZ5wnrhBdL1q6AzAaTY2FaxS
-         LB79ffp9hYPvilvzXdIqz3ZQKDyrcyDxk6q0Ug6Lmxg5m8JX4U+ehl8n4TfT1AAM5S+m
-         yZWUiq1i+8C/GJx7iWryFE/OAOvjbz18ewAF5teoV1JOWQ1HLXzdCauUXO9Wbcc1uoIP
-         GUrj6Wt1adPJtBXYDUyo2/8B79cwgASvCgoDbnVGwL9Wik3igoau5zsHKWJI37eTJfDK
-         /2IzzAptuo8M2BIbRZC1IA1dEllA4nxYrezRO76msaGi/rNn+mAwDyto9mYy2f2OApMm
-         C+UQ==
-X-Gm-Message-State: APuU4Z/gWhcNZ7TM45mZDUQ68hd3+NVYyyK57gOAJzN8e7a35k/Cy/cE
-	wDcvROH/b/Ff6R3/mbxOP+VEaTobQQlJ4hrj4jwOUuwyl/87fTfJvQ+KM1aeTw==
-X-Gm-Gg: AZFdTZcXk4qf0YqqW0ufmzQvqbkgL8XrKXEcv9HsR8WRqdE8tl8o2DPadYU1NzrGXl7
-	uymX1ZjJjmqFYJynq3EoltCXCRNFeXo/3fy9jU2R9WRBgRZD2T4Tk0vnc7g5cD8dKJmtGTBVsua
-	+E2q511P2z6CTHc32v4Xaot4kkgncBTzpqLwhTqgzH9UA3J1UWnKvej5O/rJYIUPoDeB2RfWkhP
-	UNuPpcJVuPdvPUBhkdx9oth3bW5UXtQdBLrW9MfjcuwWCa9yiXA8IEyYXoCl1O/91bjVU/tf3Tx
-	ZHcOvQznrGyhab4Z0CiPTPuzye4jDn4qBlM7aBY4Vb4tfMsgjpXqkmHaHeKKOeshkgpI4G1smsp
-	E1NMCQtk0cqmedVlFBLYmXDI/xMAS9eO6EWA+HI+MqABrPQjRXcsg9t/05kmLFeLJkr2AH3CUDF
-	2UJMBSMmEXWhL2KHB/+3FgTcSS/WjvCveRZGXZYUDSow/5y7CIJP3vYVk46nkX10zL8++ruk3qt
-	H8iE7hpR4zBs02S2csEMUneyqVCnfgYphO/3FV8V6sjmHCwyVqWxUNhNjDRb2G3HtwRKtwa2U8h
-	H6yS2uhcOr0n2F6QlTfDayFrh+NOgaRBlJJge4FT2p3JCGcDvAgGsdkbCXQVjWAidtEc1Dk=
-X-Received: by 2002:a17:90b:4a48:b0:3b3:cde6:d8d3 with SMTP id 98e67ed59e1d1-3b41c961793mr11242289a91.38.1795519032109;
-        Tue, 24 Nov 2026 03:17:12 -0800 (PST)
+        bh=XFLGMtBc1JZg09Phla9Biwk3NG8/cDhQq/hZlHLhTsM=;
+        b=CCiLICF1ayGBvu6pVFCgEoiCE7xlEq2HWPfuNxnzxzimTYnU8Hmki20gEH/0cHXMZk
+         XICGaZBQjw+4aIHI/OpZC7cKsBoJYNAjM5lLd52Zwpy7tP5MQXFV0r/zpTnVU1FRammZ
+         QNTpzJYgPfN0X/TxSSLb+tWVPCPkcwdAJvf3PcZsqYoJiwkFyeUtEf2h5KEiEO3zLK1F
+         SwgfJeKNaStJFf+HJheNzKzlpnSooca/J2iUurc4JEQCmoVoDXjF9FmlZSEjO8409JPC
+         7MThc/ye8h2rDzYgiUGg8r4CnnN01iGvNbHA7b/KjkK9fiVa7uoJapI8gmVWKRCHTuRg
+         rc5g==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1795519034; x=1796123834;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
+         :to:cc:subject:date:message-id:reply-to:content-type;
+        bh=XFLGMtBc1JZg09Phla9Biwk3NG8/cDhQq/hZlHLhTsM=;
+        b=UzA8R7V9EXSwG0xOHwj9Yfu0E6rHA+74mNugjbMdgdH6rIqtqhTpfQW46t63jErAg0
+         D3GmlX/NjMZ/JA3iNA0V85+EQgX+pmAvLzm3VgwfXvKMqgJ6s1kPfHyJkEfAgxMdRA46
+         FFBDfLhptqyl70JxNdaqsEyNZF6SOcaQvzMlq/I6zSQ8/Qf2R3m/GCyafS1MJLnIfsa+
+         VL9NmFMAiaV99AMHO/dLSCX8SUW9wrHJO2zXxpkvDm7xQpahgbDM/nTW5CV0WO4EKGTg
+         KEc7a4bIwLprn41qE3ngjun16S+jnDKrME7sdTrlJhkkVak7jgQtUbeA4CvgcnsKT0ZR
+         9L2A==
+X-Gm-Message-State: APuU4Z+jFd0WbNZjKiMTrv592xzVmlrl85M89hsLCERD/75JmT3yI+R3
+	RG50XQaZKWa/SunmGsIfoXGHHKs19GOKnpxFKmvEWEJqshtuASAEYrgv3fYzCg==
+X-Gm-Gg: AZFdTZfIkXlqGSeCsfEa4o4J8a3cCir5BdCtLXwsMx+rs0wMSvk0y7JdiNUi4DZ+I9h
+	McCsFW3/0PJ0fuS40yp+RxNghSESaZC7bS87K4qPBleqQ+dh5TkdhrHgH8BjqARmm/pBdCh8skf
+	h8rXzH6FQY9nsNswnQ3kP4I4XmCbieNvSJM0R4Q2Ez3cNeGJkt2KdxBRUyA14CcsDue1LOO/Fao
+	Ln5cHK98S5B34AnUTp2j2pIhZS31UjcogKC0hgBkRxjbzBJU6Peamn7UQ96n98QiXWQL0R/2JXH
+	KdHd66DNCN4jfQ+BqetEN1gVD7kgeYIIRBJKLXNtfEuAoF3rpWutYNclij8a+csaWu7UcxLiDdT
+	PVTXcqDARR1A5OBHGm4VyBezSvgom6q0nlMLjrLwLW9AosqBqz0hV6ohIeruINP4pWAyHowFlBD
+	J8x/7zq6Exn1d0u+qp3HwKrZGF46MQs0mxk2oQvSBx/riZxxRHa5HflXWi5ipgfTlwwoP5y6fzC
+	BPc23L8dJSOPOdAp+W0tC21NpgqOn6rMMgJsJr/wuY6d0DiyVdjP7K2QklHNT/F4lhY9oMbUudr
+	TTT7JLs7nNgzDRG7hz9OH3bIUylKrzftfs74t1oQah/JEW1O80vCDtm7+RDc2Hqkz/rePzw=
+X-Received: by 2002:a17:90a:e7d0:b0:3ab:e588:c275 with SMTP id 98e67ed59e1d1-3b41c8d4881mr11754467a91.20.1795519033865;
+        Tue, 24 Nov 2026 03:17:13 -0800 (PST)
 Received: from FLYINGPENG-MC2.tencent.com ([43.132.141.25])
-        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-3b44b8c2fcesm7801756a91.4.2026.11.24.03.17.10
+        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-3b44b8c2fcesm7801756a91.4.2026.11.24.03.17.12
         (version=TLS1_3 cipher=TLS_CHACHA20_POLY1305_SHA256 bits=256/256);
-        Tue, 24 Nov 2026 03:17:11 -0800 (PST)
+        Tue, 24 Nov 2026 03:17:13 -0800 (PST)
 From: Peng Hao <flyingpenghao@gmail.com>
 X-Google-Original-From: Peng Hao <flyingpeng@tencent.com>
 To: jack@suse.com
 Cc: linux-ext4@vger.kernel.org
-Subject: [PATCH 1/2] ext2: Reject a superblock with an invalid s_first_ino
-Date: Tue, 24 Nov 2026 19:17:07 +0800
-Message-ID: <20261124111708.24204-1-flyingpeng@tencent.com>
+Subject: [PATCH 2/2] ext2: Set the superblock UUID
+Date: Tue, 24 Nov 2026 19:17:08 +0800
+Message-ID: <20261124111708.24204-2-flyingpeng@tencent.com>
 X-Mailer: git-send-email 2.47.0
+In-Reply-To: <20261124111708.24204-1-flyingpeng@tencent.com>
+References: <20261124111708.24204-1-flyingpeng@tencent.com>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -95,51 +98,43 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-ext2_fill_super() takes s_first_ino from a revision 1 superblock without
-checking it.  ext2_get_inode() and ext2_nfs_get_inode() only reject
-inode numbers below EXT2_FIRST_INO(sb), so with s_first_ino == 0 an
-inode number of 0 gets through, and (ino - 1) wraps around when the
-block group is computed.  On such an image, opening a file handle with
-inode number 0 (open_by_handle_at(), or an NFS client if the filesystem
-is exported) triggers:
+ext2_fill_super() never sets sb->s_uuid, so everything that uses the
+filesystem UUID through the VFS sees a null UUID on ext2:
 
-  block_group >= groups_count - block_group = -1, groups_count = 2
-  WARNING: balloc.c:51 at ext2_get_group_desc+0x5b/0x90 [ext2]
-   ext2_get_inode+0x9c/0x160 [ext2]
-   ext2_iget+0x63/0x4b0 [ext2]
+ - IMA/EVM policy rules with fsuuid= never match;
+ - EVM HMACs that include the UUID (EVM_ATTR_FSUUID) don't bind to the
+   filesystem;
+ - FS_IOC_GETFSUUID fails with -ENOTTY;
+ - overlayfs can't tell lower layers on different ext2 filesystems apart
+   and falls back to xino=off,index=off,nfs_export=off.
 
-Depending on s_inodes_per_group, the truncated group number may also
-land inside the filesystem, so that some other inode is read in place of
-inode 0.  Values from 1 to 10 make the reserved inodes reachable through
-file handles.
+This was found with the BPF selftest test_ima, which creates an ext2
+image, adds a "measure func=BPRM_CHECK fsuuid=<uuid>" rule and expects
+a binary executed from that image to be measured.  It only passes when
+ext2 images are mounted by ext4 (CONFIG_EXT4_USE_FOR_EXT2), which sets
+the UUID.  With CONFIG_EXT2_FS=y nothing is measured:
 
-ext4 rejects s_first_ino < EXT4_GOOD_OLD_FIRST_INO at mount time since
-commit c37e9e013469 ("ext4: add more inode number paranoia checks").  Do
-the same for ext2.  As s_first_ino is an int, this also rejects values
-of 0x80000000 and above, which turn negative and make every inode except
-the root inode look reserved.
+  test_test_ima:FAIL:num_samples_or_err unexpected num_samples_or_err: actual 0 != expected 1
+
+Set the UUID from the on-disk superblock the same way ext4 does.
 
 Signed-off-by: Peng Hao <flyingpeng@tencent.com>
 ---
- fs/ext2/super.c | 5 +++++
- 1 file changed, 5 insertions(+)
+ fs/ext2/super.c | 1 +
+ 1 file changed, 1 insertion(+)
 
 diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-index a40f530872a4..8a4412231394 100644
+index 8a4412231394..b4df4123313d 100644
 --- a/fs/ext2/super.c
 +++ b/fs/ext2/super.c
-@@ -1014,6 +1014,11 @@ static int ext2_fill_super(struct super_block *sb, struct fs_context *fc)
- 	} else {
- 		sbi->s_inode_size = le16_to_cpu(es->s_inode_size);
- 		sbi->s_first_ino = le32_to_cpu(es->s_first_ino);
-+		if (sbi->s_first_ino < EXT2_GOOD_OLD_FIRST_INO) {
-+			ext2_msg(sb, KERN_ERR, "error: invalid first ino: %u",
-+				 le32_to_cpu(es->s_first_ino));
-+			goto failed_mount;
-+		}
- 		if ((sbi->s_inode_size < EXT2_GOOD_OLD_INODE_SIZE) ||
- 		    !is_power_of_2(sbi->s_inode_size) ||
- 		    (sbi->s_inode_size > blocksize)) {
+@@ -1007,6 +1007,7 @@ static int ext2_fill_super(struct super_block *sb, struct fs_context *fc)
+ 	sb->s_max_links = EXT2_LINK_MAX;
+ 	sb->s_time_min = S32_MIN;
+ 	sb->s_time_max = S32_MAX;
++	super_set_uuid(sb, es->s_uuid, sizeof(es->s_uuid));
+ 
+ 	if (le32_to_cpu(es->s_rev_level) == EXT2_GOOD_OLD_REV) {
+ 		sbi->s_inode_size = EXT2_GOOD_OLD_INODE_SIZE;
 -- 
 2.43.7
 
