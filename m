@@ -1,59 +1,63 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=18.9.28.11
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795531860;
-	b=sgKxkew8Hv0hhUXZmUbu8KQ0rxdJkR2x17LXFsD9+BglDpU6OZ+oUbAgFL/pmOt4rfV/
-	 w/HG9SBBheB8Cg8enBPuMQ1KQvFF7Qi1xXNvQ5vPHJnQg/eSx6waWL1UrqkQAB75wDP0w
-	 F1iU9DUy2UsLIvttAgYagq4SeEYIIf+yU6K5hLC4lMOe0grfNsIaDPJI4DiYMXo/JZeZQ
-	 2rAyARDsDhx50+Z1y7yURjgUn1AV2aTIKQXmnyFfYsuhxsHwAXl2u4KFvY/aUE7OsKpXa
-	 5SbLsT8/9dPmi5ndOUS8Zymbo/L0N8ywtl3HXnnX/9DeJJGYWGqq80AycYP6gPkHgIQ==
+	t=1795532195;
+	b=Sklq8Vz4Kq1hKsTj9H4AlzZGO+X59etS5EWCPqg/Rbcxt+Uah+rS6WJxqNa49szCoXXH
+	 SOAB/98iSg48wih/D0NxrtHJhdDE2PuGlpnseO+Iy/pG5qcra4dHJRC1QqS/UJD0MOHfE
+	 3XtTHX2+8xihIBS9eUIz6tb23JqGskaEABDWCmqd5EmY896Q5kZ04BNyELE+mLuGJ3spC
+	 7zShu08UgVXS3QNAyDfVhPzLu8fINefZGvmzswvjR7Uh0hOmHWzEozVA/7cqokxkDdRbF
+	 3UtQvDU9BnOuTB+TaCBASBCnOIpuo6PhAVz24xCjveWv2PK0V0h6iuvpHIhqEDJTtxA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795531860;
-	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
-	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
-	bh=q1mVTpKtsYq34wJU58aoHOKVTZCenVaAYtou9aH3SZ8=;
-	b=3ZUc9MnOFWq+eE1mnX/GmQvuoQokFL7MiWV0gzF2y8ojLce0uz1G0hWTLjnMwmZfv8ym
-	 NOAxZHXzqQI7Bt5D2DG/SOCU0S20EXeSJJ9RZKnYfjG9QTDjO+yK7jtdtlbqNqAUD3vP/
-	 4sXiKrvBLFOqXjOz80cWyouI+pAFjpa1w8fRkRMO9Izx1vntDXdlbTF7MRrwZQRY2UAup
-	 msJrCQI2NZf7XiqA+MR9NAVlp299lIDnHLZe9IufSuiVTdYQznY+KPFHs2TKZKNAk2X6I
-	 uy5ypudvhfcbRq511OXSulqCEQPW96IN+OVZRUVko0F1cvig71ItqCYO3+a31mS0z6Q==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795532195;
+	h=DMARC-Filter:Received:DKIM-Signature:Received:Date:From:To:Cc:
+	 Subject:Message-ID:References:MIME-Version:Content-Type:
+	 Content-Disposition:In-Reply-To;
+	bh=/AUkC4hONDgD6ntHPObWNT7fhuOS0myZax3gE4i18kI=;
+	b=G180NLOsvUpu6Z4R9KTR09j7qrTnhbGhrkomxhgGbU7LWTD068NYq2m6RxDpcPCE9+V7
+	 RSzlMZG/WrzzTFqufkt9AuexTHR23xCoxT6dUdxrymWu7FcKvXGmsJkP1De8pH4ZCsEG6
+	 q2FDEr3HTf8qMAs+6kDkVEAN2B0sVPwwTNsYSp4n4+L44h+hXdfZg9EJksh2ctJvM9Ahv
+	 pQ/bzpSo5eilrjTdva1tCUmr43VigURqfgmfgJn0LLHMlfAwJT5NmlY71SIULUazCOkT0
+	 y7NWaEOs+XhjhAv3KWLMKD8bmwXXSjCjYhPU7apw3ZRRlBQhU8GyO+Ofq1CC4pqLRzQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=m40usXzM;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=pass header.from=mit.edu;
+	spf=pass smtp.mailfrom=mit.edu;
+	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=f5NvEFVA;
+	arc=none smtp.remote-ip=18.9.28.11
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9D60D606A31E;
-	Tue, 24 Nov 2026 14:51:00 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F3052606A31E
+	for <linux-ext4@vger.kernel.org>; Tue, 24 Nov 2026 14:56:34 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org F3052606A31E
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=m40usXzM
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 33C061F000C0;
-	Tue, 24 Nov 2026 14:50:59 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795531860;
-	bh=q1mVTpKtsYq34wJU58aoHOKVTZCenVaAYtou9aH3SZ8=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=m40usXzMEQLIEN51v7Np61Zy7OP+IfMF9cP+UnqoagvBeUhHfmK0v++EIFMtC+hfT
-	 2MXY0OFhNtJMGSwZN8iTq7K0CZq0fupDtlIuiX9+j1rzcDBbNU4v9e9x1QnWBW/zFS
-	 M1vZw4Sm/IzXgtEQpoTw6ICHD+FXWvR7sFk4FN7k6NCbMGw+Wa5lxeoSl1MKVOJ7ct
-	 SEO8TAp92PDtz5ohLMRg90TSYcvZgUsvf3FRzy79RhmoZB0qekhHShQ3zjJRycIaD6
-	 cm41x0dcASDXHl1BGVjueNVkYNJ85wkrpkW9YcuHkOgnTMHwyWIclwkXFxx2tQFYBk
-	 29+28aVGjcWWQ==
-From: Sasha Levin <sashal@kernel.org>
-To: "stable@vger.kernel.org" <stable@vger.kernel.org>
-Cc: Sasha Levin <sashal@kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Jan Kara <jack@suse.cz>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Edward Adam Davis <eadavis@qq.com>,
-	"cve@kernel.org" <cve@kernel.org>,
-	=?UTF-8?q?Fusong=20Li=20=E6=9D=8E=E7=A6=8F=E6=9D=BE?= <fusongli@ieiworld.com.cn>
-Subject: Re: 6.1.y: missing "ext4: avoid infinite loops caused by residual data" (CVE-2026-31448)
-Date: Tue, 24 Nov 2026 09:50:53 -0500
-Message-ID: <2026-11-24-1-daily-reply-0002@kernel.org>
-X-Mailer: git-send-email 2.53.0
-In-Reply-To: <JH0PR04MB74644C65BBF68069425C8B8392442@JH0PR04MB7464.apcprd04.prod.outlook.com>
-References: <JH0PR04MB74644C65BBF68069425C8B8392442@JH0PR04MB7464.apcprd04.prod.outlook.com>
+	dkim=pass (2048-bit key, unprotected) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=f5NvEFVA
+Received: from macsyma.thunk.org (pool-173-48-102-184.bstnma.fios.verizon.net [173.48.102.184])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AOEtUao020827
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Tue, 24 Nov 2026 09:55:31 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1795532133; bh=/AUkC4hONDgD6ntHPObWNT7fhuOS0myZax3gE4i18kI=;
+	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
+	b=f5NvEFVAjHeAdRryr5U7XKmkGkpVYoTT/WlXHM0Fy46Z93JRUSYXcOFCwnsA61J/O
+	 9LTrcIdsLdNGKroP4VpNk51XHjHqFZ/4HRUhJaFf/DP+25ryNvi7APAl2G2rTVGCkF
+	 i9vXoJtp4CPdJeUEjFrhqT14XBXtZK1Oa0ntEqK697pe71AAbRzxBlZZnT1bEAKq4t
+	 XCdfKDBRo2rOxiAemWhs1Iap021SQdPqzFYqlotsYxtMejzQxGPyyU4RuqkqYD9BLK
+	 2rE4ae2JZS4DruNP574zt0dzQpew39/GA+j5H8bO1yubn5Mhs7IRTBVczPAJLb7nsy
+	 uBATV51CE6e3w==
+Received: by macsyma.thunk.org (Postfix, from userid 15806)
+	id 29EE4291FE50; Tue, 24 Nov 2026 09:55:30 -0500 (EST)
+Date: Tue, 24 Nov 2026 09:55:30 -0500
+From: "Theodore Tso" <tytso@mit.edu>
+To: Zhao Gongyi <zhaogongyi@bytedance.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, jack@suse.cz,
+        ojaswin@linux.ibm.com, ritesh.list@gmail.com, yi.zhang@huawei.com
+Subject: Re: [PATCH v4 0/2] ext4: reject impossible group free cluster counts
+Message-ID: <awWhtXvIgTk1QzuY@mit.edu>
+References: <20261124033900.76700-1-zhaogongyi@bytedance.com>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -63,24 +67,38 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20261124033900.76700-1-zhaogongyi@bytedance.com>
 
-> - c66545e83a80 added it to 6.1.y, and 9594622f8a39 reverted it in the
->   same release (6.1.168), together with the "get rid of ppath" series
->   that it was written against.
+On Tue, Nov 24, 2026 at 11:38:58AM -0500, Zhao Gongyi wrote:
+> ext4 initializes its free-space counters from the group descriptors. A
+> corrupt descriptor can advertise more free clusters than its group can
+> hold. Journal block replay can also replace the superblock and group
+> descriptors that were examined when mounting.
+> 
+> This series adds an optional JBD2 recovery callback and uses it in ext4
+> to validate the recovered geometry and group descriptors. It checks the
+> metadata before fast commit replay and checks the descriptors again
+> after fast commit replay. Both halves of the group free-cluster count
+> are read under the group lock.
 
-Right. It went out with the revert of the ppath series, not because of a
-problem with the fix itself.
+Note: in the future, could you send your patches so that each of the
+patches are sent as a reply to the cover letter, so becomes easy to
+find all of the patches associated with the patch series?  This makes
+life much easier for patch reviews, and it also allows me to use the
+"b4" command to gether up and apply all of the patches once the patch
+review is complete.
 
-> Could this be backported to 6.1.y? A patch adapted to the 6.1 API can
-> follow if that helps.
+The way I do that is to put in my ~/.gitconfig:
 
-Queued for 6.1, and for 5.15 and 5.10, using Bin Lan's backport [1],
-which makes exactly that condition change on the old API. No need to
-send yours, thanks.
+[sendemail]
+	chainreplyto = no
+	thread = yes
 
-[1] https://lore.kernel.org/all/20260506073835.32481-1-lanbincn@139.com/
+See the discussion of the --thread and --[no-]chain-reply-to options
+in the man pages for git-send-mail and git-format-patch for more details.
 
--- 
-Thanks,
-Sasha
+Many thanks!
+
+       	   	     		       - Ted
