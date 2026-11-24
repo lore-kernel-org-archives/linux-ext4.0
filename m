@@ -1,61 +1,106 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=18.9.28.11
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.131
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795538191;
-	b=QXwQtujv0kSx6T3xRG8JXQ7DcoW98H7ik2mcmfX/iFViQuKQCNzipAD4YdUhpgvx5tEC
-	 97880fVJe4HsMXF2WpGjQAVXDX3rwZS8XjNFrUSnu0rsP2XxKtOM67V1EpwuKY9UM5hv8
-	 keGt4mPJX8Ab1DTmfgg4CYVMvDUzXSptgXpTxHBTcTJx+ofPUn/Pp8fakvRxKRGfJEIxS
-	 cKdhYj6ZgJGDfyHWccO0ZUwM0hah6pGQV1fwVc/qoZmPpb54aoPfF7ugUc1v0Wmrmy61e
-	 23FngXuY1+aNpPeEUm2S+6vwDgsYCqPwzFrjWxNqaP3X2R1WuI3iYJHtSW8hafCU4XQ==
+	t=1795540465;
+	b=J6Qi6Ge9k8Whzc3TpFN2iPgvZClya3ExZTkpUOsytBSviCODjx+0qZDlrfo4l065t1rL
+	 C0xJz6+Js345klS9dprk5Ijy02WgMmsy2qKX4cNjFKEyMMor5bhCxGMfKNp00LINHJSLQ
+	 kr33r9YceLx8zvJRx8t8r/eI89o63IgiH9Bf/TQwgc+Md9ismFOkgXQpHsjuDZ/Cj+X5R
+	 BPrjfypxiRa1vFaHownngBFwEfXVyhVin3Lu5baVo9w8EtrXS1WRomVl7QPG5PFg20rq/
+	 caYpXwreNH9K4kCZw4Y+5c9RPN9k6x5kznCYUSabBmmHc5AMaxLkUZL5DrdaM/ZglIw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795538191;
-	h=DMARC-Filter:Received:DKIM-Signature:Received:Date:From:To:Cc:
-	 Subject:Message-ID:MIME-Version:Content-Type:Content-Disposition:
-	 Content-Transfer-Encoding;
-	bh=KlyAUr28QoFApeyGH9rQOKo8k916UOOHLfP4qwo+4VE=;
-	b=HLb1ZC4tRkEuUBRNmShgLoMeTtu/R4Xh7Nezu8FToNp682fGw3gd8YxTHfz1UXpXhZom
-	 6pJW+dUOG8RcAc9Bv44IKckf+8+4JjuwrmMGHgZNniTeOiuLPdtwcYvVOBLpGMfyuYouz
-	 3PSCAGqCjMIAfjwzwP79702n3fwsOyAxZz0wqSGNACPr+YVHRi0zFJlUkWh0LXtaV5EsR
-	 f9B/9yla4gKEFQScHUgAUrZku4EbgUp2sZbcMobrOVmqh1EQVxQKR15tJS6PB55fl3Wg4
-	 XoMZ+OgfO0L/mtPJS1W+PjEgv3rtmGS1Mpv57IQcEV8V1A5t+DWquJdsNHW/EpuhYWg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795540465;
+	h=DMARC-Filter:Received:DKIM-Signature:DKIM-Signature:DKIM-Signature:
+	 DKIM-Signature:Received:Received:Received:Date:From:To:Cc:Subject:
+	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
+	 In-Reply-To:X-Spam-Flag:X-Spam-Level:X-Spamd-Result:X-Spam-Score;
+	bh=rzqCQtpqrLDDyu7ncN7OAfBve3N8Z/NJ+nLdXHaRrnk=;
+	b=ccdLBm1cCzMVde72Zyv2YJeSCzn7Zg+BSH6xzEeIVMmFZJMYUFdAlIwM/h+XRDprrv+s
+	 SHw8m9ir1+FDifMbW4wKd14biTyOTyT2yROoEjSEkVMiKPcg87FrRP3pnosyxCmOOhBqI
+	 s13a5nbONIdGv8P4NoglCoRzjePZge5WgL9xdV+z3xJos90Bgl8Py9+elGoZwWESfOS36
+	 fdu2DIHcT7QwZ+ZVf3Ca8UUqhvz3oR+g0LmgIrs3CkPXEsg89bdWOcFmlXEi4sB5rqxgG
+	 OrAmTXlOWRtM33H1rmozqR80SPlflEof+0+FU6O3mU0+GLT05eD0uuE34oC6qwrnh5A==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=mit.edu;
-	spf=pass smtp.mailfrom=mit.edu;
-	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=Ps3n+xHx;
-	arc=none smtp.remote-ip=18.9.28.11
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
+	dmarc=none header.from=suse.cz;
+	spf=pass smtp.mailfrom=suse.cz;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=FHUxAU7k;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b="Vwjmi/U6";
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=lBdrN5Hz;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=8Pi88vuV;
+	arc=none smtp.remote-ip=195.135.223.131
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8089B606A323
-	for <linux-ext4@vger.kernel.org>; Tue, 24 Nov 2026 16:36:30 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 8089B606A323
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 772C2606A321
+	for <linux-ext4@vger.kernel.org>; Tue, 24 Nov 2026 17:14:24 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 772C2606A321
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=Ps3n+xHx
-Received: from trampoline.thunk.org (pool-173-48-102-184.bstnma.fios.verizon.net [173.48.102.184])
-	(authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6AOGaPYs025972
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Tue, 24 Nov 2026 11:36:26 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1795538187; bh=KlyAUr28QoFApeyGH9rQOKo8k916UOOHLfP4qwo+4VE=;
-	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-	b=Ps3n+xHxPXmD7FDggnrJg3jbtQIteuRzE0+L6PaNcdhXJ/TPmmVm/jLEOBRY222bR
-	 sVsDXyqaX3UpKDnlvzHeztPTzHw1A81e1/jc0nHiZ0NFtO6JTkF5lkdKlKEUOQt+0J
-	 1CfUC2J9PsIXPdAN/SPT9/tEPs+eUTx7/KKNMselA0BS0mdjj2LVVsxZwJ0ab95pue
-	 +wdIJxYxOELBPfA4MFWBqRswq4TeqaIQfS5J3NU9lHEXdiffamZ5pyN0r5ASbBFpIu
-	 wxoOnsEnVlUoE2OYzUkL/TDGikjONXzmSanR9fvNC3vUn59AMhewOFCLCOhnCQatjN
-	 eRfgzTQtQ7KrA==
-Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id 485722E00BB; Tue, 24 Nov 2026 11:36:25 -0500 (EST)
-Date: Tue, 24 Nov 2026 11:36:25 -0500
-From: "Theodore Ts'o" <tytso@mit.edu>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>
-Subject: [GIT PULL] updates for 7.4-rc5
-Message-ID: <awW86EI5fYafQx-o@mit.edu>
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=FHUxAU7k;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=Vwjmi/U6;
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=lBdrN5Hz;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=8Pi88vuV
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 76A861FD12;
+	Tue, 24 Nov 2026 17:14:21 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1795540462; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=rzqCQtpqrLDDyu7ncN7OAfBve3N8Z/NJ+nLdXHaRrnk=;
+	b=FHUxAU7k1Xdd23yNm6nFSC6YXdsTNyiUyo8HZgSep3iBUS/6zo8shNm5MZEuLSgDB6imON
+	SpLZuP6fLgF0VvfQ5tmlrdMnHjXIQsIpsHyEk7c91Mu0/ckUD1ynHBhxt8IfNYnfs1P+Am
+	wxjwMKXP9GSnsvoqPveaEWm88VQbiHw=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1795540462;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=rzqCQtpqrLDDyu7ncN7OAfBve3N8Z/NJ+nLdXHaRrnk=;
+	b=Vwjmi/U6OmbTY/gdKQ0HOrdEurwlnY0tf7SDa0a35O/ao3xB459JapFMpqBvn1lRQ+C746
+	nEgZpY+7c5LOGpDw==
+Authentication-Results: smtp-out2.suse.de;
+	none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1795540461; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=rzqCQtpqrLDDyu7ncN7OAfBve3N8Z/NJ+nLdXHaRrnk=;
+	b=lBdrN5HzWwj9Pj/z79JGfhZJtDwWDvNItG4uANAWkZKAuOZJs/AaoYKbDiuQnip64KjVOe
+	TFmCDaaTHCuVkQ5CEHod+msRzdFx7rJChnhqFsguNE6YAnV8CibG0FuiUXF6K5SqZPqvsb
+	q6/sKTjmI14bnydQZxOmdGv3Y1yK/kc=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1795540461;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=rzqCQtpqrLDDyu7ncN7OAfBve3N8Z/NJ+nLdXHaRrnk=;
+	b=8Pi88vuVKIxfc5ppRHBsuESrtrUOehQ9sH9PgdJEoIGGVdjOS9Cc1jPdX3hOfshuRL17SB
+	j5lFAnfzvpS7/nCw==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 30C7C1339F;
+	Tue, 24 Nov 2026 17:14:20 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id adovBOzFBWvUWQAAD6G6ig
+	(envelope-from <jack@suse.cz>); Tue, 24 Nov 2026 17:14:20 +0000
+Received: by quack.suse.cz (Postfix, from userid 1000)
+	id 9F33727A3B; Tue, 24 Nov 2026 18:14:15 +0100 (CET)
+Date: Tue, 24 Nov 2026 18:14:15 +0100
+From: Jan Kara <jack@suse.cz>
+To: "yebin (H)" <yebin10@huawei.com>
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org, tytso@mit.edu
+Subject: Re: [PATCH] ext4: protect ext4_acquire_dquot against freezing
+Message-ID: <5u223kwv7ro7drsneuho3xsa2u6xnbkctqpmnjek6542w6jc7m@ywa436txf5h6>
+References: <20261123114602.66520-1-yebin@huaweicloud.com>
+ <sashiko-outbox-229179@kernel.org>
+ <6B050ABA.1050808@huawei.com>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -65,335 +110,136 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
+In-Reply-To: <6B050ABA.1050808@huawei.com>
+X-Spam-Flag: NO
+X-Spam-Level: 
+X-Spamd-Result: default: False [-12.80 / 50.00];
+	SUSE_INTERNAL_BYPASS(-9.00)[];
+	BAYES_HAM(-3.00)[100.00%];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	ARC_NA(0.00)[];
+	MISSING_XM_UA(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	TO_DN_SOME(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	RCVD_COUNT_THREE(0.00)[3];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	FROM_EQ_ENVFROM(0.00)[];
+	RCPT_COUNT_THREE(0.00)[4];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	RCVD_TLS_LAST(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[huawei.com:email,suse.com:email,imap1.dmz-prg2.suse.org:helo]
+X-Spam-Score: -12.80
 
-The following changes since commit 7475ea8b58616b33c04afb976cf0fbaad9dd63fb:
+On Tue 24-11-26 11:55:38, yebin (H) wrote:
+> 
+> 
+> On 2026/11/23 20:02, sashiko-bot@kernel.org wrote:
+> > Thank you for your contribution! Sashiko AI review found 1 potential
+> > issue to consider:
+> > - [High] ext4: deadlock with thaw_super() in ext4_acquire_dquot() via
+> >    Q_XGETQUOTA
+> > --
+> > 
+> > commit f23e3eb68e6a88d3c8dec26c7efee607385b6388
+> > Author: Ye Bin <yebin10@huawei.com>
+> > 
+> > ext4: protect ext4_acquire_dquot against freezing
+> > 
+> > This commit wraps ext4_acquire_dquot() with sb_start_intwrite() and
+> > sb_end_intwrite() when no journal transaction is currently active to
+> > protect quota acquisition against filesystem freezing.
+> > 
+> > Link: https://patchwork.kernel.org/project/linux-fsdevel/patch/20261112135245.3347102-1-yebin@huaweicloud.com/
+> > 
+> > > diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> > > index 359f9d4ed4479..a06d5f298c849 100644
+> > > --- a/fs/ext4/super.c
+> > > +++ b/fs/ext4/super.c
+> > > @@ -7118,11 +7118,25 @@ static int ext4_acquire_dquot(struct dquot *dquot)
+> > >   {
+> > >   	int ret, err;
+> > >   	handle_t *handle;
+> > > +	bool freeze_protected = false;
+> > > +
+> > > +	/*
+> > > +	 * Trying to sb_start_intwrite() in a running transaction
+> > > +	 * can result in a deadlock. Further, running transactions
+> > > +	 * are already protected from freezing.
+> > > +	 */
+> > > +	if (!ext4_journal_current_handle()) {
+> > > +		sb_start_intwrite(dquot->dq_sb);
+> > > +		freeze_protected = true;
+> > > +	}
+> > 
+> > [Severity: High]
+> > Can calling sb_start_intwrite() here cause an ABBA deadlock between
+> > sb->s_umount and SB_FREEZE_FS when Q_XGETQUOTA or Q_XGETNEXTQUOTA runs on
+> > a frozen filesystem?
+> > 
+> > quotactl_cmd_write() returns 0 for Q_XGETQUOTA and Q_XGETNEXTQUOTA, so
+> > quotactl_block() and quotactl_fd() acquire down_read(&sb->s_umount)
+> > without waiting for the filesystem to thaw.  If the queried dquot is not
+> > yet active in memory, dquot_get_dqblk() calls dqget() ->
+> > ext4_acquire_dquot() with no running transaction and blocks in
+> > sb_start_intwrite() while holding s_umount:
+> > 
+> > CPU0                              CPU1
+> > ----                              ----
+> > down_read(&sb->s_umount)
+> >                                    sb_freeze_unlock(sb, SB_FREEZE_FS)
+> > sb_start_intwrite(sb)
+> >                                    down_write(&sb->s_umount)
+> > 
+> >   *** DEADLOCK ***
+> > 
+> > CPU0: do_quotactl() -> quota_getxquota() -> dquot_get_dqblk() ->
+> >        dqget() -> ext4_acquire_dquot()
+> > CPU1: thaw_super() -> super_lock_excl() -> thaw_super_locked()
+> > 
+> > Once this happens, thaw_super() cannot acquire s_umount to unfreeze the
+> > filesystem, leaving the filesystem permanently wedged.
+> > 
+> Hi Jan,
+> 
+> Sashiko reported a deadlock with thaw_super() when Q_XGETQUOTA or
+> Q_XGETNEXTQUOTA runs on a frozen filesystem.
+> 
+> Looking at this, I think the same reasoning as commit ccf370e43e08
+> ("quota: Forbid Q_GETQUOTA and Q_GETNEXTQUOTA for frozen filesystem")
+> also applies to Q_XGETQUOTA/Q_XGETNEXTQUOTA, since these can likewise
+> end up in ->acquire_dquot().
+> 
+> So my question is: would it be acceptable to also forbid these two
+> commands on a frozen filesystem, i.e. add them to quotactl_cmd_write()?
 
-  Linux 7.4-rc2 (2026-11-08 16:22:20 -0800)
+Yes, please make them consistent with Q_GETQUOTA and Q_GETNEXTQUOTA. Nobody
+complained in those 10 years about the generic quotactls so I doubt anybody
+will complain about these XFS ones. Just make it a separate change. If
+somebody complains about changed behavior, we'll have to revert and
+implement proper read-only querying.
 
-are available in the Git repository at:
+> My concern is the resulting behavior change for read-only mounts.
+> quotactl_fd() would then call mnt_want_write() for these commands, which
+> returns -EROFS on a read-only mount.  So Q_XGETQUOTA on a read-only
+> mounted filesystem (e.g. via xfs_quota) would change from working to
+> failing with -EROFS.
+> 
+> Alternatively, I can keep them as read-only commands and only make both
+> quotactl() and quotactl_fd() wait for the filesystem to thaw without
+> taking write access, which keeps read-only mount queries working and
+> only waits while the filesystem is frozen.
 
-  https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus-7.4-rc5
+Yes, that would be possible as well but let's keep things simple and
+complicate them only if somebody actually complains :). Thanks!
 
-for you to fetch changes up to bae28a1b11f422d0214654800d9425e042295c71:
-
-  ext4: add KUnit regression tests for inode migration fixes (2026-11-23 15:29:17 -0500)
-
-----------------------------------------------------------------
-Various updates for 7.4-rc5:
-
-The bulk of the new lines was caused by adding KUnit tests, which
-makes it safer to validate AI generated patches.
-
-Three minor performance provements:
-
-* Spread the inodes of files in sibling directories over the block
-  groups of a flex group.  This avoids contention on the inode table
-  buffer locks and significantly speeds up parallel file creation.
-* Move the orphan list tracking fields in ext4_sb_info off the cache
-  line shared with the journal state, which improves unlink
-  performance on file systems without the orphan_file feature.
-* Speed up fast commit replay for sparse files by skipping holes when
-  shrinking the extent tree.
-
-A huge number of bug fixes, most of which were AI generated:
-
-* Fast commit fixes to avoid losing fsync'ed data after a journal
-  flush or when part of an unwritten extent is zeroed out, to not
-  fail journal recovery on a torn fast commit, and to propagate
-  errors and validate inodes during replay
-* Check the return value of blkdev_issue_flush() in ext4 and jbd2,
-  and record failed delalloc writeback and unwritten extent
-  conversions as writeback errors so fsync() can report them
-* Fixes for EXT4_IOC_MIGRATE, including data loss for contiguous
-  ranges longer than EXT_INIT_MAX_LEN, a logical block overflow
-  with block sizes of 8k and larger, and error paths which freed
-  extent tree blocks that were still in use
-* Fix stale data being returned after a failed zeroout, and after
-  a FALLOC_FL_ZERO_RANGE or FALLOC_FL_WRITE_ZEROES which covers the
-  EOF block
-* Fix out-of-bounds accesses in the inline data and in-inode xattr
-  code when handling corrupted file systems
-* Fix i_size being advanced by a buffered write which failed with
-  EFAULT
-* Fix use-after-frees in the discard work on a failed mount and in
-  ext4_split_convert_extents()
-* Fix a buffer/folio lock inversion deadlock in
-  __ext4_get_inode_loc() when the folio size is larger than the
-  block size
-* Fix readdir position truncation on 32-bit kernels for directories
-  larger than 4 GiB
-* Accept the orphan file created by e2fsprogs 1.47.4 on file
-  systems with a 1k block size
-* Treat a directory entry rec_len of 0 as corruption for block
-  sizes smaller than 64k
-* Return an error instead of using a bogus block number when the
-  journal inode has a hole
-* Don't report ENOSPC or EDQUOT when converting inline data in
-  truncate as a file system error
-* Fix the scan accounting in the extent status and jbd2 checkpoint
-  shrinkers so that they stop once there is nothing left to scan.
-* Complete the writeback of RWF_DONTCACHE writes in task context so
-  that their folios are reliably dropped from the page cache.
-* Only advertise atomic writes on inodes which can support them
-  (excluding DAX and data=journal inodes), never fall back to buffered
-  I/O for an atomic write, and set awu_max_opt in statx.
-* Miscellaneous fixes for reference and memory leaks, error return
-  values, documentation, and static checker warnings.
-
-----------------------------------------------------------------
-Amit Patole (1):
-      jbd2: document the h_invalid handle flag
-
-Baokun Li (1):
-      ext4: skip eof zeroing when the zero range covers the eof block
-
-Christian Göttsche (1):
-      jbd2: set JBD2_LOADED under j_state_lock
-
-Daejun Park (5):
-      jbd2: don't start a fast commit while the journal is marked empty
-      ext4: skip holes when shrinking the extent tree in fast commit replay
-      ext4: don't cache unzeroed blocks as written after a failed zeroout
-      ext4: track zeroed out blocks of unwritten extents for fast commit
-      ext4: spread files of sibling directories over a flex group
-
-Deepanshu Kartikey (1):
-      ext4: add bounds check for e_value_offs in ext4_read_inline_data
-
-Fan Wu (1):
-      ext4: fix discard work use-after-free on failed mount
-
-Hamza Mahfooz (1):
-      ext4: validate inode block references during fast commit replay
-
-Hemanth Selam (1):
-      ext4: fix typos in comments
-
-Hengyu Liang (3):
-      ext4: do not accept rec_len 0 for block sizes below 64k
-      ext4: do not report inline conversion allocation failures as fs errors
-      ext4: do not advance i_size on a buffered write that copied nothing
-
-Hsiu-Hsien Lee (1):
-      ext4: don't fail journal recovery on an incomplete fast commit
-
-Hungyu Lin (1):
-      ext4: preserve force-fsck requests across unmount
-
-Jan Kara (1):
-      ext4: Fix maximum orphan file size check
-
-Jiaming Zhang (1):
-      ext4: clear in-inode xattr space before adding the first xattr
-
-Jonas Zhou (1):
-      ext4: move orphan tracking away from journal state
-
-Jérémy Jean (1):
-      ext4: save converted extent before merging
-
-Kaixuan Li (2):
-      ext4: stop verify_reserved_gdb() one entry short of the block
-      ext4: don't read past the UAPI struct in GROUP_ADD
-
-Karl Mehltretter (1):
-      ext4: return an error when a journal block is not mapped
-
-Lukas Czerner (2):
-      ext4: free fast commit replay state on failed mounts
-      ext4: fix failed migrate freeing extent tree blocks
-
-Manuel Ebner (1):
-      ext4, doc: remove unnecessary bracket
-
-Matthias Goergens (1):
-      ext4: drop extra ea_inode ref in cached-block reuse path
-
-Ojaswin Mujoo (2):
-      ext4: Fix sparse warning in extents kunit test when EXT4_KUNIT_TESTS=m
-      ext4: return -EINVAL on hole in ext4_convert_unwritten_extents_atomic()
-
-Pankaj Raghav (1):
-      ext4: set awu_max_opt to awu_max
-
-Qiliang Yuan (3):
-      jbd2: fix shrinker scan budget accounting in jbd2_journal_shrink_scan()
-      ext4: fix shrinker scan budget accounting in ext4_es_scan()
-      ext4: remove unused locked_ei parameter from __es_shrink()
-
-Stephen Kitt (1):
-      docs: ext4 filesystems can be converted to 64-bit
-
-Tal Zussman (4):
-      ext4: reject atomic writes on inodes that can't do direct I/O
-      ext4: never fall back to buffered I/O for atomic direct writes
-      ext4: don't advertise atomic writes for DAX inodes
-      ext4: complete dropbehind writeback in task context
-
-ThangNN99 (1):
-      ext4: avoid buffer/folio lock inversion in __ext4_get_inode_loc()
-
-Theodore Ts'o (26):
-      ext4: add KUinit tests for fs/ext4/extents_status.c
-      ext4: add KUnit tests for fs/ext4/extents.c
-      ext4: add KUnit tests for fs/ext4/xattr.c
-      ext4: add KUnit tests for fs/ext4/namei.c
-      ext4: expand KUnit tests for fs/ext4/mballoc.c
-      ext4: add KUnit tests for fs/ext4/inline.c
-      ext4: add KUnit tests for fs/ext4/fast_commit.c
-      ext4: expand KUnit tests for fs/ext4/inode.c
-      ext4: add KUnit tests for fs/ext4/ialloc.c
-      ext4: add KUnit tests for fs/ext4/balloc.c
-      ext4: add KUnit tests for fs/ext4/orphan.c
-      ext4: add KUnit tests for fs/ext4/block_validity.c
-      ext4: check multi-block overlap on left traversal in add_system_zone()
-      ext4: enable full feature coverage in fs/ext4/.kunitconfig
-      ext4: add KUnit tests for fs/ext4/super.c
-      ext4: add KUnit tests for fs/ext4/sysfs.c
-      ext4: add KUnit tests for fs/ext4/ioctl.c
-      ext4: add KUnit tests for fs/ext4/resize.c
-      ext4: add KUnit tests for fs/ext4/migrate.c
-      ext4: add KUnit tests for fs/ext4/indirect.c
-      ext4: expand KUnit tests in fs/ext4/extents-test.c for file range operations
-      ext4: add KUnit tests for fs/ext4/fsmap.c
-      ext4: add KUnit tests for fs/ext4/move_extent.c
-      ext4: add KUnit tests for fs/ext4/mmp.c
-      ext4: add KUnit tests for fs/ext4/dir.c
-      ext4: add KUnit regression tests for inode migration fixes
-
-Yichong Chen (6):
-      ext4: clear journal restart indication after inserting extent
-      ext4: cap migration extent length at EXT_INIT_MAX_LEN
-      ext4: don't clobber the migration error in ext4_ext_migrate()
-      ext4: fix the logical block counter overflow in indirect migration
-      ext4: don't free the tmp_inode tree after a partial migration swap
-      ext4: drop tmp inode ownership before migration cleanup
-
-Zhan Xusheng (1):
-      ext4: fix readdir position truncation on 32-bit kernels
-
-Zhang Yi (4):
-      ext4: return 0 instead of stale ret in ext4_iomap_writepages()
-      ext4: fix extent status cache clearing when truncating inline data
-      ext4: add inode to orphan list before extent conversion
-      ext4: initialize map->m_pblk in ext4_da_map_blocks()
-
-Zhao Gongyi (1):
-      ext4: fix OOB memmove in ext4_xattr_set_entry
-
-dardaoe (1):
-      Documentation: ext4: fix group descriptor and superblock placement in meta_bg description
-
-guolingxing (9):
-      ext4: fix buffer_head leak in ext4_ind_map_blocks() error path
-      jbd2: check return value of blkdev_issue_flush() when checkpointing
-      jbd2: check return value of blkdev_issue_flush() when committing
-      jbd2: check return value of blkdev_issue_flush() for async commits
-      ext4: check return value of blkdev_issue_flush() when initializing inode tables
-      ext4: check return value of blkdev_issue_flush() when starting a fast commit
-      ext4: record writeback error when discarding pages on failed delalloc
-      ext4: fix folio reference leak in mpage_submit_partial_folio()
-      ext4: report unwritten extent conversion failures as writeback errors
-
-lty (4):
-      ext4: propagate errors from fast commit i_blocks replay
-      ext4: propagate errors from fast commit block cleanup
-      ext4: propagate errors from fast commit bitmap rebuild
-      ext4: propagate errors from fast commit create replay
-
-shuo chen (2):
-      ext4: update the pre-check in ext4_find_inline_data_nolock
-      ext4: fix WARNING in ext4_journalled_invalidate_folio
-
- Documentation/filesystems/ext4/allocators.rst |    6 +-
- Documentation/filesystems/ext4/blockgroup.rst |   43 +-
- Documentation/filesystems/ext4/checksums.rst  |    6 +-
- Documentation/filesystems/ext4/directory.rst  |    2 +-
- fs/ext4/.kunitconfig                          |    7 +
- fs/ext4/Makefile                              |   12 +-
- fs/ext4/balloc-test.c                         | 2403 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/balloc.c                              |   11 +-
- fs/ext4/bitmap.c                              |    5 +
- fs/ext4/block_validity-test.c                 | 1598 +++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/block_validity.c                      |   11 +-
- fs/ext4/crypto.c                              |    4 +
- fs/ext4/dir-test.c                            |  993 +++++++++++++++++++++++++++
- fs/ext4/dir.c                                 |   39 +-
- fs/ext4/ext4.h                                |  287 +++++++-
- fs/ext4/ext4_extents.h                        |   24 +-
- fs/ext4/ext4_jbd2.c                           |   21 +
- fs/ext4/extents-test.c                        | 2635 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
- fs/ext4/extents.c                             |  283 ++++++--
- fs/ext4/extents_status-test.c                 | 1646 ++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/extents_status.c                      |   60 +-
- fs/ext4/fast_commit-test.c                    | 2714 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/fast_commit.c                         |  251 ++++++-
- fs/ext4/file.c                                |   17 +-
- fs/ext4/fsmap-test.c                          |  796 ++++++++++++++++++++++
- fs/ext4/fsmap.c                               |    3 +
- fs/ext4/ialloc-test.c                         | 2731 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/ialloc.c                              |  192 +++++-
- fs/ext4/indirect-test.c                       | 1293 +++++++++++++++++++++++++++++++++++
- fs/ext4/indirect.c                            |   20 +-
- fs/ext4/inline-test.c                         | 1866 ++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/inline.c                              |   64 +-
- fs/ext4/inode-test.c                          | 3511 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
- fs/ext4/inode.c                               |  298 +++++++-
- fs/ext4/ioctl-test.c                          | 1198 ++++++++++++++++++++++++++++++++
- fs/ext4/ioctl.c                               |  259 +++++--
- fs/ext4/mballoc-test.c                        | 1940 +++++++++++++++++++++++++++++++++++++++++++++++++++-
- fs/ext4/mballoc.c                             |  191 +++++-
- fs/ext4/mballoc.h                             |   44 +-
- fs/ext4/migrate-test.c                        | 1384 +++++++++++++++++++++++++++++++++++++
- fs/ext4/migrate.c                             |   51 +-
- fs/ext4/mmp-test.c                            |  661 ++++++++++++++++++
- fs/ext4/mmp.c                                 |  117 +++-
- fs/ext4/move_extent-test.c                    | 1023 ++++++++++++++++++++++++++++
- fs/ext4/move_extent.c                         |   22 +
- fs/ext4/namei-test.c                          | 2347 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/namei.c                               |  342 +++++-----
- fs/ext4/namei.h                               |  213 ++++++
- fs/ext4/orphan-test.c                         | 2372 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/orphan.c                              |   20 +-
- fs/ext4/page-io.c                             |   13 +
- fs/ext4/resize-test.c                         | 1336 ++++++++++++++++++++++++++++++++++++
- fs/ext4/resize.c                              |  104 ++-
- fs/ext4/super-test.c                          | 1345 ++++++++++++++++++++++++++++++++++++
- fs/ext4/super.c                               |  290 +++++++-
- fs/ext4/sysfs-test.c                          |  679 ++++++++++++++++++
- fs/ext4/sysfs.c                               |   55 ++
- fs/ext4/xattr-test.c                          | 1822 +++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/xattr.c                               |   68 +-
- fs/ext4/xattr.h                               |    2 +
- fs/ext4/xattr_hurd.c                          |    4 +
- fs/ext4/xattr_security.c                      |    4 +
- fs/ext4/xattr_trusted.c                       |    4 +
- fs/ext4/xattr_user.c                          |    4 +
- fs/jbd2/checkpoint.c                          |   10 +-
- fs/jbd2/commit.c                              |   13 +-
- fs/jbd2/journal.c                             |   28 +-
- include/linux/jbd2.h                          |    1 +
- 68 files changed, 41197 insertions(+), 621 deletions(-)
- create mode 100644 fs/ext4/balloc-test.c
- create mode 100644 fs/ext4/block_validity-test.c
- create mode 100644 fs/ext4/dir-test.c
- create mode 100644 fs/ext4/extents_status-test.c
- create mode 100644 fs/ext4/fast_commit-test.c
- create mode 100644 fs/ext4/fsmap-test.c
- create mode 100644 fs/ext4/ialloc-test.c
- create mode 100644 fs/ext4/indirect-test.c
- create mode 100644 fs/ext4/inline-test.c
- create mode 100644 fs/ext4/ioctl-test.c
- create mode 100644 fs/ext4/migrate-test.c
- create mode 100644 fs/ext4/mmp-test.c
- create mode 100644 fs/ext4/move_extent-test.c
- create mode 100644 fs/ext4/namei-test.c
- create mode 100644 fs/ext4/namei.h
- create mode 100644 fs/ext4/orphan-test.c
- create mode 100644 fs/ext4/resize-test.c
- create mode 100644 fs/ext4/super-test.c
- create mode 100644 fs/ext4/sysfs-test.c
- create mode 100644 fs/ext4/xattr-test.c
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
