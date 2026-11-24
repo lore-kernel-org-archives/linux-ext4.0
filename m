@@ -1,58 +1,58 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.127.230.113
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795461533;
-	b=jl2r+c2j/5jfya1WDGQYZ0Zmq5D2wQMSPjmIYh8asRor1B6LJ7WRX0sLXXOmjEdHgtk9
-	 7ro+DnDpbFGmZviRF5ZOpWf2IuEVY6+I/NApEcnzNCX1WFvK2o3UTBEP3tOQ4vwWDGdbk
-	 5bjF9Aq9Atl2N3Tgb/SUVtTq+VEBu/NiFVKz+8cWW4S4ujxV3RIr85j+xuH8FYgVXJTjp
-	 sKn2tYJEzD3fGWlGSglvyCUlFNfWcsuOEgU5SVog4ottBQ5cDZfTL2OOZU61fuKl6WS8R
-	 QteO7LapT5oV6Id8UMJ/gEXJIzhfPNqrhJH292d5/iuug1YTwbWvh5lkEqZ/bz4ZqTg==
+	t=1795491576;
+	b=5OzlyUOuB5OczTOwCoDEkkoXY2alEQ0KmNsk9ygS/Y2dxllBeqDgDYC3EAhQ0DnB5Jv4
+	 7wpOknE5oFNlrxCJ7gnV2yo+oeexdxQf4d7CtDieGXrJxUBP82nqTFnEvF5xqKuFK0gPE
+	 uyfKuxieYXG4vswy3waNUJlAT9UwEAFk5CCLoNZU2Sm7tvlyjXKeweHj+oqAYe57fq02G
+	 dZS5euloQSQ5EWQj8KVSqFjGQ7DA5s0aa1baB2rykzLE2e/EARqxE5kS7Htjlw/6EAkep
+	 6lbb9fRPpljvHxw5Y5sfldkClLSFRBZa9ronEppTF7+X0FrjgiN+PiQyFLMLDQm3Fug==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795461533;
-	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
-	 Mail-Followup-To:References:MIME-Version:Content-Type:
-	 Content-Disposition:In-Reply-To;
-	bh=/GLZp1BMV/knfxh1EGIGcBPe8IPdbsKAYtyB5Pymdzw=;
-	b=qsZ2x4yHDKO7sun9R5ZIDPT8by82TqjvEtsBastUe5KiWWXPUTgRAHtYcPzxuR76FdJr
-	 ZtTiRqCgD2a58VlYfDpZITswPvwPU1kEOEFZhtnJoLasnEGIeUB6FBL0VgUIeaPs3O/pY
-	 3iZZpqp6gUkKoLhWTH6YzOnyiauBPsN/wT5uPJbr8nJwn4UEJID+bdbxb/0uxYhqOOe82
-	 WqNHIQsHxiMhUD7hI18gIY5qYbO8Yb64tirRiS3/37ZI0O2GY4sRsMeDYYfi4xnGV8qOy
-	 8vDu8F0zbVnoo5UJaQs9xKZZdlTHGT+UprDRLXcCwx3rVK4Z3531PKpnL7VM7zzzxXg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795491576;
+	h=DMARC-Filter:DKIM-Signature:Date:X-Lms-Return-Path:Cc:Subject:
+	 Message-Id:X-Mailer:To:From:Mime-Version:Content-Transfer-Encoding:
+	 X-Original-From:Content-Type;
+	bh=dlbuhAn+tEV4C47nJtxGZ63JKuJQ15avO1MyMdM9WME=;
+	b=2mMpzs/c18VKJUjkeZvGzSb1YZu1eW4aDb9MxqYIO8fDr9HWFKR9NKD8IhyHLRueMerZ
+	 UIHQ/QL8ry3p/KzYym3x3MwIRJkxqRS9CHVV7QXqAuwWjBouBHeWHRqrnf5KDZDKkhBym
+	 vC38UKsLdZ9XTNjP64ppHpKOEb3YWSnTg1ahT9DbZalOzU5EeXwq8/BK0CgT7y1RoPo49
+	 7B0R1KO3Oas1hyWNseOQ2ioce/A7eC2Rpzd5f+ICi0oQopi2uagqyfbnpa/FXQKn8ew+8
+	 /f1g2Pw0Xu34qEmYpPDiY9afwpPUmSoIk+czKPX0myZfYyw3mbKqq8gIqcTikoqwwxg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=PEMxZX2l;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=pass header.from=bytedance.com;
+	spf=pass smtp.mailfrom=bytedance.com;
+	dkim=pass header.d=bytedance.com header.i=@bytedance.com header.a=rsa-sha256 header.s=2212171451 header.b=glN8E9NI;
+	arc=none smtp.remote-ip=209.127.230.113
+Received: from va-1-113.ptr.blmpb.com (va-1-113.ptr.blmpb.com [209.127.230.113])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EF39E606A686;
-	Mon, 23 Nov 2026 19:18:52 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 80EE6606A321
+	for <linux-ext4@vger.kernel.org>; Tue, 24 Nov 2026 03:39:35 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 80EE6606A321
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=bytedance.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=PEMxZX2l
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 178051F000EE;
-	Mon, 23 Nov 2026 19:18:47 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795461532;
-	bh=/GLZp1BMV/knfxh1EGIGcBPe8IPdbsKAYtyB5Pymdzw=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=PEMxZX2lLAmo+0xpH03+7EwrZli3yKCNROivpy/DKjqvU2I8xNWpyDUV3TqDAWgpz
-	 ltZrbKxcY1uUsa++BPx7w/1Cio3WhGQRPZ3iao/GLTV0YzQydv4hZto/RPV6vhiYA2
-	 z4zSShRvWK4DAxYwSfe6o2HVw7m+MKqvZF9b03W17PlDugn/06uxSIlnO1mMim3xMY
-	 eX96HQnIRaV1dSYEcW5midq+ZWsr4zoi39lr2JAdEve9+KeUN+AYE2xssWiqr8RlOu
-	 bE7sriTUbficy6rw2nCIn+u9onK3qiCOK3A/KXnRZaA+ksELplTgsxZlezyXW4DIBk
-	 gYK44SF7EQOEQ==
-Date: Tue, 24 Nov 2026 03:18:43 +0800
-From: Zorro Lang <zlang@kernel.org>
-To: Anand Jain <asj@kernel.org>
-Cc: linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org, 
-	linux-xfs@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net, fstests@vger.kernel.org
-Subject: Re: [PATCH 0/21] fstests: tests for cloned filesystem validation and
- f_fsid
-Message-ID: <awSPgGGZv7u6_SGM@zlang-mailbox>
-Mail-Followup-To: Anand Jain <asj@kernel.org>, linux-btrfs@vger.kernel.org, 
-	linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org, 
-	linux-f2fs-devel@lists.sourceforge.net, fstests@vger.kernel.org
-References: <cover.1791272793.git.asj@kernel.org>
- <768152d1-4215-4f27-a3ca-50252c5b5d9a@kernel.org>
+	dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.a=rsa-sha256 header.s=2212171451 header.b=glN8E9NI
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+ s=2212171451; d=bytedance.com; t=1795491569; h=from:subject:
+ mime-version:from:date:message-id:subject:to:cc:reply-to:content-type:
+ mime-version:in-reply-to:message-id;
+ bh=dlbuhAn+tEV4C47nJtxGZ63JKuJQ15avO1MyMdM9WME=;
+ b=glN8E9NIeeKMB7+geCVFSPSu6ghA6dhgmI3YYMDmuLBvNTIsJt8gXTIXg9I13zn6H9l3Oc
+ hyYpsQcXtztCGqeBzwF8Gbq6pyb5HxrdfxsoeOd2+9Z+IYax8ero5cEyPMUB25uNuCapm+
+ JrbgY0EVFW0unOjkS8UUAP6MMt2gFhJB76/Y7OLFm4n8RZU0ANLL95eFqL/3EP+dVqAQ0O
+ kY3oHajbVdsfcs+HV8Mf2tTVsl+PgZGGCGV//9HnALtqFuKw/E2N6XWTbO1iwAE9+v3bAj
+ R7rhT+pqgmQQhIRjEGUjCf/vDPUq4JNyig0SHlyjVq2Hu6hziNHUwv9BFs9qqg==
+Date: Tue, 24 Nov 2026 11:38:58 +0800
+X-Lms-Return-Path: <lba+26b0506ef+2a76bd+vger.kernel.org+zhaogongyi@bytedance.com>
+Cc: <linux-kernel@vger.kernel.org>, <tytso@mit.edu>, 
+	<adilger.kernel@dilger.ca>, <libaokun@linux.alibaba.com>, <jack@suse.cz>, 
+	<ojaswin@linux.ibm.com>, <ritesh.list@gmail.com>, <yi.zhang@huawei.com>
+Subject: [PATCH v4 0/2] ext4: reject impossible group free cluster counts
+Message-Id: <20261124033900.76700-1-zhaogongyi@bytedance.com>
+X-Mailer: git-send-email 2.39.5 (Apple Git-154)
+To: <linux-ext4@vger.kernel.org>
+From: "Zhao Gongyi" <zhaogongyi@bytedance.com>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -61,165 +61,107 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <768152d1-4215-4f27-a3ca-50252c5b5d9a@kernel.org>
+Mime-Version: 1.0
+Content-Transfer-Encoding: 7bit
+X-Original-From: Zhao Gongyi <zhaogongyi@bytedance.com>
+Content-Type: text/plain; charset=UTF-8
 
-On Mon, Nov 23, 2026 at 10:01:03AM +0800, Anand Jain wrote:
-> Zorro,
-> 
->  Could we merge the patches in stages? What's your plan?
+ext4 initializes its free-space counters from the group descriptors. A
+corrupt descriptor can advertise more free clusters than its group can
+hold. Journal block replay can also replace the superblock and group
+descriptors that were examined when mounting.
 
-Hi Anand,
+This series adds an optional JBD2 recovery callback and uses it in ext4
+to validate the recovered geometry and group descriptors. It checks the
+metadata before fast commit replay and checks the descriptors again
+after fast commit replay. Both halves of the group free-cluster count
+are read under the group lock.
 
-Sorry for the long delay in reviewing v9 since the last round. The review
-queue has been getting quite heavy lately, so large patchsets with a lot
-of changes often end up getting pushed back. I just did a quick, high-level
-review of this series. If you agree to drop the two IMA-related patches from
-the next version (and send them separately later), that should help get the
-rest of this patchset merged much faster :)
+Changes since v3
 
-Thanks,
-Zorro
+- Reject loss of HAS_JOURNAL before fast commit replay or journal
+  reset.
+- Recheck the extra inode size settings and the checksum seed,
+  including EA_INODE and CSUM_SEED without METADATA_CSUM.
+- Validate feature and field changes that affect mount setup.
+  Recheck encryption constraints and initialize the VFS encoding
+  when replay applies online feature enablement.
+- Preserve JBD2's failed-commit diagnostic when recovery uses a
+  validation callback. Document the callback context and lifetime.
 
-> 
-> Regards, Anand
-> 
-> 
-> On 6/10/26 16:55, Anand Jain wrote:
-> > This series continues the work from the earlier "test coverage for cloned
-> > filesystem ids" series (last posted as v8 [1]) and has been tested against
-> > the major filesystems: Btrfs, XFS, ext4, and f2fs.
-> > 
-> > Although this version incorporates the review feedback received on v8, it
-> > expands substantially with additional infrastructure helpers, an extra test
-> > case to cover the recent regression report, and migration/cleanup of
-> > existing generic/744. Because the patch count grew from 13 to 21 patches,
-> > disrupting the previous patch numbering and scope, I have reset the
-> > versioning and updated the subject line to better reflect the broader
-> > validation coverage.
-> > 
-> > The core motivation remains identical: testing that mounting a block-level
-> > cloned filesystem concurrently with the original filesystem behaves
-> > correctly across filesystems and VFS subsystems (fanotify, statfs/f_fsid,
-> > libblkid resolution, IMA measurement, exportfs file handles, and
-> > metadata_uuid handling).
-> > 
-> > Summary of major changes since v8:
-> > - Added 1 new regression test case to verify statfs f_fsid derivation against FS UUID.
-> > - Dropped the test case verifying f_fsid persistence across mount cycles on
-> >   cloned filesystems, as this assumption is no longer valid following the Btrfs kernel
-> >   regression fix [2].
-> > - Introduced common helpers:
-> >   . _require_security_ima() and _require_metadata_uuid().
-> >   . _scratch_mkfs_uuid() and helpers for f_fsid verification.
-> > - Migrated generic/744 to utilize the new common clone helpers.
-> > - Worked on the review comments.
-> > 
-> > Details of changes:
-> > - _create_cloned_loop_devs():
-> >   . Renamed from _loop_image_create_clone() to _create_cloned_loop_devs().
-> >   . Relocated backing image files from "$TEST_DIR/${seq}.*" to a dedicated
-> >     directory "$TEST_DIR/${seq}/*".
-> >   . Added internal call to _require_clone_mount().
-> >   . Switched from _create_loop_device() to _create_loop_device_like_bdev()
-> >     to guarantee identical logical/physical sector sizes (512 vs 4096)
-> >     between the original and cloned loop devices.
-> >   . Used an intermediate local setup step to ensure consistent Direct I/O
-> >     attributes across both loop devices (preventing the first device from
-> >     enabling DIO while the cloned device fell back to buffered mode).
-> >   . Added device geometry and DIO attribute dump to $seqres.full for debugging.
-> >   . Renamed teardown helper _loop_image_destroy() to _destroy_cloned_loop_devs().
-> > - _clone_mount_options():
-> >   . Renamed from _clone_mount_option() to _clone_mount_options().
-> > - _require_metadata_uuid():
-> >   . Factored out prerequisite checks from _change_metadata_uuid() into a new
-> >     dedicated helper _require_metadata_uuid() and invoked it accordingly.
-> > - _require_clone_mount():
-> >   . Introduced new helper to check kernel support for concurrent clone mounts.
-> >   . Removed obsolete _require_duplicate_fsid() in favor of _require_clone_mount().
-> > - _require_security_ima():
-> >   . Introduced new helper to check securityfs and IMA policy availability.
-> > - _create_loop_device_like_bdev():
-> >   . Removed unused local variable 'dev'.
-> > 
-> > - Test Cases common update:
-> >   - Adjusted test groups: replaced 'clone' with 'tempfsid'.
-> >   - Standardized test exits: replaced open-coded "status=0; exit" with "_exit 0".
-> >   - Dropped stale "_require_block_device $TEST_DEV" checks left over from before
-> >     migrating tests to loop devices.
-> >   - Percolated helper renames across all tests:
-> >     . _loop_image_create_clone -> _create_cloned_loop_devs
-> >     . _loop_image_destroy      -> _destroy_cloned_loop_devs
-> >     . _clone_mount_option      -> _clone_mount_options
-> >   - Added cleanup of "$TEST_DIR/$seq" in test exit/cleanup handlers.
-> > 
-> > - Test Cases Individual Updates:
-> >   - generic/744:
-> >     . Replaced _require_duplicate_fsid with _require_clone_mount().
-> >     . Migrated to common _create_cloned_loop_devs() and _clone_mount_options().
-> >   - generic/902:
-> >     . New regression test case added to verify statfs f_fsid derivation against filesystem UUID.
-> >   - generic/903:
-> >     . Added --noheadings flag to findmnt queries for cleaner output parsing.
-> >   - generic/904:
-> >     . Dropped 'auto' and 'quick' from test groups due to runtime and policy requirements.
-> >     . Updated referenced kernel commit IDs.
-> > 
-> > [1] https://lore.kernel.org/fstests/cover.1784949154.git.asj@kernel.org
-> > [2] 72de4807ba84 ("btrfs: derive f_fsid with dev_t only when temp_fsid is active")
-> > 
-> > Anand Jain (21):
-> >   fstests: introduce _require_clone_mount() helper
-> >   fstests: introduce _create_cloned_loop_devs() helper
-> >   fstests: add _clone_mount_options() helper
-> >   fstests: add FSNOTIFYWAIT_PROG
-> >   fstests: add _require_fanotify_function
-> >   fstests: add _require_unique_f_fsid() helper
-> >   fstests: add SEMANAGE_PROG
-> >   fstests: verify fanotify isolation on cloned filesystems
-> >   fstests: introduce helper _scratch_mkfs_uuid()
-> >   fstests: add helpers to verify the expected f_fsid
-> >   fstests: verify statfs f_fsid is derived from the filesystem UUID
-> >   fstests: verify libblkid resolution of duplicate UUIDs
-> >   fstests: introduce _require_security_ima() helper
-> >   fstests: verify IMA isolation on cloned filesystems
-> >   fstests: verify exportfs file handles on cloned filesystems
-> >   fstests: introduce _require_metadata_uuid() helper
-> >   fstests: add _change_metadata_uuid helper
-> >   fstests: test UUID consistency for clones with metadata_uuid
-> >   fstests: generic/744: use new helper _require_clone_mount()
-> >   fstests: generic/744: migrate to _create_cloned_loop_devs()
-> >   fstests: _create_loop_device_like_bdev() remove unused variable
-> > 
-> >  common/config         |   2 +
-> >  common/rc             | 262 +++++++++++++++++++++++++++++++++++++++---
-> >  tests/generic/744     |  72 +++++-------
-> >  tests/generic/901     | 142 +++++++++++++++++++++++
-> >  tests/generic/901.out |   7 ++
-> >  tests/generic/902     |  38 ++++++
-> >  tests/generic/902.out |   2 +
-> >  tests/generic/903     |  71 ++++++++++++
-> >  tests/generic/903.out |   6 +
-> >  tests/generic/904     | 113 ++++++++++++++++++
-> >  tests/generic/904.out |  10 ++
-> >  tests/generic/905     |  79 +++++++++++++
-> >  tests/generic/905.out |   2 +
-> >  tests/generic/906     |  74 ++++++++++++
-> >  tests/generic/906.out |   6 +
-> >  15 files changed, 827 insertions(+), 59 deletions(-)
-> >  create mode 100644 tests/generic/901
-> >  create mode 100644 tests/generic/901.out
-> >  create mode 100644 tests/generic/902
-> >  create mode 100644 tests/generic/902.out
-> >  create mode 100644 tests/generic/903
-> >  create mode 100644 tests/generic/903.out
-> >  create mode 100644 tests/generic/904
-> >  create mode 100644 tests/generic/904.out
-> >  create mode 100644 tests/generic/905
-> >  create mode 100644 tests/generic/905.out
-> >  create mode 100644 tests/generic/906
-> >  create mode 100644 tests/generic/906.out
-> > 
-> 
+Changes since v2
+
+- Skip restoring and writing out superblock error information when
+  journal load fails.
+- Drain deferred EA inode evictions before checking descriptors after
+  fast commit replay. If replay fails, drain the work before restoring
+  the read-only flag. Leave fast commit state cleanup to the mount
+  failure path.
+- Reject changes to the casefold feature and encoding settings during
+  journal recovery.
+- The JBD2 patch is unchanged.
+
+Changes since v1
+
+- Keep the descriptor checks needed to load the internal journal and
+  defer full validation on recovery mounts until block replay completes.
+- Revalidate the recovered geometry and reload the descriptor table
+  when replay changes its layout.
+- Put the JBD2 interface in its own patch and read the free-cluster
+  count under the group lock.
+
+Testing
+
+Built v4 with arm64 GCC 15.2 and W=1 at both patch boundaries
+for fs/jbd2/ and fs/ext4/, with CONFIG_UNICODE enabled.
+Also built the complete series with CONFIG_UNICODE disabled
+and CONFIG_FS_ENCRYPTION enabled.
+
+A host-side control-flow test covered the failed-commit diagnostic
+for callback and legacy callers, callback errors, and fast commit
+replay ordering.
+
+Ran v4 in an instrumented amd64 QEMU/KVM guest on 7.4.0-rc2-syz
+(7475ea8b5), with both patches applied to that test tree.
+
+- Recovery accepted valid descriptors after block replay. The callback
+  rejected out-of-range free-cluster counts with an empty journal and
+  when corruption persisted in a separate descriptor block after block
+  replay.
+- Recovery of an online resize grew the filesystem from 32 to 128
+  groups, reloaded the descriptor table from one block to two, and
+  completed a read-write mount.
+- Read-write recovery with fast commit enabled reached the second
+  callback and passed descriptor validation. Read-only recovery
+  reached the first callback and mounted without errors or warnings.
+- Recovery mounted an existing casefold filesystem. On the empty
+  journal path, failed descriptor validation left the superblock
+  unchanged.
+
+Earlier v3 tests covered deferred EA inode eviction on successful
+read-only fast commit recovery and on fast commit replay failure.
+
+Application of fast commit tags and the read-only path through the
+second callback remain unverified on v4. Replay of online feature
+enablement and rejection of invalid replayed superblock settings,
+including casefold settings, still need runtime coverage.
+
+Link: https://lore.kernel.org/linux-ext4/20261102042428.65204-1-zhaogongyi@bytedance.com/
+Link: https://lore.kernel.org/linux-ext4/20261119122601.85293-1-zhaogongyi@bytedance.com/
+Link: https://lore.kernel.org/linux-ext4/sashiko-outbox-223131@kernel.org/
+Link: https://lore.kernel.org/linux-ext4/20261120025459.70290-1-zhaogongyi@bytedance.com/
+Link: https://sashiko.dev/#/patchset/20261120025459.70290-1-zhaogongyi@bytedance.com?part=2
+
+Zhao Gongyi (2):
+  jbd2: add a metadata validation hook to journal recovery
+  ext4: reject impossible group free cluster counts
+
+ fs/ext4/balloc.c     |  10 +-
+ fs/ext4/ext4.h       |   2 +
+ fs/ext4/super.c      | 452 +++++++++++++++++++++++++++++++++----------
+ fs/jbd2/journal.c    |  33 +++-
+ fs/jbd2/recovery.c   |  42 ++--
+ include/linux/jbd2.h |   7 +-
+ 6 files changed, 425 insertions(+), 121 deletions(-)
+
+base-commit: 4aa05e642bade8cf8405936b03cabf848fe6c456
