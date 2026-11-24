@@ -1,54 +1,112 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.167.200
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.130
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795547746;
-	b=nrEGoRnjt1SygFQgOUna/jwpcUQT4tWo55Vfc8hT+dHIzhZMszTPyYrEJiAt5OkOV776
-	 neM4XpitgG5ajR4OIDXL2OKGrKIeUzPCp93doWKi6oBYq8OtKmkeSUCZSRckb0dAG1RWB
-	 kUTOyhZdTX/lhmihHRplI6GTEF1S7tP43ylsVTHMeR3CIW0AZXMKUOjWXe5+zuUvpgQZe
-	 1j6GbPaknUEt256Vvv6l9KcODWPGPY5Jier19RhP0Zh1QZqS8uE5u6tpxeIntuqDPdjl4
-	 KsLJnrLkPqVp4NBPoJH6coT1ANq2qcQRNwuvCoq9Mt/9caEbxwLQVBocmGHyq0xWTdw==
+	t=1795549004;
+	b=lQs/nm1Yc36cD7u/186axoAl6Etz3qrnVKNpZGlNVgmY9Hv8KlteWiknkVcsQsutUg2m
+	 7S9AIXVMsqSjqYD7hig25guYnJBqEICILINpirvQFZpViPqKoum/U3H4jNAJBYvP5PJS8
+	 uS1ERkPCajJAqfURVCfiHbF5M7m6Yas7uQKEO45TJrKrAQ0PWLIzhk3Bqjyy4Yiy4gXxO
+	 QWr+0xR++hGkZxreCWJzLHbmYVS2XJlrRR7lSBJ5o1RtW0AJdZS98Vb/1WD4WRFtmclM+
+	 tGZ1OHCjx3HCfEzVl25c2eqTHIewoT+qolDAxXuFwJVCFbhkVa8KbmbJQKiduenMqMg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795547746;
-	h=DMARC-Filter:Received:X-Google-DKIM-Signature:X-Forwarded-Encrypted:
-	 X-Gm-Message-State:MIME-Version:X-Received:Date:In-Reply-To:
-	 X-Google-Appengine-App-Id:X-Google-Appengine-App-Id-Alias:Message-ID:
-	 Subject:From:To:Cc:Content-Type;
-	bh=iVaX5nAlkBKMSj8rUpfeIOl3ibSmoRV5kmxp9WpM+9Y=;
-	b=bN1PsjpGFynmBhvc1bKEs7xG84iL3Q44Gt2y3+19bQptGKpbqlz1NruKjjl01Ftdf5jg
-	 9WMQI/C6NkentpT7aikzRXod8D14KpN50xhdw2riLtOa8otfgmpIV47bbY5nTjoLuog1U
-	 eDi9xrI7gbjc7KD4dhIBTknBhXGnO4jQEmNh/u0k6narA7WXxkFbDsEnEBaFwmFgoNpQJ
-	 bbBeh3NM4NiiQS72U2PHyN4Koc2AzqjEsLuZv9FQQb96BAtJq1EXVxfdm67+5d3WHMN/8
-	 QCSOVVYq3bmQhUCbLvp32ub3VuysoIJJpEaDNWWuutsKHPJte3guOqxfK5dFXFjqxpQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795549004;
+	h=DMARC-Filter:Received:DKIM-Signature:DKIM-Signature:DKIM-Signature:
+	 DKIM-Signature:Received:Received:From:To:Cc:Subject:In-Reply-To:
+	 Organization:References:Date:Message-ID:MIME-Version:Content-Type:
+	 X-Spam-Flag:X-Spam-Level:X-Spamd-Result:X-Spam-Score;
+	bh=rbfQPnb/bGQ2Gkjp6lt26EZDU8eKMGkAA4M/WWEU8/c=;
+	b=P5agDRGtnIhmISK6QgNlS4lkgC6Vjok+l92dlCg6TWDXDE56N/gLfJ3uJywbwC1F72e7
+	 kJzqSZwzbSKdvQSZFlmmhSSLb81uGIzsw4DwCBjqJow1+yVAJlt7yJAZZzDuGJImgclXq
+	 7u1uxPWph2wldTFHaCiZqQKChnMz6Ut4W6zYcxp1c45Hz73xDRnoC9XrzgOwONCHBhIlH
+	 U6CLqW+VIXH27YSblaf+4IQSiGJUN1r37kyZosO2TQ63l0StiZpN2wGiIcY+sX8rhuVju
+	 lbtv8ryXXM1LU+Pa/A+Nwufkithioz2vJ1XH30JhPQMIoHnDg9YO8KeearF8DMtx4kA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=fail header.from=syzkaller.appspotmail.com;
-	spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com;
-	arc=none smtp.remote-ip=209.85.167.200
-Received: from mail-oi1-f200.google.com (mail-oi1-f200.google.com [209.85.167.200])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	dmarc=pass header.from=suse.de;
+	spf=pass smtp.mailfrom=suse.de;
+	dkim=pass header.d=suse.de header.i=@suse.de header.a=rsa-sha256 header.s=susede2_rsa header.b="wiT8Ya5/";
+	dkim=pass header.d=suse.de header.i=@suse.de header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=dk5YjynB;
+	dkim=pass header.d=suse.de header.i=@suse.de header.a=rsa-sha256 header.s=susede2_rsa header.b="h2LQ/IDI";
+	dkim=neutral header.d=suse.de header.i=@suse.de header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=Sa6ZruAS;
+	arc=none smtp.remote-ip=195.135.223.130
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B6813606A323
-	for <linux-ext4@vger.kernel.org>; Tue, 24 Nov 2026 19:15:45 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org B6813606A323
-Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
-Received: by mail-oi1-f200.google.com with SMTP id 5614622812f47-5727b04b81eso3165418b6e.3
-        for <linux-ext4@vger.kernel.org>; Tue, 24 Nov 2026 11:15:45 -0800 (PST)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1795547745; x=1796152545;
-        h=content-type:cc:to:from:subject:message-id:in-reply-to:date
-         :mime-version:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to:content-type;
-        bh=iVaX5nAlkBKMSj8rUpfeIOl3ibSmoRV5kmxp9WpM+9Y=;
-        b=yTq+8qKt5ruOIRXcs6Y92t3bsM0qS6MOZfSuK++KQZk5jZcLuLTvajYPKgc7291/ds
-         /W/ZX64lnu2nD40lUCLJCaedxEHNGoYyEutA/B9gkkXg9DW2okvdaQyy8W/CP1RxkHeF
-         bUyLZIR514VTJbqzJtDobwsOsuvKchwBNCcVgdxNJxKe26m1fr1FMo4jRv3O7MVWK4Fm
-         +pUk/R8eFTnIzvijvHMQfyBGYzJwG4kahB54FWrhrimrpQst5dj0qYSM8013apcBn2nH
-         3OlO766Hdnqg65vfqBcYJCRAPEWvfpanK/NnIGAaWrlj9GdhBq7HjqaTsx23dx6d3ANx
-         IVqg==
-X-Forwarded-Encrypted: i=1; AL+hErEsgW9Art69xpELoaDU3Sa4emWOLOSvTTVxp2ZJMF6ONEzXAwqLhZHYDgIc2i2KoKVx2jD0XUJDbPeC@vger.kernel.org
-X-Gm-Message-State: APuU4Z/jasZ6Ucd1Yf8aV+WepyAUruO6rQYIR/v74mqrah1hMXbOaNtB
-	UMlHpV1C6aug38LjphVbCPKEr39D7p4qS4H2kYCZ0OjrfIFk8uPIc6e5ZHnPJ7vwZc4PbfhAY7u
-	7G5DxAkNTVhEcNZdY8pxqRjpI2qwJ5ZKK7AmHT0xQSoXPZeeNXnWPF6bhCdY=
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 405D6606A31E;
+	Tue, 24 Nov 2026 19:36:43 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 405D6606A31E
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.de
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.a=rsa-sha256 header.s=susede2_rsa header.b=wiT8Ya5/;
+	dkim=pass header.d=suse.de header.i=@suse.de header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=dk5YjynB;
+	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.a=rsa-sha256 header.s=susede2_rsa header.b=h2LQ/IDI;
+	dkim=neutral header.d=suse.de header.i=@suse.de header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=Sa6ZruAS
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id 478C6223AC;
+	Tue, 24 Nov 2026 19:36:40 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+	t=1795549001; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=rbfQPnb/bGQ2Gkjp6lt26EZDU8eKMGkAA4M/WWEU8/c=;
+	b=wiT8Ya5/HG/DD7Q5wA50FeGnqRAYEFpM2ufxuc+W83Q6gRGxfoIYZsDrPVVbICmn2yN0jR
+	zFQD1oULjCblWWQrr4MdUF9IJU0wupvY9z9oPW49UQ8qXuHoODMBmcEwPuLzHxTUJJWuic
+	k7io5RDNUB4iTiKm0l2npXMZ9qLa0po=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+	s=susede2_ed25519; t=1795549001;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=rbfQPnb/bGQ2Gkjp6lt26EZDU8eKMGkAA4M/WWEU8/c=;
+	b=dk5YjynBJCrj49GitF84RZJ2dgPePHqam+YuV+QitmjE0rZOV8sppZVHzD3Btg3owvQ2To
+	8SM1E9W+dG+2yLDA==
+Authentication-Results: smtp-out1.suse.de;
+	none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+	t=1795549000; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=rbfQPnb/bGQ2Gkjp6lt26EZDU8eKMGkAA4M/WWEU8/c=;
+	b=h2LQ/IDI9VLQ3E7Tws5WfCPIkt0HGGmYoA6Xu62TnhdKBtRQ2fD/djQW0dwzL5JR2J9j1j
+	pdDK/TBHwSkSZJ3/qN7t5zHtiihHkeJx8/b2AbVB0RzV7/090vvuDXmQMqGEA8QXYJQyqD
+	9NdTAtzQceGIwZ8JCBlpSqI3QJlb49Y=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+	s=susede2_ed25519; t=1795549000;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=rbfQPnb/bGQ2Gkjp6lt26EZDU8eKMGkAA4M/WWEU8/c=;
+	b=Sa6ZruAStbYSh68HiIXKLUc20jCF9BCiQzCoDpqGZbSNX4Y9yzhFNZQxtV9YnS6mNixIuB
+	86j1GlyndVGeVaCQ==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id CE3181339F;
+	Tue, 24 Nov 2026 19:36:39 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id VZNQJUfnBWs1aQAAD6G6ig
+	(envelope-from <krisman@suse.de>); Tue, 24 Nov 2026 19:36:39 +0000
+From: Gabriel Krisman Bertazi <krisman@suse.de>
+To: Sarthak Kukreti via Linux-f2fs-devel
+ <linux-f2fs-devel@lists.sourceforge.net>, Theodore Ts'o <tytso@mit.edu>,
+ Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>, Al Viro
+ <viro@zeniv.linux.org.uk>, Christian Brauner <brauner@kernel.org>
+Cc: Sarthak Kukreti <sarthakkukreti@google.com>,
+ linux-kernel@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net, Eric
+ Biggers <ebiggers@kernel.org>, linux-fsdevel@vger.kernel.org,
+ linux-ext4@vger.kernel.org, Dmitry Torokhov <dtor@google.com>
+Subject: Re: [f2fs-dev] [PATCH v2 1/3] libfs: reject casefolded names that
+ fold to ".", "..", or empty
+In-Reply-To: <20261119214944.1480596-2-sarthakkukreti@google.com>
+Organization: SUSE
+References: <20261119214944.1480596-1-sarthakkukreti@google.com>
+ <20261119214944.1480596-2-sarthakkukreti@google.com>
+Date: Tue, 24 Nov 2026 14:36:38 -0500
+Message-ID: <87pkvuc989.fsf@cartola>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -58,115 +116,190 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-X-Received: by 2002:a05:6808:4488:b0:4d6:90f3:74ad with SMTP id
- 5614622812f47-57a0b644678mr16259886b6e.45.1795547744778; Tue, 24 Nov 2026
- 11:15:44 -0800 (PST)
-Date: Tue, 24 Nov 2026 11:15:44 -0800
-In-Reply-To: <20261119-gup-dirty-what-v1-0-236d69f25c24@suse.de>
-X-Google-Appengine-App-Id: s~syzkaller
-X-Google-Appengine-App-Id-Alias: syzkaller
-Message-ID: <6b05e260.e1ffc79a.44bf.0000.GAE@google.com>
-Subject: [syzbot ci] Re: mm: GUP dirty + ->release_folio() fixes
-From: syzbot ci <syzbot+ci6dc3bd0a53405de7@syzkaller.appspotmail.com>
-To: akpm@linux-foundation.org, axelrasmussen@google.com, baohua@kernel.org, 
-	baolin.wang@linux.alibaba.com, baoquan.he@linux.dev, david@kernel.org, 
-	dev.jain@arm.com, hannes@cmpxchg.org, jack@suse.cz, jhubbard@nvidia.com, 
-	kas@kernel.org, kasong@tencent.com, lance.yang@linux.dev, liam@infradead.org, 
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, linux-mm@kvack.org, linux-nfs@vger.kernel.org, 
-	ljs@kernel.org, mhocko@kernel.org, mhocko@suse.com, nico.pache@linux.dev, 
-	peterx@redhat.com, pfalcato@suse.de, qi.zheng@linux.dev, rppt@kernel.org, 
-	ryan.roberts@arm.com, shakeel.butt@linux.dev, stable@vger.kernel.org, 
-	surenb@google.com, usama.arif@linux.dev, vbabka@kernel.org, 
-	weixugc@google.com, willy@infradead.org, yuanchu@google.com, ziy@nvidia.com
-Cc: syzbot@lists.linux.dev, syzkaller-bugs@googlegroups.com
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain
+X-Spam-Flag: NO
+X-Spam-Level: 
+X-Spamd-Result: default: False [-12.80 / 50.00];
+	SUSE_INTERNAL_BYPASS(-9.00)[];
+	BAYES_HAM(-3.00)[100.00%];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	MISSING_XM_UA(0.00)[];
+	ARC_NA(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	HAS_ORG_HEADER(0.00)[];
+	RCPT_COUNT_TWELVE(0.00)[13];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	RCVD_TLS_ALL(0.00)[];
+	DKIM_SIGNED(0.00)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
+	FROM_HAS_DN(0.00)[];
+	TO_DN_SOME(0.00)[];
+	FROM_EQ_ENVFROM(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	RCVD_COUNT_TWO(0.00)[2];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,dirent.name:url,decrypted_name.name:url]
+X-Spam-Score: -12.80
 
-syzbot ci has tested the following series
+Sarthak Kukreti via Linux-f2fs-devel
+<linux-f2fs-devel@lists.sourceforge.net> writes:
 
-[v1] mm: GUP dirty + ->release_folio() fixes
-https://lore.kernel.org/all/20261119-gup-dirty-what-v1-0-236d69f25c24@suse.de
-* [PATCH RFC 1/5] mm/khugepaged: fix filemap_release_folio() interaction with GUP dirty
-* [PATCH RFC 2/5] mm/huge_memory: fix filemap_release_folio() interaction with GUP dirty
-* [PATCH RFC 3/5] mm/vmscan: avoid releasing FS metadata for !FOLL_PIN gup folios
-* [PATCH RFC 4/5] mm/vmscan: be more careful when releasing FS metadata if buffer_heads_over_limit
-* [PATCH RFC 5/5] mm/filemap: refuse releasing maybe_dma_pinned folios
+> diff --git a/fs/libfs.c b/fs/libfs.c
+> index 46e0205154e7..77997f88e475 100644
+> --- a/fs/libfs.c
+> +++ b/fs/libfs.c
+> @@ -1828,13 +1828,21 @@ int generic_ci_d_hash(const struct dentry *dentry, struct qstr *str)
+>  	const struct inode *dir = READ_ONCE(dentry->d_inode);
+>  	struct super_block *sb = dentry->d_sb;
+>  	const struct unicode_map *um = sb->s_encoding;
+> +	unsigned char buf[3];
+>  	int ret;
+>  
+>  	if (!dir || !IS_CASEFOLDED(dir))
+>  		return 0;
+>  
+>  	ret = utf8_casefold_hash(um, dentry, str);
+> -	if (ret < 0 && sb_has_strict_encoding(sb))
+> +	if (ret < 0) {
+> +		if (sb_has_strict_encoding(sb))
+> +			return -EINVAL;
+> +		return 0;
+> +	}
+> +
+> +	ret = utf8_casefold(um, str, buf, sizeof(buf));
+> +	if (ret == 0 || (ret > 0 && name_is_dot_dotdot(buf, ret)))
+>  		return -EINVAL;
 
-and found the following issue:
-WARNING in filemap_release_folio
+I really dislike the idea of doing utf8_casefold here. even on a
+small substring.  We are walking down the trie a second time just to do it
+again in ->d_compare.
 
-Full report is available here:
-https://ci.syzbot.org/series/852fc6fd-04c3-494d-a18d-4072753d5c47
+Consider we don't have negative dentries for casefolded directories.  Is
+there a case where variants of '.' or '..' are ever cached if ->lookup
+rejects them?  I don't think so.  By rejecting the creation of
+'.<empty>' ..<empty> we can guarantee there aren't any variants either.
 
-***
+Assuming these don't exist in the dcache, why not let utf8_casefold_hash
+hash to a non-existing dentry?  d_compare will not find it, go to
+->lookup and only the filesystem needs special handling to reject
+invalid names.  The vast majority of real lookups will hit the dcache
+and never pay the cost of this check.
 
-WARNING in filemap_release_folio
+If we *must* check the dcache for some reason I miss, can we do it
+*only* in d_compare?  There, we are doing some kind of utf8_casefold
+anyway.  We can modify utf8_strncasecmp to return the casefolded string,
+which we can byte compare for dotdot, avoiding multiple walks over the
+trie.
 
-tree:      linux-next
-URL:       https://kernel.googlesource.com/pub/scm/linux/kernel/git/next/linux-next
-base:      bb7a206a3ffb0992b3600205b7cf2bcbd228d339
-arch:      amd64
-compiler:  Debian clang version 22.1.8 (1~deb13u4), Debian LLD 22.1.8
-config:    https://ci.syzbot.org/builds/789b8ec7-0fce-48b1-bd3f-130fad443c68/config
-syz repro: https://ci.syzbot.org/findings/b27d3479-eda0-470a-a735-8bde8b489eea/syz_repro
+>  	return 0;
+>  }
+> @@ -1907,10 +1915,28 @@ int generic_ci_match(const struct inode *parent,
+>  	    !memcmp(name->name, dirent.name, dirent.len))
+>  		goto out;
+>  
+> -	if (folded_name->name)
+> +	if (name_is_dot_dotdot(dirent.name, dirent.len) ||
+> +	    name_is_dot_dotdot(name->name, name->len) ||
+> +	    (folded_name->name &&
+> +	     (!folded_name->len ||
+> +	      name_is_dot_dotdot(folded_name->name, folded_name->len))))
+> {
 
- __do_sys_exit_group kernel/exit.c:1134 [inline]
- __se_sys_exit_group kernel/exit.c:1132 [inline]
- __x64_sys_exit_group+0x3f/0x40 kernel/exit.c:1132
- x64_sys_call+0x18c6/0x18d0 arch/x86/include/generated/asm/syscalls_64.h:232
- do_syscall_x64 arch/x86/entry/syscall_64.c:61 [inline]
- do_syscall_64+0x171/0x540 arch/x86/entry/syscall_64.c:89
- entry_SYSCALL_64_after_hwframe+0x77/0x7f
-------------[ cut here ]------------
-1
-WARNING: mm/filemap.c:4574 at filemap_release_folio+0x579/0x6a0 mm/filemap.c:4574, CPU#1: syz.0.32/5940
-Modules linked in:
-CPU: 1 UID: 0 PID: 5940 Comm: syz.0.32 Not tainted syzkaller #0 PREEMPT(full) 
-Hardware name: QEMU Standard PC (Q35 + ICH9, 2009), BIOS 1.16.2-debian-1.16.2-1 04/01/2014
-RIP: 0010:filemap_release_folio+0x579/0x6a0 mm/filemap.c:4574
-Code: 89 df 48 83 c4 10 5b 41 5c 41 5d 41 5e 41 5f 5d e9 2c 88 58 00 e8 47 76 b7 ff 48 89 df 48 c7 c6 a0 82 39 8c e8 e8 74 16 ff 90 <0f> 0b 90 e9 00 fc ff ff e8 2a 76 b7 ff 48 89 df e8 a2 26 00 00 41
-RSP: 0000:ffffc90003486d78 EFLAGS: 00010246
-RAX: d29da7cf2dd17300 RBX: ffffea0006c30400 RCX: 0000000000000046
-RDX: 0000000000000000 RSI: ffffffff8e935905 RDI: ffff8881720f1e00
-RBP: dffffc0000000000 R08: ffffffff9014c6eb R09: 1ffffffff20298dd
-R10: dffffc0000000000 R11: fffffbfff20298de R12: 0000000000000001
-R13: ffffea0006c30408 R14: 1ffffd4000d86080 R15: 1ffffd4000d86081
-FS:  00007f9243ca06c0(0000) GS:ffff8882a7801000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: 00007fb8ff871a20 CR3: 000000016d7f6000 CR4: 00000000000006f0
-Call Trace:
- <TASK>
- collapse_file mm/khugepaged.c:2426 [inline]
- collapse_pmd+0x389d/0x6bd0 mm/khugepaged.c:2869
- collapse_single_pmd+0x1c74/0x36b0 mm/khugepaged.c:2921
- madvise_collapse+0x3e7/0x920 mm/khugepaged.c:3313
- madvise_vma_behavior+0xffe/0x4cb0 mm/madvise.c:1390
- madvise_walk_vmas+0x57d/0xb70 mm/madvise.c:1742
- madvise_do_behavior+0x385/0x540 mm/madvise.c:1937
- do_madvise+0x327/0x3a0 mm/madvise.c:2035
- __do_sys_madvise mm/madvise.c:2044 [inline]
- __se_sys_madvise mm/madvise.c:2042 [inline]
- __x64_sys_madvise+0xa6/0xc0 mm/madvise.c:2042
- do_syscall_x64 arch/x86/entry/syscall_64.c:61 [inline]
- do_syscall_64+0x171/0x540 arch/x86/entry/syscall_64.c:89
- entry_SYSCALL_64_after_hwframe+0x77/0x7f
-RIP: 0033:0x7f9242da8fd9
-Code: ff c3 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 44 00 00 48 89 f8 48 89 f7 48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff ff 73 01 c3 48 c7 c1 e8 ff ff ff f7 d8 64 89 01 48
-RSP: 002b:00007f9243ca0028 EFLAGS: 00000246 ORIG_RAX: 000000000000001c
-RAX: ffffffffffffffda RBX: 00007f9243026180 RCX: 00007f9242da8fd9
-RDX: 0000000000000019 RSI: 000000000060005f RDI: 0000200000000000
-RBP: 00007f9242e37fed R08: 0000000000000000 R09: 0000000000000000
-R10: 0000000000000000 R11: 0000000000000246 R12: 0000000000000000
-R13: 00007f9243026218 R14: 00007f9243026180 R15: 00007fff1d17f228
- </TASK>
+Most of these checks seems unnecessary.
+
+First, if name_is_dot_dotdot(dirent.name) is true, which I'm not sure
+can really happen, it only matters if name_is_dot_dotdot(name->name) or
+name_is_dot_dotdot(folded_name->name) is also true, because then we have
+a match.  Otherwise, there's no match.  Checking both seems redundant.
+
+But also, if name_is_dot_dotdot(name->name) is true, that means we are
+doing an exact search for '.' or '..', which, IIUC, the VFS will handle
+specially and not call this code?
+
+I think the only thing you need to check here is:
+
+name_is_dot_dotdot(folded_name->name, folded_name->len)
+
+if folded_name exists.  If it doesn't, that's because the cached name
+initialization failed and you might need to do the utf8_casefold +
+name_is_dot_dotdot() dance you do in the hunk below:
 
 
-***
+> +
+> +	if (folded_name->name) {
+>  		res = utf8_strncasecmp_folded(um, folded_name, &dirent);
+> -	else
+> +	} else {
+> +		unsigned char buf[3];
+> +		int cf_len = utf8_casefold(um, name, buf, sizeof(buf));
+> +
+> +		if (cf_len == 0 ||
+> +		    (cf_len > 0 && name_is_dot_dotdot(buf, cf_len))) {
+> +			res = 1;
+> +			goto out;
+> +		}
+>  		res = utf8_strncasecmp(um, name, &dirent);
+> +	}
+>  
+>  out:
+>  	kfree(decrypted_name.name);
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index 5b3a100aba77..22c411e046ce 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -3368,28 +3368,26 @@ int generic_ci_d_compare(const struct dentry *dentry, unsigned int len,
+>   * generic_ci_validate_strict_name - Check if a given name is suitable
+>   * for a directory
+>   *
+> - * This functions checks if the proposed filename is valid for the
+> - * parent directory. That means that only valid UTF-8 filenames will be
+> - * accepted for casefold directories from filesystems created with the
+> - * strict encoding flag.  That also means that any name will be
+> - * accepted for directories that doesn't have casefold enabled, or
+> - * aren't being strict with the encoding.
+> + * This function checks if the proposed filename is valid for the
+> + * parent directory. Names that casefold to "", ".", or ".." are
+> + * rejected for all casefolded directories. When the filesystem is
+> + * created with the strict encoding flag, only valid UTF-8 filenames
+> + * are accepted for casefolded directories.
+>   *
+>   * @dir: inode of the directory where the new file will be created
+>   * @name: name of the new file
+>   *
+>   * Return:
+> - * * True: if the filename is suitable for this directory. It can be
+> - *   true if a given name is not suitable for a strict encoding
+> - *   directory, but the directory being used isn't strict
+> - * * False if the filename isn't suitable for this directory. This only
+> - *   happens when a directory is casefolded and the filesystem is strict
+> - *   about its encoding.
+> + * * True: if the filename is suitable for this directory.
+> + * * False: if the filename isn't suitable for this directory.
+>   */
+>  static inline bool generic_ci_validate_strict_name(struct inode *dir,
+>  						   const struct qstr *name)
+>  {
+> -	if (!IS_CASEFOLDED(dir) || !sb_has_strict_encoding(dir->i_sb))
+> +	unsigned char buf[3];
+> +	int len;
+> +
+> +	if (!IS_CASEFOLDED(dir))
+>  		return true;
+>  
+>  	/*
+> @@ -3399,6 +3397,13 @@ static inline bool generic_ci_validate_strict_name(struct inode *dir,
+>  	if (WARN_ON_ONCE(!dir->i_sb->s_encoding))
+>  		return true;
+>  
+> +	len = utf8_casefold(dir->i_sb->s_encoding, name, buf, sizeof(buf));
+> +	if (len == 0 || (len > 0 && name_is_dot_dotdot(buf, len)))
+> +		return false;
+> +
 
-If these findings have caused you to resend the series or submit a
-separate fix, please add the following tag to your commit message:
-  Tested-by: syzbot@syzkaller.appspotmail.com
+With this in place we should not be creating new files that turn into '.'
+and '..'.  If we also reject to create them during a lookup, I think it
+is enough to drop the dcache callback changes.
 
----
-This report is generated by a bot. It may contain errors.
-syzbot ci engineers can be reached at syzkaller@googlegroups.com.
+-- 
+Gabriel Krisman Bertazi
