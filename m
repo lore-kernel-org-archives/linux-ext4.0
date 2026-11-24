@@ -1,106 +1,54 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.167.200
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795540465;
-	b=J6Qi6Ge9k8Whzc3TpFN2iPgvZClya3ExZTkpUOsytBSviCODjx+0qZDlrfo4l065t1rL
-	 C0xJz6+Js345klS9dprk5Ijy02WgMmsy2qKX4cNjFKEyMMor5bhCxGMfKNp00LINHJSLQ
-	 kr33r9YceLx8zvJRx8t8r/eI89o63IgiH9Bf/TQwgc+Md9ismFOkgXQpHsjuDZ/Cj+X5R
-	 BPrjfypxiRa1vFaHownngBFwEfXVyhVin3Lu5baVo9w8EtrXS1WRomVl7QPG5PFg20rq/
-	 caYpXwreNH9K4kCZw4Y+5c9RPN9k6x5kznCYUSabBmmHc5AMaxLkUZL5DrdaM/ZglIw==
+	t=1795547746;
+	b=nrEGoRnjt1SygFQgOUna/jwpcUQT4tWo55Vfc8hT+dHIzhZMszTPyYrEJiAt5OkOV776
+	 neM4XpitgG5ajR4OIDXL2OKGrKIeUzPCp93doWKi6oBYq8OtKmkeSUCZSRckb0dAG1RWB
+	 kUTOyhZdTX/lhmihHRplI6GTEF1S7tP43ylsVTHMeR3CIW0AZXMKUOjWXe5+zuUvpgQZe
+	 1j6GbPaknUEt256Vvv6l9KcODWPGPY5Jier19RhP0Zh1QZqS8uE5u6tpxeIntuqDPdjl4
+	 KsLJnrLkPqVp4NBPoJH6coT1ANq2qcQRNwuvCoq9Mt/9caEbxwLQVBocmGHyq0xWTdw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795540465;
-	h=DMARC-Filter:Received:DKIM-Signature:DKIM-Signature:DKIM-Signature:
-	 DKIM-Signature:Received:Received:Received:Date:From:To:Cc:Subject:
-	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
-	 In-Reply-To:X-Spam-Flag:X-Spam-Level:X-Spamd-Result:X-Spam-Score;
-	bh=rzqCQtpqrLDDyu7ncN7OAfBve3N8Z/NJ+nLdXHaRrnk=;
-	b=ccdLBm1cCzMVde72Zyv2YJeSCzn7Zg+BSH6xzEeIVMmFZJMYUFdAlIwM/h+XRDprrv+s
-	 SHw8m9ir1+FDifMbW4wKd14biTyOTyT2yROoEjSEkVMiKPcg87FrRP3pnosyxCmOOhBqI
-	 s13a5nbONIdGv8P4NoglCoRzjePZge5WgL9xdV+z3xJos90Bgl8Py9+elGoZwWESfOS36
-	 fdu2DIHcT7QwZ+ZVf3Ca8UUqhvz3oR+g0LmgIrs3CkPXEsg89bdWOcFmlXEi4sB5rqxgG
-	 OrAmTXlOWRtM33H1rmozqR80SPlflEof+0+FU6O3mU0+GLT05eD0uuE34oC6qwrnh5A==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795547746;
+	h=DMARC-Filter:Received:X-Google-DKIM-Signature:X-Forwarded-Encrypted:
+	 X-Gm-Message-State:MIME-Version:X-Received:Date:In-Reply-To:
+	 X-Google-Appengine-App-Id:X-Google-Appengine-App-Id-Alias:Message-ID:
+	 Subject:From:To:Cc:Content-Type;
+	bh=iVaX5nAlkBKMSj8rUpfeIOl3ibSmoRV5kmxp9WpM+9Y=;
+	b=bN1PsjpGFynmBhvc1bKEs7xG84iL3Q44Gt2y3+19bQptGKpbqlz1NruKjjl01Ftdf5jg
+	 9WMQI/C6NkentpT7aikzRXod8D14KpN50xhdw2riLtOa8otfgmpIV47bbY5nTjoLuog1U
+	 eDi9xrI7gbjc7KD4dhIBTknBhXGnO4jQEmNh/u0k6narA7WXxkFbDsEnEBaFwmFgoNpQJ
+	 bbBeh3NM4NiiQS72U2PHyN4Koc2AzqjEsLuZv9FQQb96BAtJq1EXVxfdm67+5d3WHMN/8
+	 QCSOVVYq3bmQhUCbLvp32ub3VuysoIJJpEaDNWWuutsKHPJte3guOqxfK5dFXFjqxpQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=none header.from=suse.cz;
-	spf=pass smtp.mailfrom=suse.cz;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=FHUxAU7k;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b="Vwjmi/U6";
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=lBdrN5Hz;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=8Pi88vuV;
-	arc=none smtp.remote-ip=195.135.223.131
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	dmarc=fail header.from=syzkaller.appspotmail.com;
+	spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com;
+	arc=none smtp.remote-ip=209.85.167.200
+Received: from mail-oi1-f200.google.com (mail-oi1-f200.google.com [209.85.167.200])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 772C2606A321
-	for <linux-ext4@vger.kernel.org>; Tue, 24 Nov 2026 17:14:24 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 772C2606A321
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=FHUxAU7k;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=Vwjmi/U6;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=lBdrN5Hz;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=8Pi88vuV
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 76A861FD12;
-	Tue, 24 Nov 2026 17:14:21 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1795540462; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=rzqCQtpqrLDDyu7ncN7OAfBve3N8Z/NJ+nLdXHaRrnk=;
-	b=FHUxAU7k1Xdd23yNm6nFSC6YXdsTNyiUyo8HZgSep3iBUS/6zo8shNm5MZEuLSgDB6imON
-	SpLZuP6fLgF0VvfQ5tmlrdMnHjXIQsIpsHyEk7c91Mu0/ckUD1ynHBhxt8IfNYnfs1P+Am
-	wxjwMKXP9GSnsvoqPveaEWm88VQbiHw=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1795540462;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=rzqCQtpqrLDDyu7ncN7OAfBve3N8Z/NJ+nLdXHaRrnk=;
-	b=Vwjmi/U6OmbTY/gdKQ0HOrdEurwlnY0tf7SDa0a35O/ao3xB459JapFMpqBvn1lRQ+C746
-	nEgZpY+7c5LOGpDw==
-Authentication-Results: smtp-out2.suse.de;
-	none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1795540461; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=rzqCQtpqrLDDyu7ncN7OAfBve3N8Z/NJ+nLdXHaRrnk=;
-	b=lBdrN5HzWwj9Pj/z79JGfhZJtDwWDvNItG4uANAWkZKAuOZJs/AaoYKbDiuQnip64KjVOe
-	TFmCDaaTHCuVkQ5CEHod+msRzdFx7rJChnhqFsguNE6YAnV8CibG0FuiUXF6K5SqZPqvsb
-	q6/sKTjmI14bnydQZxOmdGv3Y1yK/kc=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1795540461;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=rzqCQtpqrLDDyu7ncN7OAfBve3N8Z/NJ+nLdXHaRrnk=;
-	b=8Pi88vuVKIxfc5ppRHBsuESrtrUOehQ9sH9PgdJEoIGGVdjOS9Cc1jPdX3hOfshuRL17SB
-	j5lFAnfzvpS7/nCw==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 30C7C1339F;
-	Tue, 24 Nov 2026 17:14:20 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id adovBOzFBWvUWQAAD6G6ig
-	(envelope-from <jack@suse.cz>); Tue, 24 Nov 2026 17:14:20 +0000
-Received: by quack.suse.cz (Postfix, from userid 1000)
-	id 9F33727A3B; Tue, 24 Nov 2026 18:14:15 +0100 (CET)
-Date: Tue, 24 Nov 2026 18:14:15 +0100
-From: Jan Kara <jack@suse.cz>
-To: "yebin (H)" <yebin10@huawei.com>
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org, tytso@mit.edu
-Subject: Re: [PATCH] ext4: protect ext4_acquire_dquot against freezing
-Message-ID: <5u223kwv7ro7drsneuho3xsa2u6xnbkctqpmnjek6542w6jc7m@ywa436txf5h6>
-References: <20261123114602.66520-1-yebin@huaweicloud.com>
- <sashiko-outbox-229179@kernel.org>
- <6B050ABA.1050808@huawei.com>
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B6813606A323
+	for <linux-ext4@vger.kernel.org>; Tue, 24 Nov 2026 19:15:45 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org B6813606A323
+Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
+Received: by mail-oi1-f200.google.com with SMTP id 5614622812f47-5727b04b81eso3165418b6e.3
+        for <linux-ext4@vger.kernel.org>; Tue, 24 Nov 2026 11:15:45 -0800 (PST)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1795547745; x=1796152545;
+        h=content-type:cc:to:from:subject:message-id:in-reply-to:date
+         :mime-version:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to:content-type;
+        bh=iVaX5nAlkBKMSj8rUpfeIOl3ibSmoRV5kmxp9WpM+9Y=;
+        b=yTq+8qKt5ruOIRXcs6Y92t3bsM0qS6MOZfSuK++KQZk5jZcLuLTvajYPKgc7291/ds
+         /W/ZX64lnu2nD40lUCLJCaedxEHNGoYyEutA/B9gkkXg9DW2okvdaQyy8W/CP1RxkHeF
+         bUyLZIR514VTJbqzJtDobwsOsuvKchwBNCcVgdxNJxKe26m1fr1FMo4jRv3O7MVWK4Fm
+         +pUk/R8eFTnIzvijvHMQfyBGYzJwG4kahB54FWrhrimrpQst5dj0qYSM8013apcBn2nH
+         3OlO766Hdnqg65vfqBcYJCRAPEWvfpanK/NnIGAaWrlj9GdhBq7HjqaTsx23dx6d3ANx
+         IVqg==
+X-Forwarded-Encrypted: i=1; AL+hErEsgW9Art69xpELoaDU3Sa4emWOLOSvTTVxp2ZJMF6ONEzXAwqLhZHYDgIc2i2KoKVx2jD0XUJDbPeC@vger.kernel.org
+X-Gm-Message-State: APuU4Z/jasZ6Ucd1Yf8aV+WepyAUruO6rQYIR/v74mqrah1hMXbOaNtB
+	UMlHpV1C6aug38LjphVbCPKEr39D7p4qS4H2kYCZ0OjrfIFk8uPIc6e5ZHnPJ7vwZc4PbfhAY7u
+	7G5DxAkNTVhEcNZdY8pxqRjpI2qwJ5ZKK7AmHT0xQSoXPZeeNXnWPF6bhCdY=
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -110,136 +58,115 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <6B050ABA.1050808@huawei.com>
-X-Spam-Flag: NO
-X-Spam-Level: 
-X-Spamd-Result: default: False [-12.80 / 50.00];
-	SUSE_INTERNAL_BYPASS(-9.00)[];
-	BAYES_HAM(-3.00)[100.00%];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	ARC_NA(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	TO_DN_SOME(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	RCVD_COUNT_THREE(0.00)[3];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	FROM_EQ_ENVFROM(0.00)[];
-	RCPT_COUNT_THREE(0.00)[4];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	RCVD_TLS_LAST(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[huawei.com:email,suse.com:email,imap1.dmz-prg2.suse.org:helo]
-X-Spam-Score: -12.80
+X-Received: by 2002:a05:6808:4488:b0:4d6:90f3:74ad with SMTP id
+ 5614622812f47-57a0b644678mr16259886b6e.45.1795547744778; Tue, 24 Nov 2026
+ 11:15:44 -0800 (PST)
+Date: Tue, 24 Nov 2026 11:15:44 -0800
+In-Reply-To: <20261119-gup-dirty-what-v1-0-236d69f25c24@suse.de>
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <6b05e260.e1ffc79a.44bf.0000.GAE@google.com>
+Subject: [syzbot ci] Re: mm: GUP dirty + ->release_folio() fixes
+From: syzbot ci <syzbot+ci6dc3bd0a53405de7@syzkaller.appspotmail.com>
+To: akpm@linux-foundation.org, axelrasmussen@google.com, baohua@kernel.org, 
+	baolin.wang@linux.alibaba.com, baoquan.he@linux.dev, david@kernel.org, 
+	dev.jain@arm.com, hannes@cmpxchg.org, jack@suse.cz, jhubbard@nvidia.com, 
+	kas@kernel.org, kasong@tencent.com, lance.yang@linux.dev, liam@infradead.org, 
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
+	linux-kernel@vger.kernel.org, linux-mm@kvack.org, linux-nfs@vger.kernel.org, 
+	ljs@kernel.org, mhocko@kernel.org, mhocko@suse.com, nico.pache@linux.dev, 
+	peterx@redhat.com, pfalcato@suse.de, qi.zheng@linux.dev, rppt@kernel.org, 
+	ryan.roberts@arm.com, shakeel.butt@linux.dev, stable@vger.kernel.org, 
+	surenb@google.com, usama.arif@linux.dev, vbabka@kernel.org, 
+	weixugc@google.com, willy@infradead.org, yuanchu@google.com, ziy@nvidia.com
+Cc: syzbot@lists.linux.dev, syzkaller-bugs@googlegroups.com
+Content-Type: text/plain; charset="UTF-8"
 
-On Tue 24-11-26 11:55:38, yebin (H) wrote:
-> 
-> 
-> On 2026/11/23 20:02, sashiko-bot@kernel.org wrote:
-> > Thank you for your contribution! Sashiko AI review found 1 potential
-> > issue to consider:
-> > - [High] ext4: deadlock with thaw_super() in ext4_acquire_dquot() via
-> >    Q_XGETQUOTA
-> > --
-> > 
-> > commit f23e3eb68e6a88d3c8dec26c7efee607385b6388
-> > Author: Ye Bin <yebin10@huawei.com>
-> > 
-> > ext4: protect ext4_acquire_dquot against freezing
-> > 
-> > This commit wraps ext4_acquire_dquot() with sb_start_intwrite() and
-> > sb_end_intwrite() when no journal transaction is currently active to
-> > protect quota acquisition against filesystem freezing.
-> > 
-> > Link: https://patchwork.kernel.org/project/linux-fsdevel/patch/20261112135245.3347102-1-yebin@huaweicloud.com/
-> > 
-> > > diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> > > index 359f9d4ed4479..a06d5f298c849 100644
-> > > --- a/fs/ext4/super.c
-> > > +++ b/fs/ext4/super.c
-> > > @@ -7118,11 +7118,25 @@ static int ext4_acquire_dquot(struct dquot *dquot)
-> > >   {
-> > >   	int ret, err;
-> > >   	handle_t *handle;
-> > > +	bool freeze_protected = false;
-> > > +
-> > > +	/*
-> > > +	 * Trying to sb_start_intwrite() in a running transaction
-> > > +	 * can result in a deadlock. Further, running transactions
-> > > +	 * are already protected from freezing.
-> > > +	 */
-> > > +	if (!ext4_journal_current_handle()) {
-> > > +		sb_start_intwrite(dquot->dq_sb);
-> > > +		freeze_protected = true;
-> > > +	}
-> > 
-> > [Severity: High]
-> > Can calling sb_start_intwrite() here cause an ABBA deadlock between
-> > sb->s_umount and SB_FREEZE_FS when Q_XGETQUOTA or Q_XGETNEXTQUOTA runs on
-> > a frozen filesystem?
-> > 
-> > quotactl_cmd_write() returns 0 for Q_XGETQUOTA and Q_XGETNEXTQUOTA, so
-> > quotactl_block() and quotactl_fd() acquire down_read(&sb->s_umount)
-> > without waiting for the filesystem to thaw.  If the queried dquot is not
-> > yet active in memory, dquot_get_dqblk() calls dqget() ->
-> > ext4_acquire_dquot() with no running transaction and blocks in
-> > sb_start_intwrite() while holding s_umount:
-> > 
-> > CPU0                              CPU1
-> > ----                              ----
-> > down_read(&sb->s_umount)
-> >                                    sb_freeze_unlock(sb, SB_FREEZE_FS)
-> > sb_start_intwrite(sb)
-> >                                    down_write(&sb->s_umount)
-> > 
-> >   *** DEADLOCK ***
-> > 
-> > CPU0: do_quotactl() -> quota_getxquota() -> dquot_get_dqblk() ->
-> >        dqget() -> ext4_acquire_dquot()
-> > CPU1: thaw_super() -> super_lock_excl() -> thaw_super_locked()
-> > 
-> > Once this happens, thaw_super() cannot acquire s_umount to unfreeze the
-> > filesystem, leaving the filesystem permanently wedged.
-> > 
-> Hi Jan,
-> 
-> Sashiko reported a deadlock with thaw_super() when Q_XGETQUOTA or
-> Q_XGETNEXTQUOTA runs on a frozen filesystem.
-> 
-> Looking at this, I think the same reasoning as commit ccf370e43e08
-> ("quota: Forbid Q_GETQUOTA and Q_GETNEXTQUOTA for frozen filesystem")
-> also applies to Q_XGETQUOTA/Q_XGETNEXTQUOTA, since these can likewise
-> end up in ->acquire_dquot().
-> 
-> So my question is: would it be acceptable to also forbid these two
-> commands on a frozen filesystem, i.e. add them to quotactl_cmd_write()?
+syzbot ci has tested the following series
 
-Yes, please make them consistent with Q_GETQUOTA and Q_GETNEXTQUOTA. Nobody
-complained in those 10 years about the generic quotactls so I doubt anybody
-will complain about these XFS ones. Just make it a separate change. If
-somebody complains about changed behavior, we'll have to revert and
-implement proper read-only querying.
+[v1] mm: GUP dirty + ->release_folio() fixes
+https://lore.kernel.org/all/20261119-gup-dirty-what-v1-0-236d69f25c24@suse.de
+* [PATCH RFC 1/5] mm/khugepaged: fix filemap_release_folio() interaction with GUP dirty
+* [PATCH RFC 2/5] mm/huge_memory: fix filemap_release_folio() interaction with GUP dirty
+* [PATCH RFC 3/5] mm/vmscan: avoid releasing FS metadata for !FOLL_PIN gup folios
+* [PATCH RFC 4/5] mm/vmscan: be more careful when releasing FS metadata if buffer_heads_over_limit
+* [PATCH RFC 5/5] mm/filemap: refuse releasing maybe_dma_pinned folios
 
-> My concern is the resulting behavior change for read-only mounts.
-> quotactl_fd() would then call mnt_want_write() for these commands, which
-> returns -EROFS on a read-only mount.  So Q_XGETQUOTA on a read-only
-> mounted filesystem (e.g. via xfs_quota) would change from working to
-> failing with -EROFS.
-> 
-> Alternatively, I can keep them as read-only commands and only make both
-> quotactl() and quotactl_fd() wait for the filesystem to thaw without
-> taking write access, which keeps read-only mount queries working and
-> only waits while the filesystem is frozen.
+and found the following issue:
+WARNING in filemap_release_folio
 
-Yes, that would be possible as well but let's keep things simple and
-complicate them only if somebody actually complains :). Thanks!
+Full report is available here:
+https://ci.syzbot.org/series/852fc6fd-04c3-494d-a18d-4072753d5c47
 
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+***
+
+WARNING in filemap_release_folio
+
+tree:      linux-next
+URL:       https://kernel.googlesource.com/pub/scm/linux/kernel/git/next/linux-next
+base:      bb7a206a3ffb0992b3600205b7cf2bcbd228d339
+arch:      amd64
+compiler:  Debian clang version 22.1.8 (1~deb13u4), Debian LLD 22.1.8
+config:    https://ci.syzbot.org/builds/789b8ec7-0fce-48b1-bd3f-130fad443c68/config
+syz repro: https://ci.syzbot.org/findings/b27d3479-eda0-470a-a735-8bde8b489eea/syz_repro
+
+ __do_sys_exit_group kernel/exit.c:1134 [inline]
+ __se_sys_exit_group kernel/exit.c:1132 [inline]
+ __x64_sys_exit_group+0x3f/0x40 kernel/exit.c:1132
+ x64_sys_call+0x18c6/0x18d0 arch/x86/include/generated/asm/syscalls_64.h:232
+ do_syscall_x64 arch/x86/entry/syscall_64.c:61 [inline]
+ do_syscall_64+0x171/0x540 arch/x86/entry/syscall_64.c:89
+ entry_SYSCALL_64_after_hwframe+0x77/0x7f
+------------[ cut here ]------------
+1
+WARNING: mm/filemap.c:4574 at filemap_release_folio+0x579/0x6a0 mm/filemap.c:4574, CPU#1: syz.0.32/5940
+Modules linked in:
+CPU: 1 UID: 0 PID: 5940 Comm: syz.0.32 Not tainted syzkaller #0 PREEMPT(full) 
+Hardware name: QEMU Standard PC (Q35 + ICH9, 2009), BIOS 1.16.2-debian-1.16.2-1 04/01/2014
+RIP: 0010:filemap_release_folio+0x579/0x6a0 mm/filemap.c:4574
+Code: 89 df 48 83 c4 10 5b 41 5c 41 5d 41 5e 41 5f 5d e9 2c 88 58 00 e8 47 76 b7 ff 48 89 df 48 c7 c6 a0 82 39 8c e8 e8 74 16 ff 90 <0f> 0b 90 e9 00 fc ff ff e8 2a 76 b7 ff 48 89 df e8 a2 26 00 00 41
+RSP: 0000:ffffc90003486d78 EFLAGS: 00010246
+RAX: d29da7cf2dd17300 RBX: ffffea0006c30400 RCX: 0000000000000046
+RDX: 0000000000000000 RSI: ffffffff8e935905 RDI: ffff8881720f1e00
+RBP: dffffc0000000000 R08: ffffffff9014c6eb R09: 1ffffffff20298dd
+R10: dffffc0000000000 R11: fffffbfff20298de R12: 0000000000000001
+R13: ffffea0006c30408 R14: 1ffffd4000d86080 R15: 1ffffd4000d86081
+FS:  00007f9243ca06c0(0000) GS:ffff8882a7801000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 00007fb8ff871a20 CR3: 000000016d7f6000 CR4: 00000000000006f0
+Call Trace:
+ <TASK>
+ collapse_file mm/khugepaged.c:2426 [inline]
+ collapse_pmd+0x389d/0x6bd0 mm/khugepaged.c:2869
+ collapse_single_pmd+0x1c74/0x36b0 mm/khugepaged.c:2921
+ madvise_collapse+0x3e7/0x920 mm/khugepaged.c:3313
+ madvise_vma_behavior+0xffe/0x4cb0 mm/madvise.c:1390
+ madvise_walk_vmas+0x57d/0xb70 mm/madvise.c:1742
+ madvise_do_behavior+0x385/0x540 mm/madvise.c:1937
+ do_madvise+0x327/0x3a0 mm/madvise.c:2035
+ __do_sys_madvise mm/madvise.c:2044 [inline]
+ __se_sys_madvise mm/madvise.c:2042 [inline]
+ __x64_sys_madvise+0xa6/0xc0 mm/madvise.c:2042
+ do_syscall_x64 arch/x86/entry/syscall_64.c:61 [inline]
+ do_syscall_64+0x171/0x540 arch/x86/entry/syscall_64.c:89
+ entry_SYSCALL_64_after_hwframe+0x77/0x7f
+RIP: 0033:0x7f9242da8fd9
+Code: ff c3 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 44 00 00 48 89 f8 48 89 f7 48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff ff 73 01 c3 48 c7 c1 e8 ff ff ff f7 d8 64 89 01 48
+RSP: 002b:00007f9243ca0028 EFLAGS: 00000246 ORIG_RAX: 000000000000001c
+RAX: ffffffffffffffda RBX: 00007f9243026180 RCX: 00007f9242da8fd9
+RDX: 0000000000000019 RSI: 000000000060005f RDI: 0000200000000000
+RBP: 00007f9242e37fed R08: 0000000000000000 R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000246 R12: 0000000000000000
+R13: 00007f9243026218 R14: 00007f9243026180 R15: 00007fff1d17f228
+ </TASK>
+
+
+***
+
+If these findings have caused you to resend the series or submit a
+separate fix, please add the following tag to your commit message:
+  Tested-by: syzbot@syzkaller.appspotmail.com
+
+---
+This report is generated by a bot. It may contain errors.
+syzbot ci engineers can be reached at syzkaller@googlegroups.com.
