@@ -1,107 +1,108 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.130
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.131
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795522950;
-	b=H9UYXVjNly0rOhyrq7IaUmCswM8es/S0RbStYefMFia9GZOnytS0Wa/3W7N46O3tkgjH
-	 7Q2CajwVnpEWgM+NQjBGtKsL/tZrTsJz2AGrKa+zMxSPhSCOu4GjPY5l/9KAGidEQZnZh
-	 pIDQBeJ9UVASvy4c2y24y/WkWuyLa5k52qNipQ67LC9r2lncXI8VArPswsL2FjIS9bjPQ
-	 prmLcRP0YU7Ql5kMotQICVvTAw/HftDABEbplFVsBT8TOM2UrlnTzKRTZEVUn6XqMn0DV
-	 sqD4X5MrMZ0FyfqPBVb50x4hLaSPgcCVKyam5ze9d156dTO7y552DZSYFuhF7HpQl5A==
+	t=1795523173;
+	b=nG8V2IMyj+FS59L53c8mqYA4bPiNjOzjoOU13EJUUEjFcVeAylJ77wjFv+zW5eQndXRQ
+	 nEjWKuk7mDvGT1QjTXY4zVTEkoTtp7rDOe8iOLKaJCej16eTYt9PnvK8veJjJKMVy4NcH
+	 d6eSvbMTrLSx+kSR5+hfOiJMTWxhClraQ/T3WWb2GOmX1oJ4+2dfRVfoipK22/Sw02Gpo
+	 w3mnBw77Rbs3V8lzl/xXLWm3CHQMAWUnjDvS3S4pGwtgwVtaHXlH0iwArOO45a5KisPx1
+	 EQl6YxvsIYXuNvHSJbClM0RkS5rAZeii48k0ePA5t+gm4Esf2VkYK6Kd/4/vGlKVvaA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795522950;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795523173;
 	h=DMARC-Filter:Received:DKIM-Signature:DKIM-Signature:DKIM-Signature:
 	 DKIM-Signature:Received:Received:Received:Date:From:To:Cc:Subject:
 	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
 	 In-Reply-To:X-Spamd-Result:X-Spam-Score:X-Spam-Level:X-Spam-Flag;
-	bh=R6hT0sEXxq70qmJC4Ay3/znHoUhouxVeqlVmYke492c=;
-	b=0CeRo0RdA7dN480mx4tQ7bVyD4rz46PMtgh7aZSYdnSaKqg5JMq5LBl11HoxQdBB3Xnz
-	 kZVVyYWm3bW6FBi2X7gdOoH9xndVSm6XIB0G06IBw7A8005/wRzFJYcFsUBpon9FL2+H7
-	 WeOlSNkGENA6WPxJZlUDlVp+VFSBnpSaxoYclf6yVwKyNY4vzZuJjtJDAw5+UVhWm3Hiu
-	 FQgaZ7wsf6qd3yUKvIPPVwodfoNmKt+CwmrYyTqMIPi02tZ7xZfa4v21Esy4oJadYBdep
-	 teSiwNwUD//6cJrdaFwqJJy/xD9k3K2RD6l4t7tm+FmtQAhY+pfDg4t3uogmZ4O0IFg==
+	bh=QNafYeLMTW+BV6Jpqu80+zNAj1n4bMAjW/izwo7G4ww=;
+	b=aGHNWDr0k/951PEKJDmI2tp9MhwioXDFKR1hpv3XKQy/T64zpGdDP0THicM/Cm+Z3ONP
+	 b+tiqRo1aQmUjGkUdNSBAnhqZ9bKq0+fl6RJXh4Fj2WZov7fXU8bZm4YJ28dukwJJ5XsA
+	 bqYUamFLAiQhopfd89jHXXokdA2RijJr1XTBKVMzPEovq2z92umNeAWAyv0kZm7ZeJ+F9
+	 zsmaIou/Z60bcS6fxAXVkF9AIzdvdcv+jiKaPiODj8LlLCMSvs7khOmByuv/qUX69X/VL
+	 ImWUgZkPAuZwa93sqQoIV1pxig65HQbV+5UDmS4/D0ILHvkXyyiEiw+jIEk2xyxgDFA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=none header.from=suse.cz;
 	spf=pass smtp.mailfrom=suse.cz;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=0dnsUMl8;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=BPl4Aroa;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=0dnsUMl8;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=BPl4Aroa;
-	arc=none smtp.remote-ip=195.135.223.130
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=zPpABXFt;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b="/D2+KV67";
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b="tLUbx/GO";
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=rn7WMTH7;
+	arc=none smtp.remote-ip=195.135.223.131
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3346A606A321;
-	Tue, 24 Nov 2026 12:22:29 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 3346A606A321
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 580A0606A321
+	for <linux-ext4@vger.kernel.org>; Tue, 24 Nov 2026 12:26:13 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 580A0606A321
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=0dnsUMl8;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=BPl4Aroa;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=0dnsUMl8;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=BPl4Aroa
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=zPpABXFt;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=/D2+KV67;
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=tLUbx/GO;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=rn7WMTH7
 Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 36DAF2227C;
-	Tue, 24 Nov 2026 12:22:28 +0000 (UTC)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 7F1B71F388;
+	Tue, 24 Nov 2026 12:26:09 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1795522948; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1795523171; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=R6hT0sEXxq70qmJC4Ay3/znHoUhouxVeqlVmYke492c=;
-	b=0dnsUMl8mG9Wyx6WiAQQhsQ7piitGMUyX7Jt889opqYQJVkegwe89J1oHnTEPaNkZ9q4Al
-	tnqIxeP5nMUc+uOD3Xm6xcb2MOekDgiCQqKTylK+3pyyeiCp3VPnw10a+8UVdQ5TxXG8HH
-	8fhwmmHS6vSLmnXLRDNVf1sFF6RiWgs=
+	bh=QNafYeLMTW+BV6Jpqu80+zNAj1n4bMAjW/izwo7G4ww=;
+	b=zPpABXFtvVayHhAynwrKHKJ/2voUQoaQNKqyloVl2HPM79MOqonTBLVAioALeowFHlC6Vm
+	Og0AUx0YDVPtaIUEZNvVLH4MmOA3IM8zJDz5sBESjwr/Wc/pV4FHEwFrYe84HWHBRql0cj
+	n8+EtkepZM9PFso+idfFHiodd6QsKfo=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1795522948;
+	s=susede2_ed25519; t=1795523171;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=R6hT0sEXxq70qmJC4Ay3/znHoUhouxVeqlVmYke492c=;
-	b=BPl4Aroa8mqJoBhh8QFLNhOSDsEjV7zTIJTqqOhEF2Ax8f3Ri05ZXI4pUblbFq9XtCF4JJ
-	D8UiYT7e4pRFjKDA==
-Authentication-Results: smtp-out1.suse.de;
+	bh=QNafYeLMTW+BV6Jpqu80+zNAj1n4bMAjW/izwo7G4ww=;
+	b=/D2+KV67CyODTUoNB3Ae+/N2FxWZqJ95bNFgGFTCXFW5prCiuMt4DzdyHI1NttPyzAdcEW
+	/+fAL6pIu+vFL0Dw==
+Authentication-Results: smtp-out2.suse.de;
 	none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1795522948; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1795523169; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=R6hT0sEXxq70qmJC4Ay3/znHoUhouxVeqlVmYke492c=;
-	b=0dnsUMl8mG9Wyx6WiAQQhsQ7piitGMUyX7Jt889opqYQJVkegwe89J1oHnTEPaNkZ9q4Al
-	tnqIxeP5nMUc+uOD3Xm6xcb2MOekDgiCQqKTylK+3pyyeiCp3VPnw10a+8UVdQ5TxXG8HH
-	8fhwmmHS6vSLmnXLRDNVf1sFF6RiWgs=
+	bh=QNafYeLMTW+BV6Jpqu80+zNAj1n4bMAjW/izwo7G4ww=;
+	b=tLUbx/GOidLJfoiMV+Hl4cTH35NZj7iYBYVlOnWQsm1gXqWvyTNS872VOM690Gn3UQidO4
+	gX8Nb6k4uljv9f5Q21ON/o9OGjw36W3QXVbtC87uPDGArLsW/MI0Edl62zQcyAL7cfiGhW
+	WZUlgQ0XjWxCyNx8C3yWUwfhlMfA1XA=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1795522948;
+	s=susede2_ed25519; t=1795523169;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=R6hT0sEXxq70qmJC4Ay3/znHoUhouxVeqlVmYke492c=;
-	b=BPl4Aroa8mqJoBhh8QFLNhOSDsEjV7zTIJTqqOhEF2Ax8f3Ri05ZXI4pUblbFq9XtCF4JJ
-	D8UiYT7e4pRFjKDA==
+	bh=QNafYeLMTW+BV6Jpqu80+zNAj1n4bMAjW/izwo7G4ww=;
+	b=rn7WMTH7bAMxfMGlSlKv4Qq3RKjfb+JMYKOaVNX8VLPxc3VvnD36w6Fab+EM2KBTfl56WH
+	8ovlnFXjBVSSFZBg==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 061561339F;
-	Tue, 24 Nov 2026 12:22:28 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 567701339F;
+	Tue, 24 Nov 2026 12:26:09 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id hdLKNIOBBWumfAAAD6G6ig
-	(envelope-from <jack@suse.cz>); Tue, 24 Nov 2026 12:22:28 +0000
+	id mgDSDGGCBWueAQAAD6G6ig
+	(envelope-from <jack@suse.cz>); Tue, 24 Nov 2026 12:26:09 +0000
 Received: by quack.suse.cz (Postfix, from userid 1000)
-	id 86B4E27863; Tue, 24 Nov 2026 13:22:27 +0100 (CET)
-Date: Tue, 24 Nov 2026 13:22:27 +0100
+	id DEC8A27865; Tue, 24 Nov 2026 13:26:08 +0100 (CET)
+Date: Tue, 24 Nov 2026 13:26:08 +0100
 From: Jan Kara <jack@suse.cz>
-To: Hsiu-Hsien Lee <swinds24@gmail.com>
-Cc: Theodore Ts'o <tytso@mit.edu>, 
-	Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.cz>, Baokun Li <libaokun@linux.alibaba.com>, 
-	Ojaswin Mujoo <ojaswin@linux.ibm.com>, Ritesh Harjani <ritesh.list@gmail.com>, 
-	Zhang Yi <yi.zhang@huawei.com>, linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] ext4: use unsigned int for inode numbers in fast commit
-Message-ID: <dqqtowsnjvknlfh6qaycrl7oz7jg3cfpms5koymsywvimxlmxa@nk5prrb3e6g6>
-References: <20261123022309.990044-1-swinds24@gmail.com>
+To: Muhammad Umer <mumer.mobi@gmail.com>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca, 
+	libaokun@linux.alibaba.com, jack@suse.cz, ojaswin@linux.ibm.com, ritesh.list@gmail.com, 
+	yi.zhang@huawei.com
+Subject: Re: [PATCH 1/2] ext4: scan all groups before trimming the goal in
+ CR_BEST_AVAIL_LEN
+Message-ID: <7opizb53lwqeklm35v7paupqxdho2hqxpytl5v76mj7frl3twi@4k6e3hbngnyg>
+References: <20261122185630.2112-1-mumer.mobi@gmail.com>
+ <20261122185630.2112-2-mumer.mobi@gmail.com>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -113,7 +114,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20261123022309.990044-1-swinds24@gmail.com>
+In-Reply-To: <20261122185630.2112-2-mumer.mobi@gmail.com>
 X-Spamd-Result: default: False [-11.30 / 50.00];
 	SUSE_INTERNAL_BYPASS(-9.00)[];
 	BAYES_HAM(-3.00)[100.00%];
@@ -122,260 +123,107 @@ X-Spamd-Result: default: False [-11.30 / 50.00];
 	MID_RHS_NOT_FQDN(0.50)[];
 	NEURAL_HAM_SHORT(-0.20)[-1.000];
 	MIME_GOOD(-0.10)[text/plain];
-	RCVD_TLS_LAST(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	FREEMAIL_TO(0.00)[gmail.com];
-	RCVD_COUNT_THREE(0.00)[3];
-	MIME_TRACE(0.00)[0:+];
-	ARC_NA(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	FREEMAIL_CC(0.00)[mit.edu,dilger.ca,suse.cz,linux.alibaba.com,linux.ibm.com,gmail.com,huawei.com,vger.kernel.org];
-	MISSING_XM_UA(0.00)[];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	TO_DN_SOME(0.00)[];
-	RCPT_COUNT_SEVEN(0.00)[10];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
 	TAGGED_RCPT(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,imap1.dmz-prg2.suse.org:helo,suse.cz:email]
+	ARC_NA(0.00)[];
+	FREEMAIL_TO(0.00)[gmail.com];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	MISSING_XM_UA(0.00)[];
+	RCPT_COUNT_SEVEN(0.00)[9];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	TO_DN_SOME(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	FREEMAIL_CC(0.00)[vger.kernel.org,mit.edu,dilger.ca,linux.alibaba.com,suse.cz,linux.ibm.com,gmail.com,huawei.com];
+	RCVD_COUNT_THREE(0.00)[3];
+	FROM_EQ_ENVFROM(0.00)[];
+	RCVD_TLS_LAST(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:email,suse.com:email,imap1.dmz-prg2.suse.org:helo]
 X-Spam-Score: -11.30
 X-Spam-Level: 
 X-Spam-Flag: NO
 
-On Mon 23-11-26 10:23:09, Hsiu-Hsien Lee wrote:
-> The fast commit code keeps inode numbers in signed int: fcd_parent and
-> fcd_ino in struct ext4_fc_dentry_update, the fc_modified_inodes array,
-> struct dentry_info_args, the inode number in ext4_fc_replay_inode() and
-> the argument of ext4_fc_record_modified_inode() and
-> ext4_mark_inode_used().  On a file system with more than 2^31 inodes,
-> inode numbers of 2^31 and above become negative.
+On Sun 22-11-26 13:56:29, Muhammad Umer wrote:
+> Since commit a3ce570a5d6a ("ext4: implement linear-like traversal across
+> order xarrays"), ext4_mb_scan_groups_best_avail() walks every order from
+> the goal order down to min_order over groups [start, ngroups) before it
+> looks at [0, start). A group below start is only considered after the
+> goal has been trimmed to min_order, so a 1024-cluster free extent in
+> group 2 loses to a 256-cluster one in group 9.
 > 
-> In the commit path, fcd_ino is sign-extended when compared with i_ino,
-> so the WARN_ON() in ext4_fc_commit_dentry_updates() fires on every
-> fsync() of a newly created file with such an inode number.
+> The ordering is harmless for CR_POWER2_ALIGNED and CR_GOAL_LEN_FAST,
+> where every order scanned satisfies the full goal. In CR_BEST_AVAIL_LEN
+> a lower order means a smaller allocation, so search both ranges at each
+> order before trimming further.
 > 
-> In the replay path, the sign-extended value passed to ext4_iget() is
-> larger than s_inodes_count, so ext4_iget() reports "iget: illegal
-> inode #" and the dentry and inode tags of these inodes are not replayed
-> after a crash.
+> start is rarely 0: stream allocations start at s_mb_last_groups[], and
+> the linear prescan moves it forward by s_mb_max_linear_groups.
 > 
-> The on-disk fields are __le32 and converted with cpu_to_le32() and
-> le32_to_cpu(), so the journal format does not change.  Also print these
-> inode numbers with %u, and print the parent inode number instead of the
-> child's when the parent directory of a create is not found.
+> Reproducer: 16 groups, groups 0-7 with only 1024-block free extents,
+> groups 8-15 with only 256-block free extents. 32 MiB written with 64 KiB
+> O_DIRECT writes to a file with a 64 MiB i_size (8 MiB normalized goal).
+> Allocations made:
 > 
-> Reproducer:
+>   start group, max_linear_groups   before               after
+>   0, 0                             8 x 1024             8 x 1024
+>   8, 0                             7 x 1024, 4 x 256    8 x 1024
+>   0, 4                             6 x 1024, 2 x 512,   8 x 1024
+>                                    4 x 256
 > 
->   dd if=/dev/zero of=img bs=1M count=0 seek=9437184    # 9 TiB sparse
->   mkfs.ext4 -O fast_commit -i 4096 -E lazy_itable_init=1 img
->   mount -o loop,noinit_itable img /mnt
->   mkdir /mnt/d1 ... /mnt/d64    # Orlov spreads them over all groups
->   pick a directory with an inode number >= 2^31, then
->   dd if=/dev/zero of=/mnt/dN/f bs=4k count=1 conv=fsync
-> 
-> Without this patch every such fsync() triggers the WARN_ON().  With it
-> there is no warning, and after EXT4_IOC_SHUTDOWN with
-> EXT4_GOING_FLAGS_NOLOGFLUSH following creates, an unlink, a link and an
-> append in that directory, all of them are replayed on the next mount and
-> e2fsck -fn finds no errors.
-> 
-> Fixes: aa75f4d3daae ("ext4: main fast-commit commit path")
-> Fixes: 8016e29f4362 ("ext4: fast commit recovery path")
-> Assisted-by: Claude Opus 5.5
-> Signed-off-by: Hsiu-Hsien Lee <swinds24@gmail.com>
+> Fixes: a3ce570a5d6a ("ext4: implement linear-like traversal across order xarrays")
+> Signed-off-by: Muhammad Umer <mumer.mobi@gmail.com>
 
-Looks good. Feel free to add:
+Good point! Feel free to add:
 
 Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
 
 > ---
-> Testing: the reproducer and crash test above were run on a 6.6.y
-> kernel with this patch backported (the same change apart from context).
-> Without the patch, 10 of 10 fsync() calls in a directory with inode
-> number 2343567361 triggered the warning; with it, 0 of 10 did in a
-> directory with inode number 2313158657, while the fast commit stats
-> showed 26 commits and 0 ineligible.  On this tree the
-> patch is build-tested only (W=1, CONFIG_EXT4_DEBUG, ext4 KUnit tests).
+>  fs/ext4/mballoc.c | 16 ++++++++++------
+>  1 file changed, 10 insertions(+), 6 deletions(-)
 > 
-> The pending KUnit series for fast_commit.c [1] adds stubs and test
-> helpers with "int ino" arguments that will need the same type change
-> if it lands first.
-> 
-> [1] https://lore.kernel.org/linux-ext4/20261119155658.1940864-8-tytso@mit.edu/
-> 
->  fs/ext4/ext4.h        |  2 +-
->  fs/ext4/fast_commit.c | 28 ++++++++++++++++------------
->  fs/ext4/fast_commit.h |  6 +++---
->  fs/ext4/ialloc.c      |  2 +-
->  4 files changed, 21 insertions(+), 17 deletions(-)
-> 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index aa0f23052..75039cf83 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -3067,7 +3067,7 @@ extern int ext4fs_dirhash(const struct inode *dir, const char *name, int len,
->  			  struct dx_hash_info *hinfo);
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index a15285224..37825743f 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -1097,7 +1097,6 @@ static int ext4_mb_scan_groups_best_avail(struct ext4_allocation_context *ac,
 >  
->  /* ialloc.c */
-> -extern int ext4_mark_inode_used(struct super_block *sb, int ino);
-> +extern int ext4_mark_inode_used(struct super_block *sb, unsigned int ino);
->  extern struct inode *__ext4_new_inode(const struct mnt_idmap *, handle_t *,
->  				      struct inode *, umode_t,
->  				      const struct qstr *qstr, __u32 goal,
-> diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
-> index 5f12449b9..4a066e43e 100644
-> --- a/fs/ext4/fast_commit.c
-> +++ b/fs/ext4/fast_commit.c
-> @@ -1763,7 +1763,8 @@ static void ext4_fc_cleanup(journal_t *journal, int full, tid_t tid)
+>  	start = group;
+>  	end = ext4_get_allocation_groups_count(ac);
+> -wrap_around:
+>  	for (i = order; i >= min_order; i--) {
+>  		int frag_order;
+>  		/*
+> @@ -1120,15 +1119,20 @@ static int ext4_mb_scan_groups_best_avail(struct ext4_allocation_context *ac,
+>  		frag_order = mb_avg_fragment_size_order(ac->ac_sb,
+>  							ac->ac_g_ex.fe_len);
 >  
->  /* Helper struct for dentry replay routines */
->  struct dentry_info_args {
-> -	int parent_ino, dname_len, ino, inode_len;
-> +	unsigned int parent_ino, ino;
-> +	int dname_len, inode_len;
->  	char *dname;
->  };
->  
-> @@ -1814,14 +1815,14 @@ static int ext4_fc_replay_unlink(struct super_block *sb,
->  	inode = ext4_iget(sb, darg.ino, EXT4_IGET_NORMAL);
->  
->  	if (IS_ERR(inode)) {
-> -		ext4_debug("Inode %d not found", darg.ino);
-> +		ext4_debug("Inode %u not found", darg.ino);
->  		return 0;
+> +		/*
+> +		 * A lower order means a smaller allocation, so search all
+> +		 * groups at this order before trimming the goal further.
+> +		 */
+>  		ret = ext4_mb_scan_groups_avg_frag_order_range(ac, frag_order,
+>  							       start, end);
+>  		if (ret || ac->ac_status != AC_STATUS_CONTINUE)
+>  			return ret;
+> -	}
+> -	if (start) {
+> -		end = start;
+> -		start = 0;
+> -		goto wrap_around;
+> +		if (start) {
+> +			ret = ext4_mb_scan_groups_avg_frag_order_range(ac,
+> +							frag_order, 0, start);
+> +			if (ret || ac->ac_status != AC_STATUS_CONTINUE)
+> +				return ret;
+> +		}
 >  	}
 >  
->  	old_parent = ext4_iget(sb, darg.parent_ino,
->  				EXT4_IGET_NORMAL);
->  	if (IS_ERR(old_parent)) {
-> -		ext4_debug("Dir with inode %d not found", darg.parent_ino);
-> +		ext4_debug("Dir with inode %u not found", darg.parent_ino);
->  		iput(inode);
->  		return 0;
->  	}
-> @@ -1845,7 +1846,7 @@ static int ext4_fc_replay_link_internal(struct super_block *sb,
->  
->  	dir = ext4_iget(sb, darg->parent_ino, EXT4_IGET_NORMAL);
->  	if (IS_ERR(dir)) {
-> -		ext4_debug("Dir with inode %d not found.", darg->parent_ino);
-> +		ext4_debug("Dir with inode %u not found.", darg->parent_ino);
->  		dir = NULL;
->  		goto out;
->  	}
-> @@ -1897,7 +1898,8 @@ static int ext4_fc_replay_link(struct super_block *sb,
->   * Record all the modified inodes during replay. We use this later to setup
->   * block bitmaps correctly.
->   */
-> -static int ext4_fc_record_modified_inode(struct super_block *sb, int ino)
-> +static int ext4_fc_record_modified_inode(struct super_block *sb,
-> +					 unsigned int ino)
->  {
->  	struct ext4_fc_replay_state *state;
->  	int i;
-> @@ -1907,10 +1909,11 @@ static int ext4_fc_record_modified_inode(struct super_block *sb, int ino)
->  		if (state->fc_modified_inodes[i] == ino)
->  			return 0;
->  	if (state->fc_modified_inodes_used == state->fc_modified_inodes_size) {
-> -		int *fc_modified_inodes;
-> +		unsigned int *fc_modified_inodes;
->  
->  		fc_modified_inodes = krealloc(state->fc_modified_inodes,
-> -				sizeof(int) * (state->fc_modified_inodes_size +
-> +				sizeof(*fc_modified_inodes) *
-> +				(state->fc_modified_inodes_size +
->  				EXT4_FC_REPLAY_REALLOC_INCREMENT),
->  				GFP_KERNEL);
->  		if (!fc_modified_inodes)
-> @@ -1934,7 +1937,8 @@ static int ext4_fc_replay_inode(struct super_block *sb,
->  	struct ext4_inode *raw_fc_inode;
->  	struct inode *inode = NULL;
->  	struct ext4_iloc iloc;
-> -	int inode_len, ino, ret, tag = tl->fc_tag;
-> +	int inode_len, ret, tag = tl->fc_tag;
-> +	unsigned int ino;
->  	struct ext4_extent_header *eh;
->  	size_t off_gen = offsetof(struct ext4_inode, i_generation);
->  
-> @@ -2058,7 +2062,7 @@ static int ext4_fc_replay_create(struct super_block *sb,
->  
->  	inode = ext4_iget(sb, darg.ino, EXT4_IGET_NORMAL);
->  	if (IS_ERR(inode)) {
-> -		ext4_debug("inode %d not found.", darg.ino);
-> +		ext4_debug("inode %u not found.", darg.ino);
->  		inode = NULL;
->  		ret = -EINVAL;
->  		goto out;
-> @@ -2071,7 +2075,7 @@ static int ext4_fc_replay_create(struct super_block *sb,
->  		 */
->  		dir = ext4_iget(sb, darg.parent_ino, EXT4_IGET_NORMAL);
->  		if (IS_ERR(dir)) {
-> -			ext4_debug("Dir %d not found.", darg.ino);
-> +			ext4_debug("Dir %u not found.", darg.parent_ino);
->  			ret = PTR_ERR(dir);
->  			goto out;
->  		}
-> @@ -2280,7 +2284,7 @@ ext4_fc_replay_del_range(struct super_block *sb, u8 *val)
->  
->  	inode = ext4_iget(sb, le32_to_cpu(lrange.fc_ino), EXT4_IGET_NORMAL);
->  	if (IS_ERR(inode)) {
-> -		ext4_debug("Inode %d not found", le32_to_cpu(lrange.fc_ino));
-> +		ext4_debug("Inode %u not found", le32_to_cpu(lrange.fc_ino));
->  		return 0;
->  	}
->  
-> @@ -2338,7 +2342,7 @@ static int ext4_fc_set_bitmaps_and_counters(struct super_block *sb)
->  		inode = ext4_iget(sb, state->fc_modified_inodes[i],
->  			EXT4_IGET_NORMAL);
->  		if (IS_ERR(inode)) {
-> -			ext4_debug("Inode %d not found.",
-> +			ext4_debug("Inode %u not found.",
->  				state->fc_modified_inodes[i]);
->  			continue;
->  		}
-> diff --git a/fs/ext4/fast_commit.h b/fs/ext4/fast_commit.h
-> index 2f77a37fb..446841c4b 100644
-> --- a/fs/ext4/fast_commit.h
-> +++ b/fs/ext4/fast_commit.h
-> @@ -110,8 +110,8 @@ enum {
->   */
->  struct ext4_fc_dentry_update {
->  	int fcd_op;		/* Type of update create / unlink / link */
-> -	int fcd_parent;		/* Parent inode number */
-> -	int fcd_ino;		/* Inode number */
-> +	unsigned int fcd_parent;	/* Parent inode number */
-> +	unsigned int fcd_ino;		/* Inode number */
->  	struct name_snapshot fcd_name;	/* Dirent name */
->  	struct list_head fcd_list;
->  	struct list_head fcd_dilist;
-> @@ -153,7 +153,7 @@ struct ext4_fc_replay_state {
->  	int fc_crc;
->  	struct ext4_fc_alloc_region *fc_regions;
->  	int fc_regions_size, fc_regions_used, fc_regions_valid;
-> -	int *fc_modified_inodes;
-> +	unsigned int *fc_modified_inodes;
->  	int fc_modified_inodes_used, fc_modified_inodes_size;
->  };
->  
-> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-> index 92e2243b9..4ad7a1809 100644
-> --- a/fs/ext4/ialloc.c
-> +++ b/fs/ext4/ialloc.c
-> @@ -817,7 +817,7 @@ static int find_inode_bit(struct super_block *sb, ext4_group_t group,
->  	return 1;
->  }
->  
-> -int ext4_mark_inode_used(struct super_block *sb, int ino)
-> +int ext4_mark_inode_used(struct super_block *sb, unsigned int ino)
->  {
->  	unsigned long max_ino = le32_to_cpu(EXT4_SB(sb)->s_es->s_inodes_count);
->  	struct buffer_head *inode_bitmap_bh = NULL, *group_desc_bh = NULL;
-> 
-> base-commit: 008aad6508e30cd1bb6d2c2cf65221ba1f16a065
+>  	/* Reset goal length to original goal length before falling into CR_GOAL_LEN_SLOW */
 > -- 
-> 2.43.0
+> 2.53.0
 > 
 -- 
 Jan Kara <jack@suse.com>
