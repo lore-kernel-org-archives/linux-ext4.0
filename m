@@ -1,78 +1,90 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=192.198.163.14
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=74.125.82.170
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795629557;
-	b=gcO9zsOS1/TCYc/mw4xsxwPmJVGl1jI7GucvteV6zUemxrfNBr+hDEogfJUE9n/oESmt
-	 1Jh9+vr0yaW9i4yXupeMQPDqm2tuloryeR7T+sEeZjddfpkEAjhYXcPRT/tP6quJ+AupR
-	 bQUK6jWZ1/Kt6tM3UUAls3C1IEv+5ZQYMyOBsHFR70zBtjHP1QKGyd1KlICJfQctk6dgp
-	 SRES81ixtV/XnHBkGHIXnjrrm2dgKFVKutiEWJ82QD0oNAdbelwueABooOdmEuzBo9GGi
-	 5j91zB/3HrITVbDF/f8LzDKefTDR7Xdontr3UgdiUZMIIvIAD8yOR56EzDzPJ01U3PQ==
+	t=1795632031;
+	b=ZgN9QBUkylhTQF6xSbbDebKzIQFE9Zrws3xPCmCzMaH0c96Lu+JLt6aiyOQmx9oAvy0d
+	 /wACoz82O+s6VO3ybzcNCk7SZxiBg87EUPoeE9W7ztzALvjneo9Dxm+gofnHbVRRuKj2g
+	 jb0mjXYD8Mb8hdP5dIwUfGpKd8Mo/5cBodhyfdgw7b475VMIi/Uk0KIoazQltunQJD4FN
+	 /vZ60ctB+iwc/t3d8XkfkEyFrc9rPKvuB9HFJNF7cI01hv/t0I4WTGi8wHLgKxAD3gCA0
+	 oGiiskpS4OC5f80IhfS1gZvuU6bCnk47YKlesbWvGvAEQfB5tLXflsiLxK3Jla33d/g==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795629557;
-	h=DMARC-Filter:DKIM-Signature:X-CSE-ConnectionGUID:X-CSE-MsgGUID:
-	 X-IronPort-AV:X-IronPort-AV:Received:X-CSE-ConnectionGUID:
-	 X-CSE-MsgGUID:X-ExtLoop1:X-IronPort-AV:Received:Received:Date:From:To:
-	 Cc:Subject:Message-ID:References:MIME-Version:Content-Type:
-	 Content-Disposition:In-Reply-To;
-	bh=tj3svyRH79ns9vggL+rhHTfAezewbARIYweC/Uo3nEE=;
-	b=HZiM+bGOwbe1vUOnVQhov+ZSE8DqsFIZuo2SBygZ6DPaFOk+1kddtDdDHvIFne0w58jD
-	 Ixym3NnuRVnN/Em1jNo5GqR3tlZc5m/ST+BVp65tIq8XYArs0aBcNBFlVZPfog/jAPdxn
-	 bGEfipLRnoBY9FddawbGe+774cyFK2ROlYfut1bcaoh5wxPnf4JLyo62mWLWruUO/4iuI
-	 b3bsN4iH9lMSjfHNbbRi5TYu4F+RYPN7xs6Iqw46Fnf5yXgedmlJSQ8PbXQDztYH7ublg
-	 OBOK8F5a3horDrPWC05y92elM2He5//PS/3ZGikF9Uo9jmsPEUyTcMajA9xySMJxUxg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795632031;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:From:To:Cc:Subject:
+	 Date:Message-ID:X-Mailer:MIME-Version:Content-Transfer-Encoding;
+	bh=eFpNfukvpRxA9ZSwbqvjegicm52kayQGu2t0jHfEpps=;
+	b=XLFAgrtnMvna2O/dRXSCLzourRUBhIaIHxgS2scxTTcb8kOAxXX4BOkwFMaIIKYhgfc4
+	 BBt366WryrbB2xCSv6xwcY2b9leXkHARrSVgn91rh3vy5agOU0jvqj1RrqH0bKMTTq8Pm
+	 k1yDU95NiQCQt+J3fcZLB037QmhCHHM7XvrIfVOUO9Fj452iZP+1RRcTe8Bk5ToYBRy5K
+	 efbT1sIQL7DG2i4tT94zg7mbPMQ6LtpFBO2lpn9L6x/ssByp+PA8NAJxODVSlukL0buyY
+	 LvX+EfCpg3nu8s7s+gdUTTDdPoBAz5AQOIdVYlyslOON6MJ5REQE0dYzxwgIg/AeCxA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=intel.com;
-	spf=pass smtp.mailfrom=intel.com;
-	dkim=pass header.d=intel.com header.i=@intel.com header.a=rsa-sha256 header.s=Intel header.b="Jv+p/UrP";
-	arc=none smtp.remote-ip=192.198.163.14
-Received: from mgamail.intel.com (mgamail.intel.com [192.198.163.14])
-	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
+	dmarc=pass header.from=gmail.com;
+	spf=pass smtp.mailfrom=gmail.com;
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=niXPV2SW;
+	arc=none smtp.remote-ip=74.125.82.170
+Received: from mail-dy1-f170.google.com (mail-dy1-f170.google.com [74.125.82.170])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C3D6D606A330
-	for <linux-ext4@vger.kernel.org>; Wed, 25 Nov 2026 17:59:15 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org C3D6D606A330
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=intel.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 703F5606A321
+	for <linux-ext4@vger.kernel.org>; Wed, 25 Nov 2026 18:40:31 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 703F5606A321
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.a=rsa-sha256 header.s=Intel header.b=Jv+p/UrP
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
-  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
-  t=1795629556; x=1827165556;
-  h=date:from:to:cc:subject:message-id:references:
-   mime-version:in-reply-to;
-  bh=wSgyRuFWzKiJgk6KDlG9IQ8UVmbFTW2rs/stKcnF2hg=;
-  b=Jv+p/UrP9MAbOq8pF9hIxAS2HpNBnnhwEz+3SBHzKp64UMTlQNHXBKDC
-   vmvYRv2+HtUCwA/trmHoAg8pp0zIhMG3YN473SSfCJnGEvLY3JBD0yDdL
-   5jHd3IezU631rwb7uCUkNQsI8nyfwp2FilGNXB8jZ46moA8ZMEyOn2HUm
-   qrkjT5YpXnuKTCXYJqCVYPL8yoKYuNdDUtnl9/y/h9g2Cjo5uWaBwLBfb
-   VnzwbYnoB9iXOX+GUe2O4Tywmi/bodwOBfXNqo/yWvi0X2TkQObcZkEb6
-   psnft1MUOl/hLT/HtjUSIyQXslPLhEiGHwC39z0LFv6xcC8tup8CXSNhV
-   Q==;
-X-CSE-ConnectionGUID: m/yCOSkVRKCI2aEDu2LJXQ==
-X-CSE-MsgGUID: KSypTrtcT56LNIWSdpeKRg==
-X-IronPort-AV: E=McAfee;i="6800,10657,11977"; a="4462376"
-X-IronPort-AV: E=Sophos;i="6.27,233,1787036400"; 
-   d="scan'208";a="4462376"
-Received: from fmviesa012.fm.intel.com ([10.60.135.152])
-  by fmvoesa108.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 25 Nov 2026 09:59:15 -0800
-X-CSE-ConnectionGUID: b6g6o16sSziElsYiflcf/A==
-X-CSE-MsgGUID: bz1FLTcZTgqonjOMC4JBzA==
-X-ExtLoop1: 1
-X-IronPort-AV: E=Sophos;i="6.27,233,1787036400"; 
-   d="scan'208";a="13597395"
-Received: from lkp-server01.sh.intel.com (HELO 0caa9d2d175c) ([10.239.97.150])
-  by fmviesa012.fm.intel.com with ESMTP; 25 Nov 2026 09:59:14 -0800
-Received: from kbuild by 0caa9d2d175c with local (Exim 4.98.2)
-	(envelope-from <lkp@intel.com>)
-	id 1xWHGw-00000001SGO-3u2B;
-	Wed, 25 Nov 2026 17:59:10 +0000
-Date: Thu, 26 Nov 2026 01:58:17 +0800
-From: kernel test robot <lkp@intel.com>
-To: Ye Bin <yebin@huaweicloud.com>, tytso@mit.edu, adilger.kernel@dilger.ca,
-	linux-ext4@vger.kernel.org
-Cc: oe-kbuild-all@lists.linux.dev, jack@suse.cz
-Subject: Re: [PATCH v2 2/2] ext4: protect ext4_acquire_dquot against freezing
-Message-ID: <20261126015002.1lcIDaq1-lkp@intel.com>
-References: <20261125111055.3672233-3-yebin@huaweicloud.com>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=niXPV2SW
+Received: by mail-dy1-f170.google.com with SMTP id 5a478bee46e88-3863db981d4so8611499eec.0
+        for <linux-ext4@vger.kernel.org>; Wed, 25 Nov 2026 10:40:31 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20260707; t=1795632030; x=1796236830; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=eFpNfukvpRxA9ZSwbqvjegicm52kayQGu2t0jHfEpps=;
+        b=niXPV2SWbN2ZyIEZcaIIsSMrAHiorSnrf6Z5bc3szs6AMgtrgkbV7KJCEZ6f94aTZv
+         Lc/6MuQYcGd/AJTcWz/VdgmgZtDV8CFOwHG11V1GKfZIhHN4DQVhUPK9BBRxPLI6RVuA
+         Z5pOUzWP2cuXVTel+8qnjc7lqDybkBDX7h0TyrcImOM7zlYc6HCtrWm1eP5dS3Tr9pRJ
+         X+jnLGw/847yhr6m4QBCB3fB7RUtKpQ+SuqYomB8jAW717jL5LE7sjpOMhjkslbJZA6I
+         OpvYmKEwuDyPa2g6uc1MVedVTGiggdkGkmg4xKQEx7XUeoe2oJz6psClyyHx1aJipCOE
+         /4Pg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1795632030; x=1796236830;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=eFpNfukvpRxA9ZSwbqvjegicm52kayQGu2t0jHfEpps=;
+        b=GyDzLfHIgNz03ThI0aU9fiHsdbiMKW79agp4NvqB9WgkOyoEFtZYNKMxgOybyRWL2y
+         iZcjKzN6YODROt/JjHEFBvHTHSd08i2/a7zAseZbQm79knb1iQpRw5UYpYTFR15HAjp/
+         t9uLRIbAviacLB7dVuzQ3UXcUGRhXf9p5edUJblO4dC5Sm8Hd1zIqXB+paTFjlNI0HDi
+         sD0a/ra6rZHFk24WIrNMjQ8GZ0Ykuvz0U/awrGQjJnn7mCH3fJbPvhdwTTEC3bqaVpzs
+         ZRoEM3pZvh0QaDiqVUTyXHrovZ6sjoMETPLsEKcKUEkfTNOuAaMxAUuKt5dNR2L+BijT
+         69vA==
+X-Gm-Message-State: APuU4Z+rJbcnk+BaRaAQGWYEhaakG8fwLljVIi6nRZDp0xwB5bJmkOah
+	4/2Xz8rPkpyASAgbSqTwZP8tf75WU5/LiBRFPHkLUF9a550h3lv6dh2G
+X-Gm-Gg: AZFdTZdZu6z1dH2OMA0Inw3+DMky0X/CIvOs9g3BEXUafpG79iGr8w3bpltifJi2aWH
+	+pYhFPGdgeHIz7wpe56FGfMMQVQKCweqNhpb9griGn1XlkYCLnF2mXxzjP2cbA7Qc/Q5Wxn1NCt
+	qLlTegpg1FbpBeeRQ0pOBJZDZqYLqK2c0QKDG4TqrVPp2VuNHUgYhbcSeQaKDMMxAZsZnqBJ0sB
+	WArA+V5BumszNaA+hLa5o6jtgELnKlqE6OG4Ztad6B1WZ0hezegh9sK+RfiIn+SQEEcVOY9WceY
+	fA7JdPboYDKSFqGSo+1eI0Rute/Q9+NZ8sUHtz5v8FggGi8j/9MorqCiF1pGfpMBguJdIVU0imf
+	Fk2naaBXJfi/+p/oNJrXDJ6+vf4qztX4JkwlkDOwQrskPc4ZlX6lENWoETmMK5R+FdAZLSyfl2b
+	QgSnAmhr7LiGrYZ6IfAmHA0DlsJHA6pBQvdLBo2dngSgCujiz7BvulwpCqQxu+svi1MJWd6/tTU
+	Ted+zrzLJCYeKGcUTlAcJHCxIpmJEfTnVeOhB3zfVSkk6bAMv17qoEiAsCh+SPOSfNgE0Y3Iemu
+	OlNMmejdJbvR8weXw3ifqQ==
+X-Received: by 2002:a05:7300:6da7:b0:36c:3b8a:8090 with SMTP id 5a478bee46e88-3856c9a302amr1376516eec.2.1795632030315;
+        Wed, 25 Nov 2026 10:40:30 -0800 (PST)
+Received: from a1-free ([2603:c021:8021:f000:0:1865:8c38:18fc])
+        by smtp.gmail.com with ESMTPSA id 5a478bee46e88-385666e7f59sm57393496eec.6.2026.11.25.10.40.29
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Wed, 25 Nov 2026 10:40:29 -0800 (PST)
+From: TAKANO Mitsuhiro <takano32@gmail.com>
+To: Theodore Ts'o <tytso@mit.edu>,
+	Jan Kara <jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	TAKANO Mitsuhiro <takano32@gmail.com>
+Subject: [PATCH] jbd2: Document the h_invalid flag of a handle
+Date: Wed, 25 Nov 2026 18:40:27 +0000
+Message-ID: <20261125184027.2402549-1-takano32@gmail.com>
+X-Mailer: git-send-email 2.53.0
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -82,74 +94,40 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20261125111055.3672233-3-yebin@huaweicloud.com>
+Content-Transfer-Encoding: 8bit
 
-Hi Ye,
+struct jbd2_journal_handle has an h_invalid bit: ext4 sets it when it
+has given up on the handle, and __ext4_journal_stop() BUG_ONs when the
+bit is clear.  The kernel-doc comment lists the other three flags and
+not this one, so kernel-doc reports the member twice:
 
-kernel test robot noticed the following build errors:
+  Warning: include/linux/jbd2.h:523 struct member 'h_invalid' not
+  described in 'jbd2_journal_handle'
 
-[auto build test ERROR on tytso-ext4/dev]
-[also build test ERROR on linus/master v7.4-rc4]
-[cannot apply to brauner-vfs/vfs.all next-20261124]
-[If your patch is applied to the wrong git tree, kindly drop us a note.
-And when submitting patch, we suggest to use '--base' as documented in
-https://git-scm.com/docs/git-format-patch#_base_tree_information]
+Add the line next to h_aborted.
 
-url:    https://github.com/intel-lab-lkp/linux/commits/Ye-Bin/quota-Forbid-Q_XGETQUOTA-and-Q_XGETNEXTQUOTA-for-frozen-filesystem/20261125-191054
-base:   https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
-patch link:    https://lore.kernel.org/r/20261125111055.3672233-3-yebin%40huaweicloud.com
-patch subject: [PATCH v2 2/2] ext4: protect ext4_acquire_dquot against freezing
-config: x86_64-rhel-9.4 (https://download.01.org/0day-ci/archive/20261126/20261126015002.1lcIDaq1-lkp@intel.com/config)
-compiler: gcc-14 (Debian 14.2.0-19) 14.2.0
-reproduce (this is a W=1 build): (https://download.01.org/0day-ci/archive/20261126/20261126015002.1lcIDaq1-lkp@intel.com/reproduce)
+Verification: kernel-doc -none include/linux/jbd2.h prints that warning
+twice before the change and nothing after it.
 
-If you fix the issue in a separate patch/commit (i.e. not just a new version of
-the same patch/commit), kindly add following tags
-| Reported-by: kernel test robot <lkp@intel.com>
-| Closes: https://lore.kernel.org/oe-kbuild-all/20261126015002.1lcIDaq1-lkp@intel.com/
+Signed-off-by: TAKANO Mitsuhiro <takano32@gmail.com>
+---
+ include/linux/jbd2.h | 1 +
+ 1 file changed, 1 insertion(+)
 
-All errors (new ones prefixed by >>):
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index e3886963ba00..361aa5dbe395 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -482,6 +482,7 @@ struct jbd2_revoke_table_s;
+  * @h_sync: Flag for sync-on-close.
+  * @h_reserved: Flag for handle for reserved credits.
+  * @h_aborted: Flag indicating fatal error on handle.
++ * @h_invalid: Flag indicating the handle must not be used any more.
+  * @h_type: For handle statistics.
+  * @h_line_no: For handle statistics.
+  * @h_start_jiffies: Handle Start time.
 
-   fs/ext4/super.c: In function 'ext4_write_dquot':
->> fs/ext4/super.c:7165:13: error: 'freeze_protected' undeclared (first use in this function); did you mean 'freeze_processes'?
-    7165 |         if (freeze_protected)
-         |             ^~~~~~~~~~~~~~~~
-         |             freeze_processes
-   fs/ext4/super.c:7165:13: note: each undeclared identifier is reported only once for each function it appears in
-
-
-vim +7165 fs/ext4/super.c
-
-  7144	
-  7145	static int ext4_write_dquot(struct dquot *dquot)
-  7146	{
-  7147		int ret, err;
-  7148		handle_t *handle;
-  7149		struct inode *inode;
-  7150	
-  7151		inode = dquot_to_inode(dquot);
-  7152		handle = ext4_journal_start(inode, EXT4_HT_QUOTA,
-  7153					    EXT4_QUOTA_TRANS_BLOCKS(dquot->dq_sb));
-  7154		if (IS_ERR(handle))
-  7155			return PTR_ERR(handle);
-  7156		ret = dquot_commit(dquot);
-  7157		if (ret < 0)
-  7158			ext4_error_err(dquot->dq_sb, -ret,
-  7159				       "Failed to commit dquot type %d",
-  7160				       dquot->dq_id.type);
-  7161		err = ext4_journal_stop(handle);
-  7162		if (!ret)
-  7163			ret = err;
-  7164	
-> 7165		if (freeze_protected)
-  7166			sb_end_intwrite(dquot->dq_sb);
-  7167	
-  7168		return ret;
-  7169	}
-  7170	
-
+base-commit: b6a9fa34ce4187cb69d3c588a4bbffc31ce5db8f
 -- 
-0-DAY CI Kernel Test Service
-https://github.com/intel/lkp-tests/wiki
+2.53.0
+
