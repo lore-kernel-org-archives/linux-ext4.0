@@ -1,85 +1,98 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=198.137.202.133
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.128.50
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795616754;
-	b=SoYCvC2nV8I1dUVpPsR6CbwXxAptjtW88PcK+wvty8DfE2FDutjJztQsxguFh1HkV2nM
-	 8zx4sKVCRK/0SCb+U1Ox1JY1ycMlMMPSGoL9lH53/a77PFq05lfv0dSqWbxVOltg0Sa4j
-	 E/mQw+zSUWu/nDSCseImgYVNtBzXdQGCw5zCYuMtm2AUsY9GdbioQIb8UxFfEoPhYo4Dt
-	 xSCPnnrFCFs+hdOOOaMcomZriUafzMNyvjxuQ3QJOkLBe2+MnXBVXPzHZsQJme/QsLAaN
-	 YGtXvgOyYlHnxQxm/KQ1y/tXcvob21GETij23XFdDGwPFhzY9ExGbOBh6TcDVy3bRIw==
+	t=1795617529;
+	b=5It6Y7jHTftGORRYnhJnYz4fr1fYf96T6OrcWCcUoD7jaqeX5XUKMR0v5pr0SHouwFOK
+	 UT5oCN2AIsnP+vG/ULyZhZmhCiWtes2CZqCojkH2bcwG7CD2epR1fWGWyfUsf6CvYghs6
+	 6IoiyVhJR06rPHOha4Zbq+RxBs0CFR7W88sX7wMqOn5y1+lpj/fXMgH7GsTxlQY+nLiJ3
+	 m6ZPGGFS3keBq1lL2UkkKTN6JJdHW2LMG5lRwUgdHt/nuPnKX3xNHL8knt2ysd9/FxRHw
+	 t8HgLYGuIA4TJ1IVulpYv4zVDf/1fFwdWrUJPd3ivIQKmYoQEOdUD9R2mb+8znoGihw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795616754;
-	h=DMARC-Filter:DKIM-Signature:Received:Date:From:To:Cc:Subject:
-	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
-	 In-Reply-To:X-SRS-Rewrite;
-	bh=qUuiYfPMGF1dYU/3s8nfXtw2BbGEHy61uU94+Ks01XY=;
-	b=PLbIAzGUZi42jPvsvl2u3BYEn2f3GTv5PxSaqJMsWIdUOqp5Hwo6P37BqVVs3Icw8aFJ
-	 uVk2DbqJadiFMGwDSJJGX6QtQpd6XOzOboWeAxBQEWxBBHqCNnnOMTIhqvcrcYTPumIGj
-	 FmyduXM+i1KHHAyTodGiRTK1B014aZeCsoznnou7c/6eSs57n4dGwTO70bvBgUPqQh40V
-	 Hyc6fQwk1v01l1EVL3eZwJrBE3D1TwZb1toH8ezwzdgE5ZPDKZ3i2hdCvupL+cHcta8Jj
-	 Bzhg9Ntys4RGXnE4WVjdOPnZ6pCQeTmJsoN1BN5W26Rwwn6H1brr47ekEhBRXFM2oyg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795617529;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
+	 From:To:Cc:Subject:Date:Message-ID:X-Mailer:MIME-Version:Content-Type:
+	 Content-Transfer-Encoding;
+	bh=KCNbPva4mF5XpGmktWSlUa7O0FkwlEdc1yHh6KRJCrU=;
+	b=Ntf1gHnB6c2LjJPU37hpYlr/48iBc+x9jCHmbXdjUJlIWSpb+/wBrRMsruiladh2Kbmo
+	 40CN4H/xN5fhXHlv8qZ8Hir4VwU91fG118eBg2B8RrfEN3mqrF9QOKP4643k6kwB+ALKl
+	 h7dmkQB5wpd0KptVmgtlmwjlAKZ+nBu6KKQCmjl4o9lntsqkNRNz1t9XioU4uaKH4VwC2
+	 p6E3eNKiZHLbKiVoamwwMMB5sOwgMe1PN6wcuxfoZQvdVNLakO4WMw7FMiSyByqH3NQtZ
+	 sZ348s4mgtaTerLdQ+m/i6iFEj50aktQ3TurhqXCGBW70XjoYvHOOxAa0kBq6QcvwCg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=infradead.org;
-	spf=none smtp.mailfrom=bombadil.srs.infradead.org;
-	dkim=pass header.d=infradead.org header.i=@infradead.org header.a=rsa-sha256 header.s=bombadil.20210309 header.b=SPVQka5q;
-	arc=none smtp.remote-ip=198.137.202.133
-Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	dmarc=pass header.from=e2b.dev;
+	spf=pass smtp.mailfrom=e2b.dev;
+	dkim=pass header.d=e2b.dev header.i=@e2b.dev header.a=rsa-sha256 header.s=google header.b=X9nev+gb;
+	arc=none smtp.remote-ip=209.85.128.50
+Received: from mail-wm1-f50.google.com (mail-wm1-f50.google.com [209.85.128.50])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 21955606A31E;
-	Wed, 25 Nov 2026 14:25:52 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 21955606A31E
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 77296606A331
+	for <linux-ext4@vger.kernel.org>; Wed, 25 Nov 2026 14:38:49 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 77296606A331
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=e2b.dev
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=e2b.dev
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.a=rsa-sha256 header.s=bombadil.20210309 header.b=SPVQka5q
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
-	:References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-	Content-Transfer-Encoding:Content-ID:Content-Description;
-	bh=qUuiYfPMGF1dYU/3s8nfXtw2BbGEHy61uU94+Ks01XY=; b=SPVQka5q6b+Q1YM0gqBdrJp3y3
-	UUUokphX0g5eOWTiYvKvIDnraP8DhH9YtPY1ZVZmsYKhEi7+gXw3fYCn4rPNoFx2DLd55U804oNgy
-	BpAC/5lODMecYTLyeGz5nCdxDEtSTYfIvUTVe8FbTHsbr0cIOgfgv0jPn+sHtL6DMlT8tuSRuUd6v
-	32FH4VYNd9i9qBT2ZAx4KCl5vVK5/EmscHlH4AaNOdMwQCsBZIDp6aSZpqVQ4A5WpNM8a/Uxl+XzR
-	DKPxKHf0vYby5fO+XwYhJ+FBMHHCrLpsCuR4fOwgm09h/UIcEa50ozW2eGgy3J1Rf3BkAR21O08IJ
-	cQO/zxyw==;
-Received: from hch by bombadil.infradead.org with local (Exim 4.100.1 #2 (Red Hat Linux))
-	id 1xWDwO-0000000A9gO-01yg;
-	Wed, 25 Nov 2026 14:25:44 +0000
-Date: Wed, 25 Nov 2026 06:25:43 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: "David Hildenbrand (Arm)" <david@kernel.org>
-Cc: Christoph Hellwig <hch@infradead.org>, Pedro Falcato <pfalcato@suse.de>,
-	John Hubbard <jhubbard@nvidia.com>, Jan Kara <jack@suse.cz>,
-	Andrew Morton <akpm@linux-foundation.org>, Zi Yan <ziy@nvidia.com>,
-	"Matthew Wilcox (Oracle)" <willy@infradead.org>,
-	Lorenzo Stoakes <ljs@kernel.org>, Peter Xu <peterx@redhat.com>,
-	Johannes Weiner <hannes@cmpxchg.org>, linux-ext4@vger.kernel.org,
-	linux-nfs@vger.kernel.org, "Liam R. Howlett" <liam@infradead.org>,
-	Vlastimil Babka <vbabka@kernel.org>,
-	Mike Rapoport <rppt@kernel.org>,
-	Suren Baghdasaryan <surenb@google.com>,
-	Michal Hocko <mhocko@suse.com>,
-	Baolin Wang <baolin.wang@linux.alibaba.com>,
-	Nico Pache <nico.pache@linux.dev>,
-	Ryan Roberts <ryan.roberts@arm.com>, Dev Jain <dev.jain@arm.com>,
-	Barry Song <baohua@kernel.org>, Lance Yang <lance.yang@linux.dev>,
-	Usama Arif <usama.arif@linux.dev>, Kiryl Shutsemau <kas@kernel.org>,
-	linux-mm@kvack.org, linux-kernel@vger.kernel.org,
-	Kairui Song <kasong@tencent.com>, Qi Zheng <qi.zheng@linux.dev>,
-	Shakeel Butt <shakeel.butt@linux.dev>,
-	Axel Rasmussen <axelrasmussen@google.com>,
-	Yuanchu Xie <yuanchu@google.com>, Wei Xu <weixugc@google.com>,
-	Baoquan He <baoquan.he@linux.dev>, Michal Hocko <mhocko@kernel.org>,
-	linux-fsdevel@vger.kernel.org, stable@vger.kernel.org
-Subject: Re: [PATCH RFC 0/5] mm: GUP dirty + ->release_folio() fixes
-Message-ID: <awbv55FryMamHvVP@infradead.org>
-References: <20261119-gup-dirty-what-v1-0-236d69f25c24@suse.de>
- <4f096d70-6f94-4148-8f47-242b8551e5f9@nvidia.com>
- <awWNyDZT2SVu2Zp9@pedro-suse.tail5790ac.ts.net>
- <55114986-0ba1-4a80-8498-bf674d64e01b@kernel.org>
- <away88BuU8ibcTA5@infradead.org>
- <d088452f-1118-4a06-bc16-1942e523e0fc@kernel.org>
+	dkim=pass (2048-bit key, unprotected) header.d=e2b.dev header.i=@e2b.dev header.a=rsa-sha256 header.s=google header.b=X9nev+gb
+Received: by mail-wm1-f50.google.com with SMTP id 5b1f17b1804b1-4b79502c27aso58071145e9.1
+        for <linux-ext4@vger.kernel.org>; Wed, 25 Nov 2026 06:38:49 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=e2b.dev; s=google; t=1795617528; x=1796222328; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:mime-version:message-id:date
+         :subject:cc:to:from:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=KCNbPva4mF5XpGmktWSlUa7O0FkwlEdc1yHh6KRJCrU=;
+        b=X9nev+gb29dK/PZhEUG0om2mx2tvAWC8Drd9Ue/pqjwJmae7sCJYZfqPIJx54is2kD
+         m60KFv5wCeweYOM+cOUhZN8DC7OWm6yqx/sF1/Yq+KcUGNmVwC76TAxeeyzYFZG2tUm/
+         BhoBl6rop+Rcsv8ogi0XJ569w8OFy77gCm/PFyzCcc9UbnkwrZ5whLvgAQRIIDr16Hz+
+         KR+3bo6ZnG0fJUB8xCIa/7xox/jN3dyrL6q3exf8Uy5140xe277hUxIpdh+jc2k349IQ
+         EzWfbVK/yfWYvDBqVAPbWJjpNZAZrA3W0L9oasgX1+FVuD8pZYE6wRndFE1BSbDqT4P7
+         94UA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1795617528; x=1796222328;
+        h=content-transfer-encoding:content-type:mime-version:message-id:date
+         :subject:cc:to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=KCNbPva4mF5XpGmktWSlUa7O0FkwlEdc1yHh6KRJCrU=;
+        b=QbNQUQvNboil7pO4uLMU9qaAeQBcVVx3/9WZ64Sq3tIQ3go/Lsp2KFImCwsCkddJSv
+         HmSsTeYhoploru/P1DkvAsQY4yguAg1yzjjPFOSjQiPzkiNMaTeS2k6eG0gs5eufAXae
+         UglNLuAKk9RQ8u6Pap5OdHX/fY8Bcq/CIv+wYs54NQOs3dGXOy6KAlMNTMMVm+Lt025f
+         alGqTBU1R8/El20lNaoNSf1vJ7WlnAqTpxtsdDPhZqcsoU/d1I7MMCAYus8pqJiLXYmY
+         1u1SME+NW918TZFD6LvbgCIQ4lDGyEVsSmmRU//t2mchF/8SljqwhG+gKRFJ5XlPkyFQ
+         oy8w==
+X-Forwarded-Encrypted: i=1; AL+hErGN9+Ew6VIZE/3WappWiB3O/nW4bjXQE7Mvk8TC3QiKIMt7V/5uyS+zlPqtMRu90F4shQgMe4QMFOzZ@vger.kernel.org
+X-Gm-Message-State: APuU4Z9zaWUu/GPtj7+kxRbb/tz2X4NHFNlQaa1Tp8SIAY01dzkAzZk6
+	IXLbJA6vKjo81ilXBZchOMsSjD4l+xx483YzACD+zLdmAWMk8yDyAd8QsYKBT24gfR8=
+X-Gm-Gg: AZFdTZefnckxiW5Axoe2ZCFVhguDBA/S8kTt19N6ajrM+O5WeCOoVI9DRd4Fs+5CRKx
+	w5DPUcyPdCa6Gr/awYQIDeoBpxyhQ3OJ5Wx++Z2sGvh2hz5TMkgbGKstpAAiu+VghB6fl3dD50Y
+	F90SkD6gfAzWL2tnzEntilhB7+Cwb6d8cRt7iFoLuqJx/9oZHcKYDo9If9FCwCl3qTC3zS6vjIT
+	CDETEyTGMEYUO/i5X2cTnXeiCMmvUPhH30r1KoGacr3JjJqzt5QSHLriFRQxrnceDeYXEWGBNFb
+	gM2uLGmVx0jeC6gfM9ALZjyHLlWmoU4SuV6GUt0saqxc5uHUKgw74e+65kMYd1xVYfH1R2ZLZJI
+	/1HkRE6K5deFcv/DMpvJJRmmwkx7K2tminOP0QA2kbAH9aGAK+d+nywIt92lEaHUqqxyE8ZBNqb
+	U7Pb2I+oKVIR/Hmgbne/MeFOM4kGoWE+/GGf/nObNO2cPbIixYRH5mHSMfwuqz3CxgEG2WiDd7N
+	zNqQpt1ayuxHmPGknA3oLW1iH1k2KhnVybIaaweTGSmrAKdgn2inBHBSigCVLSRb5zyA1wc/Uvt
+	2eJWA5vWNSt2UKePk5+i2Akyb2UXuCvacl6/SDcZKTF++KroQmM=
+X-Received: by 2002:a05:600c:820d:b0:4bb:5de1:e923 with SMTP id 5b1f17b1804b1-4bb887c33f7mr352292285e9.4.1795617527720;
+        Wed, 25 Nov 2026 06:38:47 -0800 (PST)
+Received: from fedora.sphynx-tuna.ts.net ([2001:1ae9:6617:a200:4752:c78a:bea5:1bc3])
+        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4bb8849e598sm491648735e9.8.2026.11.25.06.38.46
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Wed, 25 Nov 2026 06:38:47 -0800 (PST)
+From: =?UTF-8?q?Petr=20Van=C4=9Bk?= <petr.vanek@e2b.dev>
+To: "Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Baokun Li <libaokun@linux.alibaba.com>,
+	Jan Kara <jack@suse.cz>,
+	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
+	"Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
+	Zhang Yi <yi.zhang@huawei.com>
+Cc: =?UTF-8?q?Petr=20Van=C4=9Bk?= <petr.vanek@e2b.dev>,
+	stable@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+Subject: [PATCH] ext4: recompute the inode checksum after restoring inline data
+Date: Wed, 25 Nov 2026 15:38:39 +0100
+Message-ID: <20261125143841.928615-1-petr.vanek@e2b.dev>
+X-Mailer: git-send-email 2.56.1
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -89,29 +102,68 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <d088452f-1118-4a06-bc16-1942e523e0fc@kernel.org>
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 
-On Wed, Nov 25, 2026 at 11:19:18AM +0100, David Hildenbrand (Arm) wrote:
-> > I don't think that is a good reason.  For file system backed VMAs we
-> > really need the pin to be able to do someting sane, DMA or not.
-> > 
-> >> 1) We fix all such cases now where unprivileged users can trigger this,
-> >>    converting to FOLL_PIN.
-> > 
-> > We need to, if not for this series then for all the other outstanding
-> > issues with GUP writes.
-> 
-> Cool, and I agree (that's why I placed it at 1).
-> 
-> But who is "we"? Because I recall that "we" wanted to do that a while ago.
-> 
-> (I won't be "we" ;) Pedro, can you take a look? I'm afraid the fuse thing might
-> be the harder nut to crack)
+ext4_restore_inline_data() recreates the system.data xattr with
+ext4_create_inline_data(), which marks the inode dirty and so sets its
+checksum, and only then copies the saved bytes into the raw inode with
+ext4_write_inline_data().  Unless something dirties the inode again
+before it is written out, the inode reaches the disk with a checksum
+that does not match its contents.
 
-The collective of MM/FS integrity interested people (for which the
-recipient list is a good proxy) plus the maintainers of the code
-still writing through FOLL_GET.
+Failed inline data conversions take this path, for example an mmap write
+to a small inline file on a full filesystem:
+
+  mkfs.ext4 -O inline_data /dev/vdb 64M
+  mount /dev/vdb /mnt
+  xfs_io -f -c "pwrite -S 0x61 0 42" /mnt/small
+  xfs_io -f -c "falloc 0 64m" /mnt/fill                # ENOSPC, fs is full
+  xfs_io -c "mmap -rw 0 42" -c "mwrite 0 1" /mnt/small # SIGBUS
+  umount /mnt; mount /dev/vdb /mnt
+  cat /mnt/small                                       # EBADMSG
+
+The read after the remount fails with:
+
+  [    1.203967] EXT4-fs error (device vdb): ext4_lookup:1635: inode #4097: comm cat: iget: checksum invalid
+
+Mark the inode dirty again after ext4_write_inline_data(), so the
+checksum written to disk covers the restored data.
+
+The Fixes tag is based on code analysis: ext4_restore_inline_data() has
+called ext4_create_inline_data() before ext4_write_inline_data() since
+that commit.  The failure reproduces on v5.19 and later; older kernels
+were not tested.
+
+Fixes: 3c47d54170b6 ("ext4: let add_dir_entry handle inline data properly")
+Cc: stable@vger.kernel.org
+Signed-off-by: Petr Vaněk <petr.vanek@e2b.dev>
+---
+This patch was developed with the help of an AI coding assistant
+(Claude Opus via OpenCode).  It analysed the bug, wrote the fix and the
+changelog, and built the QEMU test setup; I reviewed the change and the
+test results.
+
+Tested with the reproducer above in QEMU (x86_64, KASAN and lockdep
+enabled) on 7.4-rc5 with and without the patch; e2fsck is clean after
+the patched run.  Not tested: xfstests, other architectures.
+
+ fs/ext4/inline.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index acdc65ce47960..360c06441c8f1 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -1111,6 +1111,8 @@ static void ext4_restore_inline_data(handle_t *handle, struct inode *inode,
+ 	}
+ 	ext4_write_inline_data(inode, iloc, buf, 0, inline_size);
+ 	ext4_set_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
++	/* Update the inode checksum to cover the restored data. */
++	ext4_mark_inode_dirty(handle, inode);
+ }
+ 
+ struct buffer_head *ext4_inline_getblk(struct super_block *sb,
+-- 
+2.56.1
 
