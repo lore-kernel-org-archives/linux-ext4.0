@@ -1,83 +1,57 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=198.137.202.133
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795592184;
-	b=KCemE8Hyda2j6K90El/OsuIcMveR78lEOybRe2iAR8fdaYSGWa1IVvonu2RRLr2Tb2F3
-	 WYfRdYceYRAP1y2wYtvDcsfnfW0IhPNV7sUaxFZkkWVSNAXKZzGbYa5J6Ib6OcNOYYXHt
-	 nDb83vbBD6AnKuePXLGKQJp8P4hLCa3zSdr9tKXN6FFDYGc69jRHlg00uwYJHuHPi6lwK
-	 R7YFx+u5hckzNhdnhIK65xIp55ijXgwOsP7ClfCeIjnDzQ14pDpUXw7pDS6uTCd6KyVI6
-	 pEm5oY1mhPsIg1aaX6VNCuRZ3c4P6K5lYu8ccoG6XoyMZlXTOXRrUw1xwQk4JPXwDZA==
+	t=1795592235;
+	b=fxX0lnPsmzB2LKkyTMgCJWjb68xE7p1LP/P9adIBnzuq7zBfB1MjJxSmfdNi6BDdrWs8
+	 90D+Nni8lJWoZU9mOYfBgvl5aFFE0bL+NhS/ewL7R3bjgeonKekeOOr0XJn/xEU0D+575
+	 i4R/U4gHBjyrmqTLjwVh7dEW71veEay4ArJBx5/m8Vmz3IUUG0cn7zoM+TFs1I07wWJsM
+	 /vgEQcDH3QsxM8vOehQ9H7/Qp1INEh75QjwwKngmXd17aySppbZOLns9O8iCWgfc+QvaE
+	 eqc7MV4hL6+3iur0xRfxDpmo8i/nX2Q9iuynYIAIYiThxpQ+1mQ8b2KMUfhc6JWNbGw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795592184;
-	h=DMARC-Filter:DKIM-Signature:Received:Date:From:To:Cc:Subject:
-	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
-	 In-Reply-To:X-SRS-Rewrite;
-	bh=NqNmpPsXgETS8dZeuiCyJlLE3rCmwYk+XFbPXhBfg4U=;
-	b=TfaJxgyHtTH0UCdjE2SsFapAUQpeiBt/ymZgUU8lV50hdt43KxkN4i/yjUpK75x9IcLW
-	 KZF0yLt5I68jxgO2NWPhBfbg8ud3wTwf4901qgWZnHxeUpRFABAYnvkpNHOxevugg8CM8
-	 n1hNEVgZJv8omrqc97YFkoB/k18+5hB99VmlaL5MFCe6e0Wbbrlr+4CV59+LW5n1jO3G7
-	 q25kt23kvIKBigRxv+xT/8TuGvquTy/U+Q7c6uX49dWmYwPaGdkn/AMCvLYhcYwP+YQzd
-	 SjRM15G+8MkEul1qB1DMWps7q/m2w6dgM2zvucth8CET+fSZDuWcM7VxpCklhb6c2NQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795592235;
+	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
+	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
+	bh=+H+KrvpY7uR2GeDyeLgI/xAh9gM3sDh05mVsVvZq0WY=;
+	b=rt9BbT6imTvNXBC3ko1r8HOwtT6BYQtPPNphOHIiPTE/jVC7Ac+0Z4OuYsM/lo6TkbNn
+	 o9P2nSBTnW0NItmeErQY9dXqIgTrNodIsRZEf5B2/wH8A5Z6lx1vMUHd9Hva3B+fOnkUz
+	 o2MtJDEfvtT18tQ6T5D+5j/Z2uElXgrT6DgF+GpHVhBLWm86Q4q7XceIX288DpqGeUe04
+	 IG4aFxyoUWywcVC65mE0hUmb4VzMLdqRjXnsL2r9EC67mVKbgwLXst249Ul8fWHt6G/sq
+	 h8XU+X0srhOvJGf4LjMzXrOjrkcFujS1pWQc2ZA0/liGZqXPrMz7rWgirPCxjC6woUg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=infradead.org;
-	spf=none smtp.mailfrom=bombadil.srs.infradead.org;
-	dkim=pass header.d=infradead.org header.i=@infradead.org header.a=rsa-sha256 header.s=bombadil.20210309 header.b=v8EOTEaR;
-	arc=none smtp.remote-ip=198.137.202.133
-Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Zq3rcvUt;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 27F8B606A332;
-	Wed, 25 Nov 2026 07:36:24 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 27F8B606A332
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B500C606A682
+	for <linux-ext4@vger.kernel.org>; Wed, 25 Nov 2026 07:37:15 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.a=rsa-sha256 header.s=bombadil.20210309 header.b=v8EOTEaR
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
-	:References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-	Content-Transfer-Encoding:Content-ID:Content-Description;
-	bh=NqNmpPsXgETS8dZeuiCyJlLE3rCmwYk+XFbPXhBfg4U=; b=v8EOTEaRlkbw5Q1MD4ATdrS8Du
-	2wLhbbgEsGmVs2gzSbe0zfglIVkfdWxz0ovS9CWjZwEl1CGJ2/C7bDC7X3WguhCzxTmDvhE7lnkdB
-	2PdOthUl8XjMxaiLMQS4DnMzgiwDG9gkZMZ/MgOxviFcgX11LYqlvEvZ9qIHOuMPnlfD6S7+/WcLZ
-	x78t4cRSYCT/NuBnjkRcOSbjdyN8MJavl4xXiAweXPTJalZVcgJgOIkJh5lrxmc7BwYeSj0BK7DW3
-	D5sQTHw1xvNoOL5nVGPUXJgyiWNirG1cAYedkL4VUTnWGojZcvbrSgdl0Tsg5R6yhsibfI/6ruAfJ
-	7f0262bg==;
-Received: from hch by bombadil.infradead.org with local (Exim 4.100.1 #2 (Red Hat Linux))
-	id 1xW7Y9-00000008uf8-3ovC;
-	Wed, 25 Nov 2026 07:36:17 +0000
-Date: Tue, 24 Nov 2026 23:36:17 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: Pedro Falcato <pfalcato@suse.de>
-Cc: John Hubbard <jhubbard@nvidia.com>,
-	Christoph Hellwig <hch@infradead.org>, Jan Kara <jack@suse.cz>,
-	David Hildenbrand <david@kernel.org>,
-	Andrew Morton <akpm@linux-foundation.org>, Zi Yan <ziy@nvidia.com>,
-	"Matthew Wilcox (Oracle)" <willy@infradead.org>,
-	Lorenzo Stoakes <ljs@kernel.org>, Peter Xu <peterx@redhat.com>,
-	Johannes Weiner <hannes@cmpxchg.org>, linux-ext4@vger.kernel.org,
-	linux-nfs@vger.kernel.org, "Liam R. Howlett" <liam@infradead.org>,
-	Vlastimil Babka <vbabka@kernel.org>,
-	Mike Rapoport <rppt@kernel.org>,
-	Suren Baghdasaryan <surenb@google.com>,
-	Michal Hocko <mhocko@suse.com>,
-	Baolin Wang <baolin.wang@linux.alibaba.com>,
-	Nico Pache <nico.pache@linux.dev>,
-	Ryan Roberts <ryan.roberts@arm.com>, Dev Jain <dev.jain@arm.com>,
-	Barry Song <baohua@kernel.org>, Lance Yang <lance.yang@linux.dev>,
-	Usama Arif <usama.arif@linux.dev>, Kiryl Shutsemau <kas@kernel.org>,
-	linux-mm@kvack.org, linux-kernel@vger.kernel.org,
-	Kairui Song <kasong@tencent.com>, Qi Zheng <qi.zheng@linux.dev>,
-	Shakeel Butt <shakeel.butt@linux.dev>,
-	Axel Rasmussen <axelrasmussen@google.com>,
-	Yuanchu Xie <yuanchu@google.com>, Wei Xu <weixugc@google.com>,
-	Baoquan He <baoquan.he@linux.dev>, Michal Hocko <mhocko@kernel.org>,
-	linux-fsdevel@vger.kernel.org, stable@vger.kernel.org
-Subject: Re: [PATCH RFC 0/5] mm: GUP dirty + ->release_folio() fixes
-Message-ID: <awaP8a3GaI3LCcuw@infradead.org>
-References: <20261119-gup-dirty-what-v1-0-236d69f25c24@suse.de>
- <4f096d70-6f94-4148-8f47-242b8551e5f9@nvidia.com>
- <awWNyDZT2SVu2Zp9@pedro-suse.tail5790ac.ts.net>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Zq3rcvUt
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id DB11D1F000CF;
+	Wed, 25 Nov 2026 07:37:14 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1795592235;
+	bh=+H+KrvpY7uR2GeDyeLgI/xAh9gM3sDh05mVsVvZq0WY=;
+	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
+	b=Zq3rcvUtuiaR8UWLxgtod1yLRbGVCKwLo76wO/BNjFiahK+9g8wMLetKr0jfGrIkF
+	 27v5zUorTeDRHI8iriQ2opuHsbRE7ea0Ja6YlAD1ypevwMsfNpLpNGU2cvjvvtcK+/
+	 2TPfQ6vKVuNKpUxwFRKiMLagg1PERp9YbvyIskvXgLrueBJu5C9rltMd06+PeDr95C
+	 LVAC5HSAz6/4mTKyASJKveepYiEU+Kcareyh125J453grx0cdytr3TdNLKgEkGDfdW
+	 MqmF3Oomkcdp6PNIUyfQWizWidP3QJC1SvYnG3CxBCtcjbADdLIlOQRfW+xD3Kez7k
+	 5bgXObHNBWDgA==
+Message-ID: <sashiko-outbox-232820@kernel.org>
+From: sashiko-bot@kernel.org
+Subject: Re: [PATCH v9] ext4: bound xattr journal credits to transaction
+ limit
+Reply-To: sashiko-reviews@lists.linux.dev
+To: arzuagapozosergio@gmail.com
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+In-Reply-To: <20261125072006.32251-1-arzuagapozosergio@gmail.com>
+References: <20261125070002.27868-1-arzuagapozosergio@gmail.com>
+ <20261125072006.32251-1-arzuagapozosergio@gmail.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+Date: Wed, 25 Nov 2026 07:37:14 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -86,35 +60,94 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <awWNyDZT2SVu2Zp9@pedro-suse.tail5790ac.ts.net>
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 
-On Tue, Nov 24, 2026 at 01:37:43PM +0000, Pedro Falcato wrote:
-> > pin_user_pages() was specifically introduced for this exact class of
-> > problem. get_user_pages() is now meant for other, much more limited cases.
-> > I've attempted to document that, here:
-> > 
-> >     https://docs.kernel.org/core-api/pin_user_pages.html
-> 
-> Ok, so I guess you want me to drop the hacks to make GUP FOLL_WRITE not
-> screw itself over? To be clear, the rest is still broken, even with pin_user_pages().
-> It just means we get nicer looking fixes, and I can drop patch 3.
+Thank you for your contribution! Sashiko AI review found 2 potential
+issues to consider:
+- [Low] selftests: ext4: missing KHDR_INCLUDES in Makefile
+- [Low] ext4: changelog notes placed in commit message and missing Fixes
+  tags
+--
 
-Yes.  And maybe start looking into fixing GUP FOLL_WRITE users if there
-are any that you ran into or which are relevant to your workload.
+commit 3240428a7d5aa26a79642ee4a851967a647d2656
+Author: Ryuji Hiroshi <arzuagapozosergio@gmail.com>
 
-> It's unclear (to me) whether we care about any straggling get_user_pages
-> FOLL_WRITE users. A quick look around doesn't find me many; most seem to have
-> been converted to pin_user_pages() (though, admittedly, I don't know how many
-> of these are converted in stable; do we care?). Perhaps piling on a patch
-> to simply disallow get_user_pages(FOLL_WRITE) is ok? Giving Lorenzo's idea
-> a go again :)
+> ext4: bound xattr journal credits to transaction limit
+>=20
+> When setting an xattr without XATTR_CREATE, ext4 reserves credits for
+> releasing an old ea_inode even when the attribute does not exist. On a
+> 1 KiB-block filesystem with a minimum journal, this can request more
+> credits than JBD2 permits, triggering a warning before the operation
+> fails.
+>=20
+> Drop the obsolete credits for releasing an old ea_inode. Since
+> ext4_put_ea_inode() defers the final iput to a worker, freeing the old
+> value's blocks does not happen in the current transaction. Continue to
+> count ea_inode references in the external xattr block for the case where
+> it must be cloned, and check the estimate against the transaction limit
+> after reserving the default JBD2 revoke credits. Repeat the estimate under
+> the xattr write lock before modifying the attribute.
+>=20
+> When an identical xattr block is reused from the cache, drop the
+> provisional ea_inode reference unless the block was modified in place.
+> Handle both a different cached block and the original block being found
+> after cloning. Bound the aggregate credits for inherited xattrs during
+> inode creation against the JBD2 transaction limit before starting a
+> handle. Add EXT4 selftests for these paths.
+>=20
+> Fixes: dec214d00e0d ("ext4: xattr inode deduplication")
+> Reported-by: syzbot+25d45c0bd716f2b794a7@syzkaller.appspotmail.com
+> Link: https://syzbot.org/bug?extid=3D25d45c0bd716f2b794a7
+> Assisted-by: Codex:GPT-6
+> Signed-off-by: Ryuji Hiroshi <arzuagapozosergio@gmail.com>
+>=20
+> Changes in v9:
+> - Skip the large default ACL test when the filesystem reports
+>   EOPNOTSUPP, as happens when POSIX ACL support is disabled.
+>=20
+> Tests:
+> - make -C tools/testing/selftests/filesystems/ext4 clean all
+> - sh -n tools/testing/selftests/filesystems/ext4/ext4_xattr_journal_credi=
+ts.sh
+> - Booted the v8 kernel in QEMU/KVM with a 1 KiB-block, 128-byte-inode
+>   ea_inode filesystem and 1 MiB journal; all 4 harness tests passed.
+> - e2fsck -fn passed after the guest unmounted the filesystem.
 
-I fear this is going to to break quite a lot of things.  Although given
-how long we've asked about this maybe we should at least send a patch
-to it with all relevant maintainers Cced and queue it up in -next for
-a while.
+[Severity: Low]
+The "Changes in v9:" and "Tests:" sections sit above the "---" separator,
+so git am will record them in the permanent commit history.
 
+Also, in addition to dec214d00e0d ("ext4: xattr inode deduplication"),
+this patch fixes the unbounded new-inode xattr credit calculation in
+__ext4_new_inode() and the provisional ea_inode reference leak on cached
+xattr block reuse in ext4_xattr_block_set().  Should it also include:
+
+  Fixes: af65207c76ce ("ext4: fix __ext4_new_inode() journal credits calcul=
+ation")
+  Fixes: 0a46ef234756 ("ext4: do not create EA inode under buffer lock")
+
+[ ... ]
+
+> diff --git a/tools/testing/selftests/filesystems/ext4/Makefile b/tools/te=
+sting/selftests/filesystems/ext4/Makefile
+> new file mode 100644
+> index 0000000000000..90569a1ccef38
+> --- /dev/null
+> +++ b/tools/testing/selftests/filesystems/ext4/Makefile
+> @@ -0,0 +1,6 @@
+> +# SPDX-License-Identifier: GPL-2.0
+> +
+> +TEST_GEN_PROGS_EXTENDED :=3D ext4_xattr_journal_credits
+> +TEST_PROGS :=3D ext4_xattr_journal_credits.sh
+> +
+> +include ../../lib.mk
+
+[Severity: Low]
+Should this Makefile add "CFLAGS +=3D $(KHDR_INCLUDES)"?
+ext4_xattr_journal_credits.c includes <linux/posix_acl.h> and
+<linux/posix_acl_xattr.h>, and lib.mk defines KHDR_INCLUDES without
+adding it to CFLAGS automatically, so the build otherwise falls back to
+the host's /usr/include.
+
+--=20
+Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261125072006.3225=
+1-1-arzuagapozosergio@gmail.com?part=3D1
