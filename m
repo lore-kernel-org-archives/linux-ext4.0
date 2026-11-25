@@ -1,52 +1,52 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=198.137.202.133
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795587233;
-	b=qxxk+1YO623xsXfljQX6iZY0Tr4QlWe5+i34oxilQY6hpI8hrNkiEW1sPjdCe5J/tRK4
-	 fmOYINwyRBNCebHsrCWvjCESGTRQ6Ti6O9hF2+lakIDt2tu4cwqs7OM1GeZd++z5wAgIM
-	 guQOcuI4lejIJxEiJJJ6/QdOmxCFHep3bYV5l57krQ8sL7jYxN2h8CQlIhFamVkZSCNee
-	 uOqguXMtqzSZbIl3MMSNiZaO9kg2RUx+AIRNGGmzVmgACK+oQ/ErCwU41bI09vwDtE4ay
-	 TRvkaQXE7oTWeb+QJmW/FKh2K9E+Y+f+STWWlRfbj7qWPWo4BqF7sDbBIacI2/HU8Mg==
+	t=1795587230;
+	b=Fnf8r4XK+AVDWbXTX0xZJxV0xSB+cXElYWMokE7F/2YXWflrt9jCg6i/hpTYwgEL25ZN
+	 KvoxtR7dTp80ppo8a+se/oNLP8i9rkbO2x97ryWREwGe4SU51Tsy/LzeWVCc1q/anj8gl
+	 wK8TTA/lygwRBjL5Xv5vKM85YrHXDAmb3Lf0iu0CV/5NnwWYrMSeZj+/Rlu2ZjYwp7oz7
+	 n2Mz+xfqcGBGCkNBn9IRp6P3yxaMBO3RWxuhQTkv9XkcaYSSIpouy5WIGy7BZZL0Zn94B
+	 ieMbdciDIkOyDr+77w+o7e/l5Pbs/K2K9DpikggyJydX/3gnsWNcfDDHyTGyL8ggWIw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795587233;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795587230;
 	h=DMARC-Filter:DKIM-Signature:Received:From:To:Cc:Subject:Date:
 	 Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
 	 Content-Transfer-Encoding;
-	bh=+8jdBu194DlNkmnb+wfnHItWGdgLROhV9S+C/TWCEcI=;
-	b=liId5NcTKr9RYeOFneEyMgA6YVB3/1H9xL9VwMfqF3BoQbREKHxj0FDz6Ut6rIFoQvie
-	 asBd3nPSCi/VCQ4mMUetAIP2umnAAkiixbCCij1HVkyO+N2l5vbPv54Mvr0oqq51gGFYF
-	 ErXuOJxl6PRCtocT7VWhbRaFxhGp6X6C515u4WfBchO7M57xnWvSCx6gi0pU2Qe9EgB6n
-	 zCpB62FL/LdMtE0zMgQLS8vl/hSRlZv2yX0pCnBU6YwA2peXQON+JCiwqB3pZoggm7Ey7
-	 cZ4jFVSQOae8UQxnbkYMguedXWlIrijagPk4Z+ina0xeHkUTs2CupmVt44GTLaxqQjQ==
+	bh=Z4IewevnDUR+3Yga8umWQJFbQaMK6YhJ+IYMzmfvhho=;
+	b=z5QmXlf6mhfkAAi77hmKto+O1hOwg8cS7qOSMzOqXYI0p3yVbXzcuEehQ161m62OkR3W
+	 aYmbt4AuPEvp0q1r1+e0u985P152bOYq9SZM5KcslOv5LWObZSsq8DuB/PiHI+Qna1hLK
+	 8EL2jaiiUd8YEdhX4Ty3VQDF06J/VFugpnpzYKFeBeDLxsdavoHXpAoO+8ZVOaFDvHkzo
+	 7JtmaPYT/kDWm4YMpPZqG5YwI+0eVJE2wlARUl+cLOySiSkkyrZ9qkxC7z2LETYvYgrsC
+	 HitJ8wADTOwtSLR/TTKBKL5yoxz78fVH6l3TIZgMi8HxSWY884I2yTOObP0CZ25A9Lw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=infradead.org;
 	spf=pass smtp.mailfrom=infradead.org;
-	dkim=pass header.d=infradead.org header.i=@infradead.org header.a=rsa-sha256 header.s=bombadil.20210309 header.b=kERMxCdT;
+	dkim=pass header.d=infradead.org header.i=@infradead.org header.a=rsa-sha256 header.s=bombadil.20210309 header.b=Eu3Xj08W;
 	arc=none smtp.remote-ip=198.137.202.133
 Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 16CA4606A338;
-	Wed, 25 Nov 2026 06:13:52 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 16CA4606A338
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EEF4B606A321;
+	Wed, 25 Nov 2026 06:13:48 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org EEF4B606A321
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.a=rsa-sha256 header.s=bombadil.20210309 header.b=kERMxCdT
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.a=rsa-sha256 header.s=bombadil.20210309 header.b=Eu3Xj08W
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
 	d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
 	MIME-Version:References:In-Reply-To:Message-ID:Date:Subject:Cc:To:From:Sender
 	:Reply-To:Content-Type:Content-ID:Content-Description;
-	bh=+8jdBu194DlNkmnb+wfnHItWGdgLROhV9S+C/TWCEcI=; b=kERMxCdTufChzabW0IvD+rbqtc
-	Nbdyx0vQdDuiaGCqqp2x8hTqoQruD5AvGRVDUOhXslaBMSpsjs+OIRKnehcOMkFyl/fjtquOErF7C
-	tuduPzcZz6sblc6U8dX6rlj5CqhR9GcgPAh2/sZLjyCnlbRjOx4d8uBUVRsMFKo/0ZHgUYYPao+kX
-	0bISrlhzLamhNb2d9WCuQp6oM9WeQ7A7BLvhyNMN65o+7N9xyRnTc5brz8cM1qPYET2QnoDqld7Qb
-	q/0mpcfNxo9vTs+1OtQjAoRWL8Wb+X12mSUPs7nwgX0Yzh7fOgBG1R2ZgiPBCM0x36EJ4EQP7b6tO
-	AlnKLPWQ==;
+	bh=Z4IewevnDUR+3Yga8umWQJFbQaMK6YhJ+IYMzmfvhho=; b=Eu3Xj08W3NJugRAeAckfLLB7fP
+	nWb2k/gRos5t782SZ8XOZ03pXXlaHouCGrgvKjtcuJ4S0EO1YL+gg3XlmFEkwgMOjvRt/NqQcEQmk
+	pM6rqd0iD7C6aQo5piQb85EOxe6mnzcb1cTfastxEm3miz2l40RVZ0EWbOow/EM1P6l8WGtpymXDs
+	lH8ot30ghbW9dh3KshpcJwOcl5WTdzFR+pzMpwniEwWD2+5fhenpAkoIfJh1SlSH3NAJcjDgFu1xI
+	pInFJMLrApWbVUHkDO9yAOXHCHiwHy+toq2qGLgACisBmGlm/1UCCcxJ3fDDE7dAfemvx0nRgchMx
+	dhT33leQ==;
 Received: from [50.53.43.113] (helo=bombadil.infradead.org)
 	by bombadil.infradead.org with esmtpsa (Exim 4.100.1 #2 (Red Hat Linux))
-	id 1xW6GO-00000008Wvh-0r3L;
-	Wed, 25 Nov 2026 06:13:52 +0000
+	id 1xW6GH-00000008Wvh-3rUv;
+	Wed, 25 Nov 2026 06:13:45 +0000
 From: Randy Dunlap <rdunlap@infradead.org>
 To: linux-kernel@vger.kernel.org
 Cc: Randy Dunlap <rdunlap@infradead.org>,
@@ -132,9 +132,9 @@ Cc: Randy Dunlap <rdunlap@infradead.org>,
 	Matthew Brost <matthew.brost@intel.com>,
 	=?UTF-8?q?Thomas=20Hellstr=C3=B6m?= <thomas.hellstrom@linux.intel.com>,
 	intel-xe@lists.freedesktop.org
-Subject: [PATCH v3 03/12] docs: ioctl-number: update block entries
-Date: Tue, 24 Nov 2026 22:13:30 -0800
-Message-ID: <20261125061340.3402300-4-rdunlap@infradead.org>
+Subject: [PATCH v3 01/12] docs: ioctl-number: update MM entries
+Date: Tue, 24 Nov 2026 22:13:28 -0800
+Message-ID: <20261125061340.3402300-2-rdunlap@infradead.org>
 X-Mailer: git-send-email 2.56.1
 In-Reply-To: <20261125061340.3402300-1-rdunlap@infradead.org>
 References: <20261125061340.3402300-1-rdunlap@infradead.org>
@@ -149,7 +149,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Update the list of files where block ioctls are defined.
+Add ioctl number entries for test_hmm_uapi and gup_test.
 
 Signed-off-by: Randy Dunlap <rdunlap@infradead.org>
 ---
@@ -163,29 +163,32 @@ take all of these through the docs-next tree.]
 Cc: Jonathan Corbet <corbet@lwn.net>
 Cc: Shuah Khan <skhan@linuxfoundation.org>
 Cc: linux-doc@vger.kernel.org
-Cc: Jens Axboe <axboe@kernel.dk>
-Cc: linux-block@vger.kernel.org
+Cc: David Hildenbrand <david@kernel.org>
+Cc: Andrew Morton <akpm@linux-foundation.org>
+Cc: Jason Gunthorpe <jgg@nvidia.com>
+Cc: Leon Romanovsky <leonro@nvidia.com>
+Cc: linux-mm@kvack.org
 
  Documentation/userspace-api/ioctl/ioctl-number.rst |    4 ++++
  1 file changed, 4 insertions(+)
 
 --- linux-next-20261123.orig/Documentation/userspace-api/ioctl/ioctl-number.rst
 +++ linux-next-20261123/Documentation/userspace-api/ioctl/ioctl-number.rst
-@@ -78,6 +78,7 @@ Code  Seq#    Include File
- 0x00  00-1F  linux/fb.h                                                conflict!
- 0x00  00-1F  linux/wavefront.h                                         conflict!
- 0x02  all    linux/fd.h
-+             drivers/block/floppy.c
- 0x03  all    linux/hdreg.h
- 0x04  D2-DC  linux/umsdos_fs.h                                         Dead since 2.6.11, but don't reuse these.
- 0x06  all    linux/lp.h
-@@ -90,6 +91,9 @@ Code  Seq#    Include File
-              linux/blkpg.h
-              linux/blkzoned.h
-              linux/blk-crypto.h
-+             linux/blkdev.h
-+             linux/blktrace_api.h
-+             block/ioctl.c
- 0x15  all    linux/fs.h                                                FS_IOC_* ioctls
- 0x1b  all                                                              InfiniBand Subsystem
-                                                                        <http://infiniband.sourceforge.net/>
+@@ -147,6 +147,8 @@ Code  Seq#    Include File
+ 'G'   00-0F  xen/gntalloc.h, xen/gntdev.h                              conflict!
+ 'H'   00-7F  linux/hiddev.h                                            conflict!
+ 'H'   00-0F  linux/hidraw.h                                            conflict!
++'H'   00-0F  lib/test_hmm_uapi.h                                       conflict!
++                                                                       <mailto:linux-mm@kvack.org>
+ 'H'   01     linux/mei.h                                               conflict!
+ 'H'   02     linux/mei.h                                               conflict!
+ 'H'   03     linux/mei.h                                               conflict!
+@@ -252,6 +254,8 @@ Code  Seq#    Include File
+ 'f'   81-8F  linux/fsverity.h
+ 'g'   00-0F  linux/usb/gadgetfs.h
+ 'g'   20-2F  linux/usb/g_printer.h
++'g'   01-0F  mm/gup_test.h                                             conflict!
++                                                                       <mailto:linux-mm@kvack.org>
+ 'h'   00-7F                                                            conflict! Charon filesystem
+                                                                        <mailto:zapman@interlan.net>
+ 'h'   00-1F  linux/hpet.h                                              conflict!
