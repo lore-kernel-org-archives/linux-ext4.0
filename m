@@ -1,95 +1,95 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.222.53
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.221.171
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795592596;
-	b=fO0MRuSWklf5+2yUV4+mMLEybfQ8hxIAroQ/xL3s4Xk8oul2UbdwLtskHmqKdJI0gUBt
-	 2t2nB4auDGsJjFqNzKAf10Nl8k/kZEidYGZcauVrlir8/pD2rf6sOHwEQp2cl3kqpdbkD
-	 yKsx9OP3uZPLN5KH2LOzeuFrBqqaRIvCgk5jHoZk1C2lB3I8e5I2ny/Mqi36YieZga/EG
-	 ExgIhdthDWIFf8HVAJER71uBXncyYbi9vAgEuOZN4TA5TMrafD9X/03sJl5Tw75PaZVZ5
-	 HkWC/JxVFkzC5pvXHm289OzAKkU9QY2oJDeZDnZhvZqulp6UXHnOMnewlWgNuJFsyJA==
+	t=1795592792;
+	b=F7S2YVHv5YZYGd0V3ZjKtt1IffS4lTjFby+5wuEkuDVbjz0VeV+wnqXrimq4eDl7YWZr
+	 hdg9ptIJVuNoZLIGtZpVrnq3fuFwbaNDLMT+qzf7xfPFuTsDx6p+WiD3/rg0g3kVGgLXv
+	 py7lGcxyCxFW2jrUYr68INrXuj2hP9GllRab84G7yYd5dj3wp4wqOScypqg9RA/TTNWIa
+	 bavfbYQQo1IhiOgA+SmzvreTIH/mfdQq4EAZKL0vzk6RtSXI/VEdbAxKCqYEEJcTZtn55
+	 klLo915ae/JwLEJxilGKV0l1pwbWnF/dDJrA7iXTO6lndVD/fVmPfXn1Z6FmUGWRxkw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795592596;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795592792;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
 	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
 	 From:To:Cc:Subject:Date:Message-ID:X-Mailer:In-Reply-To:References:
 	 MIME-Version:Content-Transfer-Encoding;
-	bh=sFlWdH6bj9WB5eCz2D6tFKpp1k35ahlbZTgo3+aUqh0=;
-	b=ZBnQUwtDHLJ3odCbdDAwLA8Pog+CoYzIwjXdQvtGV2ZK65aBkeg4SwSFKBnQrbPeW4V4
-	 WBYLYUi0eB7mMmlC8DygAaG3jxOp7UUifwkaephHVDw39jJOlZi6jX4C4tJBnhx+nP1dN
-	 YytqzLQwF6lsEGBjWYfoPly5+ThIATHzqiXLpz/QAKlcoLXPhVWsE/IT/fcePpPGPWTWG
-	 C3rrtYj5HlZPQ2VuDUhrSxx/5/ZoJP06syYbstVAfCfLd0sX3EPlpZO8JpyZaxVJFuirP
-	 BDOFRf3O4l8G0g2ehmgZXdMV4N4NPmvaerMsu+9ryt/U+ogzhD1eTK+B1hu4/f3kD5Q==
+	bh=doE9Kybu0HccC9+tN21nvAcLZe0ZUSzis5mZbdjFN+Y=;
+	b=4nkporen6dlCtxDecjbvNDcaIfEsGXrqUdHiKUu1Rw8/ZP9wAQHwsJ2QQ7m5sXhvUgmb
+	 smCK7sEELUXm7gdfeL48ewn2GuP5ULxt9JsTMOumOXJOJrJPs1pSWR6H+71Xo9oADS3EG
+	 Q38UWqdsZv77A9esonHl3ZmCRWz+HlsQkJFTNEn2L8SIU8+/BbafuD64W9kWWUOba2Vd0
+	 SPm/Ha+BnaTF4NYFqIAR9O3zL+wpF0gEjwzK96s3LKKmvMvAwOCTjjsjF6H8BFHWpWKOS
+	 KXIBA16C8jXK+U9fDJIJAWIc4DYoHySj4TjGf1MF/BhVKVzvZcDbEvkInxPFODI0RoQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=gmail.com;
 	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=j7TGbNTw;
-	arc=none smtp.remote-ip=209.85.222.53
-Received: from mail-ua1-f53.google.com (mail-ua1-f53.google.com [209.85.222.53])
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=AIhcBQcn;
+	arc=none smtp.remote-ip=209.85.221.171
+Received: from mail-vk1-f171.google.com (mail-vk1-f171.google.com [209.85.221.171])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 43908606A31E
-	for <linux-ext4@vger.kernel.org>; Wed, 25 Nov 2026 07:43:15 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 43908606A31E
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 53C68606A31E
+	for <linux-ext4@vger.kernel.org>; Wed, 25 Nov 2026 07:46:31 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 53C68606A31E
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=j7TGbNTw
-Received: by mail-ua1-f53.google.com with SMTP id a1e0cc1a2514c-9907a58f14dso1477092241.2
-        for <linux-ext4@vger.kernel.org>; Tue, 24 Nov 2026 23:43:15 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=AIhcBQcn
+Received: by mail-vk1-f171.google.com with SMTP id 71dfb90a1353d-5ee3e658c70so1672168e0c.0
+        for <linux-ext4@vger.kernel.org>; Tue, 24 Nov 2026 23:46:31 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1795592594; x=1796197394; darn=vger.kernel.org;
+        d=gmail.com; s=20260707; t=1795592790; x=1796197590; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=sFlWdH6bj9WB5eCz2D6tFKpp1k35ahlbZTgo3+aUqh0=;
-        b=j7TGbNTwurhsF1YD1tGfDWQvXVewf15RAN5s1EXhngb9IfWp9huNffDmrpKLAoiJ+Z
-         N++1JjZHvp+MZ6ckq2hArbsstGUyQD2/o4vTpxyH3shVf/LUD31op3obk0zcVyDWlfF3
-         jQ1sSb74987x+MYWvf1mqZX0tZMEPR2M9FG1dyI8T0Rti0MTDrYP9su2e2PKDmMRjmiS
-         oQ739x+cRCRE6hVkjDY+vyAsQFJzoRWpoTlAOsBckBX/IbpvAnJ5QFokdeBrcuGYW5UI
-         QvvXdiixXplkGBcrY8IbXPPnL5exMv/jXhoe6F1qGa0Eu8FMR1kRM4K50QNhs57B6jlC
-         JvMQ==
+        bh=doE9Kybu0HccC9+tN21nvAcLZe0ZUSzis5mZbdjFN+Y=;
+        b=AIhcBQcnozkgjI1AzVFWWdXfiyZzWYnwNTWbuahy/agd4QfhhmAVbz1fid8rGTWxQc
+         mPYP1nESFHmb/SKUry3hlfgea4E/8gbGnbKz8qvhVqQwZZyEHdyzDLh0VyGAPyItq1mf
+         OLTNS/r0ZMYH/2QH021Qb5jVpleVsHSintGp9+LnEHT5VvcGoYDuy97yZTSM7m0LIJ6i
+         Ecl094jY3GwHHVCtpDyl8b5ItJcHhwDNil6AZbIKCWTL/MXOaeCdm1P8+VYCYn31vquM
+         PiOJZPyMAZtAaJT1CuqB4O2lkrRk3AV2pCZ/0pSQtZMQQtDNAaflUXqV4PbS3KjdgEfp
+         1miA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1795592594; x=1796197394;
+        d=1e100.net; s=20260707; t=1795592790; x=1796197590;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=sFlWdH6bj9WB5eCz2D6tFKpp1k35ahlbZTgo3+aUqh0=;
-        b=gUNSSVv64c5BvJTB+RKove2nlJbJMi6PKtn9dWMj3pfUH7jNZMK5nv7YM/GTvF3VPB
-         8KRChSs81eEeXVdPJQ7UQDUG9HG0kk/iD2EjxQWlfoUgsklNxmJFpY4CXKcE7wC4fYeC
-         kAqKIqDfL02A+BKAJE6AAmt2d3hlLAKKOdj6zXchWM3JQcGsNMuYXN+amQG1lyjwT6qr
-         Kh5+O6VjbUi3gxjWcvTvPms/LhwJBgVvXssCRYb+Uj87CPUeFEhsWh4mHdkbqNC0SzoG
-         uYg16Z6Wh2NFaZpcT2yM/GP5qdtZkAhOHp8AyUMPktrvUdX7MpfHTAl6sIr/gIkp/mtN
-         qehQ==
-X-Forwarded-Encrypted: i=1; AL+hErFM6eBfFogbXXKEJr3xPAJN7YHXCou+gZ2njdlZ8HnNGQJzQbQw7QGdpDV03BTQeEhqyl6keY6SRAhl@vger.kernel.org
-X-Gm-Message-State: APuU4Z/Y/2XBOBeI8mPJZzxZP3WvwNYa/acgLQC5dG9RHZ6L2l5C0D3W
-	k2QpQCdWBO+LEcO0XDtybXN+XzV+DGBse3GOj6OndeE4FgjYJyAuQywU
-X-Gm-Gg: AZFdTZd4ynlwR0mu3HQb/bEpcA7XOMLPH5I0b3BWJRk8KPulZqyEw5pBuNhcjy9Ark3
-	RocM4Od5kz5jziSX0SnQPv3NZ83x3KNpB+vX4Xk2cWnxkcomualTM/F37NN05FrPPj6qVBnWSdI
-	bccX+B5CNRfc8skgxn34cN8xFTRTgr0i8+YoHCQn3wR2G7wVzrqDOSPD2Sk+eBzEkaj07788n4e
-	/CeG7Gy7JMtkTLaKYGVmhd3C07aZP2BbvB49PcNzi04Nep6q4X1P4G3UZNRdPAoqavk1TeWKgKc
-	78INJaLRTzA6p+8xDbVt1mu28xLXC0Kl5BOBYWbvco7ZcsZIq9GaAe+WplLrLed/PzSVif0aX6p
-	gY94g4bXzm/HbNjIy7bJQzw3cdBtQ5n06tEtRI7I3XRCF1kg31rz9i0UV0wRXx5EBk8e33XYtZ7
-	ihs/+hEQh9FNWHp1P5aDFVOPEapErzEGXsS1n9phf+Uq0YTTVWCNKhk5Zc7ags4F7cJm6/YPX60
-	UAeWiIMs7H5lOaE16BwhzyLWQ7LAfNVHR0AtHN7sltlK/cX7lB1K3oaS9SLOZbROiK4TynPwckT
-	pl5AZgO7rAh3nA==
-X-Received: by 2002:a05:6102:c54:b0:7c1:f530:2d8e with SMTP id ada2fe7eead31-7d7396a6024mr8283114137.35.1795592593948;
-        Tue, 24 Nov 2026 23:43:13 -0800 (PST)
+        bh=doE9Kybu0HccC9+tN21nvAcLZe0ZUSzis5mZbdjFN+Y=;
+        b=rOxRXTZ4EXX32F0VM3J2Tj2UUYZbjYnKwtnUHjgrgHn04Zr9KfTNH2WxDHQq8MJ9mK
+         8oYgNkqakcQC0ic1k7K0CLudjvuJejQyX0txYEhqc3kmpgDsBQA890D0B0XPYQpJ97UU
+         xQuQ9FU7+Xzsd3uNShmR1C4m1w+fZmcXfMSyw8tlYrg1v96UO8MKUoP23imyX1a/MRiw
+         GrnbUlsSIie5MXep6HnC/7cbffrPN9nEwVI5+edAM3TgdDHj0txaXd+x7SQ1orveXFWy
+         jVusg/vC7dGHbXjtgq9OIIGCrXMTykZfCgw1YBGW+yh/v9So9A/juzVFtTNr3CUC8dFZ
+         6qkQ==
+X-Forwarded-Encrypted: i=1; AL+hErEKTuDxXHVz4AZZqvBDUWlIaI1a+Wul3nN0yXT8OFzum5wUyosJfQA0QTvtL3mH8WEKfIyMGIBivTM3@vger.kernel.org
+X-Gm-Message-State: APuU4Z/pnj8w+xE1IpI7wR/Qswys7WL32oIHPFb8uwUErhuHq7JxeMh7
+	h5CWMXaZC0AwcE42yOFB06GcC7ohDdIVmrMDJBIDlyNgRNgif34JG7UE
+X-Gm-Gg: AZFdTZdMCaD9ros5M7khaaFGsOcHTScIVr4RB3+qw64DpxV3F/H+IF9jmykIik9agul
+	McwnDvQ0RRdufM7TFJWHwDcGdS+RMNHWrC7dTUKA8k21+AwXLHImysEHc5aT0Qo3ilVAW/gkgN1
+	7EQExqQobljrIM/jzlFyfIxTZ/qSMcT7qZfV0tOjedgWhg6zsHiUFSWUcXIiGSU8ECshMKI4Qke
+	h/TNa/SIyckttcl/5Ru4xu62VBr9nSL5lmGalcYCdjqqywFfu9vnbBMvda4iB6Zhl9PJMwN+d7L
+	0fPHr8Qv90lLYxspAb7pl4ubuV/H53hVQutdTKYhHoRELgD1C+I3nLrloXEjiK5v/3XjzAeu/p7
+	Fia1qhQvYPj3+PiDt3gn2G65cRnoyP40q0scoUuLpT8vxEkbzcmRDWQOxONeKh9qd+Pk5FG6V4p
+	cnltJ6Z5qcHx/BDhLBjd2+mXBjfxfxz6VdJ7Y9gk5jAbzZXONZ2bG4shkGuSZucIVfHLOXNYxXj
+	7Tcx1YNyLxKS+aWnSxvCkvoGtZOHK60cIR1dTbsRHM9ztJpzwoiJXozASeCN2eohTw+sOwsfLTc
+	W+c0R3agN8n6gQ==
+X-Received: by 2002:a05:6122:d03:b0:5e4:f6c8:b0a5 with SMTP id 71dfb90a1353d-5ee8ad0eb56mr9201123e0c.0.1795592789941;
+        Tue, 24 Nov 2026 23:46:29 -0800 (PST)
 Received: from Sys0z ([2a02:6ea0:cc02:6283::17])
-        by smtp.gmail.com with ESMTPSA id a1e0cc1a2514c-99eab8e7b9esm2317605241.3.2026.11.24.23.43.11
+        by smtp.gmail.com with ESMTPSA id 71dfb90a1353d-5ee8b5bb61asm16599849e0c.10.2026.11.24.23.46.27
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 24 Nov 2026 23:43:13 -0800 (PST)
+        Tue, 24 Nov 2026 23:46:29 -0800 (PST)
 From: arzuagapozosergio@gmail.com
 To: tytso@mit.edu
 Cc: jack@suse.cz,
 	linux-ext4@vger.kernel.org,
 	syzbot+25d45c0bd716f2b794a7@syzkaller.appspotmail.com,
 	arzuagapozosergio@gmail.com
-Subject: [PATCH v10] ext4: bound xattr journal credits to transaction limit
-Date: Wed, 25 Nov 2026 02:42:58 -0500
-Message-ID: <20261125074258.34398-1-arzuagapozosergio@gmail.com>
+Subject: [PATCH v11] ext4: bound xattr journal credits to transaction limit
+Date: Wed, 25 Nov 2026 02:46:16 -0500
+Message-ID: <20261125074616.35241-1-arzuagapozosergio@gmail.com>
 X-Mailer: git-send-email 2.56.1
-In-Reply-To: <20261125072006.32251-1-arzuagapozosergio@gmail.com>
-References: <20261125072006.32251-1-arzuagapozosergio@gmail.com>
+In-Reply-To: <20261125074258.34398-1-arzuagapozosergio@gmail.com>
+References: <20261125074258.34398-1-arzuagapozosergio@gmail.com>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -129,9 +129,14 @@ Fixes: af65207c76ce ("ext4: fix __ext4_new_inode() journal credits calculation")
 Fixes: 0a46ef234756 ("ext4: do not create EA inode under buffer lock")
 Reported-by: syzbot+25d45c0bd716f2b794a7@syzkaller.appspotmail.com
 Link: https://syzbot.org/bug?extid=25d45c0bd716f2b794a7
+Assisted-by: Codex:GPT-6
 Signed-off-by: Ryuji Hiroshi <arzuagapozosergio@gmail.com>
 
 ---
+Changes in v11:
+- Keep one Signed-off-by trailer in the commit message.
+- Restore the Assisted-by tag.
+
 Changes in v10:
 - Add KHDR_INCLUDES to the ext4 selftests CFLAGS.
 - Add Fixes tags for the inode-credit and ea_inode reference issues.
@@ -147,8 +152,6 @@ Tests:
 - Booted the v8 kernel in QEMU/KVM with a 1 KiB-block, 128-byte-inode
   ea_inode filesystem and 1 MiB journal; all 4 harness tests passed.
 - e2fsck -fn passed after the guest unmounted the filesystem.
-
-Signed-off-by: Ryuji Hiroshi <arzuagapozosergio@gmail.com>
 ---
  MAINTAINERS                                   |   1 +
  fs/ext4/acl.c                                 |   3 +-
