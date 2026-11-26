@@ -1,47 +1,97 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.221.47
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795675433;
-	b=QcQAvq3jYwYwWy0Od2Vrg4eoRgiU5Y1DNJ3K9PucM33YMZMbEwQ+NA89S2HPvV412sg9
-	 YCYlshc7mv5s0ARokS6m42J5yOlLO9mFeXUXUtpE0vutoMhgiNKF2Wg+GtfZYLuN3vtsv
-	 hMJDrV0OHBev42fTwrXjKMZs7SEWS6q/9uAoetjbvDzphah/6NzNjwIhnzR+v9sou05w/
-	 k5bCbpMkeh0XNTHd1rgibgLyKfrS42U/+QvEKOkQwGmfX30ZSAd/ghEsrS238RvdtUtVr
-	 KASbby6zQXjzMW8zJv7PwewEK6KNn9Bu4Y2g7gUmFtbayBOTfCdLMmVlYORXZRdXnSQ==
+	t=1795676890;
+	b=ysO0B+2mP1RRHce/PzqRLqZTtrgDbtWtyAfZenp+hlkL6ZFkm4NgMBxsUMg5xpniW6m3
+	 2z5dXMcIIwXSYfi4Zbi5+1qLxQYAKSll8Y1w+XJn3Z2B7FQxslr8EobK1VhrNBaU/dPLL
+	 wIriCG33xJqi2mMsps+xRfIndKS7/DrmRplCzI4+OJGfX/GJlfYl/r2Vu/6jrWd3zeTbQ
+	 pjxTcXm+o4SU+yccz6WK8ymHmHDAl3l94t3gUh+8jUvGM8dqkOWYGiGC63+fI1O7JRL2P
+	 QwSCbojnnpE+MFzO4T9JtxZ0djjpHTM4hmJoyy1/bHVdDiKTvgjVotUhve2otIFJdfQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795675433;
-	h=Received:DKIM-Signature:Message-ID:Date:MIME-Version:User-Agent:
-	 Subject:To:Cc:References:From:Content-Language:Autocrypt:In-Reply-To:
-	 Content-Type:Content-Transfer-Encoding;
-	bh=55bsZS3cIcuqHnwPLGxOy5fV6OTtTanCWxejpNB1N5o=;
-	b=alAE4cJdm5poWSfawBcpcGpc418SR+tnM8OtFuC7lQswirKpBU0v1LizfRGR08lz4MFW
-	 2Anz3Zn2wZ8cUCin8h961SaEhAFb80N2z4kJksKszCgpLqHzqHg2RWS9PAsCEWvyw1ghl
-	 GhphV9PY9EXRfY2aY/lzmUqUS6eRl6kEILOAYbHJkJyQE4p6EWtMMopf8oTjj3PsDzV0Q
-	 lm8K4smbi5EKmmpBa3NDbrvma7thPmGGQotQMzOsPdxJqjlB1DjLOy6o/MRWTO4aUtcLM
-	 r5FzJ3PVAJD2cUxqWfZVgSSxNKQL7ImOjyxGYyV6T1u8cYT3r/W/1xzyhQVlkQhQOpA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795676890;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
+	 From:To:Cc:Subject:Date:Message-ID:X-Mailer:MIME-Version:
+	 Content-Transfer-Encoding;
+	bh=rxESdAO7AwgZ5leJa2OCecW1ksyeiJeBBKVzhc5NWpo=;
+	b=gpIp8pHWkTtWwFsoC3N6TJRQXT9ismWlaciNP2Ux1GE7y/3QaEoRnlMN/bD+hsncSBRM
+	 NF82YLlQ7wK4K1EOZ4eEqRCXR3k/GNyvsVNP781TuhnUztMWB+w2g1Vz0iWhqz+Xb4keL
+	 uMXuFXZpm2cXHzMEOjCezAlUd9FKQUOBL1X1GHMTE64nDrScZeA2svgAGtXgL3d7IcN+K
+	 GV72xyQlYHArAZuHJMIw6Q4NUruLdksPeyrN8EssjJVhkk7LJMIHDDrMQfe3c26/w9KLM
+	 nPsaiSJOeQ52pUNMLU4+NWlWFY1gHxoP2U++BtzN6sJxnTya4b6Zp9tJx+gTbtze+zg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=GD1QMk7A;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=pass header.from=gmail.com;
+	spf=pass smtp.mailfrom=gmail.com;
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=IT9QrEej;
+	arc=none smtp.remote-ip=209.85.221.47
+Received: from mail-wr1-f47.google.com (mail-wr1-f47.google.com [209.85.221.47])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C8739606A321;
-	Thu, 26 Nov 2026 06:43:53 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7B9B5606A31C
+	for <linux-ext4@vger.kernel.org>; Thu, 26 Nov 2026 07:08:10 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 7B9B5606A31C
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=GD1QMk7A
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D8DAC1F000D3;
-	Thu, 26 Nov 2026 06:43:40 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795675433;
-	bh=55bsZS3cIcuqHnwPLGxOy5fV6OTtTanCWxejpNB1N5o=;
-	h=Date:Subject:To:Cc:References:From:In-Reply-To;
-	b=GD1QMk7Au9pSYonyrPsyVvey0M8BSM0iTtPrsO//M/VX1/OjXiciHroKhOomhOJ5s
-	 /UlalHde1P24QisHMoYnpDJrr8jxLrq3/LsMSUOrfllrHImGICiAx1UClXktaHUspO
-	 BxGaeuWMe/I5qok8Ounbng0qPlAGSF2ZN7Mazv9T7DMxtApLT3Vz85TDO4pyzIOUmZ
-	 sjFODvsvQQb3oqjJvgpqlTVnRyYLPfONZFB72kcyV5/cO2rFzuXNN1nrL4fDwxdKck
-	 U1ttURtmZkqEPqA9AhqMsmq6IRtblyAI26UqxIveuzik9YXCTnum8ezaeZaxQzM7ey
-	 kfntytOKYUsUw==
-Message-ID: <50045fa1-0b46-402f-baf0-a08d05282410@kernel.org>
-Date: Thu, 26 Nov 2026 07:43:37 +0100
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=IT9QrEej
+Received: by mail-wr1-f47.google.com with SMTP id ffacd0b85a97d-4a358881793so3456476f8f.0
+        for <linux-ext4@vger.kernel.org>; Wed, 25 Nov 2026 23:08:10 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20260707; t=1795676889; x=1796281689; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=rxESdAO7AwgZ5leJa2OCecW1ksyeiJeBBKVzhc5NWpo=;
+        b=IT9QrEejjihpaYrwOrT+M58jZxQPQrbI9X9mklXsR1CKxLlMMwv1n3s0D31HtyTW8m
+         rNq7up/PR4n++Lj0Qy95Ah/tj990tlzFCc8Q8rr5GLLzImDfEVbYZJjFzqOxMtdx1Ins
+         sl1Ko28c9cVeCRD/E9YsJMcuVlx6TIFlJhJKfNHj7W3IFTdoqD6ayH4LTsnjO4n8ZPJJ
+         ut9rw1DzBVnyW5gjsSAWR3c7dwzJCyUfKbAK34Siqm6zVxr79lklG4c2IBzxIAJhuEdY
+         Wi0lhCSBOfJgHTKzZ4MX3MKp1eX6fQtHgL4tzfgzAEJeR5uTafVVfX9priMgNTFOw1Ee
+         Imrg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1795676889; x=1796281689;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=rxESdAO7AwgZ5leJa2OCecW1ksyeiJeBBKVzhc5NWpo=;
+        b=apc3qFGH16RQivJXv61KzBTMNPj5JgnKWP/4EKoanFzqa7hSlJFWLvEZcxlxyayQle
+         jTGsyd6cP7UbgwTkplwaItY1LrrUuzBoKW3deQMpsHBTx/xsOpo6g4irrlJUgMt9pekK
+         yZcjJuKy9MM5mNCmwhFlP1jW7Yrm4SVFdPLLz6xG2HbF6Xh3q6m6XOBCEJgYdjEdLgto
+         NngMdakMbzWeLjNb99TW/m4kzW8YhqlKVYZdCRE++zUt4KeuVnZdPWqSd55OAUyEX7lS
+         QQVS2cPZnzH4KPOWrtTURDdyWzw9IxkzHIoD4vY9PSPEwuGUwZWfZBDkuVazVuHP2nnN
+         ZrTA==
+X-Forwarded-Encrypted: i=1; AL+hErGHtOeM79ACX/34LxaPAoi4llyIM58fGL3/eVNbyGorTnwwR1OpMl0DwOK9n9hkV4VM33L0ctWARizQ@vger.kernel.org
+X-Gm-Message-State: APuU4Z98oEmSr/IBTJfTIGONQ/jXtLoheSLkr0DbbdLjkAqOUX8jwMl4
+	L3a1fud8BOLZhxFom+YE3G1IdmPrnaC+YEPv6bV/h437OvHnN3RjAm+w
+X-Gm-Gg: AZFdTZeRW6aF2r74/aiy2c2+y89X9BDZ66WXAwxMtCbahjeCl8ssk79a5y8i/uMPa7o
+	+Xuix7PxlHNRpvclzs2wQlg21j+ro4ZSBXoHCNGnbVq4BqiNF1c49snASAV4kQT/um8A+S12c9r
+	X9yqJAss8Y/KRnt/DwgseSS8e9S5zh7TCQeUo693PJmcO6LvNudg+HYkhDdJAmiwEUDgGxv47tv
+	DN5YZBfa2tX4z1VzQWzw/C+HN4R793Aa2MyowQ7nHpxUKWJmuYuzs8ZWEta/zSiP/HeyLYiM9VU
+	REa6mFSx1XTCmJoaWxIipTuhnzwlqC5mWJsV7wmxbi34jT5jA94gXLx6FPYbXSdUqYjQ9k3xN77
+	1kKynnQ8s67/v27u9GFxL5E36Vm/8/IhcfmI68cbvSjGemhEylY9LHKoXXTjuLxluTT85Bgbl6O
+	hWvSRmTu834jUwULCHRnaNoVXIta73qg4xjuG5CPVYOGzZXaqXI1OnEv2QISKhAgqeZlNyehp/K
+	JLA8mv56hj0xjNoxHpY4GlXlzRHz18AYMa/N2QcZl71+o3pygdC0v3X7FxHLTC0cQ83FmcLPk0m
+	uCPC9z6X7iwtHbpPxLS7tLPWZn+gBEEQDAzGdT7uLInQwrD0xw==
+X-Received: by 2002:a05:600c:a0b:b0:4b7:6a8b:9df2 with SMTP id 5b1f17b1804b1-4bb8882432bmr398668845e9.25.1795676888824;
+        Wed, 25 Nov 2026 23:08:08 -0800 (PST)
+Received: from DESKTOP-V28CTA4.dbs.corp ([110.93.227.54])
+        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4bb8538b09bsm1071077895e9.4.2026.11.25.23.08.05
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Wed, 25 Nov 2026 23:08:08 -0800 (PST)
+From: Arbab Haider <arbabhaider649@gmail.com>
+To: tytso@mit.edu
+Cc: adilger.kernel@dilger.ca,
+	libaokun@linux.alibaba.com,
+	jack@suse.cz,
+	ojaswin@linux.ibm.com,
+	ritesh.list@gmail.com,
+	yi.zhang@huawei.com,
+	yebin10@huawei.com,
+	linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+Subject: [PATCH v4 0/5] ext4: fix inline data conversion races
+Date: Thu, 26 Nov 2026 12:07:44 +0500
+Message-ID: <20261126070748.272109-2-arbabhaider649@gmail.com>
+X-Mailer: git-send-email 2.53.0
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -51,115 +101,72 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH RFC 0/5] mm: GUP dirty + ->release_folio() fixes
-To: Tal Zussman <tz2294@columbia.edu>, Christoph Hellwig <hch@infradead.org>
-Cc: Miklos Szeredi <miklos@szeredi.hu>, fuse-devel@lists.linux.dev,
- Pedro Falcato <pfalcato@suse.de>, John Hubbard <jhubbard@nvidia.com>,
- Jan Kara <jack@suse.cz>, Andrew Morton <akpm@linux-foundation.org>,
- Zi Yan <ziy@nvidia.com>, "Matthew Wilcox (Oracle)" <willy@infradead.org>,
- Lorenzo Stoakes <ljs@kernel.org>, Peter Xu <peterx@redhat.com>,
- Johannes Weiner <hannes@cmpxchg.org>, linux-ext4@vger.kernel.org,
- linux-nfs@vger.kernel.org, "Liam R. Howlett" <liam@infradead.org>,
- Vlastimil Babka <vbabka@kernel.org>, Mike Rapoport <rppt@kernel.org>,
- Suren Baghdasaryan <surenb@google.com>, Michal Hocko <mhocko@suse.com>,
- Baolin Wang <baolin.wang@linux.alibaba.com>,
- Nico Pache <nico.pache@linux.dev>, Ryan Roberts <ryan.roberts@arm.com>,
- Dev Jain <dev.jain@arm.com>, Barry Song <baohua@kernel.org>,
- Lance Yang <lance.yang@linux.dev>, Usama Arif <usama.arif@linux.dev>,
- Kiryl Shutsemau <kas@kernel.org>, linux-mm@kvack.org,
- linux-kernel@vger.kernel.org, Kairui Song <kasong@tencent.com>,
- Qi Zheng <qi.zheng@linux.dev>, Shakeel Butt <shakeel.butt@linux.dev>,
- Axel Rasmussen <axelrasmussen@google.com>, Yuanchu Xie <yuanchu@google.com>,
- Wei Xu <weixugc@google.com>, Baoquan He <baoquan.he@linux.dev>,
- Michal Hocko <mhocko@kernel.org>, linux-fsdevel@vger.kernel.org,
- stable@vger.kernel.org
-References: <20261119-gup-dirty-what-v1-0-236d69f25c24@suse.de>
- <4f096d70-6f94-4148-8f47-242b8551e5f9@nvidia.com>
- <awWNyDZT2SVu2Zp9@pedro-suse.tail5790ac.ts.net>
- <55114986-0ba1-4a80-8498-bf674d64e01b@kernel.org>
- <away88BuU8ibcTA5@infradead.org>
- <d088452f-1118-4a06-bc16-1942e523e0fc@kernel.org>
- <20261126022418.3620783-1-tz2294@columbia.edu>
-From: "David Hildenbrand (Arm)" <david@kernel.org>
-Content-Language: en-US
-Autocrypt: addr=david@kernel.org; keydata=
- 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
- qIws/H2t
-In-Reply-To: <20261126022418.3620783-1-tz2294@columbia.edu>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 
-On 11/26/26 03:24, Tal Zussman wrote:
-> +CC Miklos
-> 
-> On 11/25/26 5:19 AM, David Hildenbrand (Arm) wrote:
->> On 11/25/26 11:05, Christoph Hellwig wrote:
->>>
->>> We need to, if not for this series then for all the other outstanding
->>> issues with GUP writes.
->>
->> Cool, and I agree (that's why I placed it at 1).
->>
->> But who is "we"? Because I recall that "we" wanted to do that a while ago.
->>
->> (I won't be "we" ;) Pedro, can you take a look? I'm afraid the fuse thing might
->> be the harder nut to crack)
-> 
-> Coincidentally, I sent out a patch to convert fuse_copy_fill() to use
-> iov_iter_extract_pages() a few days ago in order to remove its usage of
-> set_page_dirty_lock() and address a different race. I think it should
-> address the fuse side of this issue as well.
-> 
-> https://lore.kernel.org/all/20261120-fuse-copy-fill-pin-v1-1-72a0d888f140@columbia.edu/
+This series addresses ext4 inline-data conversion races. Patch 1 fixes
+the KUnit inode fixture so it passes on the base. Patch 2 fixes the
+delayed-allocation handoff to writeback, carries the stable tags, and
+can be applied independently. Patch 3 keeps synchronous conversion
+state visible and serializes callers that inspect it. Patches 4 and 5
+cover boot-loader swap and inode migration, respectively.
 
-Oh, nice! I was assuming the usual "we use put_page() on some random hidden path
-or core code" would make that harder. I recall that's the reason why vmsplice
-still uses FOLL_GET years after we discussed that it should be using
-FOLL_PIN|FOLL_LONGTERM.
+Booted each cumulative patch in QEMU x86-64 with KASAN, UBSAN and
+lockdep. All five source trees passed all 22 ext4 KUnit suites. The
+fixture-only tree also verifies that the two inode test failures on
+the original base are fixed independently of the runtime patches.
 
+The complete series also passed 555 ext4 KUnit tests in an arm64 QEMU
+guest with lockdep and DEBUG_ATOMIC_SLEEP enabled. LKMM models of the
+locked writeback handoff and rollback observation both excluded the
+invalid state.
+The arm64 guest also passed persistence and truncate checks on a 1 KiB
+journaled filesystem and a 4 KiB filesystem without a journal.
+
+The full series passed inline-to-block conversion, remount and data
+comparison, and truncate-to-zero checks with delalloc, nodelalloc,
+no journal, data journaling, 1 KiB blocks, bigalloc, fast commit and
+indirect mappings. The indirect-mapping run also checked sparse reads,
+SEEK_DATA/SEEK_HOLE, FIEMAP and direct reads. The boot-loader swap fix
+rejected an inline file and completed a swap round trip on a disposable
+image.
+e2fsck -fn passed on all test images. Sashiko --no-ai passed patch
+extraction and application.
+
+Changes since v3:
+- Rebase onto 4dce97c6c265 and split the change into five patches.
+- Fix the nonatomic buffer lookup stub in the inode KUnit fixture.
+- Publish the delayed-allocation handoff under xattr_sem and check it
+  under the same write lock used to remove inline data. Return -EIO on
+  an incomplete handoff and propagate inline removal and journal errors.
+- Finish the delayed-allocation handoff on truncate-to-zero and on a
+  failed write at size zero. Extend the inline KUnit coverage.
+- Keep MAY_INLINE_DATA set through synchronous conversion and serialize
+  callers that inspect inline state, preserving sparse-file readahead.
+- Serialize boot-loader swap and inode migration against conversion.
+
+Link: https://lore.kernel.org/linux-ext4/20261123172856.100887-2-arbabhaider649@gmail.com/
+
+Arbab Haider (5):
+  ext4: stub the nonatomic buffer lookup in inode KUnit tests
+  ext4: fix delayed-allocation inline data conversion races
+  ext4: keep EXT4_STATE_MAY_INLINE_DATA set during inline conversion
+  ext4: re-check inline data under filemap_invalidate_lock in
+    swap_inode_boot_loader
+  ext4: serialize inode migration against concurrent inline data
+    conversion
+
+ fs/ext4/file.c        |  73 ++++++++++++++++++++------
+ fs/ext4/inline-test.c |  17 +++++-
+ fs/ext4/inline.c      | 118 +++++++++++++++++++++++++++++++++---------
+ fs/ext4/inode-test.c  |   2 +
+ fs/ext4/inode.c       |  71 ++++++++++++++++++-------
+ fs/ext4/ioctl.c       |   4 ++
+ fs/ext4/migrate.c     |  33 ++++++++----
+ fs/ext4/readpage.c    |  15 ++++--
+ 8 files changed, 260 insertions(+), 73 deletions(-)
+
+
+base-commit: 4dce97c6c265544342e716e62fd24bbb232590c5
 -- 
-Cheers,
+2.53.0
 
-David
