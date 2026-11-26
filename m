@@ -1,85 +1,84 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.128.41
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.128.50
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795723992;
-	b=gc+ogC3ETbBn4UW+nqTGHlCoLhYEs6zx99XqZIRRw7ksMc/c+IxtkqqfDIdJGvbrVj4P
-	 lmabTqmNK07kin09I3uBLVCfIychqScs994m4EduqWyYR6fVw6zNEcyXow5N41C+9BSZm
-	 qJdLDbhJ9RxrDIBhLe/idpfR9sRM0DfOQIglRYTziyJGqUcY4Ok6pI6xf0eXYKwRsm94B
-	 ma5OECgwxqGs20YEBzWpk4yAoor6GPXpLXpas1qcLSg+aLX9k3Jxpd9yHPNzYWKl8i4Vh
-	 izXsmyFp+9fDgTLPQAxlDlt/FFVZ4SC7rDBhESg0dEyvyNtUlH/A8lr4X15Cc3jrb9w==
+	t=1795723994;
+	b=tuKNFQawhbskkyikk8VJ6TnmM/YykOv+5t2Ng0v6Q/qDQDW6maptYYxfaNBiRsBGxWpk
+	 +5qIoOThbhFQfR9o0SHg/A+1XhFBuSEdtBC+evLtUsWFA10rhMk73DsnZZD8kpQ8SCjYy
+	 IpIXUHOd6AbPxqJwb1l6v3bS2cpJI67DNPf+jj5FKMk2kLDJq1MjxyGh5LnXvUzEO7jOk
+	 6Nb8SR99prMYSkqhgSYIKsI/WePposSeMt6BzV4a4I66J9tblaybde+w3+wqLEWsUC9mh
+	 XeALC+bvMFQGdd3oXkm5i/HXyP4viZxGqnyDkaKyN+8DufN23FabiSJaa5/hz/lPXPw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795723992;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795723994;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
 	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
 	 From:To:Cc:Subject:Date:Message-ID:X-Mailer:In-Reply-To:References:
 	 MIME-Version:Content-Type:Content-Transfer-Encoding;
-	bh=fK+r7DYwMxbzHHbFUIMMSN8fB5bhLsamSVzb5cLtIIk=;
-	b=yWU0yOl3F/RtR7mgoyyE38HL9tP6FnJXNafmRbh2IjDk8mXiikNw966zFm+zlIhYEOTk
-	 esHs1Bi174XMH40yTvuMylm7DwaCRH2C2+H40cPlOa88b/0ZlsaXpqS7RpYKhGTtOOOAn
-	 8XYSYxsuzX94LYcbHT1cnxqEK3g8kTCD37b1nYgRP+potGX3sQLF8/tGJLlB5+r6clxh9
-	 2Rne0XRLdsudFLjnUB5HllKeY7Gt5XbAfahV+Du1ebsr2PCevnD04PEastdW4ilMnWNG1
-	 HxZk0un5BLpT+ACw3ILQMBbKYD/pO4YOpCatqabWQCSYrDnRdOc6GMcpOC4MC9hO/rQ==
+	bh=Q38Klj330dtRWghQm6M3dh+epEB584jmasAttwXUnHw=;
+	b=SqKVZ7mHQuROG9XAvY2HpRX8ynKDFONzQ+WE81l+bvtwjdAC1IQRIg07fSq+/t11dEML
+	 w0nkte8HGzpBxnDjoke+YsGIAobYfejrJ1un3/SxPSUOR8l/NZ+COOGZ/A9DELlD0YHAl
+	 tPMoJofIm1s5uHVtFTIog0XG2i22fi3sFliZWGMfQtknknGkGbNqXigXuEoDeUvp12eUa
+	 CH6lIG8RXMesW1JV+zJlvDWaUJbUCiMTJvDnqGJi6pN9KYlM9qWigsJs7V7bYmtFUQ49E
+	 hn6Asvq7CGFlrtkrx2l5yrH+UgewCXYQ6wu7ygamcmTz4yvmIjXDhzStFbTUK5FP86w==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=e2b.dev;
 	spf=pass smtp.mailfrom=e2b.dev;
-	dkim=pass header.d=e2b.dev header.i=@e2b.dev header.a=rsa-sha256 header.s=google header.b=IHlLsPeI;
-	arc=none smtp.remote-ip=209.85.128.41
-Received: from mail-wm1-f41.google.com (mail-wm1-f41.google.com [209.85.128.41])
+	dkim=pass header.d=e2b.dev header.i=@e2b.dev header.a=rsa-sha256 header.s=google header.b=EkbGWBZL;
+	arc=none smtp.remote-ip=209.85.128.50
+Received: from mail-wm1-f50.google.com (mail-wm1-f50.google.com [209.85.128.50])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1BB3E606A31C
-	for <linux-ext4@vger.kernel.org>; Thu, 26 Nov 2026 20:13:11 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 1BB3E606A31C
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E2FB5606A31E
+	for <linux-ext4@vger.kernel.org>; Thu, 26 Nov 2026 20:13:13 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org E2FB5606A31E
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=e2b.dev
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=e2b.dev
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=e2b.dev header.i=@e2b.dev header.a=rsa-sha256 header.s=google header.b=IHlLsPeI
-Received: by mail-wm1-f41.google.com with SMTP id 5b1f17b1804b1-4bb6adaf0f1so64809895e9.0
-        for <linux-ext4@vger.kernel.org>; Thu, 26 Nov 2026 12:13:11 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=e2b.dev header.i=@e2b.dev header.a=rsa-sha256 header.s=google header.b=EkbGWBZL
+Received: by mail-wm1-f50.google.com with SMTP id 5b1f17b1804b1-4bba5e17cbeso21153205e9.1
+        for <linux-ext4@vger.kernel.org>; Thu, 26 Nov 2026 12:13:13 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=e2b.dev; s=google; t=1795723990; x=1796328790; darn=vger.kernel.org;
+        d=e2b.dev; s=google; t=1795723992; x=1796328792; darn=vger.kernel.org;
         h=content-transfer-encoding:content-type:mime-version:references
          :in-reply-to:message-id:date:subject:cc:to:from:from:to:cc:subject
          :date:message-id:reply-to:content-type;
-        bh=fK+r7DYwMxbzHHbFUIMMSN8fB5bhLsamSVzb5cLtIIk=;
-        b=IHlLsPeIMRWDMqt19AJ8tpjCDfVGEHr8dXU27+bzKRtxCaQ1nYOtM3Bt3bEhPVNKjO
-         51R6s3fWWa0Zcl1yW2tgABQweJc2CurWabvlq55E5oED3oBB3WRfGpe9wAd4BdtRnWNF
-         AipZXg9jdET50L9zrQ1hCF34te394sAFynzZljc6YIhvkioY/xoAxcdrTXevyfY7wzqj
-         +oPVbPKXmLSmEH9QNMCUPd2nhloJJp2R5OPZZIRqZwsXIsLwgCWSEfRzatuZxENG/Fmw
-         8a/6TGwED7bzV4zR1XrXRPWNdd6IgKl0lhEsZ7jvBzpsFvlectwzOVyLRGRYKT1ObrzV
-         3V3Q==
+        bh=Q38Klj330dtRWghQm6M3dh+epEB584jmasAttwXUnHw=;
+        b=EkbGWBZL7E1vaDT/CSiNF9QMvL90vs9LoPdngbpiU9CZBY0lBXIADvCvOkz2uk2OGn
+         6xs2TxKNgN6tgE4UOMJ2Pv4Ib60dtjpPAm/UH6CA6kea+pWnNfn8TgQlqZ1kRaJBIBFO
+         vXEEU6x0/DoI6y2rfCTaHou6SFh/QmmBpdhu6mLR2ZkVSyjQA1KaIGwyacab8wqYziFK
+         7gzQQHwfKIsdUdhUPTgL2AuxtabprlxhbZidg4xdKidttwpl2EiRkP3EgLi/+vjArzbV
+         vo0x1dvpDYFFBxCMghRk3bHTypsYTFuAojpzhzkwxT0aNRrZK+gZOhRhgthZ26bZ9ydV
+         slKg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1795723990; x=1796328790;
+        d=1e100.net; s=20260707; t=1795723992; x=1796328792;
         h=content-transfer-encoding:content-type:mime-version:references
          :in-reply-to:message-id:date:subject:cc:to:from:x-gm-gg
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=fK+r7DYwMxbzHHbFUIMMSN8fB5bhLsamSVzb5cLtIIk=;
-        b=IqTG0+R6AH+rXJWq+khVF9yR8vTODHWH7NNlj9xEZrZiXBXInnh7efuVkb1cEnbXFW
-         vI/yO+s7NCTr9ngPkgUIb4uAorpxagKC3p86OMqe8KjXDTZuNEuaLZ1PvDKB8osrX5Gn
-         QyQbX4NFbJdzwuXbX+evOFMtlofEpO75pTH3Cj8b/Ecwxj1ikRiZO3m55SOkLk8Hjf4V
-         xuijPffIy9B/VM0ml5LhpN3v/XiV8P0pTwf9tmj5c6u6o7j4luZGELxVBaNGeeZDYWly
-         2O276FNtf/fTt/mgt//YxOwH0NQC5aK4uYgBHY9gNy8xIFNrI4tnVHeSM3pEZBvTqQek
-         f2Mw==
-X-Forwarded-Encrypted: i=1; AL+hErGLbR5sR4gp7lhwgu2VqtI79hNKuKVJIQzqorN/VHuOKsJttuxVo/a23Q3ZZH3FfycoaRrDn/LBoW3s@vger.kernel.org
-X-Gm-Message-State: APuU4Z/TPErUb6cAiWGQJJB2gV4pquyNQtLlkchuuUnfhcOJLP//uz/N
-	3kI+TESzKcZ8kaDRMHt3u31GytH0UGtXrSGm5t0f+2ruQyxeycSJmg/+Fx2UuIECb/QnLac4++C
-	el2EzQAM=
-X-Gm-Gg: AZFdTZexhl3nzC23fA7dPAhZFB6dvDEMcucNvLEaQKEBZdP8Lh/8GT/K81zrMASRNxA
-	pkz37ro5J9gPzR6Yrw2peKIelhj3KfnjOC+W5BTJfpLNkJSAN6T2X+6x1TtMr1au87DfXtlWsTd
-	4bTEFdpkp8orC37S50PyfDR6d+gF+KY9sZzDBmSixrqFk9T31c1IOOIOr8eWm0ugLBjvlDTSCHK
-	/0qEqblMkHAgg1Fko43ezxvvLJmIBuTYU2s/mbeslweNSX1YVmXaHnuustaqda+LHDRjrRYMFob
-	m+1oUTJlJiS22ZlxxQCojzfBbIsYUHGVmOSxInZLhB0Bpk5HoniynF9vqNxzDHVPeKmaSqZZRT0
-	XHDCFAnRNlA5viCPIKNMrdDNyJIBbEZ26ilpeeyqRSMSFi57yUCyy/zGSLnrbWKcgSySvgg1Taf
-	zUmEdtfYw3QHgjPF8mFU9SWSXunPk89Ey9bZ0OUfKr+wd8lHKhElyhTs6cK1td4byUkgoFM6rR5
-	XVlwHNq/WOs8+PuS7KALxHzKFo6n5rOBzySal+Qrw6Gz0sxUSy5EY6f5BdUUOz5HCUGvPsSa9KG
-	vbVlbZs9kJbW26rGvyTB8yp+kG2iofJSbtd3XD2P/73HZH+lgS/oyV+O8d8nE+uV5HPZdg==
-X-Received: by 2002:a05:600c:1546:b0:4a1:fc98:1cb1 with SMTP id 5b1f17b1804b1-4bb887c2cb0mr494283365e9.2.1795723990324;
-        Thu, 26 Nov 2026 12:13:10 -0800 (PST)
+        bh=Q38Klj330dtRWghQm6M3dh+epEB584jmasAttwXUnHw=;
+        b=nfZNX5rsJhVf+furq2MD4RYmuGtq30oDx58lSVQnE+fDxqT7N3h5NFuHJREXPYPLt1
+         oeLl/5A6YSZBfKWaTBOmb9Kx1787PeQz5Log7r81O3aNnzqGvzKtevs/VVucDG0Iq64j
+         dmhWT7QxV9BQt0tbuR0+Pfkb9B1IyBCJCFJgt8HQOr3rlVhAZlQ7+j42vIpufmZiN/zl
+         63uxe62k9O1EEu6QwJ4HzJA+8ae0CnR75j7JizwUVVwuUQWJSkXsUeoonsN2rxQeF1db
+         yNzGgDr/E90SWvkrjBKyqDK9x4Y9vtFQYDGjqaMa7ZCPXVHJ/UOPRHCfL3NlAS/Btq7J
+         hmIg==
+X-Forwarded-Encrypted: i=1; AL+hErEL50pogp6AR8i5h3Mb5GgyscxatkkJwryCvnPFFio/FIN8BL0fvyEfUzTRnYMnfZeFwk1fF9hBSobR@vger.kernel.org
+X-Gm-Message-State: APuU4Z9bHfE1Y26xDMzKzxNAbZFx06bsWHa6MgK4qYFW8zHDxHj5F2Be
+	sxAAdIq59R3SxeTQ/TmQIIWm19bNdGuRjmWwxt7c7dCYuDy9O/y4hmvc6UULrkQ6EhQ=
+X-Gm-Gg: AZFdTZfnGpttkV4+yh2lCGVywPuILai4g8CLX5Iqh/+DUjvt/+6DPZ58PkigAIsfF5I
+	JKhcmy5aEO2TZkSM2xbDxpBBEXLzT8B2CVVTLqKm1OpgP1yOw7ukn4xgeMZbhewyABTxW5kj3mo
+	Akgo8bvQYaNRGPy0idS7IqQ87W8//DLCtzpBDrFd/Q6nbLkNKTByIr/MPWvZ4lsfCuZQm+6NSBp
+	IG6HhMO+uETEn0Ay5I7RecyChM7RZxXnxSjR9BSChdU2RFbrJ6lAdA8PFMJ4AHfHQxEW3vch0ur
+	b7Yu0C6M10fgqWIOlYzk+qcMKHir3dVxGimudm/ENHTZmYVfvLzKG/K9vqKer0LBTxxOcZKAiY8
+	urAef2FVvQC278CIn6YmQyGQrLKGlcqSbs0XyhUxT+A53EEAM2ISJexAMOJ7uwv5fVK+AFpjwkj
+	PxeypWhZ95YycGGErAWhPMsgIUIo1W5rW47KX5X0UGNcN8DZBQHnYjrKR8yEeynwX6V8qogefim
+	ATyZSyGnXvgbiTDEOPvv9fYMPNGZI1VsYhS0qnHmb+vu2OcfbTCEX0wz3b+i1gD9dcNDPHO8wOH
+	noSrZa2fGHHEvjBPVI+6t/2qdVwnQ4RvNMh6cRpZxxuXlWRd
+X-Received: by 2002:a05:600c:e41a:b0:4bb:9959:54b8 with SMTP id 5b1f17b1804b1-4bb9959552emr248867915e9.32.1795723992219;
+        Thu, 26 Nov 2026 12:13:12 -0800 (PST)
 Received: from fedora.sphynx-tuna.ts.net ([2a02:8308:397:e200:f9e9:8bad:f8cc:87a3])
-        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4bb8538b09bsm1154281665e9.4.2026.11.26.12.13.09
+        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4bb8538b09bsm1154281665e9.4.2026.11.26.12.13.11
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 26 Nov 2026 12:13:10 -0800 (PST)
+        Thu, 26 Nov 2026 12:13:11 -0800 (PST)
 From: =?UTF-8?q?Petr=20Van=C4=9Bk?= <petr.vanek@e2b.dev>
 To: "Theodore Ts'o" <tytso@mit.edu>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
@@ -90,10 +89,11 @@ To: "Theodore Ts'o" <tytso@mit.edu>,
 	Zhang Yi <yi.zhang@huawei.com>
 Cc: Deepanshu Kartikey <kartikey406@gmail.com>,
 	=?UTF-8?q?Petr=20Van=C4=9Bk?= <petr.vanek@e2b.dev>,
+	stable@vger.kernel.org,
 	linux-ext4@vger.kernel.org
-Subject: [PATCH 1/3] ext4: drop KUnit checks tied to the inline conversion's metadata buffer
-Date: Thu, 26 Nov 2026 21:12:53 +0100
-Message-ID: <20261126201258.1553196-2-petr.vanek@e2b.dev>
+Subject: [PATCH 2/3] ext4: convert regular file inline data through the page cache
+Date: Thu, 26 Nov 2026 21:12:54 +0100
+Message-ID: <20261126201258.1553196-3-petr.vanek@e2b.dev>
 X-Mailer: git-send-email 2.56.1
 In-Reply-To: <20261126201258.1553196-1-petr.vanek@e2b.dev>
 References: <20261126201258.1553196-1-petr.vanek@e2b.dev>
@@ -109,86 +109,195 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 
-test_convert_inline_data_and_rollback() checks that converting a
-regular file's inline data writes it into the block device's buffer for
-the new block, and that failures to get or dirty that buffer restore the
-inline data.  Those are details of how ext4_convert_inline_data_nolock()
-converts the data, not of what ext4_convert_inline_data() promises, and
-the next patch moves regular files to the page cache, where there is no
-such buffer.
+ext4_convert_inline_data() moves a regular file's inline data to a new
+block by copying it into the block device's buffer for that block and
+journalling the buffer as metadata.  The file's own writes reach the
+same block through the page cache, and nothing invalidates the
+journalled copy.  When the journal checkpoints it, the stale buffer is
+written over whatever the file has put in the block since.  The page
+cache can also miss the data altogether: a folio read in after the
+conversion reads the block from disk before the checkpoint has written
+it.
 
-Drop the content checks on that buffer and the cases for an unmapped
-block, ext4_inline_getblk() failing and ext4_handle_dirty_metadata()
-failing.  Keep the checks that hold for either implementation: the
-conversion clears the inline data and sets the extents flag, and an
-ext4_map_blocks() failure restores the inline data.
+Truncate, fallocate, page_mkwrite and fs-verity all convert inline
+files this way, and since commit ed9356a30e59 ("ext4: convert inline
+data to extents when truncate exceeds inline size") so does every
+truncate that grows an inline file.  An ordinary sequence now loses
+data:
 
+  mkfs.ext4 -O inline_data /dev/vda
+  mount /dev/vda /mnt
+  xfs_io -f -c "pwrite -S 0x61 0 42" /mnt/f
+  sync; echo 3 > /proc/sys/vm/drop_caches
+  xfs_io -c "truncate 0" -c "truncate 77" -c "pwrite -S 0x62 0 77" /mnt/f
+  sync; echo 3 > /proc/sys/vm/drop_caches
+  od -c /mnt/f    # 77 zero bytes instead of 77 'b'
+
+Growing the file without shrinking it first leaves the old inline bytes
+on disk but loses whatever was written after the truncate, and
+fallocate or an mmap write on a small inline file loses the new data
+the same way.
+
+Convert regular files the way a buffered write does in
+ext4_convert_inline_data_to_extent(): copy the inline data into
+folio 0, drop the inline data, map block 0 with ext4_get_block() and
+dirty the folio.  The data then reaches the disk by writeback, and only
+metadata goes through the journal.  The new helper differs from the
+buffered-write one in three ways:
+
+ - It always maps a written extent, never an unwritten one, so that in
+   data=ordered mode the commit that drops the inline copy waits for
+   the data.
+ - An empty file needs no block; only the inline data is dropped.
+ - If mapping the block fails, it restores the inline data instead of
+   truncating the file: truncation takes invalidate_lock, which
+   ext4_page_mkwrite() already holds shared.
+
+Directories keep the old path, since their blocks are metadata.
+
+Fixes: ed9356a30e59 ("ext4: convert inline data to extents when truncate exceeds inline size")
+Cc: stable@vger.kernel.org
 Signed-off-by: Petr Vaněk <petr.vanek@e2b.dev>
 ---
- fs/ext4/inline-test.c | 38 ++------------------------------------
- 1 file changed, 2 insertions(+), 36 deletions(-)
+ fs/ext4/inline.c | 118 +++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 118 insertions(+)
 
-diff --git a/fs/ext4/inline-test.c b/fs/ext4/inline-test.c
-index b3d7c51ad216..3b697d4c425c 100644
---- a/fs/ext4/inline-test.c
-+++ b/fs/ext4/inline-test.c
-@@ -1149,7 +1149,6 @@ static void test_convert_inline_data_and_rollback(struct kunit *test)
- 	ret = ext4_convert_inline_data(inode);
- 	KUNIT_EXPECT_EQ(test, ret, 0);
- 	KUNIT_EXPECT_FALSE(test, ext4_has_inline_data(inode));
--	KUNIT_EXPECT_MEMEQ(test, ctx->data_block_buf, buf, sizeof(buf));
- 
- 	/*
- 	 * 3. Error rollback when ext4_map_blocks fails (-ENOSPC):
-@@ -1171,46 +1170,13 @@ static void test_convert_inline_data_and_rollback(struct kunit *test)
- 	ctx->map_blocks_ret = 1;
- 
- 	/*
--	 * 4. Error rollback when ext4_map_blocks returns unmapped block -> -EIO
-+	 * 4. Successful conversion via ext4_convert_inline_data():
-+	 * destroys inline data, initializes extent tree.
- 	 */
--	ctx->map_flags = 0;
--	ret = ext4_convert_inline_data(inode);
--	KUNIT_EXPECT_EQ(test, ret, -EIO);
--	KUNIT_EXPECT_TRUE(test, ext4_has_inline_data(inode));
--	ctx->map_flags = EXT4_MAP_MAPPED;
--
--	/*
--	 * 5. Error rollback when ext4_inline_getblk returns NULL -> -ENOMEM
--	 */
--	ctx->getblk_fail = true;
--	ret = ext4_convert_inline_data(inode);
--	KUNIT_EXPECT_EQ(test, ret, -ENOMEM);
--	KUNIT_EXPECT_TRUE(test, ext4_has_inline_data(inode));
--	ctx->getblk_fail = false;
--
--	/*
--	 * 6. Error rollback when ext4_handle_dirty_metadata fails on data_bh
--	 */
--	ctx->dirty_metadata_err = -EIO;
--	ctx->dirty_metadata_fail_on_call = 1;
--	ctx->dirty_metadata_calls = 0;
--	ret = ext4_convert_inline_data(inode);
--	KUNIT_EXPECT_EQ(test, ret, -EIO);
--	KUNIT_EXPECT_TRUE(test, ext4_has_inline_data(inode));
--	ctx->dirty_metadata_err = 0;
--	ctx->dirty_metadata_fail_on_call = 0;
--
--	/*
--	 * 7. Successful conversion via ext4_convert_inline_data():
--	 * copies 80 bytes into data_bh, destroys inline data, initializes
--	 * extent tree.
--	 */
--	memset(ctx->data_block_buf, 0, sizeof(ctx->data_block_buf));
- 	ret = ext4_convert_inline_data(inode);
- 	KUNIT_EXPECT_EQ(test, ret, 0);
- 	KUNIT_EXPECT_FALSE(test, ext4_has_inline_data(inode));
- 	KUNIT_EXPECT_TRUE(test, ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS));
--	KUNIT_EXPECT_MEMEQ(test, ctx->data_block_buf, buf, sizeof(buf));
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index acdc65ce4796..537857c3b4b2 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -1999,6 +1999,121 @@ int ext4_inline_data_truncate(struct inode *inode, int *has_inline)
+ 	return err;
  }
  
- static void test_write_triggers_inline_to_extent_conversion(struct kunit *test)
++/*
++ * Move a regular file's inline data to block 0 through the page cache, as a
++ * buffered write does, so the data reaches the disk by writeback.  It must not
++ * be journalled as a metadata block: checkpointing that copy later would
++ * overwrite whatever the file has written to the block since.
++ */
++static int ext4_convert_inline_data_reg(struct inode *inode)
++{
++	struct address_space *mapping = inode->i_mapping;
++	int ret, ret2, needed_blocks, no_expand, retries = 0;
++	unsigned int inline_size, len;
++	struct buffer_head *bh;
++	struct ext4_iloc iloc;
++	struct folio *folio;
++	handle_t *handle;
++	void *buf;
++
++	needed_blocks = ext4_chunk_trans_extent(inode, 1);
++
++	ret = ext4_get_inode_loc(inode, &iloc);
++	if (ret)
++		return ret;
++
++retry:
++	buf = NULL;
++	handle = ext4_journal_start(inode, EXT4_HT_WRITE_PAGE, needed_blocks);
++	if (IS_ERR(handle)) {
++		ret = PTR_ERR(handle);
++		goto out_brelse;
++	}
++
++	folio = __filemap_get_folio(mapping, 0, FGP_WRITEBEGIN | FGP_NOFS,
++				    mapping_gfp_mask(mapping));
++	if (IS_ERR(folio)) {
++		ret = PTR_ERR(folio);
++		goto out_stop;
++	}
++
++	ext4_write_lock_xattr(inode, &no_expand);
++	ret = 0;
++	if (!ext4_has_inline_data(inode))
++		goto out_unlock;
++
++	inline_size = ext4_get_inline_size(inode);
++	len = min_t(loff_t, inline_size, i_size_read(inode));
++	if (len > i_blocksize(inode)) {
++		EXT4_ERROR_INODE(inode, "inline data size %u exceeds block size",
++				 len);
++		ret = -EFSCORRUPTED;
++		goto out_unlock;
++	}
++
++	ext4_fc_track_inode(handle, inode);
++	if (!len) {
++		ret = ext4_destroy_inline_data_nolock(handle, inode);
++		goto out_unlock;
++	}
++
++	buf = kmalloc(inline_size, GFP_NOFS);
++	if (!buf) {
++		ret = -ENOMEM;
++		goto out_unlock;
++	}
++	ret = ext4_read_inline_data(inode, buf, inline_size, &iloc);
++	if (ret < 0)
++		goto out_unlock;
++
++	if (!folio_test_uptodate(folio)) {
++		ret = ext4_read_inline_folio(inode, folio);
++		if (ret < 0)
++			goto out_unlock;
++	}
++
++	ret = ext4_destroy_inline_data_nolock(handle, inode);
++	if (ret)
++		goto out_unlock;
++
++	/*
++	 * A written extent, not an unwritten one: in data=ordered mode the
++	 * commit that drops the inline copy then waits for the data.
++	 */
++	ret = ext4_block_write_begin(handle, folio, 0, len, ext4_get_block);
++	if (ret) {
++		ext4_restore_inline_data(handle, inode, &iloc, buf, inline_size);
++		goto out_unlock;
++	}
++
++	bh = folio_buffers(folio);
++	clear_buffer_new(bh);
++	if (ext4_should_journal_data(inode)) {
++		ret = do_journal_get_write_access(handle, inode, bh);
++		if (!ret) {
++			folio_mark_dirty(folio);
++			ret = ext4_handle_dirty_metadata(handle, NULL, bh);
++		}
++	} else {
++		block_commit_write(folio, 0, len);
++	}
++
++out_unlock:
++	ext4_write_unlock_xattr(inode, &no_expand);
++	folio_unlock(folio);
++	folio_put(folio);
++out_stop:
++	ret2 = ext4_journal_stop(handle);
++	if (!ret)
++		ret = ret2;
++	kfree(buf);
++	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
++		goto retry;
++out_brelse:
++	brelse(iloc.bh);
++	return ret;
++}
++
+ int ext4_convert_inline_data(struct inode *inode)
+ {
+ 	int error, needed_blocks, no_expand;
+@@ -2022,6 +2137,9 @@ int ext4_convert_inline_data(struct inode *inode)
+ 			return 0;
+ 	}
+ 
++	if (S_ISREG(inode->i_mode))
++		return ext4_convert_inline_data_reg(inode);
++
+ 	needed_blocks = ext4_chunk_trans_extent(inode, 1);
+ 
+ 	iloc.bh = NULL;
 -- 
 2.56.1
 
