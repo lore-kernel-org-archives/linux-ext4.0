@@ -1,101 +1,57 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.128.50
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795723996;
-	b=mhGTmPaRl1VZSOUdKpIgFVjLkQaBdbo5SgGzM0HtY5L+SQ1AFxBD3pUbaJrxSkVytAkl
-	 wA/Mkzd6r9rNmkxkGFKJoxCfUX5m9wXaX7ilsl8/k0r+apavhAopL9rnREa5BPLwZy4Lm
-	 PYu5PgEKDNbJzMy+vh/CeV4VBTl8jypHYg4Ixbh2zKZ+BjflEjFVcOL1oJTa8LFutvIiR
-	 aW159APjHOPtBUrm1YCY9YUfn6Ob3CQH6eyDwV45jZ3s/mpnc0P/qIBfyX5m5kGuTBvcx
-	 SDEV3P8+p8J8Z0AGVyngN97hRchDp/8oivycQPwvoHglnaaNJ23nCw1+WslWwV9F2cg==
+	t=1795725806;
+	b=zaqrmbshjUkFEE3CFKzFyh3BtP6Ix2f387wm2dHHAxw6R5nxMpg0zgg1ocZnUvMke89o
+	 6FzJHYiRf3DuX4wGV5MATHhRphqokeRlLjmNxTitKmTFX7EvdRLy7s+Rnn3fYdVJ5fczG
+	 tS+vYJNiNEfXrncRMOJlq8U5r0WqZyIWkJeZKpSMeL3dEpznzkfVNE6W52jTzvOJOgOr9
+	 8mENUg38MF7W5sNbtdVXOJtjLLFQybZr+QPnZhVpotqFpJUVdXozofnBOP+79KPeyFxq9
+	 xGuOtuEAzEMtH4/qgR19viOrqU8QNcR1MFlBntpEl9xgSHaCTAfYFCpxmFGRMjq5AKw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795723996;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
-	 From:To:Cc:Subject:Date:Message-ID:X-Mailer:In-Reply-To:References:
-	 MIME-Version:Content-Type:Content-Transfer-Encoding;
-	bh=N6P19Pl3VE7j1LHnu2Y4cCJ1WQ9+n0Lwd2qKUSRe9S8=;
-	b=bgbdIvEMJNMC1nYNs2LjCLbJjWmz8EfhHqDuurq1l/Jq//I7BJqwkhsN09pixup7+u3j
-	 Om/YrIJWA3EhQXVq4VmkFZcaUtPfONqK4Jq5mHBET+kDDPUxS1YxpwhN1HcflZ5UXhBVd
-	 SN5rIFe7afc9AMEHM47HAg+sWXfetNZNdtpHlc8r7NJtnWm6WlTLI+5mzR2TrbHQJvKg/
-	 sKzAadGQO7TI+UxwMftC/Tzls6kxl1dgqheqd5fwAqiuc6ZeNx3vOMboE5cIfGcYXbEgS
-	 Kg/ZLLs4txzWwXNuLILjif4qVG6QbSjj+312ni7ZJxBZrka1rktY3yAMhGwl58CZdGw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795725806;
+	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
+	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
+	bh=4/aFF4NCNdDMiO4SBVMAjUl8GfVRChOJbTvo6aRCj1w=;
+	b=kbf7UifL7/8lOv4w4IWCCLliAaxg04K95E8mT7qvBRK5kbTWdFGl6fFt46DDo7f9cP5M
+	 IbCliEXEJAAEkZrlgSPr+56kaCW7baRa2+rKqzmHj90gEXPMKtbTiUN9d5qZIh1KwGuGp
+	 lXE7oY7+c3zW7Xf5T1SdhQvNKEMFHgjDb2VSnYBN8lY6JzIdZrXqXRbfHfPV0zNxi5biw
+	 l98Poq3K7hN/XLafJeRlmgdaC6eRLdgQlTSOeIIK+2/CXbngu21AfNiCgT+zl5qdtL4n2
+	 2pEp+o9OTwodTlI4CBwuPmlu1nw18yQpQo2tQdHRZ/zYl6rvJFxfjU5dPHS0NaRAB8Q==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=e2b.dev;
-	spf=pass smtp.mailfrom=e2b.dev;
-	dkim=pass header.d=e2b.dev header.i=@e2b.dev header.a=rsa-sha256 header.s=google header.b=hexG+I3C;
-	arc=none smtp.remote-ip=209.85.128.50
-Received: from mail-wm1-f50.google.com (mail-wm1-f50.google.com [209.85.128.50])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=GyQuBsLz;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AB945606A31C
-	for <linux-ext4@vger.kernel.org>; Thu, 26 Nov 2026 20:13:15 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org AB945606A31C
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=e2b.dev
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=e2b.dev
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 66A70606A69E
+	for <linux-ext4@vger.kernel.org>; Thu, 26 Nov 2026 20:43:26 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=e2b.dev header.i=@e2b.dev header.a=rsa-sha256 header.s=google header.b=hexG+I3C
-Received: by mail-wm1-f50.google.com with SMTP id 5b1f17b1804b1-4bb85e07aadso91445465e9.1
-        for <linux-ext4@vger.kernel.org>; Thu, 26 Nov 2026 12:13:15 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=e2b.dev; s=google; t=1795723994; x=1796328794; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:mime-version:references
-         :in-reply-to:message-id:date:subject:cc:to:from:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=N6P19Pl3VE7j1LHnu2Y4cCJ1WQ9+n0Lwd2qKUSRe9S8=;
-        b=hexG+I3C320/zpZe8lMGs6qSCwIuEFLbq5/wDdHro+hqKOAjk0oEOpothsU2wd6Nlr
-         yxBWb92NB+JN66e1QE3JvPhXOfGn/aLWhSCObIg9s0ggecNNkDyjTuAjSRtAsupsnvQo
-         p1lFVg27SJorofRWGWQr21mp2xDO3cHTRGe2gZgZTwUSXEKqrR+/inaeq0bWM18X8/iH
-         TBbquskG+671IySzWsJNHAZ5hh+AsSKbo3tDppCxezd2plCfOPgj5Nbe4jEuqb36Yj7x
-         ykJ8VtWVjGQqenH8mUhrzPKI4KpEyeiWjTB42tavx098uDIUSeaXXocM9gWsDs2TYIaE
-         GKEg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1795723994; x=1796328794;
-        h=content-transfer-encoding:content-type:mime-version:references
-         :in-reply-to:message-id:date:subject:cc:to:from:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=N6P19Pl3VE7j1LHnu2Y4cCJ1WQ9+n0Lwd2qKUSRe9S8=;
-        b=QMdAE5DqtoC7m4uYLPiYjbYaA5f5l2/ZlJBgrh4W0dGQHCjNClN9LThcsNWKjlObjD
-         ljb8qJxtKCjEGZD+FlqsFeRlMtIgGYbcQlLSHi7z5dWu6CmFyrzMrNR7TXGCwIIgLMdM
-         krKm4N97TQLAjiM/CPZ4947l26F3dveeTAU4nqqG5fOVFmwOAx1qWYmXhH8Zo6Q1My6L
-         hZbvzLf47shsfj/W64LCxg1XSO4TjGbCr+MH1jMYwFtkkzwN5qTgZyO61oSzIIMOZk91
-         wGK6pELY4jJotA+Ce9VbaOBZMcOOQ6ft6zli7Bu9AqZAga7wvX1md9LbhmILYuzxfLwB
-         8BOQ==
-X-Forwarded-Encrypted: i=1; AL+hErEbUqNus4JpI7Z9TfgYkWz7MRcGqws38aHcnOlCk9U+BHAlsGsG88kAi5LKBVCQsNXzy0bP+YD1kLvv@vger.kernel.org
-X-Gm-Message-State: APuU4Z8EKRogYIWPFMltlT9IfuM318FUehIsl4FxlDqKfKtBLyaRH+iS
-	LTJzh8sMIRQRqh5qsuYYnnx9tSwhuTJTEWJZWSJcDcoTOrVIFcA1lPs44r0Af59wUGo=
-X-Gm-Gg: AZFdTZdZ4OngV4rm5uPIMiPleT7ACJ2opZsr0RiJZeGoCQGixm052Lvffjc48sjIGHo
-	5dg1MrlDuecdC65bsMR9Jzp7spMv1v9c18FCGn5pOXfb0o7nSRIq6fX0hsZ1Og7VTzJxlf08Jxk
-	a8kXhlm/DO08/LkcdwbK7gDYFMNGg0g9xbYU1+vbctvxcdnIdxxavzngQn1JmFofRmjWSYRGluG
-	IWCr2wbBvhTA7Lg7sCX0KLVcnwPJzr8b1dR6Q9XKoqQ0cFqi5uZhZ+HmMJiC3UP1LuM1KZPofOQ
-	vCFe9xpTWgDI2T/1Bd64E8f8cdSZZ8Q6QoX8qPiXBjO3W7cQz+SChk4vhzZQ3qa+ktSAVGtxdQV
-	2XkxgQxyMi+5ySwtSve8vs6BOXDQwJhr2l2WLRy9BvCWL+Sjyff6cNsoKkPVhtoftnanpZtgFuT
-	Krp88vVK08pVXDwl8v3YhLbosCvs16wgv36UDOFrWtVans8iR+mxaNoze//2JrPMKKfhW3XUPoH
-	mh1oz3eIjjnMuP5wsxvYbP/MvFcATzfCu4QCF2MGyvGe63IgcM8kYYnC0mZLQ7eEewojJG7dfVV
-	v3BH0F3USH92uuak73EJr/zPmAZLdJQ0hUp97I8FJq8pVcOH4A==
-X-Received: by 2002:a05:600c:a4b:b0:4a1:dade:f049 with SMTP id 5b1f17b1804b1-4bb88806292mr461102665e9.15.1795723994035;
-        Thu, 26 Nov 2026 12:13:14 -0800 (PST)
-Received: from fedora.sphynx-tuna.ts.net ([2a02:8308:397:e200:f9e9:8bad:f8cc:87a3])
-        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4bb8538b09bsm1154281665e9.4.2026.11.26.12.13.13
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 26 Nov 2026 12:13:13 -0800 (PST)
-From: =?UTF-8?q?Petr=20Van=C4=9Bk?= <petr.vanek@e2b.dev>
-To: "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Baokun Li <libaokun@linux.alibaba.com>,
-	Jan Kara <jack@suse.cz>,
-	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
-	"Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
-	Zhang Yi <yi.zhang@huawei.com>
-Cc: Deepanshu Kartikey <kartikey406@gmail.com>,
-	=?UTF-8?q?Petr=20Van=C4=9Bk?= <petr.vanek@e2b.dev>,
-	linux-ext4@vger.kernel.org
-Subject: [PATCH 3/3] ext4: test inline data conversion through the page cache
-Date: Thu, 26 Nov 2026 21:12:55 +0100
-Message-ID: <20261126201258.1553196-4-petr.vanek@e2b.dev>
-X-Mailer: git-send-email 2.56.1
-In-Reply-To: <20261126201258.1553196-1-petr.vanek@e2b.dev>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=GyQuBsLz
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 00D691F00893;
+	Thu, 26 Nov 2026 20:43:25 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1795725806;
+	bh=4/aFF4NCNdDMiO4SBVMAjUl8GfVRChOJbTvo6aRCj1w=;
+	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
+	b=GyQuBsLzSaqagcW3N1nUzeWCqgL3gTbef1mDsGLc7gHQYChj+RzTuCBNZSOIWab0D
+	 dhVmaXW0XZclM2jIP1WiShlKGcvEB8R50x471V8HaZss/F7j4dH5RF0cJTyRbEeFll
+	 WiXzMS95P3Ho4GTxPtcwulxfv+4QjpMNs8gEB1eYSttgm56R7PIe+8VeE2hj0PAiBb
+	 GjeXoXyZGkyskZt4gxtpEUXovfbS9Ftj0iHUiWUR91vas5iZvkz5rw0l99cSTIXPQV
+	 tRIjHIjDpYAqJVQEMh7tSOx7C1DXzvs7QYiDHmClJtM09zsyI0N/39XEW2J9568HJc
+	 lVi2TFuL95icw==
+Message-ID: <sashiko-outbox-236164@kernel.org>
+From: sashiko-bot@kernel.org
+Subject: Re: [PATCH 2/3] ext4: convert regular file inline data through the
+ page cache
+Reply-To: sashiko-reviews@lists.linux.dev
+To: =?utf-8?b?UGV0ciBWYW7Em2s=?= <petr.vanek@e2b.dev>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+In-Reply-To: <20261126201258.1553196-3-petr.vanek@e2b.dev>
 References: <20261126201258.1553196-1-petr.vanek@e2b.dev>
+ <20261126201258.1553196-3-petr.vanek@e2b.dev>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+Date: Thu, 26 Nov 2026 20:43:25 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -104,149 +60,249 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
 
-ext4_convert_inline_data() now moves a regular file's inline data into
-folio 0 and leaves it to writeback.  Check that: after the conversion,
-folio 0 must be uptodate and dirty, hold the old inline data, and have
-its buffer mapped to the new block, without any metadata buffer being
-dirtied.  Drop the page cache before converting, so that folio 0 has to
-be read from the inline data.
+Thank you for your contribution! Sashiko AI review found 4 potential
+issues to consider:
+- [High] ext4: NULL jinode dereference in ext4_convert_inline_data_reg()
+- [High] ext4: stale inode checksum after rollback in
+  ext4_convert_inline_data_reg()
+- [Medium] ext4: unhandled -EAGAIN and credit shortfall in
+  ext4_convert_inline_data_reg()
+- [Medium] ext4: race with delalloc conversion in
+  ext4_convert_inline_data_reg()
+--
 
-Add cases for an ext4_map_blocks() failure with -EIO restoring the
-inline data, for data=journal mode, where the folio's buffer is
-journalled through ext4_handle_dirty_metadata(), and for an empty
-inline file, which must be converted without mapping a block.
+commit cdcc63e61166aa17d9c625ad732f9377e4d25d2b
+Author: Petr Van=C4=9Bk <petr.vanek@e2b.dev>
 
-Signed-off-by: Petr Vaněk <petr.vanek@e2b.dev>
----
- fs/ext4/inline-test.c | 84 +++++++++++++++++++++++++++++++++++++++++--
- 1 file changed, 82 insertions(+), 2 deletions(-)
+ext4: convert regular file inline data through the page cache
 
-diff --git a/fs/ext4/inline-test.c b/fs/ext4/inline-test.c
-index 3b697d4c425c..399c8cfcf659 100644
---- a/fs/ext4/inline-test.c
-+++ b/fs/ext4/inline-test.c
-@@ -1122,6 +1122,35 @@ static void test_inline_data_truncate(struct kunit *test)
-  * =========================================================================
-  */
- 
-+/*
-+ * Check that a regular file's inline data was moved into folio 0, dirty and
-+ * mapped to the new block, so that writeback writes it out.
-+ */
-+static void expect_converted_folio(struct kunit *test, struct inode *inode,
-+				   const void *buf, size_t len)
-+{
-+	struct buffer_head *bh;
-+	struct folio *folio;
-+	void *kaddr;
-+
-+	folio = filemap_lock_folio(inode->i_mapping, 0);
-+	KUNIT_ASSERT_FALSE(test, IS_ERR(folio));
-+	KUNIT_EXPECT_TRUE(test, folio_test_uptodate(folio));
-+	KUNIT_EXPECT_TRUE(test, folio_test_dirty(folio));
-+	bh = folio_buffers(folio);
-+	KUNIT_EXPECT_NOT_NULL(test, bh);
-+	if (bh) {
-+		KUNIT_EXPECT_TRUE(test, buffer_mapped(bh));
-+		KUNIT_EXPECT_TRUE(test, buffer_dirty(bh));
-+		KUNIT_EXPECT_EQ(test, bh->b_blocknr, (sector_t)TEST_PBLK);
-+	}
-+	kaddr = kmap_local_folio(folio, 0);
-+	KUNIT_EXPECT_MEMEQ(test, kaddr, buf, len);
-+	kunmap_local(kaddr);
-+	folio_unlock(folio);
-+	folio_put(folio);
-+}
-+
- static void test_convert_inline_data_and_rollback(struct kunit *test)
- {
- 	struct inline_test_ctx *ctx = test->priv;
-@@ -1142,13 +1171,20 @@ static void test_convert_inline_data_and_rollback(struct kunit *test)
- 	/*
- 	 * 2. Inline inode without EXT4_STATE_MAY_INLINE_DATA -> calls
- 	 * filemap_flush() and finishes converting inline data if still inline.
-+	 * Drop the page cache first so that folio 0 must be read from the
-+	 * inline data.
- 	 */
- 	ret = create_inline_file(inode, buf, sizeof(buf));
- 	KUNIT_ASSERT_EQ(test, ret, 0);
-+	truncate_inode_pages(&inode->i_data, 0);
- 	ext4_clear_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
-+	ctx->dirty_metadata_calls = 0;
- 	ret = ext4_convert_inline_data(inode);
- 	KUNIT_EXPECT_EQ(test, ret, 0);
- 	KUNIT_EXPECT_FALSE(test, ext4_has_inline_data(inode));
-+	expect_converted_folio(test, inode, buf, sizeof(buf));
-+	/* The data goes through the page cache, not a metadata buffer. */
-+	KUNIT_EXPECT_EQ(test, ctx->dirty_metadata_calls, 0);
- 
- 	/*
- 	 * 3. Error rollback when ext4_map_blocks fails (-ENOSPC):
-@@ -1169,14 +1205,58 @@ static void test_convert_inline_data_and_rollback(struct kunit *test)
- 			   sizeof(buf) - EXT4_MIN_INLINE_DATA_SIZE);
- 	ctx->map_blocks_ret = 1;
- 
-+	/* 4. Error rollback when ext4_map_blocks fails with -EIO */
-+	ctx->map_blocks_ret = -EIO;
-+	ret = ext4_convert_inline_data(inode);
-+	KUNIT_EXPECT_EQ(test, ret, -EIO);
-+	KUNIT_EXPECT_TRUE(test, ext4_has_inline_data(inode));
-+	KUNIT_EXPECT_MEMEQ(test, raw_inline_i_block(ctx), buf,
-+			   EXT4_MIN_INLINE_DATA_SIZE);
-+	ctx->map_blocks_ret = 1;
-+
-+	/*
-+	 * 5. Successful conversion via ext4_convert_inline_data():
-+	 * copies 80 bytes into folio 0, destroys inline data, initializes
-+	 * extent tree.
-+	 */
-+	ret = ext4_convert_inline_data(inode);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_FALSE(test, ext4_has_inline_data(inode));
-+	KUNIT_EXPECT_TRUE(test, ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS));
-+	expect_converted_folio(test, inode, buf, sizeof(buf));
-+
- 	/*
--	 * 4. Successful conversion via ext4_convert_inline_data():
--	 * destroys inline data, initializes extent tree.
-+	 * 6. data=journal: the folio's buffer is journalled as data and
-+	 * dirtied through ext4_handle_dirty_metadata().
- 	 */
-+	reset_inode_state(ctx, S_IFREG | 0644);
-+	ret = create_inline_file(inode, buf, sizeof(buf));
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+	truncate_inode_pages(&inode->i_data, 0);
-+	ctx->journal_mode = EXT4_INODE_JOURNAL_DATA_MODE;
-+	ctx->dirty_metadata_calls = 0;
-+	ret = ext4_convert_inline_data(inode);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_FALSE(test, ext4_has_inline_data(inode));
-+	KUNIT_EXPECT_GT(test, ctx->dirty_metadata_calls, 0);
-+	expect_converted_folio(test, inode, buf, sizeof(buf));
-+	ctx->journal_mode = EXT4_INODE_WRITEBACK_DATA_MODE;
-+
-+	/*
-+	 * 7. Empty inline file: the inline data is dropped and no block is
-+	 * mapped, so a failing ext4_map_blocks() must not be reached.
-+	 */
-+	reset_inode_state(ctx, S_IFREG | 0644);
-+	ret = create_inline_file(inode, buf, sizeof(buf));
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+	i_size_write(inode, 0);
-+	ctx->ei.i_disksize = 0;
-+	ctx->map_blocks_ret = -EIO;
- 	ret = ext4_convert_inline_data(inode);
- 	KUNIT_EXPECT_EQ(test, ret, 0);
- 	KUNIT_EXPECT_FALSE(test, ext4_has_inline_data(inode));
- 	KUNIT_EXPECT_TRUE(test, ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS));
-+	ctx->map_blocks_ret = 1;
- }
- 
- static void test_write_triggers_inline_to_extent_conversion(struct kunit *test)
--- 
-2.56.1
+This commit converts a regular file's inline data to an extent block through
+folio 0 in the page cache rather than journalling the data block as metadat=
+a.
 
+> diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+> index acdc65ce47960..537857c3b4b29 100644
+> --- a/fs/ext4/inline.c
+> +++ b/fs/ext4/inline.c
+> @@ -1999,6 +1999,121 @@ int ext4_inline_data_truncate(struct inode *inode=
+, int *has_inline)
+>  	return err;
+>  }
+> =20
+> +/*
+> + * Move a regular file's inline data to block 0 through the page cache, =
+as a
+> + * buffered write does, so the data reaches the disk by writeback.  It m=
+ust not
+> + * be journalled as a metadata block: checkpointing that copy later would
+> + * overwrite whatever the file has written to the block since.
+> + */
+> +static int ext4_convert_inline_data_reg(struct inode *inode)
+> +{
+> +	struct address_space *mapping =3D inode->i_mapping;
+> +	int ret, ret2, needed_blocks, no_expand, retries =3D 0;
+> +	unsigned int inline_size, len;
+> +	struct buffer_head *bh;
+> +	struct ext4_iloc iloc;
+> +	struct folio *folio;
+> +	handle_t *handle;
+> +	void *buf;
+> +
+> +	needed_blocks =3D ext4_chunk_trans_extent(inode, 1);
+> +
+> +	ret =3D ext4_get_inode_loc(inode, &iloc);
+> +	if (ret)
+> +		return ret;
+
+[Severity: High]
+Can this trigger a NULL pointer dereference on EXT4_I(inode)->jinode when
+mapping block 0 in data=3Dordered mode?
+
+EXT4_I(inode)->jinode is attached lazily in ext4_file_open() or explicitly =
+by
+callers that do not require an open writable file descriptor.  When path-ba=
+sed
+truncate(2) grows a non-empty inline file whose in-core inode has not been
+opened for writing, ext4_setattr() calls ext4_convert_inline_data() before
+ext4_truncate_up() attaches jinode.  ext4_block_write_begin() then calls
+ext4_get_block() -> ext4_map_blocks() -> ext4_jbd2_inode_add_write(), which
+passes a NULL jinode to jbd2_journal_file_inode().
+
+Calling ext4_inode_attach_jinode(inode) in ext4_convert_inline_data_reg()
+before starting the conversion avoids this.
+
+> +
+> +retry:
+> +	buf =3D NULL;
+> +	handle =3D ext4_journal_start(inode, EXT4_HT_WRITE_PAGE, needed_blocks);
+> +	if (IS_ERR(handle)) {
+> +		ret =3D PTR_ERR(handle);
+> +		goto out_brelse;
+> +	}
+> +
+> +	folio =3D __filemap_get_folio(mapping, 0, FGP_WRITEBEGIN | FGP_NOFS,
+> +				    mapping_gfp_mask(mapping));
+> +	if (IS_ERR(folio)) {
+> +		ret =3D PTR_ERR(folio);
+> +		goto out_stop;
+> +	}
+> +
+> +	ext4_write_lock_xattr(inode, &no_expand);
+> +	ret =3D 0;
+> +	if (!ext4_has_inline_data(inode))
+> +		goto out_unlock;
+
+[Severity: Medium]
+Can a concurrent delayed-allocation write convert the file between the
+EXT4_STATE_MAY_INLINE_DATA check in ext4_convert_inline_data() and acquiring
+the folio lock and xattr_sem here?
+
+CPU0 (ext4_page_mkwrite)          CPU1 (buffered write)
+ext4_convert_inline_data()
+  test MAY_INLINE_DATA (set)
+                                  ext4_da_write_inline_data_begin()
+                                    ...
+                                    ext4_da_convert_inline_data_to_extent()
+                                      folio_lock(folio 0)
+                                      down_read(xattr_sem)
+                                      ext4_block_write_begin(...,
+                                        ext4_da_get_block_prep)
+                                        -> sets BH_Mapped | BH_Delay
+                                      clear MAY_INLINE_DATA
+                                      up_read(xattr_sem)
+                                      folio_unlock(folio 0)
+  ext4_convert_inline_data_reg()
+    folio_lock(folio 0)
+    ext4_write_lock_xattr()
+    ext4_has_inline_data() (still true)
+    ext4_destroy_inline_data_nolock()
+    ext4_block_write_begin(...,
+      ext4_get_block)
+      !buffer_mapped(bh) is false <-- skips ext4_get_block()
+
+Because ext4_da_get_block_prep() sets BH_Mapped along with BH_Delay while
+leaving EXT4_INODE_INLINE_DATA set until writeback, ext4_block_write_begin()
+sees buffer_mapped(bh) =3D=3D true and skips ext4_get_block().  The inline =
+data is
+destroyed on disk without allocating a block or filing the inode into the
+transaction's ordered-data list, and if an error occurs earlier and rolls b=
+ack
+via ext4_restore_inline_data(), re-setting EXT4_STATE_MAY_INLINE_DATA on the
+dirty inode hits BUG_ON(ext4_test_inode_state(inode,
+EXT4_STATE_MAY_INLINE_DATA)) in ext4_do_writepages().
+
+> +
+> +	inline_size =3D ext4_get_inline_size(inode);
+> +	len =3D min_t(loff_t, inline_size, i_size_read(inode));
+> +	if (len > i_blocksize(inode)) {
+> +		EXT4_ERROR_INODE(inode, "inline data size %u exceeds block size",
+> +				 len);
+> +		ret =3D -EFSCORRUPTED;
+> +		goto out_unlock;
+> +	}
+> +
+> +	ext4_fc_track_inode(handle, inode);
+> +	if (!len) {
+> +		ret =3D ext4_destroy_inline_data_nolock(handle, inode);
+> +		goto out_unlock;
+> +	}
+> +
+> +	buf =3D kmalloc(inline_size, GFP_NOFS);
+> +	if (!buf) {
+> +		ret =3D -ENOMEM;
+> +		goto out_unlock;
+> +	}
+> +	ret =3D ext4_read_inline_data(inode, buf, inline_size, &iloc);
+> +	if (ret < 0)
+> +		goto out_unlock;
+> +
+> +	if (!folio_test_uptodate(folio)) {
+> +		ret =3D ext4_read_inline_folio(inode, folio);
+> +		if (ret < 0)
+> +			goto out_unlock;
+> +	}
+> +
+> +	ret =3D ext4_destroy_inline_data_nolock(handle, inode);
+> +	if (ret)
+> +		goto out_unlock;
+> +
+> +	/*
+> +	 * A written extent, not an unwritten one: in data=3Dordered mode the
+> +	 * commit that drops the inline copy then waits for the data.
+> +	 */
+> +	ret =3D ext4_block_write_begin(handle, folio, 0, len, ext4_get_block);
+> +	if (ret) {
+> +		ext4_restore_inline_data(handle, inode, &iloc, buf, inline_size);
+> +		goto out_unlock;
+> +	}
+
+[Severity: High]
+Does rolling back via ext4_restore_inline_data() and jumping to out_unlock
+leave the on-disk raw inode with an invalid metadata checksum?
+
+Inside ext4_restore_inline_data(), ext4_create_inline_data() zeroes
+raw_inode->i_block and the in-inode system.data xattr and calls
+ext4_mark_iloc_dirty(), which computes the raw inode checksum over the zero=
+ed
+bytes.  ext4_write_inline_data() then copies buf back into raw_inode->i_blo=
+ck
+and the xattr value in iloc.bh without recomputing the checksum, and neither
+ext4_restore_inline_data() nor the out_unlock path calls
+ext4_mark_iloc_dirty() or ext4_mark_inode_dirty().  When block allocation
+fails (for example with -ENOSPC or -EDQUOT) on a file with non-zero inline
+data, the committed inode fails ext4_inode_csum_verify() with -EFSBADCRC on=
+ce
+re-read from disk.
+
+> +
+> +	bh =3D folio_buffers(folio);
+> +	clear_buffer_new(bh);
+> +	if (ext4_should_journal_data(inode)) {
+> +		ret =3D do_journal_get_write_access(handle, inode, bh);
+> +		if (!ret) {
+> +			folio_mark_dirty(folio);
+> +			ret =3D ext4_handle_dirty_metadata(handle, NULL, bh);
+> +		}
+> +	} else {
+> +		block_commit_write(folio, 0, len);
+> +	}
+> +
+> +out_unlock:
+> +	ext4_write_unlock_xattr(inode, &no_expand);
+> +	folio_unlock(folio);
+> +	folio_put(folio);
+> +out_stop:
+> +	ret2 =3D ext4_journal_stop(handle);
+> +	if (!ret)
+> +		ret =3D ret2;
+> +	kfree(buf);
+> +	if (ret =3D=3D -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries=
+))
+> +		goto retry;
+
+[Severity: Medium]
+Can ext4_block_write_begin() return -EAGAIN here because needed_blocks is
+computed before EXT4_INODE_EXTENTS is set?
+
+When ext4_chunk_trans_extent(inode, 1) runs at the top of
+ext4_convert_inline_data_reg(), EXT4_INODE_INLINE_DATA is still set and
+EXT4_INODE_EXTENTS is clear, so ext4_index_trans_blocks() only reserves 5
+index blocks (and ext4_destroy_inline_data_nolock() then consumes a credit =
+on
+iloc.bh and sets EXT4_INODE_EXTENTS).  When ext4_block_write_begin() calls
+ext4_journal_ensure_extent_credits(), ext4_chunk_trans_blocks(inode, 1) now
+requires 11 index blocks for an extent inode, forcing an in-place
+ext4_journal_extend() on every non-empty conversion.
+
+If the running transaction cannot be extended in place (for example when it=
+ is
+locked for commit), ext4_journal_ensure_extent_credits() returns -EAGAIN, a=
+nd
+because only -ENOSPC is retried here, -EAGAIN is returned to callers such as
+ext4_page_mkwrite(), where vmf_fs_error(-EAGAIN) turns it into
+VM_FAULT_SIGBUS.
+
+--=20
+Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261126201258.1553=
+196-1-petr.vanek@e2b.dev?part=3D2
