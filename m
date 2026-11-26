@@ -1,43 +1,44 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=124.71.93.112
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=124.71.94.104
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795696579;
-	b=gRWiodMhr16cwTucgZUQSywbxHX6i3v8uW0mHP9RJS87ZUHdkClu1yz7G2TmKjAAvGRH
-	 Hs2sMuFYlKcPsSMnObI3vgR5dnLA39uq4KzGNLJWqpQPIRh7rsAZ1DCduO5ZELjs4NRSo
-	 CPYVXx+J9dGrH9Qm0bOOKItITBW6RvX16gmBvvZlFIO/O1So9WaeRsSXxGm0Eu/oKmpiC
-	 PFVdIHZPtnv/TImbIg/a7qGKkH2aO7qN69ULdk4SMn+f1X29aRypCUPSmEbiOSHz/uY+r
-	 Fptn5eHOSpKmRQ3oCiljRXq8x1WkC45xDVmgmJkLZ+89gLTFgy7XWoAwywTli6LEixw==
+	t=1795696584;
+	b=MtrFC6MMP4M4GeSR1UQZH6pH7tsd3iyDGF1Nqn6+B/kufELq86wMRXdHQn9PUr2jMhRv
+	 rti7E5zQtbVSKS4eaeob0MqwZwlAZhIMwpLR3zoQG1tISMX/bGuQqjVAk/bmIVkviX9tz
+	 9FArsVuO+9q+BLuVD0jv2CGdOwVtFHx5YddQJQDmeGgjPSZw+89GPGQJIY+7cX2gbkJrM
+	 A+LEeNxTxVU37CGe4hw1zkIxKBlXBEFLt6EoHGnbixbONmiOSFEOtIizlSc+VECKvD4Hl
+	 WmAa+i8/osyWn0HC7o3IRU8B47GealbmsGmmoMd+agFc06sHHIjhElur+xp1oUSNUzg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795696579;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795696584;
 	h=DMARC-Filter:Received:Received:Received:From:To:Cc:Subject:Date:
-	 Message-Id:X-Mailer:MIME-Version:Content-Transfer-Encoding:
-	 X-CM-TRANSID:X-Coremail-Antispam:X-CM-SenderInfo;
-	bh=BmdiVA37wXM2LN2Yev8MJKhtjXYfTyf9SjBGywadq0M=;
-	b=IArBvE628ugsuBmIR+iDtk76GphMbHRRPlZWWplrIXJjIPEpZITqs0RiyuoVWvUjAiur
-	 AMLJC+oa14rqAgTzsXpUxR5tnuMjXGs51S6jLrnttVrwH4M1Qlcp1ipmOpsWv3HjXfkGz
-	 COAr/27n3tuYBhiwGNLGpc0mYhVO1ltL+tshBo1TUwHsLKmD+7XVqtWCOY1ARuP5pySTM
-	 2TxFLgGV8vy0genJv38FPf317oSImh/SNHu5XSDJnDN+EpZMBubhdJ2+eUNDBEpgMM1yN
-	 zOoPslFEI03dom0XgeOv6Td2MsltLKo7gtBIW9VIn58gDMa/xwsIw0SlwiqddAr5ltA==
+	 Message-Id:X-Mailer:In-Reply-To:References:MIME-Version:
+	 Content-Transfer-Encoding:X-CM-TRANSID:X-Coremail-Antispam:
+	 X-CM-SenderInfo;
+	bh=il5Fa1FPP/Xkz8M5ENlFQt0aXvl0fMjH40Xw0G4UQOE=;
+	b=kw5T7YRM5RTlzLQOJBsFbk0ikolThCnCM8FIN5kaUWYEHU9xeYm1IUYMn2dhHL41388P
+	 qQwtYkSeHz9o59ZNNbEWALxwoSuSqp0PZC1oWVNSvqX72tJSTlUsmd0YQLpzW8T9/KYpo
+	 sLhqdmGLVLk2ELbaHgf+oQCFjmRSFg8InQkNowvcRXiCPIbYVEYJMpgn56+0FXMBWWDPX
+	 1jRjz38bWh/8NCUeznHdycjRNktwwxc+K87sI440Su74Qe/AXzb6/N0evIARRqoUAHm9c
+	 PARQShfelkOewtOYodQPiv7H/CjE9UJ0lkWT6OiFrq+o9xFchf/ccKtafhnvqpn1o5w==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=none header.from=huaweicloud.com;
 	spf=pass smtp.mailfrom=huaweicloud.com;
-	arc=none smtp.remote-ip=124.71.93.112
-Received: from dggmsgout12.his.huawei.com (dggmsgout12.his.huawei.com [124.71.93.112])
+	arc=none smtp.remote-ip=124.71.94.104
+Received: from dggmsgout13.his.huawei.com (dggmsgout13.his.huawei.com [124.71.94.104])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E3A39606A31C;
-	Thu, 26 Nov 2026 12:36:16 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org E3A39606A31C
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D5BAA606A31E;
+	Thu, 26 Nov 2026 12:36:23 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org D5BAA606A31E
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.198])
-	by dggmsgout12.his.huawei.com (SkyGuard) with ESMTP id 4jZwyK0tPBz20D8;
+Received: from mail.maildlp.com (unknown [172.19.163.170])
+	by dggmsgout13.his.huawei.com (SkyGuard) with ESMTP id 4jZwyK3Kr1z1rrTt;
 	Thu, 26 Nov 2026 20:36:09 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 7C46040577;
+	by mail.maildlp.com (Postfix) with ESMTP id 8925A4056B;
 	Thu, 26 Nov 2026 20:36:14 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.87.132])
-	by APP4 (Coremail) with UTF8SMTPSA id gCh0CgAXTu29JwhrXPqGFw--.16525S4;
+	by APP4 (Coremail) with UTF8SMTPSA id gCh0CgAXTu29JwhrXPqGFw--.16525S6;
 	Thu, 26 Nov 2026 20:36:14 +0800 (CST)
 From: Ye Bin <yebin@huaweicloud.com>
 To: tytso@mit.edu,
@@ -45,10 +46,12 @@ To: tytso@mit.edu,
 	linux-ext4@vger.kernel.org
 Cc: jack@suse.cz,
 	linux-fsdevel@vger.kernel.org
-Subject: [PATCH v3 0/2] ext4: protect quota acquisition against filesystem freezing
-Date: Thu, 26 Nov 2026 20:36:09 +0800
-Message-Id: <20261126123611.2517017-1-yebin@huaweicloud.com>
+Subject: [PATCH v3 2/2] ext4: protect ext4_acquire_dquot against freezing
+Date: Thu, 26 Nov 2026 20:36:11 +0800
+Message-Id: <20261126123611.2517017-3-yebin@huaweicloud.com>
 X-Mailer: git-send-email 2.34.1
+In-Reply-To: <20261126123611.2517017-1-yebin@huaweicloud.com>
+References: <20261126123611.2517017-1-yebin@huaweicloud.com>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -59,73 +62,104 @@ List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgAXTu29JwhrXPqGFw--.16525S4
-X-Coremail-Antispam: 1UD129KBjvJXoWxCr48uFW3Zw4UKr4fZr1rtFb_yoW5GFy3pF
-	Z5C3W5Kan5JryIkrZFya13Z3yFy3Z5ZayDtrykAryDZFnxXa48tF9Fk34F9FyUZrs3Cw1Y
-	vFyIyr9F9F47ArDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUyKb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
-	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Gr0_Xr1l84ACjcxK6xIIjxv20xvEc7Cj
-	xVAFwI0_Cr0_Gr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I
-	0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40E
-	x7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x
-	0Yz7v_Jr0_Gr1lF7xvr2IYc2Ij64vIr41lc7CjxVAaw2AFwI0_JF0_Jw1l42xK82IYc2Ij
-	64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x
-	8GjcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r126r1DMIIYrxkI7VAKI48JMIIF0xvE
-	2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY6xkF7I0E14v26r1j6r4UMIIF0xvE42
-	xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF
-	7I0E14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjxUwxhLUUUUU
+X-CM-TRANSID:gCh0CgAXTu29JwhrXPqGFw--.16525S6
+X-Coremail-Antispam: 1UD129KBjvJXoWxuFy8ZF4ktr4UAw1fWw4DArb_yoW5Cr4kpF
+	Z3CFy3tF4vqa4xu39rGa1fC3yrAw1v9a47JFyIgrn8Xan8X3W8KF17t34F9FyUJrW3urn0
+	qF4jkry7Ca12yrDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUU9Cb4IE77IF4wAFF20E14v26ryj6rWUM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUXw
+	A2048vs2IY020Ec7CjxVAFwI0_JFI_Gr1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0rcxS
+	w2x7M28EF7xvwVC0I7IYx2IY67AKxVW8JVW5JwA2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxV
+	WxJVW8Jr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_
+	GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx
+	0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWU
+	JVW8JwACjcxG0xvY0x0EwIxGrwCY1x0262kKe7AKxVWUAVWUtwCF04k20xvY0x0EwIxGrw
+	CFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE
+	14v26r106r1rMI8E67AF67kF1VAFwI0_JF0_Jw1lIxkGc2Ij64vIr41lIxAIcVC0I7IYx2
+	IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxK
+	x2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI
+	0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x07jbqXdUUUUU=
 X-CM-SenderInfo: p1hex046kxt4xhlfz01xgou0bp/
 
 From: Ye Bin <yebin10@huawei.com>
 
-This series fixes quota operations running against a frozen filesystem,
-and the resulting freeze protection for ext4's dquot acquisition.
+A writable open of a regular file reaches the filesystem's ->open()
+callback without holding any superblock write (freeze) protection, but
+ext4_file_open() -> dquot_file_open() -> dquot_initialize() may need to
+acquire a dquot and write the quota file.  If the filesystem reaches
+SB_FREEZE_COMPLETE in that window, ext4_journal_check_start() hits
 
-Patch 1 makes Q_XGETQUOTA/Q_XGETNEXTQUOTA consistent with Q_GETQUOTA and
-Q_GETNEXTQUOTA and forbids them on a frozen filesystem.  These commands
-may end up in ->acquire_dquot() when the queried dquot is not cached yet,
-and thus may write to the filesystem, just like Q_GETQUOTA/Q_GETNEXTQUOTA
-which commit ccf370e43e08 ("quota: Forbid Q_GETQUOTA and Q_GETNEXTQUOTA
-for frozen filesystem") already handles.  They were historically treated
-as read-only because they come from XFS, where quota is always coherent,
-but generic quota now routes them through dquot_get_dqblk()/
-dquot_get_next_dqblk() and dqget().  Running them on a frozen filesystem
-makes ext4 start a transaction on it and warn.  As suggested by Jan, they
-are now handled exactly like the generic commands, including taking write
-access, so a Q_XGETQUOTA on a read-only mount will report -EROFS; proper
-read-only querying can be added later if somebody actually needs it.
+	WARN_ON(sb->s_writers.frozen == SB_FREEZE_COMPLETE);
 
-Patch 2 protects ext4_acquire_dquot() itself.  A writable open reaches
-the filesystem's ->open() callback without superblock freeze protection,
-so ext4_file_open() -> dquot_file_open() -> dquot_initialize() can
-acquire a dquot and start a transaction after the filesystem has been
-frozen.  Take sb_start_intwrite() around ext4_acquire_dquot() when no
-transaction is already running; running transactions are already
-protected against freezing.
+and the open then sleeps in jbd2 until the filesystem is thawed.
 
-Patch 2 relies on the preceding patch 1.  Taking freeze protection in
-ext4_acquire_dquot() while holding s_umount, as the Q_XGETQUOTA and
-Q_XGETNEXTQUOTA paths do, would deadlock against thaw_super(), which
-needs s_umount exclusively to release the SB_FREEZE_FS protection.
-Patch 1 forbids those commands on a frozen filesystem and thus makes the
-new protection in patch 2 safe.  Both patches must be applied together.
+Taking freeze protection for every writable open in the VFS would make a
+plain open(O_WRONLY) on a frozen filesystem block even when it never
+writes, which is an unacceptable behaviour change.  Instead protect the
+quota acquisition path itself: take sb_start_intwrite() around
+ext4_acquire_dquot() when no transaction is already running.  Running
+transactions are already protected against freezing and taking
+sb_start_intwrite() inside one can deadlock.
 
-Changes in v3:
-- Rework the quota patch to simply forbid Q_XGETQUOTA/Q_XGETNEXTQUOTA on
-  a frozen filesystem like Q_GETQUOTA/Q_GETNEXTQUOTA, as suggested by
-  Jan Kara, instead of only waiting for the filesystem to thaw.
-- Document in the ext4 patch that it depends on the preceding quota
-  patch.
+This protection relies on the preceding quota change ("quota: Forbid
+Q_XGETQUOTA and Q_XGETNEXTQUOTA for frozen filesystem").  Those commands
+are treated as read-only and run with s_umount held for reading, but they
+can still reach ext4_acquire_dquot().  Taking sb_start_intwrite() there
+would deadlock against thaw_super(), which can only release the
+SB_FREEZE_FS protection after taking s_umount exclusively.  The preceding
+change forbids those commands on a frozen filesystem, which makes the new
+protection safe, so both patches have to be applied together.
 
-Ye Bin (2):
-  quota: Forbid Q_XGETQUOTA and Q_XGETNEXTQUOTA for frozen filesystem
-  ext4: protect ext4_acquire_dquot against freezing
+Fixes: 907f4554e252 ("dquot: move dquot initialization responsibility into the filesystem")
+Suggested-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Ye Bin <yebin10@huawei.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/super.c | 20 +++++++++++++++++++-
+ 1 file changed, 19 insertions(+), 1 deletion(-)
 
- fs/ext4/super.c  | 20 +++++++++++++++++++-
- fs/quota/quota.c |  9 ++++-----
- 2 files changed, 23 insertions(+), 6 deletions(-)
-
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index b021cbeb5f3a..0134f1c7668e 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -7177,11 +7177,25 @@ static int ext4_acquire_dquot(struct dquot *dquot)
+ {
+ 	int ret, err;
+ 	handle_t *handle;
++	bool freeze_protected = false;
++
++	/*
++	 * Trying to sb_start_intwrite() in a running transaction
++	 * can result in a deadlock. Further, running transactions
++	 * are already protected from freezing.
++	 */
++	if (!ext4_journal_current_handle()) {
++		sb_start_intwrite(dquot->dq_sb);
++		freeze_protected = true;
++	}
+ 
+ 	handle = ext4_journal_start(dquot_to_inode(dquot), EXT4_HT_QUOTA,
+ 				    EXT4_QUOTA_INIT_BLOCKS(dquot->dq_sb));
+-	if (IS_ERR(handle))
++	if (IS_ERR(handle)) {
++		if (freeze_protected)
++			sb_end_intwrite(dquot->dq_sb);
+ 		return PTR_ERR(handle);
++	}
+ 	ret = dquot_acquire(dquot);
+ 	if (ret < 0)
+ 		ext4_error_err(dquot->dq_sb, -ret,
+@@ -7190,6 +7204,10 @@ static int ext4_acquire_dquot(struct dquot *dquot)
+ 	err = ext4_journal_stop(handle);
+ 	if (!ret)
+ 		ret = err;
++
++	if (freeze_protected)
++		sb_end_intwrite(dquot->dq_sb);
++
+ 	return ret;
+ }
+ 
 -- 
 2.34.1
 
