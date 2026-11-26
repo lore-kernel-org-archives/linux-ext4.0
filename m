@@ -1,57 +1,57 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=124.71.93.99
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795696585;
-	b=XS/SyTzRIJ8B9bX2mzrfeRNAU9kWnak0brCqQsXxIysLmexqGHoF+2BifPCZpE2HFZPq
-	 3BVM4BfsoDCWdiO7yyejHWhOUmXdeQih+YJZtyNRQ3oTSILAo7E4e5+93Eg+o9hE/KbDU
-	 v/qVhkVJ1+lWL+9YLkYd/Yjxh+SOxNonVh89d5c3fDOJcGI81S5YbOuhZ6Jt1YMXnimuZ
-	 hQHqSiV7bb+x3vuYeTXgPQBzCcx5x3UwWMlxCEkER2et+MvpO5oKYFWns6UTwQNDy4/6c
-	 P5nuP6qNgxy45GWMGOdOkQ897qHXMvxkvFiv71QYtGQrhWnbTdOXMqDER/QPrHt5LxA==
+	t=1795697404;
+	b=e1DVHvH/9hr5QdD8fZpvHLC8SPrwZBUeIZEzxNadL5jtAAuxNQiSQerJRbD34ugQN+i5
+	 Pi9mjFSlfF5mXcJJXjP/AgOSQb9iPEQn5Lu+bwocfnRNWlu8otV8YDGbRUdN+Ze6PtwzS
+	 9QXB6M6/ob5n4lHqcfq2fJ0g7YIXSgXyVQ+9dOmY9v5joS2n+BKNiHcG+paGBcVVSZP6u
+	 fYqQ+6J9eyx7BOkMJgEpaWO4kUqJblMOJ/7YbtTblbt+7/HV0U/+j7eBja/Hw54iobNH4
+	 QURv46yLAobvrrbQvc80jxRhkKSnb/K1bSxCOe45E6cjjEEbv77k+90OF9zjhBs5qlQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795696585;
-	h=DMARC-Filter:Received:Received:Received:From:To:Cc:Subject:Date:
-	 Message-Id:X-Mailer:In-Reply-To:References:MIME-Version:
-	 Content-Transfer-Encoding:X-CM-TRANSID:X-Coremail-Antispam:
-	 X-CM-SenderInfo;
-	bh=mlU+8q1RMosBiatX4ha90g5/dQwjt1eMK/f6tvO9AxM=;
-	b=MYfw2QbfDNullKl6IFRQ7FiAWTGnq7JsoQfirV6XrXipOkN2NCsNjEG4z6+8kbgQ1kzD
-	 LkJhiUZOWbyNK/h3vmozBYCE/D/qTfXrs/m3+wQtri9RKZr9Cqa0rbRrjSglFzIJnYsO2
-	 Abfu6724jIFcfGfO+E2jNluSKtZl/+dB1KJCPjlPmm1NgMubcIOmPo9QEmnOE+qYazPZ1
-	 uMbcXjKnub+w39MC0Ac3IYwhQh8dScNref/Rhj9jiAbWPnhf17xPolT3KyW5TMkb4PX04
-	 OE+DOmbfcqrkL06bpbh45l5NLEBOAq6JYDHqMisfQrewIwRxgfA9+BKNzQpD6E1ky+Q==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795697404;
+	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
+	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
+	bh=+QWmJVdSzhfUjQ5A4EOLvWNW2R26aFiEAk38Al0zI9g=;
+	b=YC63z/FzZqcLaaPExKVmcL+NC0B/unHD5x+OCHlvTfPAw8HV9pKB6e1E5jFpUVjVpjok
+	 o1quHdw0yJLAXV9E3hvf+YZaMvvhC8DMoXYkva2cCqvzV15lSZHhlOttsdRc1TkHpfgaT
+	 a8fqEGIaeRXVjlvJMUMaoQ1qlegaude+pxlwiSQm+r79jTpnNZ2DjWpWAV2xCEsAFYdEX
+	 VIYZd0F1K3aZgW8NbGUkim4PSDwk/ITPX7CLID+lX3uO+ImC1nBQNdyMqbvoilK58etfQ
+	 DVNacVmEhScYzM2R2rezEC3yrWbL/6WgsA+Ldg5rXgZVDgBzaOn3Z354g9CCJmLNluw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=none header.from=huaweicloud.com;
-	spf=pass smtp.mailfrom=huaweicloud.com;
-	arc=none smtp.remote-ip=124.71.93.99
-Received: from dggmsgout11.his.huawei.com (dggmsgout11.his.huawei.com [124.71.93.99])
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="nYm+M/ek";
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5C8B6606A329;
-	Thu, 26 Nov 2026 12:36:24 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 5C8B6606A329
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.177])
-	by dggmsgout11.his.huawei.com (SkyGuard) with ESMTP id 4jZwyH4Tlbz1c1G5;
-	Thu, 26 Nov 2026 20:36:07 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 7FD3240B28;
-	Thu, 26 Nov 2026 20:36:14 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.50.87.132])
-	by APP4 (Coremail) with UTF8SMTPSA id gCh0CgAXTu29JwhrXPqGFw--.16525S5;
-	Thu, 26 Nov 2026 20:36:14 +0800 (CST)
-From: Ye Bin <yebin@huaweicloud.com>
-To: tytso@mit.edu,
-	adilger.kernel@dilger.ca,
-	linux-ext4@vger.kernel.org
-Cc: jack@suse.cz,
-	linux-fsdevel@vger.kernel.org
-Subject: [PATCH v3 1/2] quota: Forbid Q_XGETQUOTA and Q_XGETNEXTQUOTA for frozen filesystem
-Date: Thu, 26 Nov 2026 20:36:10 +0800
-Message-Id: <20261126123611.2517017-2-yebin@huaweicloud.com>
-X-Mailer: git-send-email 2.34.1
-In-Reply-To: <20261126123611.2517017-1-yebin@huaweicloud.com>
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 04718606A31C
+	for <linux-ext4@vger.kernel.org>; Thu, 26 Nov 2026 12:50:03 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=nYm+M/ek
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 130C31F000C0;
+	Thu, 26 Nov 2026 12:50:03 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1795697403;
+	bh=+QWmJVdSzhfUjQ5A4EOLvWNW2R26aFiEAk38Al0zI9g=;
+	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
+	b=nYm+M/ekO67hJrvLRfi+NUWTx7y1L3gUDgmLbfE8vHvPXywalgp5dno/FXSCEoAGZ
+	 a0Zatg8vaFnrrvO7PUz4ml0P7upa+hfReGFdYZmaK+modXICacSaadZiQpM5/aZVJy
+	 d1d25HNSwi3XkumKRnixOWfGLvxM1piC9aUDnrj8ASsDiFm1Fe3CFug41aKXU97VR7
+	 ibxf+8wrs+0zimd+8DJ7c2oz7oykMZgvBQ3bj3UOX/pd/6cMsHJcOB/8k55lGAXRp/
+	 KRTvkuJn3xq3GaJScZcroreNQJaqkwwOt5p8tcaYbyyrW8lCVkHyBjvjYUpwaiuCKM
+	 yk/Qb/Vyi962w==
+Message-ID: <sashiko-outbox-235531@kernel.org>
+From: sashiko-bot@kernel.org
+Subject: Re: [PATCH v3 2/2] ext4: protect ext4_acquire_dquot against
+ freezing
+Reply-To: sashiko-reviews@lists.linux.dev
+To: "Ye Bin" <yebin@huaweicloud.com>, linux-ext4@vger.kernel.org
+Cc: tytso@mit.edu
+In-Reply-To: <20261126123611.2517017-3-yebin@huaweicloud.com>
 References: <20261126123611.2517017-1-yebin@huaweicloud.com>
+ <20261126123611.2517017-3-yebin@huaweicloud.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+Date: Thu, 26 Nov 2026 12:50:02 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -60,88 +60,93 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgAXTu29JwhrXPqGFw--.16525S5
-X-Coremail-Antispam: 1UD129KBjvJXoWxGFy3KrWfGryfCw4fZr1DKFg_yoW5Xr4xpF
-	Z5Cr13Gay8JF1q9rsrGanxZa4Fva1UuFyUGr18Aw1qqr1UGFWrtFnFv345try8XrZayws5
-	ZFWI9as7Xr17CrDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUU9Cb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUGw
-	A2048vs2IY020Ec7CjxVAFwI0_Jrv_JF4l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0rcxS
-	w2x7M28EF7xvwVC0I7IYx2IY67AKxVW8JVW5JwA2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxV
-	WxJVW8Jr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_
-	GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx
-	0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWU
-	JVW8JwACjcxG0xvY0x0EwIxGrwCY1x0262kKe7AKxVWUAVWUtwCF04k20xvY0x0EwIxGrw
-	CFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE
-	14v26r106r1rMI8E67AF67kF1VAFwI0_JF0_Jw1lIxkGc2Ij64vIr41lIxAIcVC0I7IYx2
-	IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Jr0_Gr1lIxAIcVCF04k26cxK
-	x2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI
-	0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x07UN2-5UUUUU=
-X-CM-SenderInfo: p1hex046kxt4xhlfz01xgou0bp/
 
-From: Ye Bin <yebin10@huawei.com>
+Thank you for your contribution! Sashiko AI review found 1 potential
+issue to consider:
+- [High] ext4: s_umount vs SB_FREEZE_FS deadlock in ext4_acquire_dquot()
+  via vfs_ustat()
+--
 
-Commit ccf370e43e08 (quota: Forbid Q_GETQUOTA and Q_GETNEXTQUOTA for
-frozen filesystem) forbade Q_GETQUOTA and Q_GETNEXTQUOTA on a frozen
-filesystem because ext4_acquire_dquot() prepares for allocating space for
-a new quota structure and OCFS2 needs to update the on-disk structure use
-count when a new cluster node loads quota information from disk.  The
-same applies to Q_XGETQUOTA and Q_XGETNEXTQUOTA: userspace treats them as
-read-only commands, but if the queried dquot is not cached yet,
-->get_dqblk()/->get_nextdqblk() call dqget() -> ->acquire_dquot(), which
-may write to the filesystem.
+commit 5d68ea2752fdd861a0ff07e25a26ec6f31917f7a
+Author: Ye Bin <yebin10@huawei.com>
 
-Until now this only made ext4 warn about starting a transaction on a
-frozen filesystem.  Now that ext4_acquire_dquot() also takes
-sb_start_intwrite() to protect against freezing, it turns into a
-deadlock: the query holds s_umount for reading and blocks on the
-SB_FREEZE_FS freeze protection, which thaw_super() can only release
-after taking s_umount exclusively.
+ext4: protect ext4_acquire_dquot against freezing
 
-So forbid Q_XGETQUOTA and Q_XGETNEXTQUOTA on a frozen filesystem as well
-by moving them out of the read-only set in quotactl_cmd_write(), just
-like Q_GETQUOTA and Q_GETNEXTQUOTA.  This also makes quotactl_fd() take
-write access for them, so a query on a read-only mount now fails with
--EROFS; that is the same behavior the generic quota commands already
-have.  If someone needs read-only querying on a frozen or read-only
-filesystem, proper read-only dquot lookup can be implemented separately.
+This commit takes sb_start_intwrite() in ext4_acquire_dquot() when no
+transaction is running so that quota acquisition during file open does not
+start a transaction on a frozen filesystem.
 
-Suggested-by: Jan Kara <jack@suse.cz>
-Signed-off-by: Ye Bin <yebin10@huawei.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
----
- fs/quota/quota.c | 9 ++++-----
- 1 file changed, 4 insertions(+), 5 deletions(-)
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 880f664d6c04b..af965cab32e7f 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -7168,11 +7168,25 @@ static int ext4_acquire_dquot(struct dquot *dquot)
+>  {
+>  	int ret, err;
+>  	handle_t *handle;
+> +	bool freeze_protected =3D false;
+> +
+> +	/*
+> +	 * Trying to sb_start_intwrite() in a running transaction
+> +	 * can result in a deadlock. Further, running transactions
+> +	 * are already protected from freezing.
+> +	 */
+> +	if (!ext4_journal_current_handle()) {
+> +		sb_start_intwrite(dquot->dq_sb);
+> +		freeze_protected =3D true;
+> +	}
 
-diff --git a/fs/quota/quota.c b/fs/quota/quota.c
-index 89c3f9f5bb7b..423a7bcd1d63 100644
---- a/fs/quota/quota.c
-+++ b/fs/quota/quota.c
-@@ -767,9 +767,10 @@ static int quota_rmxquota(struct super_block *sb, void __user *addr)
- static int quotactl_cmd_write(int cmd)
- {
- 	/*
--	 * We cannot allow Q_GETQUOTA and Q_GETNEXTQUOTA without write access
--	 * as dquot_acquire() may allocate space for new structure and OCFS2
--	 * needs to increment on-disk use count.
-+	 * We cannot allow Q_GETQUOTA, Q_GETNEXTQUOTA, Q_XGETQUOTA and
-+	 * Q_XGETNEXTQUOTA without write access as dquot_acquire() may allocate
-+	 * space for new structure and OCFS2 needs to increment on-disk use
-+	 * count.
- 	 */
- 	switch (cmd) {
- 	case Q_GETFMT:
-@@ -777,8 +778,6 @@ static int quotactl_cmd_write(int cmd)
- 	case Q_SYNC:
- 	case Q_XGETQSTAT:
- 	case Q_XGETQSTATV:
--	case Q_XGETQUOTA:
--	case Q_XGETNEXTQUOTA:
- 	case Q_XQUOTASYNC:
- 		return 0;
- 	}
--- 
-2.34.1
+[Severity: High]
+Can this cause an ABBA deadlock between sb->s_umount and SB_FREEZE_FS when
+ustat(2) runs on a frozen filesystem?
 
+Commit "quota: Forbid Q_XGETQUOTA and Q_XGETNEXTQUOTA for frozen filesystem"
+blocks quotactl from reaching ext4_acquire_dquot() on a frozen superblock,
+but vfs_ustat() also acquires s_umount for reading via user_get_super()
+without checking whether the filesystem is frozen:
+
+fs/statfs.c:vfs_ustat() {
+	struct super_block *s =3D user_get_super(dev, false);
+	int err;
+	if (!s)
+		return -EINVAL;
+
+	err =3D statfs_by_dentry(s->s_root, sbuf);
+	drop_super(s);
+	return err;
+}
+
+When project quota limits are enabled and the root directory inode has
+EXT4_INODE_PROJINHERIT set, ext4_statfs() calls ext4_statfs_project() ->
+dqget().  Because the root inode is a directory, its project dquot is not
+kept attached in i_dquot[PRJQUOTA], so if no other inode holds an active
+reference to that project dquot when the filesystem is frozen, dqget()
+invokes ext4_acquire_dquot() with no running transaction:
+
+CPU0                              CPU1
+----                              ----
+                                  freeze_super()
+                                    /* freezes at SB_FREEZE_COMPLETE */
+vfs_ustat()
+  user_get_super()
+    down_read(&sb->s_umount)
+  ...
+  ext4_acquire_dquot()
+    sb_start_intwrite(sb)
+                                  thaw_super()
+                                    super_lock_excl(sb)
+                                      down_write(&sb->s_umount)
+
+ *** DEADLOCK ***
+
+CPU0: vfs_ustat() -> statfs_by_dentry() -> ext4_statfs() ->
+      ext4_statfs_project() -> dqget() -> ext4_acquire_dquot()
+CPU1: thaw_super() -> super_lock_excl()
+
+CPU0 blocks in sb_start_intwrite() waiting for SB_FREEZE_FS while holding
+s_umount for reading, and thaw_super() cannot unlock SB_FREEZE_FS until it
+acquires s_umount exclusively, leaving the filesystem permanently frozen.
+
+--=20
+Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261126123611.2517=
+017-1-yebin@huaweicloud.com?part=3D2
