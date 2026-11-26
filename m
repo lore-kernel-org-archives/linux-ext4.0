@@ -1,88 +1,64 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=203.254.224.33
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795708494;
-	b=Q+yljGyNguYFAuw4jrJ6DmcjC2zQx8z5M/AgGiRWlUU7Cp12yF7q3i2ja9SzYR1WXXi9
-	 iDFfgcVoKluW6aa6RWWld3Sfg+Ou7t3Gjs65+VISR3DgZ9MxI2BUPAiK1FaQn2uwrHJ7g
-	 XYjiRE8lfrs+PlUYt7i6lszfn6IWY39ZvtGyhD1WDZMzIpGyKc5nJJkFKFNsxx2e37iml
-	 /1XzLFQgwSc6ILLq2dcyedNAhKdPc3cvAtgPfRMg2L8cSxtSOWqXWkaOwwABXA4kAH/oI
-	 WeyJpPotrQDYEeCz8Ylo5pfG+24qG7EmVrO8uNjwXRmWyotibtcRW0phyTA1YuajlCw==
+	t=1795715911;
+	b=elh80Fu5SUgP7cx2udys9TONKl25nJ8j0IZuwfhfIKK6ciSst3z4e9m+y51idMyym66L
+	 Fsfu/ZMkzranEhc9G+TR2kK+jucpbrqFRHx5/gT+E38Ybk2IidiPlSaOtMOLEdL7yHpx4
+	 SxNzgLmDw31MVgUp5RK7HAqka/yL2WUjoN64+ipIC+gwAfPtBl9jVDgbNiD0QvuuvXg+Y
+	 qM5YiDGS3k/k54dt4/OrRxwjGNvp2WHkMbO5FEJw8RkOxUxRLYM+Cl2AjoVaTpgzrzLcD
+	 1mKsLXMluX6EcjHmVEHrcS2rUQw5L0OgQE0OZK69MfJaixfow+SqmioYcthmo5IABrA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795708494;
-	h=DMARC-Filter:Received:DKIM-Filter:DKIM-Signature:Received:Received:
-	 Received:Received:Date:From:To:Cc:Subject:Message-ID:MIME-Version:
-	 In-Reply-To:X-CMS-MailID:X-Msg-Generator:Content-Type:
-	 X-Sendblock-Type:CMS-TYPE:cpgsPolicy:X-CFilter-Loop:X-CMS-RootMailID:
-	 References;
-	bh=5M9xtfTWt/rD6V3Yq9/gJOzmL0PuY9q0JOmTonMrkYc=;
-	b=tTMXDsUPkUve7LOve57bQ+wovpB8krKhrLyTc2oyUo8bfPs8UHFbmkkco6wY5rUJEBCc
-	 lE+81OIQ7Ujy+oNovCftuduV39P0ZmAG49Ss5d/+y9n7difPoAhPry+QMhEoKV6Huu17k
-	 tq8APb3vqE5uV3xVgtma9mFc+kD96vEUiyg4L/6TCmwFPkoqlZmIE0eM5pDVi5d/QJLQO
-	 b2XRjuLzax61GYeJkPbDoMG98zNLcW4Fy3Hz8UpeEYmB1BwFV/a4nw3YGWN3k7pXmCoRg
-	 j7w9xpNL7V6XUdK4uONuQzToO5ywGHZ7UIeTlrJmuLhhJLhuX1x/697xHlzApjUmR1g==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795715911;
+	h=Received:DKIM-Signature:Received:Subject:From:In-Reply-To:References:
+	 X-PR-Tracked-List-Id:X-PR-Tracked-Message-Id:X-PR-Tracked-Remote:
+	 X-PR-Tracked-Commit-Id:X-PR-Merge-Tree:X-PR-Merge-Refname:
+	 X-PR-Merge-Commit-Id:Message-Id:Date:To:Cc;
+	bh=x6I7KcFrdZgI4ebYkIJF91XcGCKi12e7dls4bCTLclc=;
+	b=wE/x1rizIvjqmvAT+93pVg3h5ZRn1M383KL1YAC8ytetQninkjIAqyeaB3cxaLEZl35J
+	 GXvbXma9KrPH2LirRHkKzKw7YLHlF8jnQ6J9A1mZ1O8I571vSPGM3VFB4IS8U1/aAqSoK
+	 3HhbVIaQNA4AWwRAuSlKhFXKyOIezH+4PLI9znn4oHkmwk3Xfu13uNtuLolwoqK0EdRE9
+	 2W6Dc0HFP7r/CueiNE4Fe/PcUGNUZjWCc9sb/rku75wxhWkLQeA+dH42w0YnVeWmO0nyD
+	 bc8ZHOu7o/Fa3VOt5lMi9WlTtvgLBVMK1MDNI4gy7DBL7bNJ91+gB4FwFRoopSPsybg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=samsung.com;
-	spf=pass smtp.mailfrom=samsung.com;
-	dkim=pass header.d=samsung.com header.i=@samsung.com header.a=rsa-sha256 header.s=mail20170921 header.b=S8Q+2CV4;
-	arc=none smtp.remote-ip=203.254.224.33
-Received: from mailout3.samsung.com (mailout3.samsung.com [203.254.224.33])
-	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gb8ECwum;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 03A23606A31E;
-	Thu, 26 Nov 2026 15:54:52 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 03A23606A31E
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=samsung.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=samsung.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6128B606A31C;
+	Thu, 26 Nov 2026 17:58:31 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=samsung.com header.i=@samsung.com header.a=rsa-sha256 header.s=mail20170921 header.b=S8Q+2CV4
-Received: from epcas5p1.samsung.com (unknown [182.195.41.39])
-	by mailout3.samsung.com (KnoxPortal) with ESMTP id 20261126155444epoutp03dcd4ec9596cec66ed694dc1c2cd611a1~ro1pFr0S32621526215epoutp032;
-	Thu, 26 Nov 2026 15:54:44 +0000 (GMT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 mailout3.samsung.com 20261126155444epoutp03dcd4ec9596cec66ed694dc1c2cd611a1~ro1pFr0S32621526215epoutp032
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=samsung.com;
-	s=mail20170921; t=1795708484;
-	bh=5M9xtfTWt/rD6V3Yq9/gJOzmL0PuY9q0JOmTonMrkYc=;
-	h=Date:From:To:Cc:Subject:In-Reply-To:References:From;
-	b=S8Q+2CV47r+jcyB/hxRZQoNdHuxQ/gWyvqpTmqCCGD4I8E1N/8Sp5R2e+BT1h5Dit
-	 Id45RW2ZS5AZJEl/R4M3H3tcJ9xLhuBNVHLz9LrKcWbkmclmhrryoUfbwW/+ukJYtW
-	 oFWXu+LFCdF+trLev1upv67SG1axo8gAriR3T9dQ=
-Received: from epsnrtp03.localdomain (unknown [182.195.42.155]) by
-	epcas5p3.samsung.com (KnoxPortal) with ESMTPS id
-	20261126155443epcas5p3efe33a75b41143a93560ac14ae0acd78~ro1oKmgN02527325273epcas5p3D;
-	Thu, 26 Nov 2026 15:54:43 +0000 (GMT)
-Received: from epcas5p4.samsung.com (unknown [182.195.38.95]) by
-	epsnrtp03.localdomain (Postfix) with ESMTP id 4jb1MQ68Ssz3hhT3; Thu, 26 Nov
-	2026 15:54:42 +0000 (GMT)
-Received: from epsmtip2.samsung.com (unknown [182.195.34.31]) by
-	epcas5p4.samsung.com (KnoxPortal) with ESMTPA id
-	20261126140745epcas5p4f87a6186091785f4d3de4b69734aed88~rnYO8DwMQ2019420194epcas5p43;
-	Thu, 26 Nov 2026 14:07:45 +0000 (GMT)
-Received: from green245.gost (unknown [107.99.41.245]) by
-	epsmtip2.samsung.com (KnoxPortal) with ESMTPA id
-	20261126140741epsmtip24d507cb1363ab8b6b8b6b2fe8c81b878~rnYK24Eeh1787017870epsmtip2c;
-	Thu, 26 Nov 2026 14:07:41 +0000 (GMT)
-Date: Thu, 26 Nov 2026 19:36:51 +0530
-From: Nitesh Shetty <nj.shetty@samsung.com>
-To: Pavel Begunkov <asml.silence@gmail.com>
-Cc: Mengmeng Zhao <mengmeng.zhao@linux.dev>, Anuj Gupta
-	<anuj20.g@samsung.com>, Christoph Hellwig <hch@lst.de>, Christian Brauner
-	<brauner@kernel.org>, Anuj Gupta <anuj1072538@gmail.com>, Jens Axboe
-	<axboe@kernel.dk>, Sumit Semwal <sumit.semwal@linaro.org>, Christian Koenig
-	<christian.koenig@amd.com>, Philipp Stanner <phasta@kernel.org>, Dan
-	Williams <djbw@kernel.org>, Matthew Wilcox <willy@infradead.org>, Jan Kara
-	<jack@suse.cz>, Alexander Viro <viro@zeniv.linux.org.uk>, Theodore Ts'o
-	<tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>, Baokun Li
-	<libaokun@linux.alibaba.com>, Ojaswin Mujoo <ojaswin@linux.ibm.com>, Ritesh
-	Harjani <ritesh.list@gmail.com>, Zhang Yi <yi.zhang@huawei.com>, Jonathan
-	Corbet <corbet@lwn.net>, Shuah Khan <skhan@linuxfoundation.org>, Randy
-	Dunlap <rdunlap@infradead.org>, linux-block@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	nvdimm@lists.linux.dev, linux-ext4@vger.kernel.org,
-	linux-xfs@vger.kernel.org, linux-doc@vger.kernel.org,
-	linux-media@vger.kernel.org, dri-devel@lists.freedesktop.org,
-	linaro-mm-sig@lists.linaro.org, Li Wang <liwang@kylinos.cn>, Mengmeng Zhao
-	<zhaomengmeng@kylinos.cn>
-Subject: Re: [RFC PATCH v2 0/8] ext4: Add dma-buf read/write support
-Message-ID: <20261126140651.vzs2gdwajemvf6kt@green245.gost>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gb8ECwum
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3E2D81F000C4;
+	Thu, 26 Nov 2026 17:58:31 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1795715911;
+	bh=x6I7KcFrdZgI4ebYkIJF91XcGCKi12e7dls4bCTLclc=;
+	h=Subject:From:In-Reply-To:References:Date:To:Cc;
+	b=gb8ECwumCvU/8ECogM4N8vpDO24y8hlaCcP+omZAcJZLfT5wejl51X0cBWSONrm7J
+	 neV73AYViYLNLMxHZ5tr80bZGSLRqX1NFkmPdOD3nnGNdP8DF9dE2R0eVUjd2TEOFJ
+	 DvAnqYWz0wz/C5ltAAEFvAlF0KIAl0WYV9qPKvrIpdz23+68OsKCG28rm1BNpzxxQT
+	 w448jmrxT3nxqkQ4sMVVDsoieyt6J3I0lvFOZL20cXzwq+yC24x3tr1KtrZt11nLkq
+	 d5FAyaETVG220//B7e8R38xH/q63ebbzsLg+GhY9LFYuNa+wULBWJmLTyIqvKA5FuC
+	 Dljp/cl6e6Czw==
+Received: from [10.30.226.235] (localhost [IPv6:::1])
+	by aws-us-west-2-korg-oddjob-rhel9-1.codeaurora.org (Postfix) with ESMTP id 349893805D92;
+	Thu, 26 Nov 2026 17:58:31 +0000 (UTC)
+Subject: Re: [GIT PULL] ext4 post-7.4-rc5 merge fixups
+From: pr-tracker-bot@kernel.org
+In-Reply-To: <awhRbTWsHzW4U7Lp@mit.edu>
+References: <awhRbTWsHzW4U7Lp@mit.edu>
+X-PR-Tracked-List-Id: <linux-kernel.vger.kernel.org>
+X-PR-Tracked-Message-Id: <awhRbTWsHzW4U7Lp@mit.edu>
+X-PR-Tracked-Remote: https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for-linus-7.4-rc5-postmerge
+X-PR-Tracked-Commit-Id: aceadbccd428fb8e6593b27a3091d961f80225d1
+X-PR-Merge-Tree: torvalds/linux.git
+X-PR-Merge-Refname: refs/heads/master
+X-PR-Merge-Commit-Id: df99e82b36ff3c243ec3a06afc0ccaa4866a5a41
+Message-Id: <179571590980.542934.10079177941406328530.pr-tracker-bot@kernel.org>
+Date: Thu, 26 Nov 2026 17:58:29 +0000
+To: Theodore Ts'o <tytso@mit.edu>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>, Ext4 Developers List <linux-ext4@vger.kernel.org>, Linux Kernel Developers List <linux-kernel@vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -91,44 +67,16 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
-MIME-Version: 1.0
-In-Reply-To: <0b76171b-7f2e-41d2-8a5c-102dbe4cb85b@gmail.com>
-X-CMS-MailID: 20261126140745epcas5p4f87a6186091785f4d3de4b69734aed88
-X-Msg-Generator: CA
-Content-Type: multipart/mixed;
-	boundary="----sfnc.NZyIOBfLTiZTLswaXBSL0w4GQC52Zj1LhBq2cHN2.MV=_ad66_"
-X-Sendblock-Type: REQ_APPROVE
-CMS-TYPE: 105P
-cpgsPolicy: CPGSC10-542,Y
-X-CFilter-Loop: Reflected
-X-CMS-RootMailID: 20261124084131epcas5p3098eab1bc134da7aefcc83c646b54a9d
-References: <20261113070621.273953-1-mengmeng.zhao@linux.dev>
-	<20261120154153.GC28611@lst.de>
-	<361c4312-f77b-495f-9ee4-e0b9612b4463@linux.dev>
-	<CGME20261124084131epcas5p3098eab1bc134da7aefcc83c646b54a9d@epcas5p3.samsung.com>
-	<20261124084025.2101804-1-anuj20.g@samsung.com>
-	<3bce3a69-e41c-4683-b1ca-9477dd41a7e0@linux.dev>
-	<0b76171b-7f2e-41d2-8a5c-102dbe4cb85b@gmail.com>
 
-------sfnc.NZyIOBfLTiZTLswaXBSL0w4GQC52Zj1LhBq2cHN2.MV=_ad66_
-Content-Type: text/plain; charset="utf-8"; format="flowed"
-Content-Disposition: inline
+The pull request you sent on Thu, 26 Nov 2026 10:38:09 -0500:
 
-On 26/11/26 10:44AM, Pavel Begunkov wrote:
->I'll resend it later, how to store the tag is the least interesting
->part, it can just move inside the block/ext4/etc code, which would
->be uglier, but whatever.
->
+> https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for-linus-7.4-rc5-postmerge
 
-What about the f_op method instead of storing the
-tag in multiple users that we support now i.e., block/ext4/xfs code?
-We refined your patches with this approach and it seemed to fit well.
+has been merged into torvalds/linux.git:
+https://git.kernel.org/torvalds/c/df99e82b36ff3c243ec3a06afc0ccaa4866a5a41
 
---
-Nitesh
+Thank you!
 
-------sfnc.NZyIOBfLTiZTLswaXBSL0w4GQC52Zj1LhBq2cHN2.MV=_ad66_
-Content-Type: text/plain; charset="utf-8"
-
-
-------sfnc.NZyIOBfLTiZTLswaXBSL0w4GQC52Zj1LhBq2cHN2.MV=_ad66_--
+-- 
+Deet-doot-dot, I am a bot.
+https://korg.docs.kernel.org/prtracker.html
