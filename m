@@ -1,122 +1,110 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.130
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795787974;
-	b=3ZGt9so1a9I7KYazX++tuwhbTohtD9l0QmE9TfVUEvnOtHF5Wk3ikDTNRMCJpntTT5u8
-	 qr2lHFmYtTjzNJm3HjEcn7Q7Pafw0UppHNfiOKRp4nSj83eY1EAiQIWhyx21LNPA/jF4Y
-	 WS8+LrGApVr38u38ZAHQLKVDmnnxPCr+LM0AVhKhAGRqhxOwBZmh88KSKXWGfPTSvoqst
-	 GxqxfJg1wL8FX3Lf7hR09tDrg1Ip3bv9+aEOyCF8eKbV2FuiKqRQzVhPzjOHSM/7wJ1yJ
-	 FR5hbt1YNbMnEnCUAicJvisPKYPhj63MO/pER+lB6HXlyyqgcW4eFYfXfMoA59i3Aug==
+	t=1795789769;
+	b=UJORjQYMGvrHHEvij1d4wKrp9m/2+I5WwRAyjVYIKRvF3B1LrSM1XzjyYJHCJXJARnzL
+	 Tp6G96mZtme32TUwoO6QUMnDjkm1r0tK2nKR22iH8lykuHVTzEXcxqbf2+/fejPBmN8VJ
+	 USi6Hqgq7td3BjJ8vkQ7rYGgDJEeYj1gTG7DxkduqFUqxwEWhDWkob8oLAkUW5ssZXe3h
+	 3F1v7rsofkHpoQh1/E4mrI/eMq6uTWSbHlXO53KlDp+p48SlPOo78m1KpV1Ge5o5ZopmY
+	 oI4BiTjXwpPl1SvACghre7SnzDCGtIsHrpF4aJfQqNDXLZHeh2gMo+YtI7CE/wf4Ukw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795787974;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795789769;
 	h=DMARC-Filter:Received:DKIM-Signature:DKIM-Signature:DKIM-Signature:
 	 DKIM-Signature:Received:Received:Received:Date:From:To:Cc:Subject:
 	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
-	 In-Reply-To:X-Spam-Flag:X-Spam-Level:X-Spamd-Result:X-Spam-Score;
-	bh=hSAGX0PlcKV7hxoSKihFcCP5vot5vWKykmT5/I1Rotw=;
-	b=ZaVTkkkKwJBKXTFz93EX0GuYzZ9AGTc2RKolhad6C/sZpD2MfUjph3dQza1XYA+/aiKi
-	 awZOEhth+7jhM5gTXE99vVYXIY530uMKRawyyAKsmqIIyMB9ui61+GEaOk3otp2js5ufR
-	 9R0CvJQGgxajjVHgCwmvcd0N0BVWpbcj/ZqBZZh3INOkQoHEDZ3z/aj8OPHz39GD5cYKq
-	 I6CdjSz25t/ihYOf7KzjkLFI5kLFcqXApAyjyEFVAZQsFS2R6P1ophplNLj3ekGkp0ntT
-	 GvMG/WTb972bpMFVW/vf+e03fSeT2dLcX100zW83BmxhQM/ctfHCQzTS8MQEC1pOKVA==
+	 In-Reply-To:X-Rspamd-Queue-Id:X-Spam-Level:X-Rspamd-Server:
+	 X-Rspamd-Action:X-Spam-Flag:X-Spamd-Result:X-Spam-Score;
+	bh=kuhW9lDWfneWeZsk+TIdcuuOQdceWcujJoVRGEDz8Vg=;
+	b=EvSO4/axbGb8ojK0+R3b0+5vg/U+FRo1lcIjTjIWp0qbQaEU2aRP2JsRgkf/2T7d6ugL
+	 VdxKTo+agwsg69/8BdY1Z/wXWIdjVwUeYw/KfWbVHZOpKHUKKB+qyWtJ472CKBirlGxE7
+	 DMJQ/Rvt9eUZq6n8J9BiDbCQi2hJYiE4H2WIY2yrzNnjR9xML6nPa/vJYZmF8Q4bSAJGi
+	 BLWsMy310Qx/51w78hY+nIDJM6dR2sk5+pCMaqQdKG09uhJ1EBG5Ws81LvmVUzTu+mAIJ
+	 wjfIk8hkT11THBkTXp280Vqvl1i1caRAFThHJZ69awTF477JcoGo1groecbdu1nrJWA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=none header.from=suse.cz;
 	spf=pass smtp.mailfrom=suse.cz;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=n8Sp1N6y;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=pODgPDhA;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=ptBQgtrQ;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=m5UC2tpx;
-	arc=none smtp.remote-ip=195.135.223.131
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=lKHKPyxM;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=ktP1SV97;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=wTDWH56U;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=G1isq0ds;
+	arc=none smtp.remote-ip=195.135.223.130
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ED422606A323;
-	Fri, 27 Nov 2026 13:59:33 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org ED422606A323
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C801E606A685;
+	Fri, 27 Nov 2026 14:29:28 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org C801E606A685
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=n8Sp1N6y;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=pODgPDhA;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=ptBQgtrQ;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=m5UC2tpx
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=lKHKPyxM;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=ktP1SV97;
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=wTDWH56U;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=G1isq0ds
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id D311D1FBB0;
-	Fri, 27 Nov 2026 13:59:31 +0000 (UTC)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id E248A22996;
+	Fri, 27 Nov 2026 14:29:26 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1795787972; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1795789767; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=hSAGX0PlcKV7hxoSKihFcCP5vot5vWKykmT5/I1Rotw=;
-	b=n8Sp1N6y9Vm45Mgr7D/4hXr+E6kdClBXxiVKkx/q5AGVMNOvdcYnHgM8wgmleWTbydX/QG
-	uuMm1BMVGIR3YVzyXvB4zzhU52UBrN334F0BC6VptBLw3q8doluBTW8UzBHcb/ROoal/RZ
-	hB5Wy4ULuPz9NrLd64ks0FgbhAS6apQ=
+	bh=kuhW9lDWfneWeZsk+TIdcuuOQdceWcujJoVRGEDz8Vg=;
+	b=lKHKPyxMwPUxgYW5YdKdQFkoz9m4rE57CIRhz6biJTjTygs1S1VlghcaDtGH9YmGRVKD4l
+	E8CkMd3B6jLA+tJ7ZBu9BD4L57ljJ9WlNM+6hdcmFn9oWaKnK+jo8+cMTG3SXl4/wRPzFq
+	vGhkXwEdvJyYySpRKxfnj5B36CGga6A=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1795787972;
+	s=susede2_ed25519; t=1795789767;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=hSAGX0PlcKV7hxoSKihFcCP5vot5vWKykmT5/I1Rotw=;
-	b=pODgPDhAIxp656pvlxUrpRSk4HSBAnk2OPd6F0EmkVWwkXolg1gbpxsCUHwBLlENz3fTy+
-	vyjKYebOVwYrdiBA==
-Authentication-Results: smtp-out2.suse.de;
-	none
+	bh=kuhW9lDWfneWeZsk+TIdcuuOQdceWcujJoVRGEDz8Vg=;
+	b=ktP1SV97Y/thykAiKmmc3VqiZzEZeFcmONfRrm6PfurSssFSGqVjDmJQlI279EC6SNl9YN
+	fNPR43zeUvb0B6Dg==
+Authentication-Results: smtp-out1.suse.de;
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=wTDWH56U;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=G1isq0ds
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1795787971; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1795789766; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=hSAGX0PlcKV7hxoSKihFcCP5vot5vWKykmT5/I1Rotw=;
-	b=ptBQgtrQ1GwX/wj0pA4/omtbuqgeHt/5dbnW0NE7ZSZb/rshDm92HW7IAbncmzCNomGHrq
-	llRGEkndrmeio+ki1sR4C5SAO30en9k2MiDmH37kCNezcAXR3p3iE8ShjAucopDXxQKZ0z
-	B+O3si4tKsoKxWqd++oRS8jajx2WrV8=
+	bh=kuhW9lDWfneWeZsk+TIdcuuOQdceWcujJoVRGEDz8Vg=;
+	b=wTDWH56Uy8u+jI12AX5EczkuGIIrYmHYbkvnBrz2S4bGUhkf2EKOjjayyXBttmitiEyLQU
+	qtGb2txHZlp7hOgPyzDg8GEGW+XoYtcyCEv+dbXMEZ4c1SqYmTXkhamuWSNtre9ZuGBjYX
+	jXheCllkgnpRxDbhIawc3MDlHFmfcTY=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1795787971;
+	s=susede2_ed25519; t=1795789766;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=hSAGX0PlcKV7hxoSKihFcCP5vot5vWKykmT5/I1Rotw=;
-	b=m5UC2tpxZO9Yf2DSATt0pN8be86yEfoSuqxihq+0TXlJbrK4CsSDNWDf2F2CDIHK7o9gTL
-	+NVHKwwbqHEZ7dCQ==
+	bh=kuhW9lDWfneWeZsk+TIdcuuOQdceWcujJoVRGEDz8Vg=;
+	b=G1isq0dskEjXytVokHgEk4iXKC1KgN6vDScaSLhpt27Grx2AodnJNABcR78vR6OMk4+P8N
+	XBUANH+Src3o9HAw==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id A703013432;
-	Fri, 27 Nov 2026 13:59:31 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id B842E13432;
+	Fri, 27 Nov 2026 14:29:26 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id QDmCIMOMCWsgNQAAD6G6ig
-	(envelope-from <jack@suse.cz>); Fri, 27 Nov 2026 13:59:31 +0000
+	id 3KfrJMaTCWvUUwAAD6G6ig
+	(envelope-from <jack@suse.cz>); Fri, 27 Nov 2026 14:29:26 +0000
 Received: by quack.suse.cz (Postfix, from userid 1000)
-	id 2B5DF5103B; Fri, 27 Nov 2026 14:59:31 +0100 (CET)
-Date: Fri, 27 Nov 2026 14:59:31 +0100
+	id 47F245104D; Fri, 27 Nov 2026 15:29:26 +0100 (CET)
+Date: Fri, 27 Nov 2026 15:29:26 +0100
 From: Jan Kara <jack@suse.cz>
-To: Pedro Falcato <pfalcato@suse.de>
-Cc: Jan Kara <jack@suse.cz>, David Hildenbrand <david@kernel.org>, 
-	Andrew Morton <akpm@linux-foundation.org>, Zi Yan <ziy@nvidia.com>, 
-	"Matthew Wilcox (Oracle)" <willy@infradead.org>, Lorenzo Stoakes <ljs@kernel.org>, 
-	John Hubbard <jhubbard@nvidia.com>, Peter Xu <peterx@redhat.com>, 
-	Johannes Weiner <hannes@cmpxchg.org>, linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org, 
-	"Liam R. Howlett" <liam@infradead.org>, Vlastimil Babka <vbabka@kernel.org>, 
-	Mike Rapoport <rppt@kernel.org>, Suren Baghdasaryan <surenb@google.com>, 
-	Michal Hocko <mhocko@suse.com>, Baolin Wang <baolin.wang@linux.alibaba.com>, 
-	Nico Pache <nico.pache@linux.dev>, Ryan Roberts <ryan.roberts@arm.com>, Dev Jain <dev.jain@arm.com>, 
-	Barry Song <baohua@kernel.org>, Lance Yang <lance.yang@linux.dev>, 
-	Usama Arif <usama.arif@linux.dev>, Kiryl Shutsemau <kas@kernel.org>, linux-mm@kvack.org, 
-	linux-kernel@vger.kernel.org, Kairui Song <kasong@tencent.com>, Qi Zheng <qi.zheng@linux.dev>, 
-	Shakeel Butt <shakeel.butt@linux.dev>, Axel Rasmussen <axelrasmussen@google.com>, 
-	Yuanchu Xie <yuanchu@google.com>, Wei Xu <weixugc@google.com>, Baoquan He <baoquan.he@linux.dev>, 
-	Michal Hocko <mhocko@kernel.org>, linux-fsdevel@vger.kernel.org, stable@vger.kernel.org
-Subject: Re: [PATCH RFC 4/5] mm/vmscan: be more careful when releasing FS
- metadata if buffer_heads_over_limit
-Message-ID: <mlu22apiuzcim6icjolifdr6wgsk5u6dpo4kwn4ppkcdgfudn7@t6sp7ck7qafd>
-References: <20261119-gup-dirty-what-v1-0-236d69f25c24@suse.de>
- <20261119-gup-dirty-what-v1-4-236d69f25c24@suse.de>
- <wm57zjtvdpexvbfygmdggw2ytsazelyds4rt3mtx6oy6u72mke@rhviuzp26rt6>
- <awmGDyR4WUJrwqn1@pedro-suse.tail5790ac.ts.net>
+To: jiazhenyuan <jiazhenyuan@uniontech.com>
+Cc: tytso@mit.edu, adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, 
+	jack@suse.cz, ojaswin@linux.ibm.com, ritesh.list@gmail.com, 
+	yi.zhang@huawei.com, linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
+	gouhao@uniontech.com, niecheng1@uniontech.com, guanwentao@uniontech.com, 
+	caina@uniontech.com, zhaoshuang@uniontech.com, wangqing@uniontech.com
+Subject: Re: [PATCH 1/2] ext4: fix buffer head leak in ext4_ext_precache()
+Message-ID: <gnl2hl6a27e2pjlwufu2nrg6edze4b7vvofyeyrxvntct53ruc@wxj5onv2sjq3>
+References: <20261127064926.135945-1-jiazhenyuan@uniontech.com>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -128,63 +116,95 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <awmGDyR4WUJrwqn1@pedro-suse.tail5790ac.ts.net>
-X-Spam-Flag: NO
+In-Reply-To: <20261127064926.135945-1-jiazhenyuan@uniontech.com>
+X-Rspamd-Queue-Id: E248A22996
 X-Spam-Level: 
-X-Spamd-Result: default: False [-16.80 / 50.00];
+X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
+X-Rspamd-Action: no action
+X-Spam-Flag: NO
+X-Spamd-Result: default: False [-11.51 / 50.00];
 	SUSE_INTERNAL_BYPASS(-9.00)[];
-	REPLY(-4.00)[];
 	BAYES_HAM(-3.00)[100.00%];
+	SUSPICIOUS_RECIPS(1.50)[];
 	NEURAL_HAM_LONG(-1.00)[-1.000];
 	MID_RHS_NOT_FQDN(0.50)[];
+	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
 	NEURAL_HAM_SHORT(-0.20)[-1.000];
 	MIME_GOOD(-0.10)[text/plain];
-	ARC_NA(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	TO_DN_SOME(0.00)[];
-	RCPT_COUNT_TWELVE(0.00)[37];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	RCVD_COUNT_THREE(0.00)[3];
-	R_RATELIMIT(0.00)[to_ip_from(RLc5chj8mdhigtayhgqted7wkp)];
-	FROM_EQ_ENVFROM(0.00)[];
-	URIBL_BLOCKED(0.00)[imap1.dmz-prg2.suse.org:helo,suse.com:email];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	MX_GOOD(-0.01)[];
 	RCVD_TLS_LAST(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,imap1.dmz-prg2.suse.org:helo]
-X-Spam-Score: -16.80
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	RCVD_COUNT_THREE(0.00)[3];
+	RCPT_COUNT_TWELVE(0.00)[16];
+	MIME_TRACE(0.00)[0:+];
+	ARC_NA(0.00)[];
+	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	FREEMAIL_CC(0.00)[mit.edu,dilger.ca,linux.alibaba.com,suse.cz,linux.ibm.com,gmail.com,huawei.com,vger.kernel.org,uniontech.com];
+	DNSWL_BLOCKED(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	TO_DN_SOME(0.00)[];
+	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	TAGGED_RCPT(0.00)[];
+	DKIM_TRACE(0.00)[suse.cz:+];
+	MISSING_XM_UA(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,suse.cz:dkim,suse.cz:email,imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo]
+X-Spam-Score: -11.51
 
-On Fri 27-11-26 13:37:15, Pedro Falcato wrote:
-> On Wed, Nov 25, 2026 at 09:45:01AM +0100, Jan Kara wrote:
-> > Just given buffer_heads_over_limit is a HIGHMEM thing and given how much we
-> > care (not) about HIGHMEM, maybe just completely ripping out the whole
-> > buffer_heads_over_limit logic is a better "solution"? I mean it's a crude
-> > heuristic anyway and for struct buffer_head to occupy significant portion
-> > of ZONE_NORMAL, you'd have to have several GB of pagecache with buffers
-> > which means the machine has to have quite some highmem which makes the
-> > setup even more dubious...
+On Fri 27-11-26 14:49:25, jiazhenyuan wrote:
+> ext4_ext_precache() stores each successfully read child extent block in
+> path[1..depth].p_bh. During normal traversal, these references are
+> released as the loop backtracks. If a later read fails, traversal breaks
+> to out and calls ext4_free_ext_path() before all ancestor references
+> have been dropped.
 > 
-> Is it _just_ a HIGHMEM thing? I had the impression it had some effect as
-> a general buffer_head shrinker. Either way, I do think we can remove it,
-> but I chose not to do it for stable; also, I don't have technical arguments
-> as to why it's useless, I just assume it is.
+> path[0].p_depth is not initialized, so ext4_ext_drop_refs() only
+> releases path[0].p_bh. Since the root block is inline and path[0].p_bh
+> is NULL, buffer heads held by path[1..depth] are leaked.
+> 
+> Set path[0].p_depth to the inode's extent depth so cleanup covers the
+> entire traversal stack.
+> 
+> Without this patch, the KUnit test added in the following patch reports:
+> 
+>     # test_ext_precache_read_failure_bh_leak: EXPECTATION FAILED at
+>     # fs/ext4/extents-test.c:1568
+>     Expected atomic_read(&bh->b_count) == 2, but
+>         atomic_read(&bh->b_count) == 3 (0x3)
+> 
+> Fixes: 7869a4a6c5caa ("ext4: add support for extent pre-caching")
+> Cc: stable@vger.kernel.org
+> Signed-off-by: jiazhenyuan <jiazhenyuan@uniontech.com>
 
-I don't believe it can ever activate without HIGHMEM - each bh points to
-actual data in the folio it is attached to which, usless you have 512-byte
-blocks, is more than 10x larger than struct buffer_head. So buffer heads
-can never occupy more than 10% of total memory unless you are really trying
-to screw up your system... And AFAIK this mechanism was introduced as
-a HIGHMEM thing many years ago.
+Looks good. Feel free to add:
 
-> Other filesystems (iomap, XFS, btrfs) don't participate in this scheme and
-> they turn out just fine. So, unless you find something I'm missing, I will
-> probably send a (separate) patch removing this whole mechanism for next.
-
-Yes, that would be great.
+Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
+
+> ---
+>  fs/ext4/extents.c | 2 ++
+>  1 file changed, 2 insertions(+)
+> 
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index b65b0261ee5c..4c775aa41459 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -638,6 +638,8 @@ int ext4_ext_precache(struct inode *inode)
+>  		return -ENOMEM;
+>  	}
+>  
+> +	path[0].p_depth = depth;
+> +
+>  	path[0].p_hdr = ext_inode_hdr(inode);
+>  	ret = ext4_ext_check(inode, path[0].p_hdr, depth, 0);
+>  	if (ret)
+> -- 
+> 2.20.1
+> 
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
