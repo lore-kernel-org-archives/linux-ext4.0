@@ -1,117 +1,83 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.130
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=148.163.156.1
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795792027;
-	b=Yvo+33OVqjiyvMK2lMoOZD1Q8jxM6UmDxFz6uS/O7oLNSJD/IiKevkNmdLo1yl8iGvhv
-	 G7pIW/eU827n/rQvvAvbv8EQIi3c6jaqGB2iJo4iR3RVyb8Y31WA2aQfs2vmMWDQv6Fok
-	 miLL0fkkd+xg2YrvjUpRyzCoExCpd4K0BL+puwGFUCQ0FXABQB/VUzNwk5eUUh3oTXCEj
-	 Da0AiIB/WS1optzUNvgk7Uefe9eaUDB3suC7+Ih57vf/x5UK/5Vd0AOjQOzbyI19MZG97
-	 tc0tSGTUHTtOnejkYSA1IvxtSqN4SLBNgAvqFDmc21eveZTN4PB/fD8gVkwPZJy0FCA==
+	t=1795792293;
+	b=gRoI4RApkZLsGQrIyyXykL+PZsgTRcF1vAFlEDJKsgKlJdrNYFDhKzHA57Q4OnN4bW5Q
+	 +Khgyvl0NuYomBBFBbqOfB2WxpUBFTF2UvZ8/Xt9YAALsVT9nt8QrjgpL65FZQlKY9Lg2
+	 9K8wn4GuNoD1Nu+4Yhdfvug9WssQ+Z4nt+0N+KAiq7SY+4lfsq6xamhzPIH7Fxds3QscA
+	 sXOVqKoSHfdxR7H60XycHZboEZxpdXPeNCewKbF3uQtzaYRvEh9lJUOrmkUE9+I+E3fu7
+	 G9JhTWTcu9P1DyISIQA0GAwgZwFBBxS5PegNHaQXSt0Dk2th00+3Sg+fv/UfG6zqZbg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795792027;
-	h=DMARC-Filter:Received:DKIM-Signature:DKIM-Signature:DKIM-Signature:
-	 DKIM-Signature:Received:Received:Received:Date:From:To:Cc:Subject:
-	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
-	 Content-Transfer-Encoding:In-Reply-To:X-Spamd-Result:X-Rspamd-Server:
-	 X-Rspamd-Action:X-Spam-Flag:X-Spam-Score:X-Spam-Level:
-	 X-Rspamd-Queue-Id;
-	bh=dTXX8z4+QohDFtefnUasluM1HjckHoXOnE6T5SSg51Y=;
-	b=AAEs31AuCo6LqF4RrsK6GmgBS7SIwRu4GP9mJzSm0/v7TaJOtQ9IrCZXmUg7ry9wiYaf
-	 u48h63v3f3pYsd5fClaM/x9h04X6vE0NslMwB9toyp+Oy+2f98ETuZN+rWmfXE52h/CNZ
-	 znTnNTHqCyIDKsxMA5iHZx4kvhzRvfttCrkUvXhetrWfNX4+npnEzNNt+dmUfiFW8fNt3
-	 4kCXUhjEuH4Ley0ipfcfbi6a/n9YZXU+UGseSbWa33VBDY0z8Qi+S0KnnXGFKpHwlnti1
-	 miJdOO6PbwM6hWsQh8Rk2KySRdCNyp/3pGTI76Pbp56GLNNEZeMw7rD8cyKyZe8Kukw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795792293;
+	h=DMARC-Filter:Received:DKIM-Signature:Received:Received:Received:
+	 Received:Received:Received:Received:From:Date:Subject:MIME-Version:
+	 Content-Type:Content-Transfer-Encoding:Message-Id:References:
+	 In-Reply-To:To:Cc:X-Mailer:X-TM-AS-GCONF:X-Proofpoint-Reinject:
+	 X-Proofpoint-Spam-Details-Enc:X-Proofpoint-ORIG-GUID:
+	 X-Authority-Analysis:X-Proofpoint-GUID:X-Proofpoint-Spam-Info:
+	 X-Proofpoint-Virus-Version:X-Proofpoint-Spam-Details;
+	bh=qmgCPoiLe1bkF8uoaWFVJiLz8gR4odA1E0byFhsm68c=;
+	b=zP7AiahQQJch0EJz8Ln0udN1ixGre1PFVej2Shj9rgME6yAjghx97nAUwwPDtlH2F12d
+	 MBz1hpyKiVes4yRAv0iUNETdOuML+f0YBRQCVBgVyZTRN41E4oXaMnUS0zdDp17qLwmmz
+	 VDUlKUQA2pToZUI4izLdaBXg9FiU39v8YZqusZpX8mHruXyG9fV6hf7tjOyjdQpZoJ9fc
+	 N4YTWhwM6d5CD1X/PgkAIr6bvaa1NwsjM094Ggq8qAVI4PP90B2fsInA1Wlz6rAqS/taK
+	 k8i8fpCNtgVKayzYg1FhG0cSRbitAA2eNlwNVyr8969W9O+Coom6oq2lCEHvQgDbp9A==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=none header.from=suse.cz;
-	spf=pass smtp.mailfrom=suse.cz;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=nAAJH3Dy;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=6iBEJfb8;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=nAAJH3Dy;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=6iBEJfb8;
-	arc=none smtp.remote-ip=195.135.223.130
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+	dmarc=pass header.from=linux.ibm.com;
+	spf=pass smtp.mailfrom=linux.ibm.com;
+	dkim=pass header.d=ibm.com header.i=@ibm.com header.a=rsa-sha256 header.s=pp1 header.b=tgTCgk9L;
+	arc=none smtp.remote-ip=148.163.156.1
+Received: from mx0a-001b2d01.pphosted.com (mx0a-001b2d01.pphosted.com [148.163.156.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 58793606A31C;
-	Fri, 27 Nov 2026 15:07:07 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 58793606A31C
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 35747606A31C;
+	Fri, 27 Nov 2026 15:11:32 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 35747606A31C
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=nAAJH3Dy;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=6iBEJfb8;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=nAAJH3Dy;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=6iBEJfb8
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 6240222953;
-	Fri, 27 Nov 2026 15:07:04 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1795792024; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=dTXX8z4+QohDFtefnUasluM1HjckHoXOnE6T5SSg51Y=;
-	b=nAAJH3DyrTcvGKdxu80haCicejfN30Z3VjYw+24CNNnIyTgdPexIjc1Y6/yGCe6FfbaeQ2
-	UZU000gGqklGM+tONJ1zETSf3oml0Wv6/b5EXBHjcxiyRMmldfxovLVO+SzZTu+Ztp2pw+
-	9bx3EPhS/sx3iGZpw3oP7KAf2xgHKpw=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1795792024;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=dTXX8z4+QohDFtefnUasluM1HjckHoXOnE6T5SSg51Y=;
-	b=6iBEJfb8PK36buTAYzLZX6v4RJ7TP9iHN4jcwbY0PcDpd6OJAs7Hm9dwS9Gbpch9BrrczW
-	VdxCFkl/6e7MqcDw==
-Authentication-Results: smtp-out1.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=nAAJH3Dy;
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=6iBEJfb8
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1795792024; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=dTXX8z4+QohDFtefnUasluM1HjckHoXOnE6T5SSg51Y=;
-	b=nAAJH3DyrTcvGKdxu80haCicejfN30Z3VjYw+24CNNnIyTgdPexIjc1Y6/yGCe6FfbaeQ2
-	UZU000gGqklGM+tONJ1zETSf3oml0Wv6/b5EXBHjcxiyRMmldfxovLVO+SzZTu+Ztp2pw+
-	9bx3EPhS/sx3iGZpw3oP7KAf2xgHKpw=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1795792024;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=dTXX8z4+QohDFtefnUasluM1HjckHoXOnE6T5SSg51Y=;
-	b=6iBEJfb8PK36buTAYzLZX6v4RJ7TP9iHN4jcwbY0PcDpd6OJAs7Hm9dwS9Gbpch9BrrczW
-	VdxCFkl/6e7MqcDw==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 36C1D13432;
-	Fri, 27 Nov 2026 15:07:04 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id 4W0fBZicCWtHewAAD6G6ig
-	(envelope-from <jack@suse.cz>); Fri, 27 Nov 2026 15:07:04 +0000
-Received: by quack.suse.cz (Postfix, from userid 1000)
-	id BB8D85106A; Fri, 27 Nov 2026 16:07:03 +0100 (CET)
-Date: Fri, 27 Nov 2026 16:07:03 +0100
-From: Jan Kara <jack@suse.cz>
-To: Petr =?utf-8?B?VmFuxJtr?= <petr.vanek@e2b.dev>
-Cc: Theodore Ts'o <tytso@mit.edu>, 
-	Andreas Dilger <adilger.kernel@dilger.ca>, Baokun Li <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>, 
-	Ojaswin Mujoo <ojaswin@linux.ibm.com>, "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, 
-	Zhang Yi <yi.zhang@huawei.com>, Deepanshu Kartikey <kartikey406@gmail.com>, 
-	stable@vger.kernel.org, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 2/3] ext4: convert regular file inline data through the
- page cache
-Message-ID: <awfevpp6kch4sczxhpublixkaf75sfarvzso4t6rzv4xgyly2n@m56pcc6zn7zo>
-References: <20261126201258.1553196-1-petr.vanek@e2b.dev>
- <20261126201258.1553196-3-petr.vanek@e2b.dev>
+	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.a=rsa-sha256 header.s=pp1 header.b=tgTCgk9L
+Received: from pps.filterd (m0360083.ppops.net [127.0.0.1])
+	by mx0a-001b2d01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 6ARE4pta3419789;
+	Fri, 27 Nov 2026 15:11:21 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=cc
+	:content-transfer-encoding:content-type:date:from:in-reply-to
+	:message-id:mime-version:references:subject:to; s=pp1; bh=qmgCPo
+	iLe1bkF8uoaWFVJiLz8gR4odA1E0byFhsm68c=; b=tgTCgk9LziYTZyn7yg9OhC
+	QPg9wMXNT2MQMBszFzyth6BBejbf2elGv9cB6bv45vfKfpvC6lpOgrltdHlOjDIe
+	lJ8njjhowt9ofj1JyhtFE6V/mz5/tQlSCY4qOT8HBB1LuwvOxmGPR0VYINLeuJ6F
+	ZW+JnB7E07l7gIMOmH+QK8lPw37DYZp37LY53Enp8eaa+t8eXFx7hM7yYhOeCBZS
+	G3BviwXuH04pJO+Kt9WGi7ILEpIU0iyB2pQeeKm9QkdvHI4+z62kBaJwtGPZelXH
+	hb8kykngyyyS5AjA5cepj/PSa2NM5/K/1xmS6RNFxG6wvrzpde/LtP0ZJbc8c2zA
+	==
+Received: from ppma22.wdc07v.mail.ibm.com (5c.69.3da9.ip4.static.sl-reverse.com [169.61.105.92])
+	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4j34fape7f-1
+	(version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=NOT);
+	Fri, 27 Nov 2026 15:11:20 +0000 (GMT)
+Received: from pps.filterd (ppma22.wdc07v.mail.ibm.com [127.0.0.1])
+	by ppma22.wdc07v.mail.ibm.com (8.18.1.11/8.18.1.11) with ESMTP id 6ARE4Svg3245805;
+	Fri, 27 Nov 2026 15:11:19 GMT
+Received: from smtprelay01.fra02v.mail.ibm.com ([9.218.2.227])
+	by ppma22.wdc07v.mail.ibm.com (PPS) with ESMTPS id 4j5uxx9a3w-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Fri, 27 Nov 2026 15:11:19 +0000 (GMT)
+Received: from smtpav04.fra02v.mail.ibm.com (smtpav04.fra02v.mail.ibm.com [10.20.54.103])
+	by smtprelay01.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 6ARFBHZp36897180
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+	Fri, 27 Nov 2026 15:11:17 GMT
+Received: from smtpav04.fra02v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id 7AE012004B;
+	Fri, 27 Nov 2026 15:11:17 +0000 (GMT)
+Received: from smtpav04.fra02v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id C5C022005A;
+	Fri, 27 Nov 2026 15:11:13 +0000 (GMT)
+Received: from localhost.localdomain (unknown [9.39.17.190])
+	by smtpav04.fra02v.mail.ibm.com (Postfix) with ESMTP;
+	Fri, 27 Nov 2026 15:11:13 +0000 (GMT)
+From: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+Date: Fri, 27 Nov 2026 20:40:48 +0530
+Subject: [PATCH v2 01/13] ext4: disable zeroout fallback in
+ ext4_split_extent()
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -121,261 +87,72 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <20261126201258.1553196-3-petr.vanek@e2b.dev>
-X-Spamd-Result: default: False [-11.51 / 50.00];
-	SUSE_INTERNAL_BYPASS(-9.00)[];
-	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	MIME_GOOD(-0.10)[text/plain];
-	MX_GOOD(-0.01)[];
-	RCVD_TLS_LAST(0.00)[];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	RCVD_COUNT_THREE(0.00)[3];
-	MIME_TRACE(0.00)[0:+];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	ARC_NA(0.00)[];
-	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	FREEMAIL_CC(0.00)[mit.edu,dilger.ca,linux.alibaba.com,suse.cz,linux.ibm.com,gmail.com,huawei.com,vger.kernel.org];
-	DKIM_TRACE(0.00)[suse.cz:+];
-	RCPT_COUNT_SEVEN(0.00)[11];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	TO_DN_SOME(0.00)[];
-	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	TAGGED_RCPT(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo]
-X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
-X-Rspamd-Action: no action
-X-Spam-Flag: NO
-X-Spam-Score: -11.51
-X-Spam-Level: 
-X-Rspamd-Queue-Id: 6240222953
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261127-ext4-endio-zero-bug-v2-1-4106968e4d15@linux.ibm.com>
+References: <20261127-ext4-endio-zero-bug-v2-0-4106968e4d15@linux.ibm.com>
+In-Reply-To: <20261127-ext4-endio-zero-bug-v2-0-4106968e4d15@linux.ibm.com>
+To: "Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>,
+        Baokun Li <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>,
+        "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
+        Zhang Yi <yi.zhang@huawei.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+X-Mailer: b4 0.14.3
+X-TM-AS-GCONF: 00
+X-Proofpoint-Reinject: loops=2 maxloops=12
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYxMTI3MDA2MCBTYWx0ZWRfX5x7LQGMARY9K
+ yTNu+tEvLRuC2lF+kWnTJ3qY5YJeMZgf0l709duI5zgV0zxj3OKHiPh9BFV0vPSzFmZ9ymqiiyI
+ dwZ5ULjYpyv8+8BKdxT82g074bIkNc9iAHvuR9qcMOK2Bzsgm5QmzOtV97md++Xq+c1EMHVuXNw
+ wUyf9ZmdfpzHwDUDS3GSYj3yWmdHN0QaUZJu4+iDEWCduQ0tGoAL0uba9EiyUPcn+2YvSwBmOYx
+ 3Zl/uP1vgDjQ0Nf4sCivmQsBuJzOxTuYMQ0tnu3c8lDXDNMvRN2G0ME/xARWGQSL0KArng7l9Kn
+ ppZc0d1RLfq9g2DCRzmTrSG506+U8TwLYEyxgFAp78OyukHZ7wDrDToGhW0LsNzM3RdZ8d3CEUR
+ 70++IXFtA4hk6q6VfHgSITG65WarvJCo9HTpGhZsX/m4V+HNd4WiZeLPjnTAZqEK3HfgQq2WGtz
+ 72/NJa6TG+e7tlsw2Tg==
+X-Proofpoint-ORIG-GUID: Fdj_29VKG8pphQsHgb9l-95O8xX_labH
+X-Authority-Analysis: v=2.4 cv=U6QHnuru c=1 sm=1 tr=0 ts=6b099d99 cx=c_pps
+ a=5BHTudwdYE3Te8bg5FgnPg==:117 a=5BHTudwdYE3Te8bg5FgnPg==:17
+ a=IkcTkHD0fZMA:10 a=zJRp6_cAMcgA:10 a=VkNPw1HP01LnGYTKEx00:22
+ a=RnoormkPH1_aCDwRdu11:22 a=iQ6ETzBq9ecOQQE5vZCe:22 a=VnNF1IyMAAAA:8
+ a=CY3r3d1AUxzD-SLtvMAA:9 a=QEXdDO2ut3YA:10
+X-Proofpoint-GUID: QaKoTSy8J9Sfac1DQkA-rGTMUHSi7RiL
+X-Proofpoint-Spam-Info: AW1haW4tMjYxMTI3MDA2MCBTYWx0ZWRfX6gOqXKXuAbcr
+ mBnbRuioFodKylSTICm9BeDvxdPPCh9R6e4DqH2DskKGNAAFsgZ1EY7HPZb+P0x3tCqNT01SawN
+ Ex/gHg/SBGjVNZOFAe66oY9QK1p22+w=
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.293,Aquarius:18.0.1176,Hydra:6.1.138,FMLib:17.12.100.49
+ definitions=2026-11-27_02,2026-11-27_03,2025-10-01_01
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
+ priorityscore=1501 lowpriorityscore=0 spamscore=0 impostorscore=0
+ clxscore=1015 bulkscore=0 suspectscore=0 adultscore=0 phishscore=0
+ malwarescore=0 classifier=typeunknown authscore=0 authtc= authcc=
+ route=outbound adjust=0 reason=mlx scancount=1 engine=8.22.0-2611040001
+ definitions=main-2611270060
 
-On Thu 26-11-26 21:12:54, Petr Vaněk wrote:
-> ext4_convert_inline_data() moves a regular file's inline data to a new
-> block by copying it into the block device's buffer for that block and
-> journalling the buffer as metadata.  The file's own writes reach the
-> same block through the page cache, and nothing invalidates the
-> journalled copy.  When the journal checkpoints it, the stale buffer is
-> written over whatever the file has put in the block since.  The page
-> cache can also miss the data altogether: a folio read in after the
-> conversion reads the block from disk before the checkpoint has written
-> it.
-> 
-> Truncate, fallocate, page_mkwrite and fs-verity all convert inline
-> files this way, and since commit ed9356a30e59 ("ext4: convert inline
-> data to extents when truncate exceeds inline size") so does every
-> truncate that grows an inline file.  An ordinary sequence now loses
-> data:
-> 
->   mkfs.ext4 -O inline_data /dev/vda
->   mount /dev/vda /mnt
->   xfs_io -f -c "pwrite -S 0x61 0 42" /mnt/f
->   sync; echo 3 > /proc/sys/vm/drop_caches
->   xfs_io -c "truncate 0" -c "truncate 77" -c "pwrite -S 0x62 0 77" /mnt/f
->   sync; echo 3 > /proc/sys/vm/drop_caches
->   od -c /mnt/f    # 77 zero bytes instead of 77 'b'
-> 
-> Growing the file without shrinking it first leaves the old inline bytes
-> on disk but loses whatever was written after the truncate, and
-> fallocate or an mmap write on a small inline file loses the new data
-> the same way.
+The zeroout fallback can race with in-flight endio conversion of unwritten
+extents and zero out valid data. Just disable it for now with a plan to fix
+the race and re-enable it in future patches.
 
-Nasty, thanks for analyzing this. How did you find the problem? I.e., is it
-some syscall fuzzing, AI analysis, or real users hitting this?
+Fixes: ea96cb5c4ae3 ("ext4: don't split extent before submitting I/O")
+Signed-off-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+---
+ fs/ext4/extents.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-> Convert regular files the way a buffered write does in
-> ext4_convert_inline_data_to_extent(): copy the inline data into
-> folio 0, drop the inline data, map block 0 with ext4_get_block() and
-> dirty the folio.  The data then reaches the disk by writeback, and only
-> metadata goes through the journal.  The new helper differs from the
-> buffered-write one in three ways:
-> 
->  - It always maps a written extent, never an unwritten one, so that in
->    data=ordered mode the commit that drops the inline copy waits for
->    the data.
->  - An empty file needs no block; only the inline data is dropped.
->  - If mapping the block fails, it restores the inline data instead of
->    truncating the file: truncation takes invalidate_lock, which
->    ext4_page_mkwrite() already holds shared.
-> 
-> Directories keep the old path, since their blocks are metadata.
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 10d36012ade4..48c36322bbc8 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3512,6 +3512,9 @@ static struct ext4_ext_path *ext4_split_extent(handle_t *handle,
+ 	if (orig_err != -ENOSPC && orig_err != -EDQUOT && orig_err != -ENOMEM)
+ 		goto out_orig_err;
+ 
++	/* zeroout fallback disabled: always return the original err */
++	goto out_orig_err;
++
+ 	/* we can't zeroout? just return the original err */
+ 	if (!(split_flag & EXT4_EXT_MAY_ZEROOUT))
+ 		goto out_orig_err;
 
-I have two comments regarding the solution:
-
-1) We converted data using journalled data write to avoid loss of already
-written data in case of crash before newly allocated block gets written
-out. I personally never liked this much and agree this is asking for big
-trouble (as your report shows) so I'm all for getting rid of this case. But
-still we should explain the implications in the changelog - if we actually
-don't use delayed allocation (which is what you did) and use data=ordered
-mode, the data loss after a crash should not happen so I think we are fine.
-
-2) Why did you implement new conversion function and didn't just use
-ext4_convert_inline_data_to_extent()? I don't really want *another* inline
-data conversion method so if there's some reason why
-ext4_convert_inline_data_to_extent() cannot be used, let's discuss how to
-make possible to use it...
-
-								Honza
-
-> 
-> Fixes: ed9356a30e59 ("ext4: convert inline data to extents when truncate exceeds inline size")
-> Cc: stable@vger.kernel.org
-> Signed-off-by: Petr Vaněk <petr.vanek@e2b.dev>
-> ---
->  fs/ext4/inline.c | 118 +++++++++++++++++++++++++++++++++++++++++++++++
->  1 file changed, 118 insertions(+)
-> 
-> diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-> index acdc65ce4796..537857c3b4b2 100644
-> --- a/fs/ext4/inline.c
-> +++ b/fs/ext4/inline.c
-> @@ -1999,6 +1999,121 @@ int ext4_inline_data_truncate(struct inode *inode, int *has_inline)
->  	return err;
->  }
->  
-> +/*
-> + * Move a regular file's inline data to block 0 through the page cache, as a
-> + * buffered write does, so the data reaches the disk by writeback.  It must not
-> + * be journalled as a metadata block: checkpointing that copy later would
-> + * overwrite whatever the file has written to the block since.
-> + */
-> +static int ext4_convert_inline_data_reg(struct inode *inode)
-> +{
-> +	struct address_space *mapping = inode->i_mapping;
-> +	int ret, ret2, needed_blocks, no_expand, retries = 0;
-> +	unsigned int inline_size, len;
-> +	struct buffer_head *bh;
-> +	struct ext4_iloc iloc;
-> +	struct folio *folio;
-> +	handle_t *handle;
-> +	void *buf;
-> +
-> +	needed_blocks = ext4_chunk_trans_extent(inode, 1);
-> +
-> +	ret = ext4_get_inode_loc(inode, &iloc);
-> +	if (ret)
-> +		return ret;
-> +
-> +retry:
-> +	buf = NULL;
-> +	handle = ext4_journal_start(inode, EXT4_HT_WRITE_PAGE, needed_blocks);
-> +	if (IS_ERR(handle)) {
-> +		ret = PTR_ERR(handle);
-> +		goto out_brelse;
-> +	}
-> +
-> +	folio = __filemap_get_folio(mapping, 0, FGP_WRITEBEGIN | FGP_NOFS,
-> +				    mapping_gfp_mask(mapping));
-> +	if (IS_ERR(folio)) {
-> +		ret = PTR_ERR(folio);
-> +		goto out_stop;
-> +	}
-> +
-> +	ext4_write_lock_xattr(inode, &no_expand);
-> +	ret = 0;
-> +	if (!ext4_has_inline_data(inode))
-> +		goto out_unlock;
-> +
-> +	inline_size = ext4_get_inline_size(inode);
-> +	len = min_t(loff_t, inline_size, i_size_read(inode));
-> +	if (len > i_blocksize(inode)) {
-> +		EXT4_ERROR_INODE(inode, "inline data size %u exceeds block size",
-> +				 len);
-> +		ret = -EFSCORRUPTED;
-> +		goto out_unlock;
-> +	}
-> +
-> +	ext4_fc_track_inode(handle, inode);
-> +	if (!len) {
-> +		ret = ext4_destroy_inline_data_nolock(handle, inode);
-> +		goto out_unlock;
-> +	}
-> +
-> +	buf = kmalloc(inline_size, GFP_NOFS);
-> +	if (!buf) {
-> +		ret = -ENOMEM;
-> +		goto out_unlock;
-> +	}
-> +	ret = ext4_read_inline_data(inode, buf, inline_size, &iloc);
-> +	if (ret < 0)
-> +		goto out_unlock;
-> +
-> +	if (!folio_test_uptodate(folio)) {
-> +		ret = ext4_read_inline_folio(inode, folio);
-> +		if (ret < 0)
-> +			goto out_unlock;
-> +	}
-> +
-> +	ret = ext4_destroy_inline_data_nolock(handle, inode);
-> +	if (ret)
-> +		goto out_unlock;
-> +
-> +	/*
-> +	 * A written extent, not an unwritten one: in data=ordered mode the
-> +	 * commit that drops the inline copy then waits for the data.
-> +	 */
-> +	ret = ext4_block_write_begin(handle, folio, 0, len, ext4_get_block);
-> +	if (ret) {
-> +		ext4_restore_inline_data(handle, inode, &iloc, buf, inline_size);
-> +		goto out_unlock;
-> +	}
-> +
-> +	bh = folio_buffers(folio);
-> +	clear_buffer_new(bh);
-> +	if (ext4_should_journal_data(inode)) {
-> +		ret = do_journal_get_write_access(handle, inode, bh);
-> +		if (!ret) {
-> +			folio_mark_dirty(folio);
-> +			ret = ext4_handle_dirty_metadata(handle, NULL, bh);
-> +		}
-> +	} else {
-> +		block_commit_write(folio, 0, len);
-> +	}
-> +
-> +out_unlock:
-> +	ext4_write_unlock_xattr(inode, &no_expand);
-> +	folio_unlock(folio);
-> +	folio_put(folio);
-> +out_stop:
-> +	ret2 = ext4_journal_stop(handle);
-> +	if (!ret)
-> +		ret = ret2;
-> +	kfree(buf);
-> +	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
-> +		goto retry;
-> +out_brelse:
-> +	brelse(iloc.bh);
-> +	return ret;
-> +}
-> +
->  int ext4_convert_inline_data(struct inode *inode)
->  {
->  	int error, needed_blocks, no_expand;
-> @@ -2022,6 +2137,9 @@ int ext4_convert_inline_data(struct inode *inode)
->  			return 0;
->  	}
->  
-> +	if (S_ISREG(inode->i_mode))
-> +		return ext4_convert_inline_data_reg(inode);
-> +
->  	needed_blocks = ext4_chunk_trans_extent(inode, 1);
->  
->  	iloc.bh = NULL;
-> -- 
-> 2.56.1
-> 
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.55.0
+
