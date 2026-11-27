@@ -1,84 +1,83 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=148.163.158.5
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795792311;
-	b=z/TZfNPu1+ULq34g9xm1Lr+NhXitdQM16+iGp6Tvy42CRbLG6cjKvYMWdrN8fU9bUg6h
-	 4cekYbWChkkOYyRQ/wjuN1GxLDMOMbCnVL7q4HpMYF8iFeZtfByNL0Jsk56eTrS55bjQY
-	 k5TdT5/yS6vadc/pr0kizPIQ6tqXTd02w9L9hRNxh+T/6zgNfNY14OGrKi6LrgKQctljj
-	 GgEP1k4yPHcUHI+anuieIjw9ayMggKvyeZvlYY8XenzUDsQhfJRDJomrac8AO5gqdESiP
-	 9pnfx1hPHldhj3H+JZpZem34zXXuOKwfxQL/X504pUMD/Y6Xc/pK8HteVADy51jVs/A==
+	t=1795792308;
+	b=jbwHy96EvEgJPx475xMjrzoYlNprwqmURBURh1KWEMAGb7mS3v2nnZWelaAoeazeauoh
+	 hJPTEfaYuUOIVcJdQSqeuo99h0Zg4Hcz/Ov5rxD14arzzdyGklJBknwWqLCUmUW7VIUyF
+	 FwmXOeBem2xVoN3LTAKCyEXrFP4DfejpTLhe2Y+zF3JmtLqtgo3/03V3qyptJkhVMAdLs
+	 afCzADICVn6ZySE1RhcIjMGPt7zRsY/CFvbbzN57rnAY22LEJv/kRFeh1YGHaqJ0YxhNN
+	 NB5eyobCq4fafazYadbyhgtm3o3KSD7B7RfZZJ8d0rKG8R2O5lOB1nJhjPD28Fw2jYQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795792311;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795792308;
 	h=DMARC-Filter:Received:DKIM-Signature:Received:Received:Received:
 	 Received:Received:Received:Received:From:Date:Subject:MIME-Version:
 	 Content-Type:Content-Transfer-Encoding:Message-Id:References:
 	 In-Reply-To:To:Cc:X-Mailer:X-TM-AS-GCONF:X-Proofpoint-Reinject:
-	 X-Proofpoint-Spam-Info:X-Proofpoint-GUID:
-	 X-Proofpoint-Spam-Details-Enc:X-Proofpoint-ORIG-GUID:
-	 X-Authority-Analysis:X-Proofpoint-Virus-Version:
-	 X-Proofpoint-Spam-Details;
-	bh=dyS864XugS7h/gUWr8xN9X1g0tq2NNstvIMq0kQdU6o=;
-	b=z/xDeo16CDDnoAeqUrhNnkYteXbyqICa1iUkUgTBvgRbXRlxjSP1zbOVr1yyCjwiuzqQ
-	 +KTCNGYVfjRVHI32SAL/j5hyFTsUOcPk7jdR9UPuSNL/HGsH0HZKLCFO+4kMfLTV2w06y
-	 d5d5N2vBQRAbv5PsoN1K4eooa+qUKeAH3Y8rB65dhsICLr82ekFVHDCI8h3brI+2Ec1ma
-	 7wtubjmAOXQ0LSRWz/s78Mcn7msYu1hbom7d9DQAFhpR4tbDahp+Kh7PlCbPHWzKEl0SQ
-	 kC32DHtZuANNNiwoBLIDJ+yRvx+kqz3+cCL+acZFWWOWN5GTtLY8x4DF/93saRuK5Bw==
+	 X-Proofpoint-ORIG-GUID:X-Proofpoint-Spam-Info:X-Proofpoint-GUID:
+	 X-Authority-Analysis:X-Proofpoint-Spam-Details-Enc:
+	 X-Proofpoint-Virus-Version:X-Proofpoint-Spam-Details;
+	bh=M1GXl96824Jzl+Uc+dhOyCLLWzQ7m/EV4DGixYMFAW8=;
+	b=L1KDmYnivtUFj94YI1T5D93Afy+TQ3DCBB3GZO0QMQNIhLVJ2wzFDeZnc2CHdQHpyMbe
+	 q67BCcQn+tuJIJQAqo3F5sTvE09nNXLCXYUS968VnZxTCX0QPdHqUrkbAxnmCQ+OvC9k8
+	 K0SCEI24YsQ/iTXJb6n7B+3eYQd/AaLlcmHy7cX+hETHdet/boFh1yt1ANjxtpw1qYD90
+	 xQv2g4NLgwsQq5CnCmTFWZq+FDVo1z50V9KuScLFUHPUx8ehsjBxf7EQme7+B70bTd+fw
+	 mEVR071gBZ0lMBYqUFAkoF43In9sl0Yvh93tzROyCyqTMa3XrMGYVP9+aMaPsadfpLQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=linux.ibm.com;
 	spf=pass smtp.mailfrom=linux.ibm.com;
-	dkim=pass header.d=ibm.com header.i=@ibm.com header.a=rsa-sha256 header.s=pp1 header.b="DTX//72a";
+	dkim=pass header.d=ibm.com header.i=@ibm.com header.a=rsa-sha256 header.s=pp1 header.b=Ih5yMsL1;
 	arc=none smtp.remote-ip=148.163.158.5
 Received: from mx0b-001b2d01.pphosted.com (mx0b-001b2d01.pphosted.com [148.163.158.5])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2C022606A327;
-	Fri, 27 Nov 2026 15:11:50 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 2C022606A327
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3E5B2606A31F;
+	Fri, 27 Nov 2026 15:11:47 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 3E5B2606A31F
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.a=rsa-sha256 header.s=pp1 header.b=DTX//72a
-Received: from pps.filterd (m0353725.ppops.net [127.0.0.1])
-	by mx0a-001b2d01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 6ARE5If42012620;
-	Fri, 27 Nov 2026 15:11:35 GMT
+	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.a=rsa-sha256 header.s=pp1 header.b=Ih5yMsL1
+Received: from pps.filterd (m0360072.ppops.net [127.0.0.1])
+	by mx0a-001b2d01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 6ARE4sWM3266007;
+	Fri, 27 Nov 2026 15:11:33 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=cc
 	:content-transfer-encoding:content-type:date:from:in-reply-to
-	:message-id:mime-version:references:subject:to; s=pp1; bh=dyS864
-	XugS7h/gUWr8xN9X1g0tq2NNstvIMq0kQdU6o=; b=DTX//72aWCAHS02vPTlRbU
-	O2sxxvQUje+q4cR3/wMYES3NlezZp2wJVCXghwWFXC9nB0mtdrr6TjX2Ju1i7I3d
-	HTFznPRabhuB4YXQWScR3HSPvjoxs+1DZNKQRnxCgx1AILqWF41VDAi7sqNRFEIa
-	pAEoRMhxSrRl5VuazzSLCiOtNQt4/Et8vzGsZnF6O++dGyBsAH75X7EwC2IDS/Mo
-	VNB6tCCGfIUo0LGRlrNQiR+rPWwNJesXepzJH7MOiQ+HMS66lhFr7daiFeVS9Ops
-	OqAP8cwwgs8G8zGtttm///R7X8d/IM/V+H4+RS1eH4r7N3eMpq5FLxKCHHrWh6EA
+	:message-id:mime-version:references:subject:to; s=pp1; bh=M1GXl9
+	6824Jzl+Uc+dhOyCLLWzQ7m/EV4DGixYMFAW8=; b=Ih5yMsL1NRrN9ju9vlWthz
+	hsPiOoWdBfvn8tnEe5vRyHlwUvBUSS3d+w3e4oqswPvhQDqINNknFR2vNyGN6dKF
+	DWfKaHmfMiNpaliwjFu727kKje1SBLkQfcyoAbmZN+dRfgI83EUUbG4e299QU39g
+	LOpkJvlIXZxu7yy+9I9dgI+UlUikWciLI+y0QVvvxGaWZKPs/z7toO8Q21bWD0tg
+	+Ja5cwCl812wPP9v6O9b7Phl3UJNW7wa6MzukFsbA20baAYY74SkBCA5GjuitBPz
+	XlPwMGc+YS9o5BSGbhv/eohHZv5ILHKBcwf2m1929bSQLtv6jIVM6drsucZPacWw
 	==
-Received: from ppma22.wdc07v.mail.ibm.com (5c.69.3da9.ip4.static.sl-reverse.com [169.61.105.92])
-	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4j34p4wdsn-1
+Received: from ppma13.dal12v.mail.ibm.com (dd.9e.1632.ip4.static.sl-reverse.com [50.22.158.221])
+	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4j34g1nkc2-1
 	(version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=NOT);
-	Fri, 27 Nov 2026 15:11:35 +0000 (GMT)
-Received: from pps.filterd (ppma22.wdc07v.mail.ibm.com [127.0.0.1])
-	by ppma22.wdc07v.mail.ibm.com (8.18.1.11/8.18.1.11) with ESMTP id 6ARE4Jpc3245601;
-	Fri, 27 Nov 2026 15:11:34 GMT
-Received: from smtprelay02.fra02v.mail.ibm.com ([9.218.2.226])
-	by ppma22.wdc07v.mail.ibm.com (PPS) with ESMTPS id 4j5uxx9a4j-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
 	Fri, 27 Nov 2026 15:11:32 +0000 (GMT)
+Received: from pps.filterd (ppma13.dal12v.mail.ibm.com [127.0.0.1])
+	by ppma13.dal12v.mail.ibm.com (8.18.1.11/8.18.1.11) with ESMTP id 6ARE4HD92819254;
+	Fri, 27 Nov 2026 15:11:31 GMT
+Received: from smtprelay07.fra02v.mail.ibm.com ([9.218.2.229])
+	by ppma13.dal12v.mail.ibm.com (PPS) with ESMTPS id 4j5kfaappg-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Fri, 27 Nov 2026 15:11:29 +0000 (GMT)
 Received: from smtpav04.fra02v.mail.ibm.com (smtpav04.fra02v.mail.ibm.com [10.20.54.103])
-	by smtprelay02.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 6ARFBUB956492442
+	by smtprelay07.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 6ARFBRrI47972804
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-	Fri, 27 Nov 2026 15:11:30 GMT
+	Fri, 27 Nov 2026 15:11:27 GMT
 Received: from smtpav04.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id 82EA420043;
-	Fri, 27 Nov 2026 15:11:30 +0000 (GMT)
-Received: from smtpav04.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id E53C120040;
+	by IMSVA (Postfix) with ESMTP id 50DD920043;
 	Fri, 27 Nov 2026 15:11:27 +0000 (GMT)
+Received: from smtpav04.fra02v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id BE6A42004B;
+	Fri, 27 Nov 2026 15:11:24 +0000 (GMT)
 Received: from localhost.localdomain (unknown [9.39.17.190])
 	by smtpav04.fra02v.mail.ibm.com (Postfix) with ESMTP;
-	Fri, 27 Nov 2026 15:11:27 +0000 (GMT)
+	Fri, 27 Nov 2026 15:11:24 +0000 (GMT)
 From: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-Date: Fri, 27 Nov 2026 20:40:52 +0530
-Subject: [PATCH v2 05/13] ext4: add support to track convert pending ranges
- in ext4_map_blocks()
+Date: Fri, 27 Nov 2026 20:40:51 +0530
+Subject: [PATCH v2 04/13] ext4: add es helper to convert unwrit to convert
+ pending without changing i_es_seq
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -90,7 +89,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261127-ext4-endio-zero-bug-v2-5-4106968e4d15@linux.ibm.com>
+Message-Id: <20261127-ext4-endio-zero-bug-v2-4-4106968e4d15@linux.ibm.com>
 References: <20261127-ext4-endio-zero-bug-v2-0-4106968e4d15@linux.ibm.com>
 In-Reply-To: <20261127-ext4-endio-zero-bug-v2-0-4106968e4d15@linux.ibm.com>
 To: "Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>,
@@ -101,138 +100,171 @@ Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 X-Mailer: b4 0.14.3
 X-TM-AS-GCONF: 00
 X-Proofpoint-Reinject: loops=2 maxloops=12
-X-Proofpoint-Spam-Info: AW1haW4tMjYxMTI3MDA2MCBTYWx0ZWRfX49ZPjqMm9TzT
- ZSZ/45yvSrILMb7EHnekdcOJADKUvedAZRZqPgJzCfacdiKHgwh6wyhw2aAopWUVkqe0JGjVc6K
- icEssKcV+moC6Sb7GVTMkKVNaoYtFP8=
-X-Proofpoint-GUID: oOvQfXOuSF9RjwXBvEc4GBe9UNa-ogqw
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYxMTI3MDA2MCBTYWx0ZWRfX/upYymAmsoau
- kugRjyBBns8tFbHH0noTnuzSKJt+mKleGo75q4mYKztYvNASytzdoCUOlF6tXgZtee1eBqubGJA
- lZ72swHcngTzLs5b/xMArEmDsIXaBpjsX6Jg8g01pTHddnTfTc7wUrNw2UFBnGtvUJ4r0uE9lpG
- yk382m3VhqbhzuMtSEe5S3WoswaQ2e1Q4DUrdL67XNSAcAKFs3/KzHVhq/tjGzDePK7RbXN9fqg
- WFP5ku/pnboVwxR4DEbqmP5oFFPS4xqmKuTAJ3cncWp4GXDN5G/z1xYIepPydKxu6F+Qi38kBMf
- HP34AKwPDvb0ZL9cmvCZfZPztdIuGAgnPHVYDpRRo1W2VbkSJVs8S8M21mb6+s4UmNYalKJPRwt
- /fsMYisIRDHCwcfEJCcptVnzQPkKEleGFIyqvKl2vcyghsKXzVaRCLHcACLPx00YUziJ2TLyibv
- XVeTXIrvosNy7eNeVPQ==
-X-Proofpoint-ORIG-GUID: LG1o2HiO97i4mF0uNpGfiFpDjiMNgjoZ
-X-Authority-Analysis: v=2.4 cv=QabzLcbv c=1 sm=1 tr=0 ts=6b099da7 cx=c_pps
- a=5BHTudwdYE3Te8bg5FgnPg==:117 a=5BHTudwdYE3Te8bg5FgnPg==:17
- a=IkcTkHD0fZMA:10 a=zJRp6_cAMcgA:10 a=VkNPw1HP01LnGYTKEx00:22
- a=RnoormkPH1_aCDwRdu11:22 a=V8glGbnc2Ofi9Qvn3v5h:22 a=VnNF1IyMAAAA:8
- a=QXQYgmwZ4l3Dsd5QC2oA:9 a=QEXdDO2ut3YA:10
+X-Proofpoint-ORIG-GUID: iutXvNjv63ZGoePqEQwafpAoHETQXnPz
+X-Proofpoint-Spam-Info: AW1haW4tMjYxMTI3MDA2MCBTYWx0ZWRfX/yoHHf0EI49J
+ 267HHHPEBFzhEHHTNWEDB8YU0tsFUk00OfLmNFB2lS7iOOczhbfcvsEbFLTvFtsDREMbcdJwgPL
+ br00CTWmMnY3IZi35cAxE1I5yK1yo+I=
+X-Proofpoint-GUID: uszr9xIuqhuRE2BMzHByGzMuxlXJWouQ
+X-Authority-Analysis: v=2.4 cv=c8M+0h9l c=1 sm=1 tr=0 ts=6b099da4 cx=c_pps
+ a=AfN7/Ok6k8XGzOShvHwTGQ==:117 a=AfN7/Ok6k8XGzOShvHwTGQ==:17
+ a=_N9tQ_OlymrJwtHD:21 a=IkcTkHD0fZMA:10 a=zJRp6_cAMcgA:10
+ a=VkNPw1HP01LnGYTKEx00:22 a=RnoormkPH1_aCDwRdu11:22 a=RzCfie-kr_QcCd8fBx8p:22
+ a=VnNF1IyMAAAA:8 a=MdhCsysiuOGiCJvRt1AA:9 a=QEXdDO2ut3YA:10
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYxMTI3MDA2MCBTYWx0ZWRfXzf1zhyaVxApv
+ 7ux6amTnGEOzhqg9TH44v4qkVGTGfjRmoC+l4VgyTjhaIhTodntJDbIQ3yxjEHuefgeaaJHlCTU
+ 4a3u30/GszxGAnczW9bgfgGgOjJPwJX8BIqh9ncP+idySDKZPw+i/ddJIjSTMc+P0pcUtaXFXPJ
+ m2LgaUShAwMeqOuFDGSLMI9vV28emiNyP81/xuofc8aeUFIjt5sCoTCbbXB54R0+07ZR8p8MBfS
+ 2naOusAWIPWB84RsNdOCqV6YxrDqbIEyWPLEc7V4yoGT4QXilDMxoOPebpWYw0go8vTDIzBO7UD
+ d86k7waEMiui+23ZsOvpLIjibYi/7gr4qDtzJhUMX83Jai/mfMCv4TF1KFfBuzbi1/IFrk0/oUq
+ 730HbG3fHfM93DepLdOB5sDp4I9tDBNXv1g8V9ERYvaZF50xxtVPPZdDuhTTkSU1afHd7rzN0Vm
+ hihy0iSH45djrLMp5SA==
 X-Proofpoint-Virus-Version: vendor=baseguard
  engine=ICAP:2.0.293,Aquarius:18.0.1176,Hydra:6.1.138,FMLib:17.12.100.49
  definitions=2026-11-27_02,2026-11-27_03,2025-10-01_01
 X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
- spamscore=0 phishscore=0 lowpriorityscore=0 suspectscore=0 adultscore=0
- bulkscore=0 priorityscore=1501 clxscore=1015 malwarescore=0 impostorscore=0
+ impostorscore=0 clxscore=1015 malwarescore=0 suspectscore=0 bulkscore=0
+ priorityscore=1501 phishscore=0 adultscore=0 spamscore=0 lowpriorityscore=0
  classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
  reason=mlx scancount=1 engine=8.22.0-2611040001 definitions=main-2611270060
 
-Introduce a new get block flag to indicate that the caller is about to
-issue IO over unwritten ranges and hence wants them to be marked as
-convert pending. This allows upcoming changes to query such ranges before
-trying to zero them out in endio.
-
-We need to be careful to always add the CONVERT_PENDING extent status entry
-under i_data_sem because the upcoming changes will use that sem to
-serialize with the endio zeroout path.
+Upcoming codepaths would often want to convert an existing unwritten extent
+to convert pending in extent status cache. This is essentially not an
+operation that needs to bump the i_es_seq because both of these types mean
+the same thing for most of the code paths that care about the sequence
+counter. Hence, introduce a new helper to change the extent status without
+having to bump the extent status cache.
 
 Signed-off-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
 ---
- fs/ext4/ext4.h              |  9 ++++++++-
- fs/ext4/inode.c             | 23 +++++++++++++++++++++--
- include/trace/events/ext4.h |  1 +
- 3 files changed, 30 insertions(+), 3 deletions(-)
+ fs/ext4/extents_status.c | 45 ++++++++++++++++++++++++++++++++++++---------
+ fs/ext4/extents_status.h |  2 ++
+ fs/ext4/inode.c          | 23 +++++++++++++++++++++++
+ 3 files changed, 61 insertions(+), 9 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 646c017dda1c..8cce99d68978 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -748,6 +748,12 @@ struct ext4_new_flex_group_data {
-  */
- #define EXT4_GET_BLOCKS_QUERY_LAST_IN_LEAF	0x1000
+diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+index 75dd065106e4..244cc0f62196 100644
+--- a/fs/ext4/extents_status.c
++++ b/fs/ext4/extents_status.c
+@@ -907,14 +907,10 @@ static int __es_insert_extent(struct inode *inode, struct extent_status *newes,
+ 	return 0;
+ }
+ 
+-/*
+- * ext4_es_insert_extent() adds information to an inode's extent
+- * status tree. This interface is used for modifying extents. To cache
+- * on-disk extents, use ext4_es_cache_extent() instead.
+- */
+-void ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
+-			   ext4_lblk_t len, ext4_fsblk_t pblk,
+-			   unsigned int status, bool delalloc_reserve_used)
++static void __ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
++				    ext4_lblk_t len, ext4_fsblk_t pblk,
++				    unsigned int status,
++				    bool delalloc_reserve_used, bool inc_seq)
+ {
+ 	struct extent_status newes;
+ 	ext4_lblk_t end = lblk + len - 1;
+@@ -1004,7 +1000,8 @@ void ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
+ 		}
+ 		pending = err3;
+ 	}
+-	ext4_es_inc_seq(inode);
++	if (inc_seq)
++		ext4_es_inc_seq(inode);
+ error:
+ 	write_unlock(&EXT4_I(inode)->i_es_lock);
+ 	/*
+@@ -1036,6 +1033,35 @@ void ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
+ 	return;
+ }
  
 +/*
-+ * This range will get converted from unwritten to written soon due to endio
-+ * conversion.
++ * ext4_es_insert_extent() adds information to an inode's extent
++ * status tree. This interface is used for modifying extents. To cache
++ * on-disk extents, use ext4_es_cache_extent() instead.
 + */
-+#define EXT4_GET_BLOCKS_CONVERT_PENDING	0x2000
++void ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
++			   ext4_lblk_t len, ext4_fsblk_t pblk,
++			   unsigned int status, bool delalloc_reserve_used)
++{
++	__ext4_es_insert_extent(inode, lblk, len, pblk, status,
++				delalloc_reserve_used, true);
++}
++
++/*
++ * ext4_es_mark_convert_pending() marks an already unwritten range as
++ * CONVERT_PENDING. For most of the codepaths CONVERT_PENDING is treated as
++ * unwritten everywhere (except the endio zeroout path, which is already
++ * serialized with i_data_sem) hence we don't bump the i_es_seq here.
++ *
++ * The caller must hold i_data_sem in shared (at least) and must have made sure
++ * that the range is unwritten.
++ */
++void ext4_es_mark_convert_pending(struct inode *inode, ext4_lblk_t lblk,
++				  ext4_lblk_t len, ext4_fsblk_t pblk)
++{
++	__ext4_es_insert_extent(inode, lblk, len, pblk,
++				EXTENT_STATUS_CONVERT_PENDING, false, false);
++}
 +
  /*
-  * The bit position of these flags must not overlap with any of the
-  * EXT4_GET_BLOCKS_*.  They are used by ext4_find_extent(),
-@@ -766,7 +772,8 @@ struct ext4_new_flex_group_data {
-  */
- #define EXT4_EX_QUERY_FILTER	(EXT4_EX_NOCACHE | EXT4_EX_FORCE_CACHE |\
- 				 EXT4_EX_NOFAIL |\
--				 EXT4_GET_BLOCKS_QUERY_LAST_IN_LEAF)
-+				 EXT4_GET_BLOCKS_QUERY_LAST_IN_LEAF |\
-+				 EXT4_GET_BLOCKS_CONVERT_PENDING)
- 
- /*
-  * Flags used by ext4_free_blocks
+  * ext4_es_cache_extent() inserts information into the extent status tree
+  * only if there is no existing information about the specified range or
+@@ -2488,6 +2514,7 @@ static int __revise_pending(struct inode *inode, ext4_lblk_t lblk,
+ #if IS_ENABLED(CONFIG_EXT4_KUNIT_TESTS)
+ EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_es_init_tree);
+ EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_es_insert_extent);
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_es_mark_convert_pending);
+ EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_es_cache_extent);
+ EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_es_remove_extent);
+ EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_es_find_extent_range);
+diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
+index 2247f811f6c3..b1bc34af786f 100644
+--- a/fs/ext4/extents_status.h
++++ b/fs/ext4/extents_status.h
+@@ -140,6 +140,8 @@ extern void ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
+ 				  ext4_lblk_t len, ext4_fsblk_t pblk,
+ 				  unsigned int status,
+ 				  bool delalloc_reserve_used);
++extern void ext4_es_mark_convert_pending(struct inode *inode, ext4_lblk_t lblk,
++					 ext4_lblk_t len, ext4_fsblk_t pblk);
+ extern void ext4_es_cache_extent(struct inode *inode, ext4_lblk_t lblk,
+ 				 ext4_lblk_t len, ext4_fsblk_t pblk,
+ 				 unsigned int status);
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index f7fc5fb7e819..3e4c0e1396ab 100644
+index 9368a68db289..f7fc5fb7e819 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -750,6 +750,9 @@ int ext4_map_create_blocks(handle_t *handle, struct inode *inode,
+@@ -757,6 +757,29 @@ int ext4_map_create_blocks(handle_t *handle, struct inode *inode,
+ 	return retval;
+ }
  
- 	status = map->m_flags & EXT4_MAP_UNWRITTEN ?
- 			EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
-+	if (status == EXTENT_STATUS_UNWRITTEN &&
-+	    flags & EXT4_GET_BLOCKS_CONVERT_PENDING)
-+		status = EXTENT_STATUS_CONVERT_PENDING;
- 	ext4_es_insert_extent(inode, map->m_lblk, map->m_len, map->m_pblk,
- 			      status, flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE);
- 	map->m_seq = READ_ONCE(EXT4_I(inode)->i_es_seq);
-@@ -911,8 +914,17 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
- 	}
- 
- 	/* If it is only a block(s) look up */
--	if ((flags & EXT4_GET_BLOCKS_CREATE) == 0)
-+	if ((flags & EXT4_GET_BLOCKS_CREATE) == 0) {
-+		if (map->m_flags & EXT4_MAP_UNWRITTEN &&
-+		    flags & EXT4_GET_BLOCKS_CONVERT_PENDING &&
-+		    !ext4_map_mark_convert_pending(inode, map)) {
-+			map->m_flags = 0;
-+			map->m_len = orig_mlen;
-+			goto create_retry;
-+		}
++/*
++ * Mark the unwritten range in @map as convert pending in the extent status
++ * tree. This is used by the zeroout code to ensure we don't write zeroes on
++ * such unwritten ranges and hence must be serialized against endio conversion /
++ * extent zeroout, which hold i_data_sem excl.
++ *
++ * Returns false if the extent status tree changed since @map was looked up, in
++ * which case the caller must redo the lookup.
++ */
++static bool ext4_map_mark_convert_pending(struct inode *inode,
++					  struct ext4_map_blocks *map)
++{
++	bool ok;
 +
- 		return retval;
-+	}
- 
- 	/*
- 	 * Returns if the blocks have already allocated
-@@ -934,8 +946,15 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
- 		    !(flags & EXT4_GET_BLOCKS_CONVERT)) {
- 			/* Contains EXT4_GET_BLOCKS_CREATE - mark mapped. */
- 			ret = check_block_validity(inode, map);
--			if (!ret)
-+			if (!ret) {
-+				if (flags & EXT4_GET_BLOCKS_CONVERT_PENDING &&
-+				    !ext4_map_mark_convert_pending(inode, map)) {
-+					map->m_flags = 0;
-+					map->m_len = orig_mlen;
-+					goto create_retry;
-+				}
- 				map->m_flags |= EXT4_MAP_MAPPED;
-+			}
- 			goto out;
- 		}
- 	} else if (retval == 0) {
-diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
-index 4313694cd4e9..fb18fdcb3003 100644
---- a/include/trace/events/ext4.h
-+++ b/include/trace/events/ext4.h
-@@ -46,6 +46,7 @@ struct partial_cluster;
- 	{ EXT4_GET_BLOCKS_CONVERT_UNWRITTEN,	"CONVERT_UNWRITTEN" },  \
- 	{ EXT4_GET_BLOCKS_ZERO,			"ZERO" },		\
- 	{ EXT4_GET_BLOCKS_IO_SUBMIT,		"IO_SUBMIT" },		\
-+	{ EXT4_GET_BLOCKS_CONVERT_PENDING,	"CONV_PENDING" },		\
- 	{ EXT4_EX_NOCACHE,			"EX_NOCACHE" })
- 
++	down_read(&EXT4_I(inode)->i_data_sem);
++	ok = map->m_seq == READ_ONCE(EXT4_I(inode)->i_es_seq);
++	if (ok)
++		ext4_es_mark_convert_pending(inode, map->m_lblk, map->m_len,
++					     map->m_pblk);
++	up_read(&EXT4_I(inode)->i_data_sem);
++	return ok;
++}
++
  /*
+  * The ext4_map_blocks() function tries to look up the requested blocks,
+  * and returns if the blocks are already mapped.
 
 -- 
 2.55.0
