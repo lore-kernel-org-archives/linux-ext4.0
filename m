@@ -1,78 +1,78 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=203.29.242.92
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795770260;
-	b=nPxyGfNGb6n4D2aO80MUyJhM4VopPXaCee9oxv9Ju3kJHjX19mlEKVH4L7v9RVRXGsZO
-	 vIkR90XZUE5IPkR8H5mQKqOfHfO7px2mmiJlG3ph9PD2NanB5Zv36wJB2umDUHtBCCE02
-	 2DdwqbBzLMFlv7xjpO+ecdMr5HM9CfxVy6zaabo+Ss4IosW1YyIYjv9xu5ucklIAy3cpc
-	 TaI15NpD4+potbefYagsDMMjHBawp1BFOQ9nMbR3jIdXM8gkwMhc6/9mAg+um4UZbXCpx
-	 HMlJ/3nJDEK0HtwF6g8enYJghQFZA/YxTl7Ma9B3SFkZeaZ35YSgR7xJX23XnLvgU8g==
+	t=1795770264;
+	b=Ic5RPcLkAVyBlnkaL1QPbfRXGsvb2RQd86OL7c8JuC0yRJ2ROtJGOT8jB1TgLX/jRKcC
+	 pcim8YcD81wo9p02iJfX02xk+avB1AD9WkttxbBUCifii8WGmB1VS0kmERwH2sbG8rh5H
+	 UvTYGgQcqR6NOYEign4fMmeibyUe+4YrpXkbqvhVgVgmVeoGFF3ka/k0EMprCKfZr0smy
+	 H3MGQRmuACRzQ7iNECEWD5Q2fU4fHdca+lhRTVsTvjLfoBg44n3Q3VqgcKimV1k5qs5dc
+	 khz/YviOYbXNa/AHunNzrA39wVuHSH1Zgidla9mGQCobmBsBpZMAvHZIVjLnYiLyQWA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795770260;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795770264;
 	h=DMARC-Filter:DKIM-Signature:Received:X-Spam-Checker-Version:
 	 X-Spam-Level:X-Spam-Status:DKIM-Signature:Received:MIME-Version:
 	 Content-Type:Content-Transfer-Encoding:Subject:From:To:Cc:In-Reply-To:
 	 References:Date:Message-Id:X-Mailer:X-Developer-Signature:
 	 X-Developer-Key;
-	bh=lB83OGah4djfGd+z8tF/2NWKCF/mjSptP0M5SAduMRo=;
-	b=U/PczZZgXegK9p8FfmA/4vRrcPfcvUtB9jDJxxG3J4VeLEWnrCeRiiwhfH3vK6Qp8uKf
-	 Vt4e40TZ2m6BzQVLPHZ0Bc6vNasD7Ume6CDwJqKvCX2+OJARUlTe2a53Qrj/jit3+hpbR
-	 93OuCenJdiYsgUMyuhM6nz1WyYD2/f7Ke2HzJczzr2VBghJr5uLz22BeaJ5wttmIjUfEj
-	 GQhcLrz0urcWkXL1+3LFYOmk+r5ZwOdc3Ud2J74pO9noOL7kffGIViFIQXArPnpo9iUAh
-	 tWXYdapsWpxzgsUvt8YfDxZ/Ha5qbfKP7DThWZAxmh9NsFdA3+Ui8U+1uM7zhFka/tg==
+	bh=unUNOq/FceHqZkXI2goxUFVHCiJ+AIGN13u3MIlnRq0=;
+	b=NGAfOmrMbiHUsr8/3cM6rILeqvPHOxZ1CB/3o98so0ksL4n4tzh2Pi+7ZbJUZFWGfi25
+	 y2dZ7ZIGS2713iuB/n+rIcrS/G5UGZfTb6Q747ng8MqNZ1wF+oi/zEX0MAGDcCDdjo0bD
+	 J6sKFYsiZEM6jIzQRprw3mMm5yZATtGZBTwoLbTjTBT5fpCfmP2jdjKSce/+gZ0HMqByF
+	 SYRQvLba9Uqi8gw8W6p6iwkqYtnDZUDfnhhn/fPVE5R0NJKCkP3aHRGLWUGT3NWVneqZv
+	 6XFjUqbtsyMuBhJ5kkML7GxY3pyivJinOYvLMZv1Qa8+5FwKUrI+OgHKM9fV94Cyd4g==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=davidgow.net;
 	spf=pass smtp.mailfrom=davidgow.net;
-	dkim=pass header.d=davidgow.net header.i=@davidgow.net header.a=rsa-sha256 header.s=201606 header.b=OQ6oOTRy;
-	dkim=pass header.d=davidgow.net header.i=@davidgow.net header.a=rsa-sha256 header.s=201606 header.b=r6K3Erpu;
+	dkim=pass header.d=davidgow.net header.i=@davidgow.net header.a=rsa-sha256 header.s=201606 header.b=kr6TGBN1;
+	dkim=pass header.d=davidgow.net header.i=@davidgow.net header.a=rsa-sha256 header.s=201606 header.b=jZm5UvhT;
 	arc=none smtp.remote-ip=203.29.242.92
 Received: from sphereful.davidgow.net (sphereful.davidgow.net [203.29.242.92])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ED175606A323;
-	Fri, 27 Nov 2026 09:04:18 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org ED175606A323
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 754EE606A321;
+	Fri, 27 Nov 2026 09:04:23 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 754EE606A321
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=davidgow.net
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=davidgow.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (4096-bit key) header.d=davidgow.net header.i=@davidgow.net header.a=rsa-sha256 header.s=201606 header.b=OQ6oOTRy;
-	dkim=pass (4096-bit key) header.d=davidgow.net header.i=@davidgow.net header.a=rsa-sha256 header.s=201606 header.b=r6K3Erpu
+	dkim=pass (4096-bit key) header.d=davidgow.net header.i=@davidgow.net header.a=rsa-sha256 header.s=201606 header.b=kr6TGBN1;
+	dkim=pass (4096-bit key) header.d=davidgow.net header.i=@davidgow.net header.a=rsa-sha256 header.s=201606 header.b=jZm5UvhT
 DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=davidgow.net;
-	s=201606; t=1795770257;
-	bh=FGKZ42sJ/XYfEgbzrVYLVBLbdNiAgMFOIzYKegnqyMI=;
+	s=201606; t=1795770261;
+	bh=EQkPeK4wWZq9QUG0Xhod0W+KU3dneE25SCANwvCk2p4=;
 	h=Subject:From:To:Cc:In-Reply-To:References:Date:From;
-	b=OQ6oOTRyH0j9VUFiF0D7Yvno1yJvjFvvKkUdVE4ZqDY8hyfHhcL3HZFU386i8FmSU
-	 o63t28vjhc2sZqp69a/AupvAJ7TafZLJ/Xhk2fFl3FnB9NOyAVHt12cbir/syMn2cV
-	 2JZc6TX4Mf9GD30F13XIqLr+ftd9z0R82asOhNeWHE+h0kl2EphxAB+bxfM8I4FPeD
-	 K07IW0QNLK4SZTn1Kga1I7onsCuTOx+7MFxFEE52jurykUasBZ6+IpVGBCrjykTb8n
-	 7+zFnDhsNiaEcen56xga8khdBSixaBWgB8slynP6eWXh+NSfucbx8UeJCeUhw5g5pv
-	 OWRiEYswQA+vADULq53BDyVcmdoDEM4cSAR6GNtaRvvDZDt8tINjt2vwhL9hPmEuii
-	 Jw3QWxfy6HVmHaHmwhT1eEA8fJV40DN3xEBx7ePEDutuDA/i8Kh5vW5VSh/kL/2iMw
-	 qDS3dJc+X/x4oEyYpGqDdEEI69kdqDsUjx/mMnnj+Q0hgLW43ws8x45U/N/7Uh7rck
-	 EJXHGJmEDIYmDKAG3kHN6RZWsaokCuTakeDao7ET1Ju2uT/01iIhHa/j0biRwtP+OH
-	 Tg5WySvl9KCSu+cKsk/lR3JUqQVrSFPv7zx9HUfqQkksu8qfZ+F7OoPye8JGysSosK
-	 E3pekDCYvHv5PxSP64vPW364=
+	b=kr6TGBN1PhJk7SdCibYWPGHDq6Il5L4LjgY0DBRoOcUGc/E+PVvLIxtIfU97xHDTh
+	 IaIfJM+6zWwCAKlHsnZ8DTT5gtpZQ43UNjRPC1opi4UFGHrKnOMn3x/NRISF/hdBk7
+	 pSdCGy91ns63Yt7a/pCywaGAa7oFazgcy9QmFbGfCm09dSJfRNSLJwUn20HQjKtOZQ
+	 cd6iA59DYWThWEO3yaEUhat+c/DKNKcPmpuqS3AEkiQ7taYdE1ypRCNrlZJ9bPEsmx
+	 JqOoetTV/I0Pn0ieMSUmY9awtcBp+hOAl/tvoB44O+CIMBp5gDpb5NW7ymNCBuQrKw
+	 Qikp5BI/Ai02f7s1hUscCigJOMlxIE9FYASI3FMT4Yq4Ba3kQYTqDL0iv7eQnAeAeF
+	 nAlms4LPCxvPeLowOEKIlNR8Rws5PG5Dm1kPSnl7Ez+B65nRVCE6omQMuesY7BvZqu
+	 JKFGFX2QA5QaB/XJdizlI2jVVa29xmEplocVLY56a1tgCOx90gcv2b5i14WQMmFR1K
+	 hfzRdNFSPzGAVPzJiODsj3WMnOxa18WXkMrpGB1isi9f4LaxdWRLwrMRrRk7/Hhr5E
+	 w/5XQ7qlXtSC4dk8wZD/qV6u3u9s3Nl/ZPze20lShxZUzBvTpaIrpRDCzeW9vSpz8O
+	 ShpIG2Paqp2IBPRohP+S2g5s=
 Received: by sphereful.davidgow.net (Postfix, from userid 119)
-	id 25755200201; Fri, 27 Nov 2026 17:04:17 +0800 (AWST)
+	id 934D0200204; Fri, 27 Nov 2026 17:04:21 +0800 (AWST)
 X-Spam-Level: 
 DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=davidgow.net;
 	s=201606; t=1795770239;
-	bh=FGKZ42sJ/XYfEgbzrVYLVBLbdNiAgMFOIzYKegnqyMI=;
+	bh=EQkPeK4wWZq9QUG0Xhod0W+KU3dneE25SCANwvCk2p4=;
 	h=Subject:From:To:Cc:In-Reply-To:References:Date:From;
-	b=r6K3ErpukQxTynDdJdA4CaIrLQWMy5EKXUF46oVrlMb3/EOzq0oeNy4nGwOLvZmxF
-	 LW47TvwKc6JCGJn/KvYCyS01Kb6cxQ16JT1FYfEDFmf2zK53b495OZ8TE5+IzK2PsH
-	 u8p7JMk/AmyZ1Rn4ll18uzRXc/hcUGYoljUnaRS6w9PTPmhpCKJK+NCC8MVD+CnPaw
-	 hQpcgZzymHfXTrylajOSjhzscS9X2siuMVYp5vNdwE4hB9pnFnFeAZ+4VId4mJwgaq
-	 c/rbIXxwFbveEe4Wbi/h4DB1rv1b3twBaY34IG6Yu57drTZP4I2lUCE1LpgYdeE/1z
-	 ZbOZIhwJKENuaoyZSXM2+sNoJmPjKQxhSt9khRhX92ntlR74A3MwuPcb2buxHvsrdv
-	 G6UmqAZTjK8D6jKzczOwZT9Rr2eBy1V5C0xW+8ol1qS7Pties2BncTQs4RZoRhwKB8
-	 cM5ALz1AhHmUX6G2coUpBVekeg+jGHtQR2KdfVZvDYH15xXxtxlgdY+kh6m/2Lq/gF
-	 QudADooFfUi6qYCC6cooqDb+rZx9WrQKb6Rrgst1YVGT+xmHOg2R10Yi+bWsa6NfCZ
-	 8aK15hxdHhovvsCcHHG2GdltEYIFbt0lp7fF1+L0ESiH8PeaBS4HRZXC+ezPYb7hfs
-	 SrFjIHjXbRf05BlQUYShuVsM=
+	b=jZm5UvhTuKaSBb8Xh2UJydsnS/09wetd2nSKgxKIIEn/zP38VpJJV4nKo08FPgmSZ
+	 rR2ytzygcIUAvXaq1Gl0YlUYi3uEmqb+GCU+PGalsuydvVUOMvZD5bOL+TSFrABwm5
+	 U/HiiOB5fTjvbbXZi3W1dlc34o+/bIxTLEckzdw5gGAsbMUvxcEmseUVPmULHG9/A6
+	 PM0Nt9ue5F9WOViVC4W/KgeH7n/NjLPj5S51xxLkyEmmGENgXPd7zCNMUrKq0PKmyD
+	 WlLQZJnnAeF2o2MwBVhNxXosKXGfWbuxcFlx/yqWwsmynrFGGn3wKicxuF6Gs24kbI
+	 NhTMkPMWSfvKLo/MwPdv3+NmH2qmjhnifoIOw0Tp9H74X+khL+LQtbnj3TGV4WnQT3
+	 qxZWHa9UTVQxkAHYVeMetSuOexQrO8Fb+z2pSJBjecpDD2TlL7RHJsRHwpk1DkOjo8
+	 JIL0OoxeARIcci0S+zGCV3vjXwlfVVEyHPzTL5TQzikEwqojsvDZ+RtZ3dRrY5TEy/
+	 sH7bLn05JO19dANWRB9c1Lf3EeY79aDQf6Kuap3Ke8xze2vEzGVF+Ki3jJ0z0/rd27
+	 G4JnZ84nmgwrgxHnouSXcN5NACUzdJ/QroNQpFyx9sOiPIU6AF0okDjvvcR1ZeKWIF
+	 N0lR6MiO5C6N9CkKRwBk1+Gk=
 Received: from shelley.lan (unknown [IPv6:2001:8003:8802:7000::41b])
-	by sphereful.davidgow.net (Postfix) with ESMTPSA id F06D82001E5;
-	Fri, 27 Nov 2026 17:03:58 +0800 (AWST)
+	by sphereful.davidgow.net (Postfix) with ESMTPSA id 2AFC82001E6;
+	Fri, 27 Nov 2026 17:03:59 +0800 (AWST)
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -84,8 +84,8 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Subject: Re: [PATCH v2 5/9] firmware: cs_dsp: Give the control cache KUnit
- cases distinct names
+Subject: Re: [PATCH v2 6/9] firmware: cs_dsp: Give the wmfw block error
+ KUnit cases distinct names
 From: David Gow <david@davidgow.net>
 To: Mark Brown <broonie@kernel.org>
 Cc: Simon Trimmer <simont@opensource.cirrus.com>, 
@@ -105,37 +105,36 @@ Cc: Simon Trimmer <simont@opensource.cirrus.com>,
  linux-kernel@vger.kernel.org, linux-kselftest@vger.kernel.org, 
  kunit-dev@googlegroups.com, linux-doc@vger.kernel.org, 
  linux-ext4@vger.kernel.org, linux-sound@vger.kernel.org
-In-Reply-To: <20261105-kunit-param-names-v2-5-765b3d5275d2@kernel.org>
+In-Reply-To: <20261105-kunit-param-names-v2-6-765b3d5275d2@kernel.org>
 References: <20261105-kunit-param-names-v2-0-765b3d5275d2@kernel.org>
- <20261105-kunit-param-names-v2-5-765b3d5275d2@kernel.org>
+ <20261105-kunit-param-names-v2-6-765b3d5275d2@kernel.org>
 Date: Fri, 27 Nov 2026 17:03:34 +0800
-Message-Id: <179577021430.2515039.10102791444201384742.b4-review@b4>
+Message-Id: <179577021432.2515039.11236938523373993492.b4-review@b4>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=551; i=david@davidgow.net;
- h=from:subject:message-id; bh=FGKZ42sJ/XYfEgbzrVYLVBLbdNiAgMFOIzYKegnqyMI=;
- b=owEBiQJ2/ZANAwAIAcYipzoZDNtCAcsmYgBrCUd4M0Se56zcAO7VKsxWEvtmKQK4H3k44bNgH
- WHGxx1orQWJAk8EAAEIADkWIQSmmTCaqhqZOsxDGC7GIqc6GQzbQgUCawlHeBsUgAAAAAAEAA5t
- YW51MiwyLjUrMS4xMiwyLDIACgkQxiKnOhkM20LjCQ/8CczGMbIWddkeKSt8+WVeoTb/r2XpqAN
- GFQZ44LPWdtZmbXCyJbyfHHzWEA4QVA8knEsBDJRAoeOf6G60NfUDWlY9QhSjNVrtp1GWnCkL2z
- AyuFCScABBFVVHI6kfVsaL1ZdjE7bG8nT5g6YPvPVN5wQpE6lNtwZtNaO6+hHV6Wl1LLZMnMgoX
- 7uTl604nRS0+eTfYWsmj+7aQ8E6URKrGlg+XttCdJR+4o9yitE5utYlXQCghSnoziIHxhxVhPB5
- 8jhl6oK+jVQQqwSRutzM2GAHX7C1DFdsG81JDcl84K3HdxyJ7aqa0eZx5T8cdi9QA450LMG3QNP
- WJMnwPavqTYTmY3VByl9bEDzVWA2bpNRYmOUZyVyZYhqjlRPt1dU48c6Df2xD3liduPWkOFWm3W
- ijv4/7qow7A7B7bpwgy816eTf8MiLEA5SRJzDR+rsIXI4Ehn3GdXN5ZM7c39cJjzwRB2MfyU6KJ
- cS2PN7rBCB+JkLwk0cYrXkmP4pRk9gQfMJgQFAJz0IlNkdgKXWA2JN8AUgke2810M/CzZZ27P5r
- eYQhAIrzOvDMLThoYl8vm93HhXYi8mmUxiIuf3DTj9dYMCMohPUjtpxnwjLv0ynCVNMB0S2i92j
- 1vFhrrr59vRPKbvAGeJA5kOUJiizMsOvYm6y08rdeBd2LXSEeWlo=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=547; i=david@davidgow.net;
+ h=from:subject:message-id; bh=EQkPeK4wWZq9QUG0Xhod0W+KU3dneE25SCANwvCk2p4=;
+ b=owEBiQJ2/ZANAwAIAcYipzoZDNtCAcsmYgBrCUd5Tm+U5iXIkulvVJ1/SyPf/s6HouwRTqzbo
+ MRgkq02Y+qJAk8EAAEIADkWIQSmmTCaqhqZOsxDGC7GIqc6GQzbQgUCawlHeRsUgAAAAAAEAA5t
+ YW51MiwyLjUrMS4xMiwyLDIACgkQxiKnOhkM20JdFA/+JWS80cloWq3czeRYIZhdbjr2PrumHxQ
+ adF/6wefgLv/68+PsS6tnBZOxjdXuWFTfj6164f0XK7AfW5gA7f+81bQ8w1anav42usEbLph5fY
+ 1y/Xn15wB7FIjujIs+8mMhAlhysWT+PrEkWPuWNEKAWGMJLMk18YiM7kgqXn3+Hh9h8cGjmWuwV
+ kkHHnRucCDJ6V11ZMySldO7pZ4xNA7ZsF8PjJ6+afrn41EpYqT0868XXf5llqDy8ojQ4a+557yy
+ UUtIdRUJ2TDPl8uhfC7BCFgwxkONvPvVwbBhHR5MHOJX0+GQifbb1zYFyMA8kJYv4/uwgmExcTM
+ 2PNHy3/uq61HkVc94Tq6SOmtU8NVZja+Pn8Mi70JqaxR79bmmHq4PKxGnx0dP9UPYh26u7FNzOg
+ 7kcjgz3CjNtZ9c4kYJn802PzJ8H6RrAEAnSd4SiSKUosjQhEIubJ5+fYg3ZY7okuCSPmGidZU/I
+ JdPc9E/SLOiLoZINiAO+UAfopIkbqJRMxCy4yhZyBQTXYLD2sc61pQR1PJsHkKEkU3qzZnudizI
+ TqqkwgwxA6sGbwzFA6cmYKchnTO4hUaP0sw9/KEgG+a3GWINdUnGh0YqKJAtzMu/G4ej+NsGund
+ o+ZZgCRgH1dEtjRyOW6yj6a15S0AY+fXugjX3d7ITSeEKmcujmr8=
 X-Developer-Key: i=david@davidgow.net; a=openpgp;
  fpr=3B0A53B1D9DF6AAC59C230322A821C5AD66AB03F
 
-On Thu, 05 Nov 2026 16:00:32 +0000, Mark Brown <broonie@kernel.org> wrote:
-> The cs_dsp_ctl_cache suites run cs_dsp_ctl_cache_init(),
-> cs_dsp_ctl_cache_writethrough() and
-> cs_dsp_ctl_cache_writethrough_unchanged() against several sets of
-> parameters by listing each function several times with
-> KUNIT_CASE_PARAM(), which names the case after the function. The
-> resulting cases all share a name, so they cannot be told apart in the
-> results.
+On Thu, 05 Nov 2026 16:00:33 +0000, Mark Brown <broonie@kernel.org> wrote:
+> The wmfw error suites run wmfw_too_short_for_block_header(),
+> wmfw_too_short_for_block_payload() and wmfw_block_payload_len_garbage()
+> both with valid and with invalid block types by listing each twice with
+> KUNIT_CASE_PARAM(), which names the case after the function. The two
+> cases for each function share a name, so they cannot be told apart in
+> the results.
 > 
 > [...]
 
