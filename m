@@ -1,57 +1,57 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795795113;
-	b=2e6HD82Y2F+usN26FPiDWEDbWDO+P4n+ADNDufOOEvUbfanSJC5DRkrrpiG5NsptT2XK
-	 2JfARECfJS1Ql6CvsC16VN9+MYv2DxC58rby6ZZCeRzsR4QPvhwi/yIWrOX3bPTI0pGtX
-	 2rMviU+u3rBbSA6x4KGHnOr/rJn5JruU7DgbxXZi25515xcSmKSS6wjYWgXDrZ280ofyT
-	 o5SDYHevnRUgC/KUxbkooF6vPf/Mwfrv9jBXcdcHq+47xkmoj7Z0RCRpb8m29e7kP+s4b
-	 DO1M4uoJiPpbwrx08Ddh9ypnQXAVOKVh/swC9+Z+XzESXz8H3USqWLb7U7G/+AutoFQ==
+	t=1795797980;
+	b=JkMkFPdGCwPPNGd1HucIl/svZu1bO8UewZlG9Md0qDm2LO3QpXWfoqSg7t6vl7rwKG4N
+	 wAehYMTrJPYca8rYAG8b+4pE8F3qWC3I6yyDz53Ti/oZhv+Sw6ih7Dqv+ZWQf6NNlYD23
+	 76oMCviWEN0m8X8ozMNpH3VvXVp6gE2QkJHC/HgAv+NPTypXsR+AVWCt8882SLWBh4DGV
+	 fy/hzitO1DpqZA86cuHLlr2kB+AAq4AkED6tocvcaNqTmIy5m+tC0b0wOrDWrewLHqNsO
+	 w85SDYhZyyDwh7ZwJsDF+UoE684HVm0J8vVafqHV8as6iPA8iNVonqYOYQUtTfMOvPw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795795113;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795797980;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=pP+FWsr4a6JvvK4G7miFFVRpbhDvzNYpBM0Og6/OrIM=;
-	b=d3iHqV1JRm83ZS4QPfCS7NNBeklW8COjw+qO8G4DAXUIuBT+1r2B3+8/3uv9+gMCP1CE
-	 xolAcIMfLdMz69+srxlf6ttTXaidUp096Ing12Mw3sG9VXiXRUtXNEIkRT/MAsI53TkOn
-	 /eQoKaWCnTXZZz5J25DoVuTqVkrbyuDt+uUnw1zpNVe22Z2rCwKjpU9SAxAH0nCZn38Xg
-	 hk+guEk3nErYkGAufPm2PTvj2r5PfY+PTA/9yWZPrcEbXbg3m6J6tEZzOB6Ea6rrVsDL+
-	 gRDgKR9SErUMP9fReDdXNRVKeekIYt2N2IG5lFkvYclHomRzVlooEhkhYhpIaGz5XdQ==
+	bh=t/mEZEjTb/PNSKZddt6r+1apdeIoySlP41uIezglfHM=;
+	b=4Cn12fiSBPdaNeUZAG5UcZPtQeulWoTrlcPJBHy2MOhD3CRxlKZbNN7ybcsfWXCui/Wt
+	 Te9529zYec0FJtTXNBIQNsZDS/pj5htbkD9Z/VyBWm5+O/rKGMyaameRU2hXWaJNTaUzA
+	 tUFo2VKFgqr38CbzcReOHy2k5lk78aIb7opG8CM1lnOiPZamW7S6PH7QX7VhpncH4IJdH
+	 M+m3ZGom6oWWVX6HBwbJNvq08qxTaNl4+mm/+4I09V1O4Hle+uhma4fHJICf1sxtDDtjm
+	 CSE92IZ+5kd0KefHFAJJi0mQPuZPBMHOD46BkxBFUe7BHHFKtWevdW+XtMqTgWku0kQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=TH0vJbXM;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=odfx4za+;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C46D0606A321
-	for <linux-ext4@vger.kernel.org>; Fri, 27 Nov 2026 15:58:33 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A8587606A31E
+	for <linux-ext4@vger.kernel.org>; Fri, 27 Nov 2026 16:46:20 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=TH0vJbXM
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 848711F00897;
-	Fri, 27 Nov 2026 15:58:33 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=odfx4za+
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A7B561F00898;
+	Fri, 27 Nov 2026 16:46:19 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795795113;
-	bh=pP+FWsr4a6JvvK4G7miFFVRpbhDvzNYpBM0Og6/OrIM=;
+	s=k20260515; t=1795797979;
+	bh=t/mEZEjTb/PNSKZddt6r+1apdeIoySlP41uIezglfHM=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=TH0vJbXMP13jdA6hIm4XOgrg0hp7hGrCfW/v5dpKKp1kQBJSFrpTMkN7E6gx24fPq
-	 Faxo4bdmEzfa4khbk/QZXD5h50XvGaUfVuCfoMztSYr4MZvadb2uiioK3KVxKM0zQI
-	 MRAyRV2Wg+4kHYOtv04w8U3QYARBMJTv6fiZ6zJR4Z7B6cj20Cb22hen7qhfigNu0w
-	 H0jJo/HrHDbw1PuGSH3y0S/BL1KXwJ/Fza+BnaPBfnWKdk/+Aj0xdElRd3mBFDJJhE
-	 X9u+6HVBR7lHTMs4mkcbOLJLu0ZTPdMvjXzZ4eF4vTfC/kNlrQxZw/frDlDHHHPerp
-	 7xzmeQUBW/RWw==
-Message-ID: <sashiko-outbox-237799@kernel.org>
+	b=odfx4za+ykDIaJhOOE/dVz37hgOB+04V7Yf+8uUZ9niT+FplUuXUiSwKps6vP1FFC
+	 XOs8+1l3BslshAPB9aTzLmzg3hQpB+ZrSj3XZdvEjJDdo2satM/HrogWMwMJH6RgmY
+	 Euo3zZph0HO2D/L8AoaukWWzrxJSI3P9ovE1LSTgoLxeNWPJ3Te9mTk6NzObTKVNZe
+	 catLTv5qk/DOpE9bGqzoHW32+Z5m6X2kF0hm9AXFk+PcRWpnM1C1bo2NMWirD17exW
+	 hU/qU7jnSdpLu0Lp85mz4IYuWmjSZMGkZAKpOPkDU4IFDr9dQj4CJa0lUaUUG1qLVZ
+	 EOxt4qWRx9Uew==
+Message-ID: <sashiko-outbox-237922@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH v2 02/13] ext4: introduce CONVERT_PENDING extent status
- type
+Subject: Re: [PATCH v2 04/13] ext4: add es helper to convert unwrit to
+ convert pending without changing i_es_seq
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Ojaswin Mujoo" <ojaswin@linux.ibm.com>
 Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-In-Reply-To: <20261127-ext4-endio-zero-bug-v2-2-4106968e4d15@linux.ibm.com>
+In-Reply-To: <20261127-ext4-endio-zero-bug-v2-4-4106968e4d15@linux.ibm.com>
 References: <20261127-ext4-endio-zero-bug-v2-0-4106968e4d15@linux.ibm.com>
- <20261127-ext4-endio-zero-bug-v2-2-4106968e4d15@linux.ibm.com>
+ <20261127-ext4-endio-zero-bug-v2-4-4106968e4d15@linux.ibm.com>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Fri, 27 Nov 2026 15:58:33 +0000
+Date: Fri, 27 Nov 2026 16:46:19 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -63,82 +63,64 @@ Precedence: list
 
 Thank you for your contribution! Sashiko AI review found 1 potential
 issue to consider:
-- [Medium] ext4: double reservation update on ENOMEM retry in
-  ext4_es_insert_extent()
+- [Medium] ext4: unused static ext4_map_mark_convert_pending() breaks
+  build at this commit
 --
 
-commit 574b0ce6804297f971eb1e0a8136bb02463b4f9a
+commit 80a3192297d6fe076d14d5912fca2f3312352549
 Author: Ojaswin Mujoo <ojaswin@linux.ibm.com>
 
-ext4: introduce CONVERT_PENDING extent status type
+ext4: add es helper to convert unwrit to convert pending without changing i=
+_es_seq
 
-This commit adds the EXTENT_STATUS_CONVERT_PENDING extent status type to
-track unwritten extents undergoing disk I/O before endio converts them to
-written.
+This commit adds helpers to mark an unwritten extent as
+EXTENT_STATUS_CONVERT_PENDING in the extent status tree without
+incrementing i_es_seq.
 
-> diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-> index b7fb8502f9d46..28528f19be1df 100644
-> --- a/fs/ext4/extents_status.c
-> +++ b/fs/ext4/extents_status.c
-> @@ -529,6 +529,9 @@ static inline bool ext4_es_must_keep(struct extent_st=
-atus *es)
->  	if (ext4_es_is_delayed(es))
->  		return true;
-> =20
-> +	if (ext4_es_is_convert_pending(es))
-> +		return true;
-> +
->  	return false;
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 9368a68db2894..f7fc5fb7e8197 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -757,6 +757,29 @@ int ext4_map_create_blocks(handle_t *handle, struct =
+inode *inode,
+>  	return retval;
 >  }
+> =20
+> +/*
+> + * Mark the unwritten range in @map as convert pending in the extent sta=
+tus
+> + * tree. This is used by the zeroout code to ensure we don't write zeroe=
+s on
+> + * such unwritten ranges and hence must be serialized against endio conv=
+ersion /
+> + * extent zeroout, which hold i_data_sem excl.
+> + *
+> + * Returns false if the extent status tree changed since @map was looked=
+ up, in
+> + * which case the caller must redo the lookup.
+> + */
+> +static bool ext4_map_mark_convert_pending(struct inode *inode,
+> +					  struct ext4_map_blocks *map)
+> +{
+> +	bool ok;
+> +
+> +	down_read(&EXT4_I(inode)->i_data_sem);
+> +	ok =3D map->m_seq =3D=3D READ_ONCE(EXT4_I(inode)->i_es_seq);
+> +	if (ok)
+> +		ext4_es_mark_convert_pending(inode, map->m_lblk, map->m_len,
+> +					     map->m_pblk);
+> +	up_read(&EXT4_I(inode)->i_data_sem);
+> +	return ok;
+> +}
 
 [Severity: Medium]
-Can making EXTENT_STATUS_CONVERT_PENDING a must-keep extent cause
-ext4_es_insert_extent() to call ext4_da_update_reserve_space() twice with
-the same resv_used count on an -ENOMEM retry?
-
-Previously, ext4_es_must_keep() only returned true for delayed extents,
-which are not inserted through ext4_es_insert_extent(), so err2 =3D=3D -ENO=
-MEM
-was always cleared to 0.  Now, when ext4_es_insert_extent() replaces a
-delayed extent with a convert-pending extent, __es_remove_extent() removes
-the delayed extent and sets resv_used > 0.  If __es_insert_extent() then
-fails its initial GFP_ATOMIC allocation with -ENOMEM, execution jumps to
-error: and updates the reservation before retrying:
-
-fs/ext4/extents_status.c:ext4_es_insert_extent() {
-	...
-	err1 =3D __es_remove_extent(inode, lblk, end, 0, &resv_used, NULL, es1);
-	if (err1 !=3D 0)
-		goto error;
-	...
-	err2 =3D __es_insert_extent(inode, &newes, es2);
-	if (err2 =3D=3D -ENOMEM && !ext4_es_must_keep(&newes))
-		err2 =3D 0;
-	if (err2 !=3D 0)
-		goto error;
-	...
-error:
-	write_unlock(&EXT4_I(inode)->i_es_lock);
-	...
-	resv_used +=3D pending;
-	if (resv_used)
-		ext4_da_update_reserve_space(inode, resv_used,
-					     delalloc_reserve_used);
-
-	if (err1 || err2 || err3 < 0)
-		goto retry;
-}
-
-On the retry pass, no extents remain in [lblk, end], so
-__es_remove_extent() returns 0 early without writing *reserved, leaving
-resv_used at its value from the first pass.  After __es_insert_extent()
-succeeds with the preallocated es2, ext4_da_update_reserve_space() runs a
-second time with the stale resv_used, underflowing i_reserved_data_blocks
-(triggering WARN_ON(1)) and double-claiming or double-releasing quota.
-
-Resetting resv_used =3D 0 (and pending =3D 0) before goto retry would avoid
-applying the reservation update twice.
+Does defining ext4_map_mark_convert_pending() here without callers or
+__maybe_unused break the build at this commit?  Its callers in
+ext4_map_blocks() are not added until commit "ext4: add support to track
+convert pending ranges in ext4_map_blocks()", so compiling at this point
+in the series triggers a -Wunused-function warning (and a build failure
+with CONFIG_WERROR=3Dy), breaking bisection.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261127-ext4-endio=
--zero-bug-v2-0-4106968e4d15@linux.ibm.com?part=3D2
+-zero-bug-v2-0-4106968e4d15@linux.ibm.com?part=3D4
