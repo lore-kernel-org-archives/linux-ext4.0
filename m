@@ -1,67 +1,54 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=113.46.200.224
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=220.197.31.5
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795837761;
-	b=s5OjLdBnM2eNyDmY4oEvuy/EheO2hKo8zEb4sMykBD/L3cA516zvGmiYUql9V7L7oUns
-	 niZHpic/0ti6QFTPVJ8c7cfjUdO+C3g5hhiJSRi05Wr4qO6Hz7lUI03qF9Fd+Kn+lNweS
-	 demKUkl+JMMpDDHbtQWkb/JkZyiAh79EPoDh40vF3F4FMCJpUoGHN89g6qpFm+fEm5fos
-	 ILo1oHq/70I9Ym1gvJaBFo6H/t8khKPs3f5pRsIls59hA3dqUtsD2Fcq/pUzKAioi8lnb
-	 T+k8PNCR+cTuU8hUCzpTfUKr37ScCoWCGDTixLomnSGeoE2BZrPlZLD/ChkKTuVyahQ==
+	t=1795841548;
+	b=yKP2MYMoa01RTSWUQayJJNp/fOH5XHQG3fanZAoWa4YeexEBzwKnAsha6cRhgXCk57mJ
+	 WmjH9oebQBWVb754ywJ/sPeE1PHjWtRiWI515EGGkfi1RRQ5Ga7zVTGWpwOiuwtqCYkXP
+	 sUk9kgNvzsRcvEo9nGR1oVl8mRSWp2I+dHfYdUsxED00+1RHQZwRguulrqLDCVwHbxC0V
+	 fwJAU/byRvos8PjOeVoO5n/WxSw5nxujxDd9OpWJvWVWjJlFKJ8muOmwhsM/2ygMEKZri
+	 wbRjJwZ53l+fodR6Ffsw3S2z9SqMAPuXaUsnZmxeZrqt6ksMYkt9Qr0PtXhBipzrGlQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795837761;
-	h=DMARC-Filter:dkim-signature:Received:Received:Received:Subject:To:
-	 References:CC:From:Message-ID:Date:User-Agent:MIME-Version:
-	 In-Reply-To:Content-Type:Content-Transfer-Encoding:X-Originating-IP:
-	 X-ClientProxiedBy;
-	bh=dllRbTMVq6Yk7nxAQmnso9xqaA/qesTKd7XYM2DO9YY=;
-	b=rafFzNPIMj+X5eV4kizkYKlo0YwSFtwtF0CvQMQZPFeMHp5Pe7ipLfB0mktARDtCr1HJ
-	 mE7wf89TVisHEk5/VA1pp3OSPPAD5shcZnbmEKONx2uJ2ZocwAwIcqRf3nn3fEjYVUAkx
-	 FaVRUW/Vn0ML4f8jgOeFX2tpCKLLxmUuOWXiIh8an3Em1Ts1nVL18v07xG5E6pBFldRmQ
-	 Q0fdb8luG7NYJvtsA5ffYE5o06YgmKO8AgYGJaxSUFJMS4dounRSb6II6pNHJn5AZ0edM
-	 5PYSPULpWkkcoMtHSPm6MP/x9iwPcDEIExvNPOynWrIKPOztZFVM+zUgFGxZiiJyZlA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795841548;
+	h=DMARC-Filter:DKIM-Signature:Received:From:To:Cc:Subject:Date:
+	 Message-Id:X-Mailer:MIME-Version:Content-Transfer-Encoding:
+	 X-CM-TRANSID:X-Coremail-Antispam:X-CM-SenderInfo;
+	bh=IKRb8+/tWBaLiaQrpz7PsTRKzl74+ZET0qyuJcBZwD4=;
+	b=Fp9eRz7Zmb992+eDL+BsihtMubeXE4qxQyf34vR1a1UKVJxLerSM58pfefpKmkaT5+2Z
+	 L/JH6Xm63Q47awGaCjw/XtLySGn12dxdpqV5H9cD7MAeGbQl2ZCXKq3rLhhX9quCNRfiP
+	 XopJ0uDeTv/ZWjJSAjtaOeMsExYVB1YDQsQFw/mW5YAX0f52GnvnZ0ehzRubjoSU2ZLYU
+	 YnN/NMr/du6oJ6uk/hlxU/cFhoOFFpA7RDG923dh94XsIVmZSjQiQCKU2r0Xx8A/jRx9k
+	 6jSecu8pyKix8HHMexgTQwhZCy6pXmpJZ0Y4d3IzZM6DEphVM5YxxNBefPV8wduU8mA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=huawei.com;
-	spf=pass smtp.mailfrom=huawei.com;
-	dkim=pass header.d=huawei.com header.i=@huawei.com header.a=rsa-sha256 header.s=dkim header.b=kWExh6R0;
-	arc=none smtp.remote-ip=113.46.200.224
-Received: from canpmsgout09.his.huawei.com (canpmsgout09.his.huawei.com [113.46.200.224])
+	dmarc=pass header.from=163.com;
+	spf=pass smtp.mailfrom=163.com;
+	dkim=pass header.d=163.com header.i=@163.com header.a=rsa-sha256 header.s=s110527 header.b=mumFP+Q4;
+	arc=none smtp.remote-ip=220.197.31.5
+Received: from m16.mail.163.com (m16.mail.163.com [220.197.31.5])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2775D606A31C
-	for <linux-ext4@vger.kernel.org>; Sat, 28 Nov 2026 03:49:18 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 2775D606A31C
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 18775606A31C
+	for <linux-ext4@vger.kernel.org>; Sat, 28 Nov 2026 04:52:24 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 18775606A31C
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=163.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=huawei.com header.i=@huawei.com header.a=rsa-sha256 header.s=dkim header.b=kWExh6R0
-dkim-signature: v=1; a=rsa-sha256; d=huawei.com; s=dkim;
-	c=relaxed/relaxed; q=dns/txt;
-	h=From;
-	bh=dllRbTMVq6Yk7nxAQmnso9xqaA/qesTKd7XYM2DO9YY=;
-	b=kWExh6R0u/FsJtzvmkxtlH7oQGO5/EtYccguDAAm/64oUi84v9rkrx1uOz4+83LIudpWtcQuU
-	NJXwF82XvPSsgprI31tGjra0fO60fL1aeq0ztI12HfAI61VHgwzzFcaIhBXo1EUFM4m7Z5zad7K
-	lJqxnbGS6vfMC778uHKO5cI=
-Received: from mail.maildlp.com (unknown [172.19.162.92])
-	by canpmsgout09.his.huawei.com (SkyGuard) with ESMTPS id 4jbx8k3vtHz1cyQl;
-	Sat, 28 Nov 2026 11:48:38 +0800 (CST)
-Received: from kwepemk300010.china.huawei.com (unknown [7.202.195.128])
-	by mail.maildlp.com (Postfix) with ESMTPS id 75CAD40565;
-	Sat, 28 Nov 2026 11:49:04 +0800 (CST)
-Received: from [10.174.178.185] (10.174.178.185) by
- kwepemk300010.china.huawei.com (7.202.195.128) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.2.2562.45; Sat, 28 Nov 2026 11:49:03 +0800
-Subject: Re: [PATCH v3 2/2] ext4: protect ext4_acquire_dquot against freezing
-To: Jan Kara <jack@suse.cz>, <linux-ext4@vger.kernel.org>
-References: <20261126123611.2517017-1-yebin@huaweicloud.com>
- <20261126123611.2517017-3-yebin@huaweicloud.com>
- <sashiko-outbox-235531@kernel.org>
-CC: <tytso@mit.edu>
-From: "yebin (H)" <yebin10@huawei.com>
-Message-ID: <6B0A4F2F.60203@huawei.com>
-Date: Sat, 28 Nov 2026 11:49:03 +0800
-User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:38.0) Gecko/20100101
- Thunderbird/38.1.0
+	dkim=pass (1024-bit key, unprotected) header.d=163.com header.i=@163.com header.a=rsa-sha256 header.s=s110527 header.b=mumFP+Q4
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=163.com;
+	s=s110527; h=From:To:Subject:Date:Message-Id:MIME-Version; bh=IK
+	Rb8+/tWBaLiaQrpz7PsTRKzl74+ZET0qyuJcBZwD4=; b=mumFP+Q4DEVNGsadbU
+	TW4Eojf9JzVGkYJZcq3gIClPXvC1Q30O/NFRsx16qsjOMq1PC0A5Roa0/gmLUMwb
+	eqhzEu58dl7zr6W0rQkEQk9EuuUMiiNV1Z+D2fwmFJXeIf+khlT9KsX1gMRTqhS2
+	RgPHD4//jEB6MsWnTXzauYwi0=
+Received: from shaos.localdomain (unknown [])
+	by gzga-smtp-mtada-g0-4 (Coremail) with SMTP id _____wD3vwz_XQprXZaULg--.15719S2;
+	Sat, 28 Nov 2026 12:52:15 +0800 (CST)
+From: shaos <shawnq1@163.com>
+To: jack@suse.cz
+Cc: linux-ext4@vger.kernel.org
+Subject: [PATCH] ext2: validate directory entries before rename
+Date: Sat, 28 Nov 2026 04:52:14 +0000
+Message-Id: <20261128045214.2649994-1-shawnq1@163.com>
+X-Mailer: git-send-email 2.34.1
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -71,180 +58,152 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-In-Reply-To: <sashiko-outbox-235531@kernel.org>
-Content-Type: text/plain; charset="utf-8"; format=flowed
-Content-Transfer-Encoding: 7bit
-X-ClientProxiedBy: kwepems200002.china.huawei.com (7.221.188.68) To
- kwepemk300010.china.huawei.com (7.202.195.128)
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:_____wD3vwz_XQprXZaULg--.15719S2
+X-Coremail-Antispam: 1Uf129KBjvJXoW3Gw4xWw4kKF4ktFy3trW8WFg_yoW7ArWkpa
+	na9r9aqw4DtFyUurn5KFyjvFyYg392ka15Ka4UA3W8ua9Iq3Z3Krn7K343tF17Jws5WrWF
+	9F4qqF48Ar4kXFJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDUYxBIdaVFxhVjvjDU0xZFpf9x07Ut8nrUUUUU=
+X-CM-SenderInfo: pvkd40jtr6il2tof0z/xtbC8QH0A2sKXgGFNQAA3J
 
+Hello,
 
+ext2_dotdot() advances from the first directory entry using its on-disk
+rec_len without checking that the resulting '..' entry fits in the
+directory block. A malformed directory can make ext2_rename() pass an
+out-of-block pointer to ext2_set_link(), which hits a kernel BUG in
+__block_write_begin_int(). The function also trusts the inode in '..'
+without checking that it still names old_dir.
 
-On 2026/11/26 20:50, sashiko-bot@kernel.org wrote:
-> Thank you for your contribution! Sashiko AI review found 1 potential
-> issue to consider:
-> - [High] ext4: s_umount vs SB_FREEZE_FS deadlock in ext4_acquire_dquot()
->    via vfs_ustat()
-> --
->
-> commit 5d68ea2752fdd861a0ff07e25a26ec6f31917f7a
-> Author: Ye Bin <yebin10@huawei.com>
->
-> ext4: protect ext4_acquire_dquot against freezing
->
-> This commit takes sb_start_intwrite() in ext4_acquire_dquot() when no
-> transaction is running so that quota acquisition during file open does not
-> start a transaction on a frozen filesystem.
->
->> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
->> index 880f664d6c04b..af965cab32e7f 100644
->> --- a/fs/ext4/super.c
->> +++ b/fs/ext4/super.c
->> @@ -7168,11 +7168,25 @@ static int ext4_acquire_dquot(struct dquot *dquot)
->>   {
->>   	int ret, err;
->>   	handle_t *handle;
->> +	bool freeze_protected = false;
->> +
->> +	/*
->> +	 * Trying to sb_start_intwrite() in a running transaction
->> +	 * can result in a deadlock. Further, running transactions
->> +	 * are already protected from freezing.
->> +	 */
->> +	if (!ext4_journal_current_handle()) {
->> +		sb_start_intwrite(dquot->dq_sb);
->> +		freeze_protected = true;
->> +	}
->
-> [Severity: High]
-> Can this cause an ABBA deadlock between sb->s_umount and SB_FREEZE_FS when
-> ustat(2) runs on a frozen filesystem?
->
-> Commit "quota: Forbid Q_XGETQUOTA and Q_XGETNEXTQUOTA for frozen filesystem"
-> blocks quotactl from reaching ext4_acquire_dquot() on a frozen superblock,
-> but vfs_ustat() also acquires s_umount for reading via user_get_super()
-> without checking whether the filesystem is frozen:
->
-> fs/statfs.c:vfs_ustat() {
-> 	struct super_block *s = user_get_super(dev, false);
-> 	int err;
-> 	if (!s)
-> 		return -EINVAL;
->
-> 	err = statfs_by_dentry(s->s_root, sbuf);
-> 	drop_super(s);
-> 	return err;
-> }
->
-> When project quota limits are enabled and the root directory inode has
-> EXT4_INODE_PROJINHERIT set, ext4_statfs() calls ext4_statfs_project() ->
-> dqget().  Because the root inode is a directory, its project dquot is not
-> kept attached in i_dquot[PRJQUOTA], so if no other inode holds an active
-> reference to that project dquot when the filesystem is frozen, dqget()
-> invokes ext4_acquire_dquot() with no running transaction:
->
-> CPU0                              CPU1
-> ----                              ----
->                                    freeze_super()
->                                      /* freezes at SB_FREEZE_COMPLETE */
-> vfs_ustat()
->    user_get_super()
->      down_read(&sb->s_umount)
->    ...
->    ext4_acquire_dquot()
->      sb_start_intwrite(sb)
->                                    thaw_super()
->                                      super_lock_excl(sb)
->                                        down_write(&sb->s_umount)
->
->   *** DEADLOCK ***
->
-> CPU0: vfs_ustat() -> statfs_by_dentry() -> ext4_statfs() ->
->        ext4_statfs_project() -> dqget() -> ext4_acquire_dquot()
-> CPU1: thaw_super() -> super_lock_excl()
->
-> CPU0 blocks in sb_start_intwrite() waiting for SB_FREEZE_FS while holding
-> s_umount for reading, and thaw_super() cannot unlock SB_FREEZE_FS until it
-> acquires s_umount exclusively, leaving the filesystem permanently frozen.
->
-This path indeed also has the ABBA deadlock issue.
+Validate the '.' and '..' records before returning the pointer, and
+reject a mismatched parent before changing the directory. The malformed
+image now makes rename return -EIO; valid cross-directory rename
+controls still succeed.
 
-(1) Could it be simply addressed by adding a check within the ext4 file system:
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index b021cbeb5f3a..c1d6fec2481a 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -7132,8 +7132,16 @@ static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf)
-         buf->f_fsid = uuid_to_fsid(es->s_uuid);
+HEAD commit:    8d7fe9885c62fc9a95bf55d9db244d9672a8aadc
+git tree:       fe970b05333fb8e41da21e9e289f652abcc7cba7
+source version: v7.3-23088-g8d7fe9885c62f (Linux 7.4.0-rc4)
+compiler:       gcc 11.4.0, GNU ld 2.38
 
-  #ifdef CONFIG_QUOTA
-+       /*
-+        * Instantiating a not-yet-cached project dquot takes freeze
-+        * protection in ext4_acquire_dquot().  statfs can be called with
-+        * s_umount held (ustat(2)), so doing that on a frozen filesystem
-+        * would deadlock with thaw_super().  Skip the project limits while
-+        * frozen instead; statfs must not write at that point anyway.
-+        */
-         if (ext4_test_inode_flag(dentry->d_inode, EXT4_INODE_PROJINHERIT) &&
--           sb_has_quota_limits_enabled(sb, PRJQUOTA))
-+           sb_has_quota_limits_enabled(sb, PRJQUOTA) &&
-+           READ_ONCE(sb->s_writers.frozen) == SB_UNFROZEN)
-                 ext4_statfs_project(sb, EXT4_I(dentry->d_inode)->i_projid, buf);
-  #endif
-         return 0;
+console output:
+https://gist.githubusercontent.com/shaos26/afcee45e1ee5b8da6bbfdb8b642093a8/raw/9b9627e2a59163890b551da6521d211dc6eb5e2d/console-output.txt
+kernel config:
+https://gist.githubusercontent.com/shaos26/afcee45e1ee5b8da6bbfdb8b642093a8/raw/9b9627e2a59163890b551da6521d211dc6eb5e2d/kernel-config.txt
+reproducer:
+https://gist.githubusercontent.com/shaos26/afcee45e1ee5b8da6bbfdb8b642093a8/raw/9b9627e2a59163890b551da6521d211dc6eb5e2d/poc.c
+image builder:
+https://gist.githubusercontent.com/shaos26/afcee45e1ee5b8da6bbfdb8b642093a8/raw/9b9627e2a59163890b551da6521d211dc6eb5e2d/mkimage.py
+build script:
+https://gist.githubusercontent.com/shaos26/afcee45e1ee5b8da6bbfdb8b642093a8/raw/9b9627e2a59163890b551da6521d211dc6eb5e2d/build.sh
+QEMU runner:
+https://gist.githubusercontent.com/shaos26/afcee45e1ee5b8da6bbfdb8b642093a8/raw/9b9627e2a59163890b551da6521d211dc6eb5e2d/run.sh
 
-However, what's strange about this approach is that it cannot obtain PRJQUOTA
-data when in a frozen state.If modifications are made to the VFS layer, it could
-affect the behavior of other file systems. It seems unreasonable to just block
-the query operation.In addition, this will also change the behavior of other
-system calls of the ext4 file system.The process of calling ext4_statfs() does
-not always hold the sb->s_umount lock. It seems difficult to wait for the file
-system to unfreeze.
+Download the Gist files into one working directory:
 
-(2) Another solution is to obtain only cached data during the freezing process.
-In other cases, data is obtained normally.
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index b021cbeb5f3a..84d9942b7e2b 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -7063,7 +7063,20 @@ static int ext4_statfs_project(struct super_block *sb,
-         u64 curblock;
+    gist_id=afcee45e1ee5b8da6bbfdb8b642093a8
+    gist_revision=9b9627e2a59163890b551da6521d211dc6eb5e2d
+    gist_base=https://gist.githubusercontent.com/shaos26
+    gist=$gist_base/$gist_id/raw/$gist_revision
+    for file in console-output.txt kernel-config.txt poc.c build.sh \
+        mkimage.py run.sh; do
+        curl -fL "$gist/$file" -o "$file"
+    done
 
-         qid = make_kqid_projid(projid);
--       dquot = dqget(sb, qid);
-+       /*
-+        * A frozen filesystem must not be written to.  Instantiating a dquot
-+        * that is not cached yet would start a transaction, and statfs may run
-+        * with s_umount held (ustat(2)), where taking freeze protection in
-+        * ext4_acquire_dquot() would deadlock with thaw_super().  In that case
-+        * only use an already cached dquot and skip the project limits if there
-+        * is none.
-+        */
-+       if (READ_ONCE(sb->s_writers.frozen) != SB_UNFROZEN)
-+               dquot = dqget_cached(sb, qid);
-+       else
-+               dquot = dqget(sb, qid);
-+       if (!dquot)
-+               return 0;
-         if (IS_ERR(dquot))
-                 return PTR_ERR(dquot);
-         spin_lock(&dquot->dq_dqb_lock);
-(3) The ustat system call transfers the dentry of the root. Can the root's quota
-be resident in each path, and the root be specially processed in ext4_statfs().
+Clone the kernel and build the test kernel from the specified revision:
 
-Hello Jan, do you have any good suggestions or better solutions for fixing this issue?
+    git clone https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
+    cd linux
+    git checkout 8d7fe9885c62fc9a95bf55d9db244d9672a8aadc
+    mkdir build
+    cp ../kernel-config.txt build/.config
+    make O=build olddefconfig
+    make O=build -j"$(nproc)" bzImage
+    cd ..
 
-According to the check, syncfs can be triggered when the file system is frozen.In this
-case, the following two processes may cause deadlocks.
-ext4_sync_fs()->dquot_writeback_dquots()->flush_delayed_work(&quota_release_work) // hold sb->s_umount lock
-quota_release_workfn()->ext4_release_dquot()->sb_start_intwrite()  // wait unfreeze
+From the working directory holding the downloaded scripts, run:
 
-ext4_evict_inode()->if (inode->i_nlink) goto no_delete;->ext4_clear_inode()->dquot_drop(inode)
-...->dqput()->queue_delayed_work(quota_unbound_wq, &quota_release_work, 1);
+    ./build.sh
+    KERNEL=linux/build/arch/x86/boot/bzImage OUT=out \
+        WORK=/tmp/ext2-positive ./run.sh holenopm
+    KERNEL=linux/build/arch/x86/boot/bzImage OUT=out \
+        WORK=/tmp/ext2-control ./run.sh holenopmcontrol
 
-In ext4_sync_fs(), it is more reasonable to call dquot_writeback_dquots() only when
-(sb->s_writers.frozen!= SB_FREEZE_COMPLETE)?
+The malformed image triggers the BUG in ext2_set_link() on the
+unfixed kernel. With the patch, rename returns -EIO; the valid-image
+control rename succeeds. The image and QEMU commands are included in
+the Gist scripts.
 
+The trigger requires mounting a crafted ext2 image and renaming a
+directory across parents. Mounting the image requires CAP_SYS_ADMIN.
+This reproduces a kernel BUG; it does not demonstrate privilege
+escalation or memory disclosure.
 
+Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
+Signed-off-by: shaos <shawnq1@163.com>
 
+Thanks,
 
+shaos
+
+---
+diff --git a/fs/ext2/dir.c b/fs/ext2/dir.c
+index 5de32c221a83b..f0a23cbceed5e 100644
+--- a/fs/ext2/dir.c
++++ b/fs/ext2/dir.c
+@@ -412,10 +412,36 @@ struct ext2_dir_entry_2 *ext2_find_entry (struct inode *dir,
+  */
+ struct ext2_dir_entry_2 *ext2_dotdot(struct inode *dir, struct folio **foliop)
+ {
++	unsigned int chunk_size = ext2_chunk_size(dir);
+ 	ext2_dirent *de = ext2_get_folio(dir, 0, 0, foliop);
++	unsigned int dot_len, dotdot_len;
+ 
+-	if (!IS_ERR(de))
+-		return ext2_next_entry(de);
++	if (IS_ERR(de))
++		return NULL;
++
++	if (de->name_len != 1 || de->name[0] != '.' ||
++	    le32_to_cpu(de->inode) != dir->i_ino)
++		goto bad;
++
++	dot_len = ext2_rec_len_from_disk(de->rec_len);
++	if (dot_len < EXT2_DIR_REC_LEN(1) ||
++	    dot_len > chunk_size - EXT2_DIR_REC_LEN(2))
++		goto bad;
++
++	de = ext2_next_entry(de);
++	dotdot_len = ext2_rec_len_from_disk(de->rec_len);
++	if (de->name_len != 2 || de->name[0] != '.' || de->name[1] != '.' ||
++	    !le32_to_cpu(de->inode) || dotdot_len < EXT2_DIR_REC_LEN(2) ||
++	    dotdot_len > chunk_size - dot_len)
++		goto bad;
++
++	return de;
++
++bad:
++	ext2_error(dir->i_sb, __func__,
++		   "directory #%llu has invalid '.' or '..' entry",
++		   (unsigned long long)dir->i_ino);
++	folio_release_kmap(*foliop, de);
+ 	return NULL;
+ }
+ 
+diff --git a/fs/ext2/namei.c b/fs/ext2/namei.c
+index bfb6a463a95e0..a5b5aff1cfb45 100644
+--- a/fs/ext2/namei.c
++++ b/fs/ext2/namei.c
+@@ -350,6 +350,12 @@ static int ext2_rename (const struct mnt_idmap * idmap,
+ 		dir_de = ext2_dotdot(old_inode, &dir_folio);
+ 		if (!dir_de)
+ 			goto out_old;
++		if (le32_to_cpu(dir_de->inode) != old_dir->i_ino) {
++			ext2_error(old_inode->i_sb, __func__,
++				   "directory #%llu has incorrect '..' entry",
++				   (unsigned long long)old_inode->i_ino);
++			goto out_dir;
++		}
+ 	}
+ 
+ 	if (new_inode) {
 
